@@ -1,10 +1,13 @@
 include( "shared.lua" )
 include( "cl_player.lua" )
+include( "cl_thirdpersoncamera.lua" )
+include( "cl_hud.lua" )
+include( "cl_crosshair.lua" )
 
 net.Receive("RefreshPlayerAttributes", function(len, ply)
-    ply:SetAttributes()
+    LocalPlayer():SetPlayerAttributes()
 end)
 
 net.Receive("RefreshPlayerData", function(len, ply)
-    ply:SetPlayerData()
+    LocalPlayer():SetPlayerData()
 end)

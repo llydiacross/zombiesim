@@ -12,7 +12,7 @@ ply.Attributes = {
     ArmorCrafting = 0,
     Medicine = 0,
     Farming = 0,
-    WeaponRepairing = 0
+    WeaponRepairing = 0,
     ArmorRepairing = 0,
     Mechanics = 0
 }
@@ -24,24 +24,19 @@ ply.Difficulty = 1 -- 1 = Easy, 2 = Normal, 3 = Hard, 4 = Insane
 ply.CellX = 0
 ply.CellY = 0
 ply.SkillPoints = 0
+ply.Health = 100
+ply.Stamina = 100
 
 // game specific variables
 ply.ExperiencePerLevel = 1000 // equals a level
 ply.PreviouslyConnected = false
 ply.SkillPointsPerLevel = 1 // how many skill points the player gets per level up
 
-function ply:AddXP(amount)
-    self.XP = self.XP + amount
-    if self:CanLevelUp() then
-        //  while the player has enough XP to level up, keep leveling up until they don't have enough XP to level up
-        local currentXP = self.XP
-        while(  currentXP >= self.ExperiencePerLevel and self:CanLevelUp() ) do
-            local newXP =  currentXP - self.ExperiencePerLevel 
-            self.XP = newXP > 0 and newXP or 0
-            self:LevelUp()
-        end
-        self.XP = currentXP
-    end
+function ply:GetMaxStamina()
+    local agility = tonumber(self.Attributes and self.Attributes.Agility) or 0
+    local strength = tonumber(self.Attributes and self.Attributes.Strength) or 0
+
+    return 100 + agility * 5 + strength * 3
 end
 
 function ply:GetPercentageToNextLevel()
@@ -52,38 +47,3 @@ function ply:CanLevelUp()
     return self.XP >= self.ExperiencePerLevel
 end
 
-function ply:LevelUp()
-    if self:CanLevelUp() then
-        self.Level = self.Level + 1
-        self.XP = self.XP - self.ExperiencePerLevel
-        // increase the experience required for the next level
-        self.ExperiencePerLevel = math.floor(self.ExperiencePerLevel * 1.1)
-        // award skill points
-        self.SkillPoints = self.SkillPoints + self.SkillPointsPerLevel
-
-        // if the level is divisble by 5, give the player a bonus skill point
-        if self.Level % 5 == 0 then
-            self.SkillPoints = self.SkillPoints + self.SkillPointsPerLevel
-        end
-
-        // if the level is divisble by 10, give the player a bonus skill point
-        if self.Level % 10 == 0 then
-            self.SkillPoints = self.SkillPoints + self.SkillPointsPerLevel
-        end
-
-        // if the level is divisble by 25, give the player a bonus skill point
-        if self.Level % 25 == 0 then
-            self.SkillPoints = self.SkillPoints + self.SkillPointsPerLevel
-        end
-
-        // if the level is divisble by 50, give the player a bonus skill point
-        if self.Level % 50 == 0 then
-            self.SkillPoints = self.SkillPoints + self.SkillPointsPerLevel
-        end
-
-        // if the level is divisble by 100, give the player a bonus skill point
-        if self.Level % 100 == 0 then
-            self.SkillPoints = self.SkillPoints + self.SkillPointsPerLevel
-        end
-    end
-end

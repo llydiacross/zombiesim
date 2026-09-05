@@ -1,7 +1,7 @@
 local ply = FindMetaTable("Player")
 
   
-function ply:SetAttributes()
+function ply:SetPlayerAttributes()
     self.Attributes.Strength = self:GetNWInt("Strength")
     self.Attributes.Agility = self:GetNWInt("Agility")
     self.Attributes.Intelligence = self:GetNWInt("Intelligence")

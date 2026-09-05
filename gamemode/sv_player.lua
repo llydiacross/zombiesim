@@ -2,7 +2,26 @@ local ply = FindMetaTable("Player")
 
 function ply:FetchAttributes() 
 
-    local attr = GetPlayerAttributes(self:SteamID())
+    local attr = ZM_GetPlayerAttributes(self:SteamID())
+
+    if( attr == nil ) then
+        attr = {
+            Strength = 0,
+            Agility = 0,
+            Intelligence = 0,
+            Endurance = 0,
+            MachineGuns = 0,
+            Shotguns = 0,
+            Snipers = 0,
+            WeaponCrafting = 0,
+            ArmorCrafting = 0,
+            Medicine = 0,
+            Farming = 0,
+            WeaponRepairing = 0,
+            ArmorRepairing = 0,
+            Mechanics = 0
+        }
+    end
 
     self.Attributes.Strength = attr.Strength or 0
     self.Attributes.Agility = attr.Agility or 0
@@ -21,31 +40,47 @@ function ply:FetchAttributes()
 end
 
 function ply:SendPlayerAttributes()
-    net.Start("RefreshPlayerAttributes")
+    net.Start("ZM.RefreshPlayerAttributes")
     net.Send(self)
 end
 
 function ply:SendPlayerData()
-    net.Start("RefreshPlayerData")
+    net.Start("ZM.RefreshPlayerData")
     net.Send(self)
 end
 
 function ply:Save()
-    SetPlayerAttributes(self:SteamID(), self.Attributes)
-    SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, SkillPoints = self.SkillPoints})
+    ZM_SetPlayerAttributes(self:SteamID(), self.Attributes)
+    self.Health = math.max(self:Health(), 0)
+    self.Stamina = math.Clamp(self.Stamina or 100, 0, self:GetMaxStamina())
+    ZM_SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, SkillPoints = self.SkillPoints, Health = self.Health, Stamina = self.Stamina})
 end
 
 function ply:UpdateAttributes()
-    SetPlayerAttributes(self:SteamID(), self.Attributes)
+    ZM_SetPlayerAttributes(self:SteamID(), self.Attributes)
 end
 
 function ply:UpdatePlayerData()
-    SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, SkillPoints = self.SkillPoints})
+    ZM_SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, SkillPoints = self.SkillPoints, Health = self.Health, Stamina = self.Stamina})
 end
 
 function ply:FetchPlayerData()
 
-    local data = GetPlayerData(self:SteamID())
+    local data = ZM_GetPlayerData(self:SteamID())
+
+    if ( data == nil ) then
+        data = {
+            XP = 0,
+            Level = 1,
+            MaxLevel = 300,
+            Difficulty = 1, -- 1 = Easy, 2 = Normal, 3 = Hard, 4 = Insane
+            CellX = 0,
+            CellY = 0,
+            SkillPoints = 0,
+            Health = 100,
+            Stamina = 100
+        }
+    end
 
     self.XP = data.XP or 0
     self.Level = data.Level or 1
@@ -54,6 +89,9 @@ function ply:FetchPlayerData()
     self.CellX = data.CellX or 0
     self.CellY = data.CellY or 0
     self.SkillPoints = data.SkillPoints or 0
+    self.Health = tonumber(data.Health) or 100
+    self.Stamina = tonumber(data.Stamina) or 100
+    self.Stamina = math.Clamp(self.Stamina, 0, self:GetMaxStamina())
 end
 
 function ply:SetNetworkAttributes()
@@ -81,4 +119,86 @@ function ply:SetNetworkPlayerData()
     self:SetNWInt("CellX", self.CellX)
     self:SetNWInt("CellY", self.CellY)
     self:SetNWInt("SkillPoints", self.SkillPoints)
+    self:SetNWInt("Health", self.Health)
+    self:SetNWFloat("Stamina", self.Stamina)
+    self:SetNWFloat("MaxStamina", self:GetMaxStamina())
+end
+
+hook.Add("SetupMove", "ZM.StaminaMovement", function(ply, move)
+    if not IsValid(ply) or not ply:Alive() or ply.Stamina > 0 then return end
+
+    move:SetMaxSpeed(ply:GetWalkSpeed())
+    move:SetMaxClientSpeed(ply:GetWalkSpeed())
+    move:SetButtons(bit.band(move:GetButtons(), bit.bnot(IN_SPEED)))
+end)
+
+local lastStaminaThink = CurTime()
+hook.Add("Think", "ZM.Stamina", function()
+    local now = CurTime()
+    local delta = math.min(now - lastStaminaThink, 0.1)
+    lastStaminaThink = now
+
+    for _, ply in ipairs(player.GetAll()) do
+        if IsValid(ply) and ply:Alive() then
+            local maxStamina = ply:GetMaxStamina()
+            local isSprinting = ply:KeyDown(IN_SPEED) and ply:GetVelocity():Length2D() > 10
+            local agility = tonumber(ply.Attributes and ply.Attributes.Agility) or 0
+            local strength = tonumber(ply.Attributes and ply.Attributes.Strength) or 0
+            local staminaChange = isSprinting and -(12 / (1 + agility * 0.05 + strength * 0.03)) or 18
+
+            ply.Stamina = math.Clamp((ply.Stamina or maxStamina) + staminaChange * delta, 0, maxStamina)
+            ply:SetNWFloat("Stamina", ply.Stamina)
+            ply:SetNWFloat("MaxStamina", maxStamina)
+        end
+    end
+end)
+
+function ply:AddXP(amount)
+    self.XP = self.XP + amount
+    if self:CanLevelUp() then
+        //  while the player has enough XP to level up, keep leveling up until they don't have enough XP to level up
+        local currentXP = self.XP
+        while(  currentXP >= self.ExperiencePerLevel and self:CanLevelUp() ) do
+            local newXP =  currentXP - self.ExperiencePerLevel 
+            self:LevelUp()
+            self.XP = newXP > 0 and newXP or 0
+        end
+        self.XP = currentXP
+    end
+end
+
+function ply:LevelUp()
+    if self:CanLevelUp() then
+        self.Level = self.Level + 1
+        self.XP = self.XP - self.ExperiencePerLevel
+        // increase the experience required for the next level
+        self.ExperiencePerLevel = math.floor(self.ExperiencePerLevel * 1.1)
+        // award skill points
+        self.SkillPoints = self.SkillPoints + self.SkillPointsPerLevel
+
+        // if the level is divisble by 5, give the player a bonus skill point
+        if self.Level % 5 == 0 then
+            self.SkillPoints = self.SkillPoints + self.SkillPointsPerLevel
+        end
+
+        // if the level is divisble by 10, give the player a bonus skill point
+        if self.Level % 10 == 0 then
+            self.SkillPoints = self.SkillPoints + self.SkillPointsPerLevel
+        end
+
+        // if the level is divisble by 25, give the player a bonus skill point
+        if self.Level % 25 == 0 then
+            self.SkillPoints = self.SkillPoints + self.SkillPointsPerLevel
+        end
+
+        // if the level is divisble by 50, give the player a bonus skill point
+        if self.Level % 50 == 0 then
+            self.SkillPoints = self.SkillPoints + self.SkillPointsPerLevel
+        end
+
+        // if the level is divisble by 100, give the player a bonus skill point
+        if self.Level % 100 == 0 then
+            self.SkillPoints = self.SkillPoints + self.SkillPointsPerLevel
+        end
+    end
 end
