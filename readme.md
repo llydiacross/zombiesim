@@ -18,7 +18,7 @@ Based upon Dead Frontier In Gmod.
  
  # Folder Structure
 
- - ./chunktemplates
+ - ./tiletemplates
     - the pieces (chunks) for making the cells, usually each file is just 1 chunk wide
  - ./content
     - data read by gmod

@@ -24,7 +24,7 @@ ply.Difficulty = 1 -- 1 = Easy, 2 = Normal, 3 = Hard, 4 = Insane
 ply.CellX = 0
 ply.CellY = 0
 ply.SkillPoints = 0
-ply.Health = 100
+ply.SavedHealth = 100
 ply.Stamina = 100
 
 // game specific variables

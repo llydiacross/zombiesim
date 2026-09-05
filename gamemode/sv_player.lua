@@ -51,9 +51,9 @@ end
 
 function ply:Save()
     ZM_SetPlayerAttributes(self:SteamID(), self.Attributes)
-    self.Health = math.max(self:Health(), 0)
+    self.SavedHealth = math.max(self:Health(), 0)
     self.Stamina = math.Clamp(self.Stamina or 100, 0, self:GetMaxStamina())
-    ZM_SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, SkillPoints = self.SkillPoints, Health = self.Health, Stamina = self.Stamina})
+    ZM_SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina})
 end
 
 function ply:UpdateAttributes()
@@ -61,7 +61,7 @@ function ply:UpdateAttributes()
 end
 
 function ply:UpdatePlayerData()
-    ZM_SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, SkillPoints = self.SkillPoints, Health = self.Health, Stamina = self.Stamina})
+    ZM_SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina})
 end
 
 function ply:FetchPlayerData()
@@ -89,7 +89,7 @@ function ply:FetchPlayerData()
     self.CellX = data.CellX or 0
     self.CellY = data.CellY or 0
     self.SkillPoints = data.SkillPoints or 0
-    self.Health = tonumber(data.Health) or 100
+    self.SavedHealth = tonumber(data.Health) or 100
     self.Stamina = tonumber(data.Stamina) or 100
     self.Stamina = math.Clamp(self.Stamina, 0, self:GetMaxStamina())
 end
@@ -119,34 +119,47 @@ function ply:SetNetworkPlayerData()
     self:SetNWInt("CellX", self.CellX)
     self:SetNWInt("CellY", self.CellY)
     self:SetNWInt("SkillPoints", self.SkillPoints)
-    self:SetNWInt("Health", self.Health)
+    self:SetNWInt("Health", self.SavedHealth)
     self:SetNWFloat("Stamina", self.Stamina)
     self:SetNWFloat("MaxStamina", self:GetMaxStamina())
 end
 
 hook.Add("SetupMove", "ZM.StaminaMovement", function(ply, move)
-    if not IsValid(ply) or not ply:Alive() or ply.Stamina > 0 then return end
+    if not IsValid(ply) or not ply:Alive() then return end
+
+    ply.ZM_IsSprinting = bit.band(move:GetButtons(), IN_SPEED) ~= 0
+
+    if ply.Stamina > 0 then return end
 
     move:SetMaxSpeed(ply:GetWalkSpeed())
     move:SetMaxClientSpeed(ply:GetWalkSpeed())
     move:SetButtons(bit.band(move:GetButtons(), bit.bnot(IN_SPEED)))
 end)
 
-local lastStaminaThink = CurTime()
 hook.Add("Think", "ZM.Stamina", function()
-    local now = CurTime()
-    local delta = math.min(now - lastStaminaThink, 0.1)
-    lastStaminaThink = now
+    local delta = engine.TickInterval()
+    local baseSprintDrain = 800
 
     for _, ply in ipairs(player.GetAll()) do
         if IsValid(ply) and ply:Alive() then
             local maxStamina = ply:GetMaxStamina()
-            local isSprinting = ply:KeyDown(IN_SPEED) and ply:GetVelocity():Length2D() > 10
+            local isSprinting = ply:KeyDown(IN_SPEED)
             local agility = tonumber(ply.Attributes and ply.Attributes.Agility) or 0
             local strength = tonumber(ply.Attributes and ply.Attributes.Strength) or 0
-            local staminaChange = isSprinting and -(12 / (1 + agility * 0.05 + strength * 0.03)) or 18
+            local stamina = tonumber(ply.Stamina) or maxStamina
+            local staminaRate = baseSprintDrain / (1 + agility * 0.05 + strength * 0.03)
+            local recoveryRate = 5 * (1 + agility * 0.05)
 
-            ply.Stamina = math.Clamp((ply.Stamina or maxStamina) + staminaChange * delta, 0, maxStamina)
+            if isSprinting then
+                stamina = stamina - staminaRate * delta
+            else
+                stamina = stamina + recoveryRate * delta
+            end
+
+            print( string.format("Player: %s, Stamina: %.2f, MaxStamina: %.2f, IsSprinting: %s", ply:Nick(), stamina, maxStamina, tostring(isSprinting)) )
+
+            ply.Stamina = math.Clamp(stamina, 0, maxStamina)
+
             ply:SetNWFloat("Stamina", ply.Stamina)
             ply:SetNWFloat("MaxStamina", maxStamina)
         end

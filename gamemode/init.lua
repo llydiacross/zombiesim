@@ -27,8 +27,8 @@ function GM:PlayerSpawn( ply )
     // fetch the player attributes and data from the database
     ply:FetchAttributes()
     ply:FetchPlayerData()
-    ply:SetHealth(math.max(ply.Health, 1))
-    ply.Stamina = math.Clamp(ply.Stamina, 0, ply:GetMaxStamina())
+    ply:SetHealth(math.max(ply.SavedHealth, 1))
+    ply.Stamina = math.Clamp(tonumber(ply.Stamina) or ply:GetMaxStamina(), 0, ply:GetMaxStamina())
 
     if( !ply.PreviouslyConnected ) then
         ply.SkillPoints = 10 // give the player 10 skill points to start with

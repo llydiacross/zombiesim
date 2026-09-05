@@ -1,0 +1,1876 @@
+versioninfo
+{
+	"editorversion" "400"
+	"editorbuild" "8871"
+	"mapversion" "2"
+	"formatversion" "100"
+	"prefab" "0"
+}
+visgroups
+{
+}
+viewsettings
+{
+	"bSnapToGrid" "1"
+	"bShowGrid" "1"
+	"bShowLogicalGrid" "0"
+	"nGridSpacing" "4"
+}
+palette_plus
+{
+	"color0" "255 255 255"
+	"color1" "255 255 255"
+	"color2" "255 255 255"
+	"color3" "255 255 255"
+	"color4" "255 255 255"
+	"color5" "255 255 255"
+	"color6" "255 255 255"
+	"color7" "255 255 255"
+	"color8" "255 255 255"
+	"color9" "255 255 255"
+	"color10" "255 255 255"
+	"color11" "255 255 255"
+	"color12" "255 255 255"
+	"color13" "255 255 255"
+	"color14" "255 255 255"
+	"color15" "255 255 255"
+}
+colorcorrection_plus
+{
+	"name0" ""
+	"weight0" "1"
+	"name1" ""
+	"weight1" "1"
+	"name2" ""
+	"weight2" "1"
+	"name3" ""
+	"weight3" "1"
+}
+light_plus
+{
+	"samples_sun" "6"
+	"samples_ambient" "40"
+	"samples_vis" "256"
+	"texlight" ""
+	"incremental_delay" "0"
+	"bake_dist" "1024"
+	"radius_scale" "1"
+	"brightness_scale" "1"
+	"ao_scale" "0"
+	"bounced" "1"
+	"incremental" "1"
+	"supersample" "0"
+	"bleed_hack" "1"
+	"soften_cosine" "0"
+	"debug" "0"
+	"cubemap" "1"
+}
+postprocess_plus
+{
+	"enable" "1"
+	"copied_from_controller" "1"
+	"bloom_scale" "1"
+	"bloom_exponent" "2.5"
+	"bloom_saturation" "1"
+	"auto_exposure_min" "0.5"
+	"auto_exposure_max" "2"
+	"tonemap_percent_target" "60"
+	"tonemap_percent_bright_pixels" "2"
+	"tonemap_min_avg_luminance" "3"
+	"tonemap_rate" "1"
+	"vignette_enable" "0"
+	"vignette_start" "1"
+	"vignette_end" "2"
+	"vignette_blur" "0"
+}
+bgimages_plus
+{
+}
+world
+{
+	"id" "1"
+	"mapversion" "2"
+	"classname" "worldspawn"
+	"detailmaterial" "detail/detailsprites"
+	"detailvbsp" "detail.vbsp"
+	"maxpropscreenwidth" "-1"
+	"skyname" "sky_day01_01"
+	solid
+	{
+		"id" "2"
+		side
+		{
+			"id" "1"
+			"plane" "(-320 320 32) (320 320 32) (320 -320 32)"
+			vertices_plus
+			{
+				"v" "-320 320 32"
+				"v" "320 320 32"
+				"v" "320 -320 32"
+				"v" "-320 -320 32"
+			}
+			"material" "GM_CONSTRUCT/FLATGRASS_2"
+			"uaxis" "[1 0 0 1280] 0.25"
+			"vaxis" "[0 -1 0 -1280] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "2"
+			"plane" "(-320 -320 0) (320 -320 0) (320 320 0)"
+			vertices_plus
+			{
+				"v" "-320 -320 0"
+				"v" "320 -320 0"
+				"v" "320 320 0"
+				"v" "-320 320 0"
+			}
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE028A"
+			"uaxis" "[1 0 0 256] 0.25"
+			"vaxis" "[0 -1 0 -256] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "3"
+			"plane" "(-320 320 32) (-320 -320 32) (-320 -320 0)"
+			vertices_plus
+			{
+				"v" "-320 320 32"
+				"v" "-320 -320 32"
+				"v" "-320 -320 0"
+				"v" "-320 320 0"
+			}
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE028A"
+			"uaxis" "[0 1 0 256] 0.25"
+			"vaxis" "[0 0 -1 256] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "4"
+			"plane" "(320 320 0) (320 -320 0) (320 -320 32)"
+			vertices_plus
+			{
+				"v" "320 320 0"
+				"v" "320 -320 0"
+				"v" "320 -320 32"
+				"v" "320 320 32"
+			}
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE028A"
+			"uaxis" "[0 1 0 256] 0.25"
+			"vaxis" "[0 0 -1 256] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "5"
+			"plane" "(320 320 32) (-320 320 32) (-320 320 0)"
+			vertices_plus
+			{
+				"v" "320 320 32"
+				"v" "-320 320 32"
+				"v" "-320 320 0"
+				"v" "320 320 0"
+			}
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE028A"
+			"uaxis" "[1 0 0 256] 0.25"
+			"vaxis" "[0 0 -1 256] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "6"
+			"plane" "(320 -320 0) (-320 -320 0) (-320 -320 32)"
+			vertices_plus
+			{
+				"v" "320 -320 0"
+				"v" "-320 -320 0"
+				"v" "-320 -320 32"
+				"v" "320 -320 32"
+			}
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE028A"
+			"uaxis" "[1 0 0 256] 0.25"
+			"vaxis" "[0 0 -1 256] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 135 196"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	solid
+	{
+		"id" "5"
+		side
+		{
+			"id" "7"
+			"plane" "(-272 272 96) (-240 272 96) (-240 -288 96)"
+			vertices_plus
+			{
+				"v" "-272 272 96"
+				"v" "-240 272 96"
+				"v" "-240 -288 96"
+				"v" "-272 -288 96"
+			}
+			"material" "STONE/INFFLRC"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 -1 0 64] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "8"
+			"plane" "(-272 -288 32) (-240 -288 32) (-240 272 32)"
+			vertices_plus
+			{
+				"v" "-272 -288 32"
+				"v" "-240 -288 32"
+				"v" "-240 272 32"
+				"v" "-272 272 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 -1 0 64] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "9"
+			"plane" "(-272 272 96) (-272 -288 96) (-272 -288 32)"
+			vertices_plus
+			{
+				"v" "-272 272 96"
+				"v" "-272 -288 96"
+				"v" "-272 -288 32"
+				"v" "-272 272 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 0] 0.25"
+			"vaxis" "[0 0 -1 384] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "10"
+			"plane" "(-240 272 32) (-240 -288 32) (-240 -288 96)"
+			vertices_plus
+			{
+				"v" "-240 272 32"
+				"v" "-240 -288 32"
+				"v" "-240 -288 96"
+				"v" "-240 272 96"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 0] 0.25"
+			"vaxis" "[0 0 -1 384] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "11"
+			"plane" "(-240 272 96) (-272 272 96) (-272 272 32)"
+			vertices_plus
+			{
+				"v" "-240 272 96"
+				"v" "-272 272 96"
+				"v" "-272 272 32"
+				"v" "-240 272 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 0 -1 384] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "12"
+			"plane" "(-240 -288 32) (-272 -288 32) (-272 -288 96)"
+			vertices_plus
+			{
+				"v" "-240 -288 32"
+				"v" "-272 -288 32"
+				"v" "-272 -288 96"
+				"v" "-240 -288 96"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 0 -1 384] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 107 156"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	solid
+	{
+		"id" "15"
+		side
+		{
+			"id" "13"
+			"plane" "(-288 -240 112) (-224 -240 112) (-224 -304 112)"
+			vertices_plus
+			{
+				"v" "-288 -240 112"
+				"v" "-224 -240 112"
+				"v" "-224 -304 112"
+				"v" "-288 -304 112"
+			}
+			"material" "STONE/INFFLRC"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 -1 0 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "14"
+			"plane" "(-288 -304 32) (-224 -304 32) (-224 -240 32)"
+			vertices_plus
+			{
+				"v" "-288 -304 32"
+				"v" "-224 -304 32"
+				"v" "-224 -240 32"
+				"v" "-288 -240 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 -1 0 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "15"
+			"plane" "(-288 -240 112) (-288 -304 112) (-288 -304 32)"
+			vertices_plus
+			{
+				"v" "-288 -240 112"
+				"v" "-288 -304 112"
+				"v" "-288 -304 32"
+				"v" "-288 -240 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "16"
+			"plane" "(-224 -240 32) (-224 -304 32) (-224 -304 112)"
+			vertices_plus
+			{
+				"v" "-224 -240 32"
+				"v" "-224 -304 32"
+				"v" "-224 -304 112"
+				"v" "-224 -240 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "17"
+			"plane" "(-224 -240 112) (-288 -240 112) (-288 -240 32)"
+			vertices_plus
+			{
+				"v" "-224 -240 112"
+				"v" "-288 -240 112"
+				"v" "-288 -240 32"
+				"v" "-224 -240 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "18"
+			"plane" "(-224 -304 32) (-288 -304 32) (-288 -304 112)"
+			vertices_plus
+			{
+				"v" "-224 -304 32"
+				"v" "-288 -304 32"
+				"v" "-288 -304 112"
+				"v" "-224 -304 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 183 220"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	solid
+	{
+		"id" "17"
+		side
+		{
+			"id" "30"
+			"plane" "(-272 -256 192) (-240 -256 192) (-240 -288 192)"
+			vertices_plus
+			{
+				"v" "-272 -256 192"
+				"v" "-240 -256 192"
+				"v" "-240 -288 192"
+				"v" "-272 -288 192"
+			}
+			"material" "STONE/INFFLRC"
+			"uaxis" "[1 0 0 -64] 0.25"
+			"vaxis" "[0 -1 0 64] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "29"
+			"plane" "(-272 -288 112) (-240 -288 112) (-240 -256 112)"
+			vertices_plus
+			{
+				"v" "-272 -288 112"
+				"v" "-240 -288 112"
+				"v" "-240 -256 112"
+				"v" "-272 -256 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 -64] 0.25"
+			"vaxis" "[0 -1 0 64] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "28"
+			"plane" "(-272 -256 192) (-272 -288 192) (-272 -288 112)"
+			vertices_plus
+			{
+				"v" "-272 -256 192"
+				"v" "-272 -288 192"
+				"v" "-272 -288 112"
+				"v" "-272 -256 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 -64] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "27"
+			"plane" "(-240 -256 112) (-240 -288 112) (-240 -288 192)"
+			vertices_plus
+			{
+				"v" "-240 -256 112"
+				"v" "-240 -288 112"
+				"v" "-240 -288 192"
+				"v" "-240 -256 192"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 -64] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "26"
+			"plane" "(-240 -256 192) (-272 -256 192) (-272 -256 112)"
+			vertices_plus
+			{
+				"v" "-240 -256 192"
+				"v" "-272 -256 192"
+				"v" "-272 -256 112"
+				"v" "-240 -256 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "25"
+			"plane" "(-240 -288 112) (-272 -288 112) (-272 -288 192)"
+			vertices_plus
+			{
+				"v" "-240 -288 112"
+				"v" "-272 -288 112"
+				"v" "-272 -288 192"
+				"v" "-240 -288 192"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 183 220"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	solid
+	{
+		"id" "21"
+		side
+		{
+			"id" "48"
+			"plane" "(-272 288 192) (-240 288 192) (-240 256 192)"
+			vertices_plus
+			{
+				"v" "-272 288 192"
+				"v" "-240 288 192"
+				"v" "-240 256 192"
+				"v" "-272 256 192"
+			}
+			"material" "STONE/INFFLRC"
+			"uaxis" "[1 0 0 -64] 0.25"
+			"vaxis" "[0 -1 0 192] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "47"
+			"plane" "(-272 256 112) (-240 256 112) (-240 288 112)"
+			vertices_plus
+			{
+				"v" "-272 256 112"
+				"v" "-240 256 112"
+				"v" "-240 288 112"
+				"v" "-272 288 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 -64] 0.25"
+			"vaxis" "[0 -1 0 192] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "46"
+			"plane" "(-272 288 192) (-272 256 192) (-272 256 112)"
+			vertices_plus
+			{
+				"v" "-272 288 192"
+				"v" "-272 256 192"
+				"v" "-272 256 112"
+				"v" "-272 288 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 -192] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "45"
+			"plane" "(-240 288 112) (-240 256 112) (-240 256 192)"
+			vertices_plus
+			{
+				"v" "-240 288 112"
+				"v" "-240 256 112"
+				"v" "-240 256 192"
+				"v" "-240 288 192"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 -192] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "44"
+			"plane" "(-240 288 192) (-272 288 192) (-272 288 112)"
+			vertices_plus
+			{
+				"v" "-240 288 192"
+				"v" "-272 288 192"
+				"v" "-272 288 112"
+				"v" "-240 288 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "43"
+			"plane" "(-240 256 112) (-272 256 112) (-272 256 192)"
+			vertices_plus
+			{
+				"v" "-240 256 112"
+				"v" "-272 256 112"
+				"v" "-272 256 192"
+				"v" "-240 256 192"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 183 220"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	solid
+	{
+		"id" "22"
+		side
+		{
+			"id" "54"
+			"plane" "(-288 304 112) (-224 304 112) (-224 240 112)"
+			vertices_plus
+			{
+				"v" "-288 304 112"
+				"v" "-224 304 112"
+				"v" "-224 240 112"
+				"v" "-288 240 112"
+			}
+			"material" "STONE/INFFLRC"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 -1 0 128] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "53"
+			"plane" "(-288 240 32) (-224 240 32) (-224 304 32)"
+			vertices_plus
+			{
+				"v" "-288 240 32"
+				"v" "-224 240 32"
+				"v" "-224 304 32"
+				"v" "-288 304 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 -1 0 128] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "52"
+			"plane" "(-288 304 112) (-288 240 112) (-288 240 32)"
+			vertices_plus
+			{
+				"v" "-288 304 112"
+				"v" "-288 240 112"
+				"v" "-288 240 32"
+				"v" "-288 304 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 -128] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "51"
+			"plane" "(-224 304 32) (-224 240 32) (-224 240 112)"
+			vertices_plus
+			{
+				"v" "-224 304 32"
+				"v" "-224 240 32"
+				"v" "-224 240 112"
+				"v" "-224 304 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 -128] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "50"
+			"plane" "(-224 304 112) (-288 304 112) (-288 304 32)"
+			vertices_plus
+			{
+				"v" "-224 304 112"
+				"v" "-288 304 112"
+				"v" "-288 304 32"
+				"v" "-224 304 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "49"
+			"plane" "(-224 240 32) (-288 240 32) (-288 240 112)"
+			vertices_plus
+			{
+				"v" "-224 240 32"
+				"v" "-288 240 32"
+				"v" "-288 240 112"
+				"v" "-224 240 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 183 220"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	solid
+	{
+		"id" "25"
+		side
+		{
+			"id" "55"
+			"plane" "(-260 256 160) (-252 256 160) (-252 -256 160)"
+			vertices_plus
+			{
+				"v" "-260 256 160"
+				"v" "-252 256 160"
+				"v" "-252 -256 160"
+				"v" "-260 -256 160"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 -1 0 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "56"
+			"plane" "(-260 -256 96) (-252 -256 96) (-252 256 96)"
+			vertices_plus
+			{
+				"v" "-260 -256 96"
+				"v" "-252 -256 96"
+				"v" "-252 256 96"
+				"v" "-260 256 96"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 -1 0 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "57"
+			"plane" "(-260 256 160) (-260 -256 160) (-260 -256 96)"
+			vertices_plus
+			{
+				"v" "-260 256 160"
+				"v" "-260 -256 160"
+				"v" "-260 -256 96"
+				"v" "-260 256 96"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[0 1 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "58"
+			"plane" "(-252 256 96) (-252 -256 96) (-252 -256 160)"
+			vertices_plus
+			{
+				"v" "-252 256 96"
+				"v" "-252 -256 96"
+				"v" "-252 -256 160"
+				"v" "-252 256 160"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[0 1 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "59"
+			"plane" "(-252 256 160) (-260 256 160) (-260 256 96)"
+			vertices_plus
+			{
+				"v" "-252 256 160"
+				"v" "-260 256 160"
+				"v" "-260 256 96"
+				"v" "-252 256 96"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "60"
+			"plane" "(-252 -256 96) (-260 -256 96) (-260 -256 160)"
+			vertices_plus
+			{
+				"v" "-252 -256 96"
+				"v" "-260 -256 96"
+				"v" "-260 -256 160"
+				"v" "-252 -256 160"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 187 244"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	solid
+	{
+		"id" "26"
+		side
+		{
+			"id" "90"
+			"plane" "(-240 268 160) (-240 276 160) (240 276 160)"
+			vertices_plus
+			{
+				"v" "-240 268 160"
+				"v" "-240 276 160"
+				"v" "240 276 160"
+				"v" "240 268 160"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[0 1 0 -64] 0.25"
+			"vaxis" "[1 0 0 64] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "89"
+			"plane" "(240 268 96) (240 276 96) (-240 276 96)"
+			vertices_plus
+			{
+				"v" "240 268 96"
+				"v" "240 276 96"
+				"v" "-240 276 96"
+				"v" "-240 268 96"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[0 1 0 -64] 0.25"
+			"vaxis" "[1 0 0 64] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "88"
+			"plane" "(-240 268 160) (240 268 160) (240 268 96)"
+			vertices_plus
+			{
+				"v" "-240 268 160"
+				"v" "240 268 160"
+				"v" "240 268 96"
+				"v" "-240 268 96"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[-1 0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "87"
+			"plane" "(-240 276 96) (240 276 96) (240 276 160)"
+			vertices_plus
+			{
+				"v" "-240 276 96"
+				"v" "240 276 96"
+				"v" "240 276 160"
+				"v" "-240 276 160"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[-1 0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "86"
+			"plane" "(-240 276 160) (-240 268 160) (-240 268 96)"
+			vertices_plus
+			{
+				"v" "-240 276 160"
+				"v" "-240 268 160"
+				"v" "-240 268 96"
+				"v" "-240 276 96"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[0 1 0 -64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "85"
+			"plane" "(240 276 96) (240 268 96) (240 268 160)"
+			vertices_plus
+			{
+				"v" "240 276 96"
+				"v" "240 268 96"
+				"v" "240 268 160"
+				"v" "240 276 160"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[0 1 0 -64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 187 244"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	solid
+	{
+		"id" "27"
+		side
+		{
+			"id" "96"
+			"plane" "(-224 256 96) (-224 288 96) (272 288 96)"
+			vertices_plus
+			{
+				"v" "-224 256 96"
+				"v" "-224 288 96"
+				"v" "272 288 96"
+				"v" "272 256 96"
+			}
+			"material" "STONE/INFFLRC"
+			"uaxis" "[0 1 0 -64] 0.25"
+			"vaxis" "[1 0 0 128] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "95"
+			"plane" "(272 256 32) (272 288 32) (-224 288 32)"
+			vertices_plus
+			{
+				"v" "272 256 32"
+				"v" "272 288 32"
+				"v" "-224 288 32"
+				"v" "-224 256 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 -64] 0.25"
+			"vaxis" "[1 0 0 128] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "94"
+			"plane" "(-224 256 96) (272 256 96) (272 256 32)"
+			vertices_plus
+			{
+				"v" "-224 256 96"
+				"v" "272 256 96"
+				"v" "272 256 32"
+				"v" "-224 256 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-1 0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 384] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "93"
+			"plane" "(-224 288 32) (272 288 32) (272 288 96)"
+			vertices_plus
+			{
+				"v" "-224 288 32"
+				"v" "272 288 32"
+				"v" "272 288 96"
+				"v" "-224 288 96"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-1 0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 384] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "92"
+			"plane" "(-224 288 96) (-224 256 96) (-224 256 32)"
+			vertices_plus
+			{
+				"v" "-224 288 96"
+				"v" "-224 256 96"
+				"v" "-224 256 32"
+				"v" "-224 288 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 -64] 0.25"
+			"vaxis" "[0 0 -1 384] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "91"
+			"plane" "(272 288 32) (272 256 32) (272 256 96)"
+			vertices_plus
+			{
+				"v" "272 288 32"
+				"v" "272 256 32"
+				"v" "272 256 96"
+				"v" "272 288 96"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 -64] 0.25"
+			"vaxis" "[0 0 -1 384] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 107 156"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	solid
+	{
+		"id" "28"
+		side
+		{
+			"id" "102"
+			"plane" "(240 256 192) (240 288 192) (272 288 192)"
+			vertices_plus
+			{
+				"v" "240 256 192"
+				"v" "240 288 192"
+				"v" "272 288 192"
+				"v" "272 256 192"
+			}
+			"material" "STONE/INFFLRC"
+			"uaxis" "[-0 1 0 -128] 0.25"
+			"vaxis" "[1 0 0 128] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "101"
+			"plane" "(272 256 112) (272 288 112) (240 288 112)"
+			vertices_plus
+			{
+				"v" "272 256 112"
+				"v" "272 288 112"
+				"v" "240 288 112"
+				"v" "240 256 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-0 1 0 -128] 0.25"
+			"vaxis" "[1 0 0 128] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "100"
+			"plane" "(240 256 192) (272 256 192) (272 256 112)"
+			vertices_plus
+			{
+				"v" "240 256 192"
+				"v" "272 256 192"
+				"v" "272 256 112"
+				"v" "240 256 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-1 -0 0 -128] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "99"
+			"plane" "(240 288 112) (272 288 112) (272 288 192)"
+			vertices_plus
+			{
+				"v" "240 288 112"
+				"v" "272 288 112"
+				"v" "272 288 192"
+				"v" "240 288 192"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-1 -0 0 -128] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "98"
+			"plane" "(240 288 192) (240 256 192) (240 256 112)"
+			vertices_plus
+			{
+				"v" "240 288 192"
+				"v" "240 256 192"
+				"v" "240 256 112"
+				"v" "240 288 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-0 1 0 -128] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "97"
+			"plane" "(272 288 112) (272 256 112) (272 256 192)"
+			vertices_plus
+			{
+				"v" "272 288 112"
+				"v" "272 256 112"
+				"v" "272 256 192"
+				"v" "272 288 192"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-0 1 0 -128] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 183 220"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	solid
+	{
+		"id" "29"
+		side
+		{
+			"id" "108"
+			"plane" "(224 240 112) (224 304 112) (288 304 112)"
+			vertices_plus
+			{
+				"v" "224 240 112"
+				"v" "224 304 112"
+				"v" "288 304 112"
+				"v" "288 240 112"
+			}
+			"material" "STONE/INFFLRC"
+			"uaxis" "[-0 1 0 -64] 0.25"
+			"vaxis" "[1 0 0 64] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "107"
+			"plane" "(288 240 32) (288 304 32) (224 304 32)"
+			vertices_plus
+			{
+				"v" "288 240 32"
+				"v" "288 304 32"
+				"v" "224 304 32"
+				"v" "224 240 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-0 1 0 -64] 0.25"
+			"vaxis" "[1 0 0 64] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "106"
+			"plane" "(224 240 112) (288 240 112) (288 240 32)"
+			vertices_plus
+			{
+				"v" "224 240 112"
+				"v" "288 240 112"
+				"v" "288 240 32"
+				"v" "224 240 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-1 -0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "105"
+			"plane" "(224 304 32) (288 304 32) (288 304 112)"
+			vertices_plus
+			{
+				"v" "224 304 32"
+				"v" "288 304 32"
+				"v" "288 304 112"
+				"v" "224 304 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-1 -0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "104"
+			"plane" "(224 304 112) (224 240 112) (224 240 32)"
+			vertices_plus
+			{
+				"v" "224 304 112"
+				"v" "224 240 112"
+				"v" "224 240 32"
+				"v" "224 304 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-0 1 0 -64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "103"
+			"plane" "(288 304 32) (288 240 32) (288 240 112)"
+			vertices_plus
+			{
+				"v" "288 304 32"
+				"v" "288 240 32"
+				"v" "288 240 112"
+				"v" "288 304 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-0 1 0 -64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 183 220"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	solid
+	{
+		"id" "64"
+		side
+		{
+			"id" "138"
+			"plane" "(-240 -276 160) (-240 -268 160) (240 -268 160)"
+			vertices_plus
+			{
+				"v" "-240 -276 160"
+				"v" "-240 -268 160"
+				"v" "240 -268 160"
+				"v" "240 -276 160"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[0 1 0 64] 0.25"
+			"vaxis" "[1 0 0 64] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "137"
+			"plane" "(240 -276 96) (240 -268 96) (-240 -268 96)"
+			vertices_plus
+			{
+				"v" "240 -276 96"
+				"v" "240 -268 96"
+				"v" "-240 -268 96"
+				"v" "-240 -276 96"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[0 1 0 64] 0.25"
+			"vaxis" "[1 0 0 64] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "136"
+			"plane" "(-240 -276 160) (240 -276 160) (240 -276 96)"
+			vertices_plus
+			{
+				"v" "-240 -276 160"
+				"v" "240 -276 160"
+				"v" "240 -276 96"
+				"v" "-240 -276 96"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[-1 0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "135"
+			"plane" "(-240 -268 96) (240 -268 96) (240 -268 160)"
+			vertices_plus
+			{
+				"v" "-240 -268 96"
+				"v" "240 -268 96"
+				"v" "240 -268 160"
+				"v" "-240 -268 160"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[-1 0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "134"
+			"plane" "(-240 -268 160) (-240 -276 160) (-240 -276 96)"
+			vertices_plus
+			{
+				"v" "-240 -268 160"
+				"v" "-240 -276 160"
+				"v" "-240 -276 96"
+				"v" "-240 -268 96"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[0 1 0 64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "133"
+			"plane" "(240 -268 96) (240 -276 96) (240 -276 160)"
+			vertices_plus
+			{
+				"v" "240 -268 96"
+				"v" "240 -276 96"
+				"v" "240 -276 160"
+				"v" "240 -268 160"
+			}
+			"material" "METAL/METALRAIL011A"
+			"uaxis" "[0 1 0 64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 187 244"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	solid
+	{
+		"id" "65"
+		side
+		{
+			"id" "144"
+			"plane" "(-224 -288 96) (-224 -256 96) (272 -256 96)"
+			vertices_plus
+			{
+				"v" "-224 -288 96"
+				"v" "-224 -256 96"
+				"v" "272 -256 96"
+				"v" "272 -288 96"
+			}
+			"material" "STONE/INFFLRC"
+			"uaxis" "[0 1 0 64] 0.25"
+			"vaxis" "[1 0 0 128] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "143"
+			"plane" "(272 -288 32) (272 -256 32) (-224 -256 32)"
+			vertices_plus
+			{
+				"v" "272 -288 32"
+				"v" "272 -256 32"
+				"v" "-224 -256 32"
+				"v" "-224 -288 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 64] 0.25"
+			"vaxis" "[1 0 0 128] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "142"
+			"plane" "(-224 -288 96) (272 -288 96) (272 -288 32)"
+			vertices_plus
+			{
+				"v" "-224 -288 96"
+				"v" "272 -288 96"
+				"v" "272 -288 32"
+				"v" "-224 -288 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-1 0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 384] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "141"
+			"plane" "(-224 -256 32) (272 -256 32) (272 -256 96)"
+			vertices_plus
+			{
+				"v" "-224 -256 32"
+				"v" "272 -256 32"
+				"v" "272 -256 96"
+				"v" "-224 -256 96"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-1 0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 384] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "140"
+			"plane" "(-224 -256 96) (-224 -288 96) (-224 -288 32)"
+			vertices_plus
+			{
+				"v" "-224 -256 96"
+				"v" "-224 -288 96"
+				"v" "-224 -288 32"
+				"v" "-224 -256 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 64] 0.25"
+			"vaxis" "[0 0 -1 384] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "139"
+			"plane" "(272 -256 32) (272 -288 32) (272 -288 96)"
+			vertices_plus
+			{
+				"v" "272 -256 32"
+				"v" "272 -288 32"
+				"v" "272 -288 96"
+				"v" "272 -256 96"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[0 1 0 64] 0.25"
+			"vaxis" "[0 0 -1 384] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 107 156"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	solid
+	{
+		"id" "66"
+		side
+		{
+			"id" "150"
+			"plane" "(224 -304 112) (224 -240 112) (288 -240 112)"
+			vertices_plus
+			{
+				"v" "224 -304 112"
+				"v" "224 -240 112"
+				"v" "288 -240 112"
+				"v" "288 -304 112"
+			}
+			"material" "STONE/INFFLRC"
+			"uaxis" "[-0 1 0 64] 0.25"
+			"vaxis" "[1 0 0 64] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "149"
+			"plane" "(288 -304 32) (288 -240 32) (224 -240 32)"
+			vertices_plus
+			{
+				"v" "288 -304 32"
+				"v" "288 -240 32"
+				"v" "224 -240 32"
+				"v" "224 -304 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-0 1 0 64] 0.25"
+			"vaxis" "[1 0 0 64] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "148"
+			"plane" "(224 -304 112) (288 -304 112) (288 -304 32)"
+			vertices_plus
+			{
+				"v" "224 -304 112"
+				"v" "288 -304 112"
+				"v" "288 -304 32"
+				"v" "224 -304 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-1 -0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "147"
+			"plane" "(224 -240 32) (288 -240 32) (288 -240 112)"
+			vertices_plus
+			{
+				"v" "224 -240 32"
+				"v" "288 -240 32"
+				"v" "288 -240 112"
+				"v" "224 -240 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-1 -0 0 -64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "146"
+			"plane" "(224 -240 112) (224 -304 112) (224 -304 32)"
+			vertices_plus
+			{
+				"v" "224 -240 112"
+				"v" "224 -304 112"
+				"v" "224 -304 32"
+				"v" "224 -240 32"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-0 1 0 64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "145"
+			"plane" "(288 -240 32) (288 -304 32) (288 -304 112)"
+			vertices_plus
+			{
+				"v" "288 -240 32"
+				"v" "288 -304 32"
+				"v" "288 -304 112"
+				"v" "288 -240 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-0 1 0 64] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 183 220"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	solid
+	{
+		"id" "67"
+		side
+		{
+			"id" "156"
+			"plane" "(240 -288 192) (240 -256 192) (272 -256 192)"
+			vertices_plus
+			{
+				"v" "240 -288 192"
+				"v" "240 -256 192"
+				"v" "272 -256 192"
+				"v" "272 -288 192"
+			}
+			"material" "STONE/INFFLRC"
+			"uaxis" "[-0 1 0 0] 0.25"
+			"vaxis" "[1 0 0 128] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "155"
+			"plane" "(272 -288 112) (272 -256 112) (240 -256 112)"
+			vertices_plus
+			{
+				"v" "272 -288 112"
+				"v" "272 -256 112"
+				"v" "240 -256 112"
+				"v" "240 -288 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-0 1 0 0] 0.25"
+			"vaxis" "[1 0 0 128] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "154"
+			"plane" "(240 -288 192) (272 -288 192) (272 -288 112)"
+			vertices_plus
+			{
+				"v" "240 -288 192"
+				"v" "272 -288 192"
+				"v" "272 -288 112"
+				"v" "240 -288 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-1 -0 0 -128] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "153"
+			"plane" "(240 -256 112) (272 -256 112) (272 -256 192)"
+			vertices_plus
+			{
+				"v" "240 -256 112"
+				"v" "272 -256 112"
+				"v" "272 -256 192"
+				"v" "240 -256 192"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-1 -0 0 -128] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "152"
+			"plane" "(240 -256 192) (240 -288 192) (240 -288 112)"
+			vertices_plus
+			{
+				"v" "240 -256 192"
+				"v" "240 -288 192"
+				"v" "240 -288 112"
+				"v" "240 -256 112"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-0 1 0 0] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "151"
+			"plane" "(272 -256 112) (272 -288 112) (272 -288 192)"
+			vertices_plus
+			{
+				"v" "272 -256 112"
+				"v" "272 -288 112"
+				"v" "272 -288 192"
+				"v" "272 -256 192"
+			}
+			"material" "DE_AZTEC/STONEWORK01G"
+			"uaxis" "[-0 1 0 0] 0.25"
+			"vaxis" "[0 0 -1 320] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 183 220"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+}
+cameras
+{
+	"activecamera" "-1"
+}
+cordons
+{
+	"active" "0"
+}
