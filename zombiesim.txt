@@ -1,0 +1,21 @@
+"zombiesim"
+{
+	"base"		    "base"
+	"title"		    "Z-Nation"
+	"maps"		    "^zn_"
+	"category"	    "pve"
+	"menusystem"	"1"
+	"workshopid"	"15895"
+
+	"settings"
+	{
+		1
+		{
+			"name"		"zn_maxzombies"
+			"text"		"Max Zombies"
+			"help"		"The maxiumum number of zombies which can spawn"
+			"type"		"Numeric"
+			"default"	"128"
+		}
+	}
+}
