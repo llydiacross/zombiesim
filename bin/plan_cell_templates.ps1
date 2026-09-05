@@ -55,6 +55,7 @@ if ($templateFiles.Count -eq 0) {
 }
 $buildingTemplates = @($templateFiles.Values | Where-Object { $_ -like 'buildings/tile_building_*.vmf' } | Sort-Object)
 $warehouseTemplates = @($templateFiles.Values | Where-Object { $_ -like 'buildings/tile_warehouse_*.vmf' } | Sort-Object)
+$carparkTemplates = @($templateFiles.Values | Where-Object { $_ -like 'carparks/tile_carpark_[a-e].vmf' } | Sort-Object)
 
 function Get-CellConnections {
     param([object]$Cell)
@@ -137,7 +138,7 @@ function Get-EnvironmentProfile {
     param([object]$Cell)
 
     $tags = @($Cell.environment.tags)
-    foreach ($tag in @('radioactive', 'safe_zone', 'fortified', 'military', 'medical', 'emergency_services', 'service_station', 'financial', 'commercial', 'recreation', 'parkland')) {
+    foreach ($tag in @('radioactive', 'safe_zone', 'fortified', 'military', 'medical', 'emergency_services', 'religious', 'service_station', 'financial', 'commercial', 'recreation', 'parkland')) {
         if ($tags -contains $tag) { return $tag }
     }
     if ($Cell.building.present) { return 'settlement' }
@@ -185,8 +186,16 @@ function Get-LayoutRotation {
         [string]$Orientation
     )
 
-    if ($Topology -like '*-straight' -or $Topology -like '*-deadend') {
-        if ($Orientation -in @('vertical', 'north', 'south')) { return 0 }
+    if ($Topology -like '*-deadend') {
+        switch ($Orientation) {
+            'south' { return 0 }
+            'east' { return 90 }
+            'north' { return 180 }
+            'west' { return 270 }
+        }
+    }
+    if ($Topology -like '*-straight') {
+        if ($Orientation -eq 'vertical') { return 0 }
         return 90
     }
     if ($Topology -like '*-corner') {
@@ -208,11 +217,55 @@ function Get-LayoutRotation {
     return 0
 }
 
+function Get-BuildingDensity {
+    param(
+        [string]$Terrain,
+        [string]$Profile
+    )
+
+    switch ($Profile) {
+        'grassland' { return 0.30 }
+        'sandy' { return 0.40 }
+        'dirt' { return 0.50 }
+        'parkland' { return 0.25 }
+        'recreation' { return 0.40 }
+        'settlement' { return 0.70 }
+        default {
+            switch ($Terrain) {
+                'grassland' { return 0.55 }
+                'sandy' { return 0.60 }
+                default { return 0.65 }
+            }
+        }
+    }
+}
+
+function Get-RecipePlacementSeed {
+    param(
+        [string]$Profile,
+        [string]$Topology,
+        [string]$Orientation,
+        [string[]]$Landmarks
+    )
+
+    $signature = "$Profile|$Topology|$Orientation|$($Landmarks -join '+')"
+    [int64]$seed = 17
+    foreach ($character in $signature.ToCharArray()) {
+        $seed = (($seed * 31) + [int][char]$character) % 2147483647
+    }
+    return [int]$seed
+}
+
 function Get-CellTilePlacements {
     param(
         [object]$Cell,
         [string]$TerrainTemplate,
         [string[]]$BuildingTemplates,
+        [string]$LandmarkTemplate,
+        [string[]]$Landmarks,
+        [string]$Profile,
+        [string[]]$CarparkTemplates,
+        [int]$PlacementSeed,
         [string]$Topology,
         [string]$Orientation,
         [int]$TileGridSize,
@@ -266,7 +319,10 @@ function Get-CellTilePlacements {
     }
 
     if ($BuildingTemplates.Count -gt 0) {
+        $buildingDensity = Get-BuildingDensity $Cell.environment.terrain $Profile
         foreach ($terrainPlacement in @($placements.Values | Where-Object { $_.role -eq 'terrain' } | Sort-Object tileY, tileX)) {
+            $densityRoll = [Math]::Abs(($PlacementSeed + ([int]$terrainPlacement.tileX * 11) + ([int]$terrainPlacement.tileY * 17)) % 100)
+            if ($densityRoll -ge [int]($buildingDensity * 100)) { continue }
             $templateIndex = (([int]$terrainPlacement.tileX * 11) + ([int]$terrainPlacement.tileY * 17)) % $BuildingTemplates.Count
             $placements["$($terrainPlacement.tileX),$($terrainPlacement.tileY)"] = [pscustomobject]@{
                 tileX = $terrainPlacement.tileX
@@ -274,6 +330,37 @@ function Get-CellTilePlacements {
                 template = $BuildingTemplates[$templateIndex]
                 rotationYaw = 0
                 role = 'building'
+            }
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($LandmarkTemplate)) {
+        $landmarkPlacement = @($placements.Values | Where-Object { $_.role -in @('building', 'terrain') } | Sort-Object tileY, tileX | Select-Object -First 1)[0]
+        if ($null -ne $landmarkPlacement) {
+            $placements["$($landmarkPlacement.tileX),$($landmarkPlacement.tileY)"] = [pscustomobject]@{
+                tileX = $landmarkPlacement.tileX
+                tileY = $landmarkPlacement.tileY
+                template = $LandmarkTemplate
+                rotationYaw = 0
+                role = 'landmark'
+            }
+        }
+    }
+
+    $hasNamedLandmark = @($Landmarks | Where-Object { $_ -ne 'none' }).Count -gt 0
+    $carparkRoll = $PlacementSeed % 100
+    if ($Topology -eq 'road-straight' -and -not $hasNamedLandmark -and $CarparkTemplates.Count -gt 0 -and $carparkRoll -lt 35) {
+        $carparkCandidates = @($placements.Values | Where-Object { $_.role -eq 'building' } | Sort-Object tileY, tileX)
+        if ($carparkCandidates.Count -gt 0) {
+            $carparkIndex = $PlacementSeed % $carparkCandidates.Count
+            $carparkTemplateIndex = [int]([Math]::Floor($PlacementSeed / 7) % $CarparkTemplates.Count)
+            $carparkPlacement = $carparkCandidates[$carparkIndex]
+            $placements["$($carparkPlacement.tileX),$($carparkPlacement.tileY)"] = [pscustomobject]@{
+                tileX = $carparkPlacement.tileX
+                tileY = $carparkPlacement.tileY
+                template = $CarparkTemplates[$carparkTemplateIndex]
+                rotationYaw = Get-LayoutRotation $Topology $Orientation
+                role = 'carpark'
             }
         }
     }
@@ -313,6 +400,32 @@ function Get-ProfileFallbackTemplates {
         }
     }
     return @($candidates)
+}
+
+function Get-LandmarkTemplate {
+    param(
+        [string[]]$Landmarks,
+        [hashtable]$AvailableTemplates
+    )
+
+    foreach ($landmark in $Landmarks) {
+        $templatePattern = switch ($landmark) {
+            'Church' { '*/tile_church*.vmf'; break }
+            'Hospital' { '*/tile_hospital*.vmf'; break }
+            'Police' { '*/tile_police*.vmf'; break }
+            'Fire' { '*/tile_fire*.vmf'; break }
+            'Petrol Station' { '*/tile_petrol*.vmf'; break }
+            'Bank' { '*/tile_bank*.vmf'; break }
+            'Army Base' { '*/tile_army*.vmf'; break }
+            'Laboratory' { '*/tile_laboratory*.vmf'; break }
+            'Bunker' { '*/tile_bunker*.vmf'; break }
+            default { $null }
+        }
+        if ($null -eq $templatePattern) { continue }
+        $matches = @($AvailableTemplates.Values | Where-Object { $_ -like $templatePattern -or $_ -like $templatePattern.TrimStart('*/') } | Sort-Object)
+        if ($matches.Count -gt 0) { return $matches[0] }
+    }
+    return $null
 }
 
 function Get-CellFilename {
@@ -390,7 +503,10 @@ foreach ($cell in $map.cells) {
     $profile = Get-EnvironmentProfile $cell
     $terrainTemplate = Get-TerrainTemplate $cell.environment.terrain
     $genericTopologyTemplate = Get-GenericTopologyTemplate $topology
+    $landmarks = @(Get-CellLandmarks $cell)
     $buildingCandidates = @(Get-ProfileFallbackTemplates $profile ([int]$cell.x) ([int]$cell.y))
+    $landmarkTemplate = Get-LandmarkTemplate $landmarks $templateFiles
+    $placementSeed = Get-RecipePlacementSeed $profile $topology $orientation $landmarks
 
     $desiredTemplate = if ($topology -eq 'open' -and $profile -in @('grassland', 'sandy', 'dirt')) {
         if ($buildingCandidates.Count -gt 0) { $buildingCandidates[0] } else { $terrainTemplate }
@@ -409,10 +525,9 @@ foreach ($cell in $map.cells) {
         $terrainTemplate
     ) $templateFiles
     $exactTemplateExists = $templateFiles.ContainsKey($desiredTemplate.ToLowerInvariant())
-    $landmarks = @(Get-CellLandmarks $cell)
     $features = @(Get-CellFeatures $cell $cell.environment.terrain $profile $topology)
     $activeEntrances = @(Get-ActiveEntrances $cell)
-    $tilePlacements = @(Get-CellTilePlacements $cell $terrainTemplate $buildingCandidates $topology $orientation $CellTileSize $templateFiles)
+    $tilePlacements = @(Get-CellTilePlacements $cell $terrainTemplate $buildingCandidates $landmarkTemplate $landmarks $profile $carparkTemplates $placementSeed $topology $orientation $CellTileSize $templateFiles)
     $cellTemplateFilename = Get-CellFilename $profile $topology $orientation $landmarks
     $cellTemplatePath = Join-Path $CellDirectory $cellTemplateFilename
 
@@ -434,6 +549,8 @@ foreach ($cell in $map.cells) {
         desiredChunkTemplate = $desiredTemplate
         selectedChunkTemplate = $selectedTemplate
         buildingTemplates = $buildingCandidates
+        landmarkTemplate = $landmarkTemplate
+        placementSeed = $placementSeed
         chunkFallbackUsed = -not $exactTemplateExists
         tileGridSize = $CellTileSize
         tilePlacements = $tilePlacements
@@ -453,6 +570,7 @@ $requiredCellFiles = @($planCells | Group-Object cellTemplateFilename | Sort-Obj
         cells = @($_.Group | ForEach-Object { [pscustomobject]@{ x = $_.x; y = $_.y } })
         selectedChunkTemplates = @($_.Group.selectedChunkTemplate | Sort-Object -Unique)
         buildingTemplates = @($_.Group.buildingTemplates | Sort-Object -Unique)
+        landmarkTemplates = @($_.Group.landmarkTemplate | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
         tileCount = $CellTileSize * $CellTileSize
         tileTemplates = @($_.Group.tilePlacements | ForEach-Object { $_.template } | Sort-Object -Unique)
     }

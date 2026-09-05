@@ -1,0 +1,5 @@
+- Hammer batch compiler
+- Fix lighting/skybox per environment
+- Implement many more buildings based on soviet/brutalist architecture
+- Create zombie AI next bot behavior
+- Optimize zombie AI pathfinding

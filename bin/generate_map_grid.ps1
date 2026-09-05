@@ -1074,6 +1074,7 @@ function Connect-MetroRouteThroughStops {
                     "P" { $tags += @("civic", "security") }
                     "H" { $tags += @("civic", "medical") }
                     "F" { $tags += @("civic", "emergency_services") }
+                    "C" { $tags += @("civic", "religious") }
                     "G" { $tags += @("commercial", "service_station") }
                     "$" { $tags += @("commercial", "financial") }
                     "M" { $tags += "commercial" }
@@ -1773,6 +1774,7 @@ $commonLandmarks = @(
 $policeLandmark = @{ Label = "P"; Name = "Police"; Color = [System.Drawing.Color]::FromArgb(255, 70, 130, 230) }
 $hospitalLandmark = @{ Label = "H"; Name = "Hospital"; Color = [System.Drawing.Color]::FromArgb(255, 230, 75, 85) }
 $fireLandmark = @{ Label = "F"; Name = "Fire"; Color = [System.Drawing.Color]::FromArgb(255, 235, 110, 55) }
+$churchLandmark = @{ Label = "C"; Name = "Church"; Color = [System.Drawing.Color]::FromArgb(255, 145, 105, 190) }
 $petrolStationLandmark = @{ Label = "G"; Name = "Petrol Station"; Color = [System.Drawing.Color]::FromArgb(255, 60, 185, 115) }
 $bankLandmark = @{ Label = '$'; Name = "Bank"; Color = [System.Drawing.Color]::FromArgb(255, 230, 185, 60) }
 $rareLandmarks = @(
@@ -1899,6 +1901,9 @@ foreach ($key in $eligibleLandmarkCandidates) {
     }
     if ($random.NextDouble() -lt (0.008 + 0.02 * $centrality) -and $landmarks.Count -lt 2 -and (Test-LandmarkSpacing "H" $cellX $cellY)) {
         $landmarks += $hospitalLandmark
+    }
+    if ($random.NextDouble() -lt (0.008 + 0.02 * $centrality) -and $landmarks.Count -lt 2 -and (Test-LandmarkSpacing "C" $cellX $cellY)) {
+        $landmarks += $churchLandmark
     }
     if ($random.NextDouble() -lt (0.018 + 0.03 * $centrality) -and $landmarks.Count -lt 2 -and (Test-LandmarkSpacing "G" $cellX $cellY)) {
         $landmarks += $petrolStationLandmark
@@ -2300,6 +2305,7 @@ $districtFormat.Dispose()
 $keyEntries = @(
     @{ Label = "P"; Name = "Police station"; Color = [System.Drawing.Color]::FromArgb(255, 70, 130, 230) },
     @{ Label = "H"; Name = "Hospital"; Color = [System.Drawing.Color]::FromArgb(255, 230, 75, 85) },
+    @{ Label = "C"; Name = "Church"; Color = [System.Drawing.Color]::FromArgb(255, 145, 105, 190) },
     @{ Label = "L"; Name = "Leisure"; Color = [System.Drawing.Color]::FromArgb(255, 80, 200, 125) },
     @{ Label = "M"; Name = "Market"; Color = [System.Drawing.Color]::FromArgb(255, 235, 180, 70) },
     @{ Label = "K"; Name = "Park"; Color = [System.Drawing.Color]::FromArgb(255, 105, 170, 80) },
