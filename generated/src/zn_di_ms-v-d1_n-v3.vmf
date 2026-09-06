@@ -94,7 +94,7 @@ world
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
 	"maxpropscreenwidth" "-1"
-	"skyname" "painted"
+	"skyname" "sky_day01_09"
 	solid
 	{
 		"id" "203"
@@ -942,10 +942,10 @@ entity
 {
 	"id" "236"
 	"classname" "light_environment"
-	"_ambient" "255 255 255 20"
+	"_ambient" "190 172 142 65"
 	"_ambientHDR" "-1 -1 -1 1"
 	"_AmbientScaleHDR" "1"
-	"_light" "255 255 255 200"
+	"_light" "235 214 180 195"
 	"_lightHDR" "0 18 255 1"
 	"_lightscaleHDR" "1"
 	"angles" "0 0 0"
@@ -1000,19 +1000,6 @@ entity
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 1000]"
-	}
-}
-entity
-{
-	"id" "254"
-	"classname" "env_cubemap"
-	"origin" "0 0 128"
-	editor
-	{
-		"color" "0 0 255"
-		"visgroupshown" "1"
-		"visgroupautoshown" "1"
-		"logicalpos" "[0 0]"
 	}
 }
 entity
@@ -1239,6 +1226,18 @@ entity
     "angles" "0 0 0"
     "file" "../../tiletemplates/terrain/tile_dirt.vmf"
     "fixup_style" "0"
+}
+entity
+{
+    "id" "668"
+    "classname" "env_cubemap"
+    "origin" "0 -640 96"
+}
+entity
+{
+    "id" "669"
+    "classname" "env_cubemap"
+    "origin" "0 -1280 96"
 }
 cameras
 {

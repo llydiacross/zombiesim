@@ -181,6 +181,8 @@ Safe first experiments are:
 - District names, positions, radii, and colours
 - City-name word lists
 - `cellPlanning.variants.usageThreshold` and `maximumPerRecipe`
+- `atmosphere.profiles` fog and colour-correction values
+- `atmosphere.lightingProfiles` light colours and brightness
 
 Advanced settings control how prefabs connect or rotate. Change those only after checking the result in Hammer:
 
@@ -424,6 +426,21 @@ This section turns the wide city map into a 5-by-5 grid of Hammer prefab instanc
 | --- | --- | --- |
 | `cellTileGridSize` | Number of prefab spaces across and down inside one generated cell. | Default `5` gives 25 prefab spaces. Use an odd number so roads have a true center tile. Changing it requires source border templates sized for the same layout. |
 
+### `safeZones`
+
+These settings choose the reusable standalone den map for a safe-zone entrance. They do not change the city recipe at the entrance coordinate.
+
+| Setting | What it controls |
+| --- | --- |
+| `biomePriority` | Ordered environment tags used to select a den biome. The first tag present on an entrance cell wins. |
+| `biomeCodes` | Short biome code used in the safe-zone template filename. Every value must correspond to an authored `cell_<code>_safezone*.vmf` template. |
+| `defaultBiome` | Biome key used when no tag in `biomePriority` applies. It must be a key in `biomeCodes`. |
+| `landmarkPriority` | Ordered landmark names eligible for a specialised den variant. The first matching landmark at the entrance wins. |
+| `landmarkVariants` | Maps an eligible landmark name to its filename suffix, such as `hospital` for `_hospital`. |
+| `templateFilenameFormat` | Filename pattern for a safe-zone source template. Keep `{biome}` and `{landmarkSuffix}` placeholders intact. |
+
+Changing these values changes which den VMFs are copied into the active source directory. Confirm every referenced template exists in `celltemplates/safezones`, then refresh recipes before compiling.
+
 ### `templatePatterns` (Advanced)
 
 These regular-expression filters decide which VMF files from `templateDirectory` are eligible for each role. Paths are relative to `tiletemplates`, use `/`, and matching is case-insensitive.
@@ -609,6 +626,61 @@ This is the complete current set of keys in `filenameAbbreviations`. The names o
 | `onramp-dual` | `od<directions>` | `<directions>` becomes both lower-case exits, such as `odns`. |
 
 The exact display-name keys in `landmarkTemplatePatterns` are `Church`, `Hospital`, `Police`, `Fire`, `Petrol Station`, `Bank`, `Army Base`, `Laboratory`, `Bunker`, and `Market`. Each value is a file-search pattern for that landmark's authored VMF. Keep the capitalization and spacing of the key unchanged.
+
+## `atmosphere`
+
+Atmosphere has two layers. `profiles` is client-side fog and colour correction exported with runtime world data, so it can vary by the player's logical cell without recompiling a reusable BSP. `lightingProfiles` is baked into recipe VMFs for VRAD, so changing it requires a VMF refresh and map compile. The generator keeps the sun direction from the base cell template; only sky material, direct light, and ambient fill vary.
+
+The exporter selects `safe_zone` for safe-zone entrances, `dead_zone` for dead zones, `inner_city` for commercial/financial recipes, `outskirts` for grassland/sandy terrain, and `suburbs` otherwise. These five profile ids are required and must remain exactly named as shown, but their values are intended to be tuned.
+
+### `profiles`
+
+Each item is a named client runtime profile. The profile array is compactly indexed in the exported world JSON, so preserve profile order when possible to keep output diffs understandable.
+
+| Setting | What it controls | Tuning guidance |
+| --- | --- | --- |
+| `id` | Stable profile identifier used by the exporter. | Keep the five required ids: `outskirts`, `suburbs`, `inner_city`, `dead_zone`, and `safe_zone`. |
+| `fog.color` | RGB fog colour as `[red, green, blue]`. | Each value is `0` through `255`. Match it broadly to the selected sky. |
+| `fog.start` | Distance in Hammer units at which fog starts. | Lower values make nearby streets haze sooner. Keep it below `fog.end`. |
+| `fog.end` | Distance in Hammer units at which full fog range is reached. | Keep enough visibility to read road exits and fight fairly. |
+| `fog.maxDensity` | Maximum linear-fog density. | `0` is transparent and `1` is fully opaque. Typical values are `0.5` through `0.9`. |
+| `fog.stormMultiplier` | Visibility multiplier at full future storm intensity. | Greater than `0` and at most `1`; lower values make storms shorten fog distances more. |
+| `colorCorrection.brightness` | Additive client brightness adjustment. | Small changes such as `-0.05` to `0.05` are normally sufficient. |
+| `colorCorrection.contrast` | Client contrast multiplier. | `1` is neutral. |
+| `colorCorrection.colour` | Client colour saturation multiplier. | `1` is neutral; lower values desaturate the scene. |
+| `colorCorrection.add` | RGB additive colour correction as three decimal values. | Keep values small; this is a tint, not a light source. |
+| `colorCorrection.multiply` | RGB multiplicative colour correction as three decimal values. | `1, 1, 1` is neutral. Use restrained channel changes for temperature or contamination mood. |
+
+Changing a fog or colour-correction value requires only a runtime-world export:
+
+```powershell
+.\bin\export_runtime_world_data.ps1
+```
+
+Run the matching `-WorldProfile` export for alternate profiles. Test through normal map travel because fog is applied for each player from the profile of their persisted logical cell.
+
+### `lightingProfiles`
+
+Each named baked-lighting profile supplies the values written into a generated recipe's `worldspawn` and `light_environment` entity.
+
+| Setting | What it controls | Tuning guidance |
+| --- | --- | --- |
+| `<profile>.skyname` | Source sky material name written to `worldspawn`. | Use a skybox available in Garry's Mod. The default profile names are known Source sky materials. |
+| `<profile>.ambient` | `light_environment` ambient RGBA colour as `[red, green, blue, brightness]`. | RGB values are `0` through `255`; tune brightness before making large hue changes. |
+| `<profile>.light` | `light_environment` direct sun RGBA colour as `[red, green, blue, brightness]`. | RGB values are `0` through `255`. Keep the base-template sun pitch/yaw unchanged across profiles. |
+
+### `environmentLightingProfiles`
+
+This table maps each planned recipe environment profile to a named item in `lightingProfiles`; `default` handles every environment not explicitly listed. The default mappings give commercial/financial recipes `overcast_day`, sandy/dirt recipes `dusty_day`, and radioactive/destroyed recipes `dead_zone` lighting. Every mapped value must be a key in `lightingProfiles`.
+
+After changing a baked-lighting value or mapping, regenerate the active source VMFs and compile the affected release. `build_city_release.ps1` performs the refresh automatically unless `-SkipRecipeRefresh` is supplied.
+
+```powershell
+.\bin\build_cell_vmfs.ps1 -RefreshGenerated
+.\bin\build_city_release.ps1 -CleanStagedCity
+```
+
+Generated recipes receive one to three deterministic `env_cubemap` entities. After a light, sky, fog, or geometry change is compiled, launch representative maps and run `buildcubemaps`; that in-game capture step is separate from VBSP, VVIS, and VRAD.
 
 ## `vmfBuild`
 

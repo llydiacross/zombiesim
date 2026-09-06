@@ -395,6 +395,51 @@
       "landmarks": { "none": "n", "church": "ch", "hospital": "ho", "police": "po", "fire": "fi", "petrol-station": "ps", "bank": "ba", "army-base": "ab", "laboratory": "la", "bunker": "bu", "the-epicenter": "ep", "airport": "ap", "market": "ma", "leisure": "le", "park": "pk" }
     }
   },
+  "atmosphere": {
+    "profiles": [
+      {
+        "id": "outskirts",
+        "fog": { "color": [186, 208, 224], "start": 800, "end": 3000, "maxDensity": 0.65, "stormMultiplier": 0.8 },
+        "colorCorrection": { "brightness": 0.0, "contrast": 1.0, "colour": 1.0, "add": [0.0, 0.0, 0.0], "multiply": [0.96, 0.99, 1.03] }
+      },
+      {
+        "id": "suburbs",
+        "fog": { "color": [176, 184, 194], "start": 600, "end": 2200, "maxDensity": 0.72, "stormMultiplier": 0.75 },
+        "colorCorrection": { "brightness": -0.01, "contrast": 0.98, "colour": 0.94, "add": [0.0, 0.0, 0.0], "multiply": [0.99, 1.0, 1.01] }
+      },
+      {
+        "id": "inner_city",
+        "fog": { "color": [122, 132, 141], "start": 350, "end": 1450, "maxDensity": 0.82, "stormMultiplier": 0.72 },
+        "colorCorrection": { "brightness": -0.03, "contrast": 1.02, "colour": 0.82, "add": [0.0, 0.0, 0.0], "multiply": [0.97, 0.98, 1.0] }
+      },
+      {
+        "id": "dead_zone",
+        "fog": { "color": [117, 130, 91], "start": 200, "end": 950, "maxDensity": 0.9, "stormMultiplier": 0.65 },
+        "colorCorrection": { "brightness": -0.05, "contrast": 0.94, "colour": 0.68, "add": [0.01, 0.02, 0.0], "multiply": [0.92, 1.02, 0.84] }
+      },
+      {
+        "id": "safe_zone",
+        "fog": { "color": [200, 188, 167], "start": 900, "end": 3000, "maxDensity": 0.5, "stormMultiplier": 0.85 },
+        "colorCorrection": { "brightness": 0.01, "contrast": 1.03, "colour": 1.02, "add": [0.01, 0.0, 0.0], "multiply": [1.04, 1.0, 0.96] }
+      }
+    ],
+    "lightingProfiles": {
+      "clear_day": { "skyname": "sky_day01_01", "ambient": [175, 194, 214, 70], "light": [236, 244, 255, 235] },
+      "overcast_day": { "skyname": "sky_day02_05", "ambient": [160, 167, 176, 75], "light": [205, 213, 220, 180] },
+      "dusty_day": { "skyname": "sky_day01_09", "ambient": [190, 172, 142, 65], "light": [235, 214, 180, 195] },
+      "dead_zone": { "skyname": "sky_borealis01", "ambient": [120, 132, 102, 50], "light": [166, 182, 128, 145] }
+    },
+    "environmentLightingProfiles": {
+      "default": "clear_day",
+      "commercial": "overcast_day",
+      "financial": "overcast_day",
+      "sandy": "dusty_day",
+      "dirt": "dusty_day",
+      "radioactive": "dead_zone",
+      "destroyed": "dead_zone",
+      "dead_zone": "dead_zone"
+    }
+  },
   "vmfBuild": {
     "tileSize": 640,
     "tileZOffset": 0

@@ -87,6 +87,33 @@ function ply:SetCurrentSafeZone(safeZoneId)
 
     self:UpdatePlayerData()
     self:SetNetworkPlayerData()
+    if GAMEMODE and GAMEMODE.SendPlayerAtmosphereProfile then
+        GAMEMODE:SendPlayerAtmosphereProfile(self)
+    end
+    return true
+end
+
+// Changes a player's logical city position and updates the atmosphere before the next map transition.
+function ply:SetWorldCell(x, y)
+    x = tonumber(x)
+    y = tonumber(y)
+    if not x or not y then
+        return false, "World cell coordinates must be numeric"
+    end
+
+    local cell = ZM_World:GetCell(math.floor(x), math.floor(y))
+    if not cell then
+        return false, "World cell is outside the loaded world"
+    end
+
+    self.CellX = cell.x
+    self.CellY = cell.y
+    self.CurrentSafeZoneId = nil
+    self:UpdatePlayerData()
+    self:SetNetworkPlayerData()
+    if GAMEMODE and GAMEMODE.SendPlayerAtmosphereProfile then
+        GAMEMODE:SendPlayerAtmosphereProfile(self)
+    end
     return true
 end
 

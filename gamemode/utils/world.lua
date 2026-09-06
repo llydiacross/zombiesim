@@ -266,6 +266,13 @@ function World:Load(path)
 		return false, self.LastError
 	end
 
+	if type(data.atmosphereProfiles) ~= "table" or #data.atmosphereProfiles < 1 then
+		self.Data = nil
+		self.Indexes = nil
+		self.LastError = "Runtime world data at " .. path .. " has no atmosphere profiles"
+		return false, self.LastError
+	end
+
 	local width = tonumber(data.world.grid[1])
 	local height = tonumber(data.world.grid[2])
 	if not width or not height or width < 1 or height < 1 then
@@ -282,15 +289,34 @@ function World:Load(path)
 		cellsByDistrict = {},
 		cellsByLandmark = {},
 		cellsByMetroLine = {},
-		safeZonesById = {}
+		safeZonesById = {},
+		atmosphereProfilesById = {}
 	}
+
+	for profileIndex, profile in ipairs(data.atmosphereProfiles) do
+		local fog = type(profile) == "table" and profile.fog or nil
+		if type(profile) ~= "table" or type(profile.id) ~= "string" or profile.id == "" or
+			indexes.atmosphereProfilesById[profile.id] or type(fog) ~= "table" or
+			type(fog.color) ~= "table" or #fog.color ~= 3 or tonumber(fog.start) == nil or
+			tonumber(fog["end"]) == nil or tonumber(fog.maxDensity) == nil or tonumber(fog.stormMultiplier) == nil then
+			self.Data = nil
+			self.Indexes = nil
+			self.LastError = "Runtime world data at " .. path .. " has invalid atmosphere profile " .. profileIndex
+			return false, self.LastError
+		end
+
+		indexes.atmosphereProfilesById[profile.id] = profile
+	end
 
 	for _, cell in ipairs(data.cells) do
 		local id = tonumber(cell.id)
-		if not id or id < 0 or id >= width * height or indexes.cellsById[id] then
+		local atmosphereProfile = tonumber(cell.atmosphereProfile)
+		if not id or id < 0 or id >= width * height or indexes.cellsById[id] or
+			not atmosphereProfile or atmosphereProfile < 0 or atmosphereProfile >= #data.atmosphereProfiles or
+			atmosphereProfile ~= math.floor(atmosphereProfile) then
 			self.Data = nil
 			self.Indexes = nil
-			self.LastError = "Runtime world data at " .. path .. " has duplicate or invalid cell ids"
+			self.LastError = "Runtime world data at " .. path .. " has duplicate or invalid cell ids or atmosphere profiles"
 			return false, self.LastError
 		end
 
@@ -662,10 +688,25 @@ function World:GetMetroLines(reference, y)
 	return lines
 end
 
-// Returns the exported atmosphere name: outskirts, suburbs, inner_city, dead_zone, or safe_zone.
+// Resolves a cell's full atmosphere profile from its compact zero-based profile index.
 function World:GetAtmosphereProfile(reference, y)
 	local cell = self:ResolveCell(reference, y)
-	return cell and indexedValue(self.Data.atmosphereProfiles, cell.atmosphere) or nil
+	return cell and indexedValue(self.Data.atmosphereProfiles, cell.atmosphereProfile) or nil
+end
+
+// Resolves an atmosphere profile directly from the zero-based id sent to clients during map travel.
+function World:GetAtmosphereProfileByIndex(profileIndex)
+	if not self:IsLoaded() or type(profileIndex) ~= "number" then
+		return nil
+	end
+
+	return indexedValue(self.Data.atmosphereProfiles, math.floor(profileIndex))
+end
+
+// Returns the stable string id for a cell's atmosphere profile.
+function World:GetAtmosphereProfileId(reference, y)
+	local profile = self:GetAtmosphereProfile(reference, y)
+	return profile and profile.id or nil
 end
 
 // Returns bridge, ramp-exit, and diagonal-highway metadata for a cell.
@@ -769,7 +810,8 @@ function World:FindCells(criteria)
 		local environment = indexedValue(self.Data.environments, cell.environment) or {}
 		local district = indexedValue(self.Data.districts, cell.district) or {}
 		local safeZone = indexedValue(self.Data.safeZones, cell.safeZone)
-		local atmosphere = indexedValue(self.Data.atmosphereProfiles, cell.atmosphere)
+		local atmosphereProfile = indexedValue(self.Data.atmosphereProfiles, cell.atmosphereProfile)
+		local atmosphere = atmosphereProfile and atmosphereProfile.id or nil
 		local matchesCriteria =
 			(criteria.map == nil or cell.map == criteria.map) and
 			(criteria.terrain == nil or environment.terrain == criteria.terrain) and

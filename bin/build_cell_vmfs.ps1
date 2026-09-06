@@ -62,6 +62,30 @@ if (-not (Test-Path $BaseCellTemplate)) {
 if (-not (Test-Path $CellDirectory)) {
     [System.IO.Directory]::CreateDirectory($CellDirectory) | Out-Null
 }
+$atmosphereSettings = $generatorSettings.atmosphere
+if (-not ($atmosphereSettings -is [System.Collections.IDictionary]) -or
+    -not ($atmosphereSettings.lightingProfiles -is [System.Collections.IDictionary]) -or
+    -not ($atmosphereSettings.environmentLightingProfiles -is [System.Collections.IDictionary])) {
+    throw 'generator-settings.json must define atmosphere lightingProfiles and environmentLightingProfiles objects.'
+}
+$lightingProfiles = $atmosphereSettings.lightingProfiles
+$environmentLightingProfiles = $atmosphereSettings.environmentLightingProfiles
+if (-not $environmentLightingProfiles.ContainsKey('default')) {
+    throw 'generator-settings.json atmosphere.environmentLightingProfiles must define a default profile.'
+}
+foreach ($lightingProfileName in $lightingProfiles.Keys) {
+    $lightingProfile = $lightingProfiles[$lightingProfileName]
+    if (-not ($lightingProfile -is [System.Collections.IDictionary]) -or [string]::IsNullOrWhiteSpace([string]$lightingProfile.skyname) -or
+        @($lightingProfile.ambient).Count -ne 4 -or @($lightingProfile.light).Count -ne 4) {
+        throw "Atmosphere lighting profile '$lightingProfileName' must define skyname plus four-value ambient and light colors."
+    }
+}
+foreach ($environmentProfile in $environmentLightingProfiles.Keys) {
+    $lightingProfileName = [string]$environmentLightingProfiles[$environmentProfile]
+    if (-not $lightingProfiles.ContainsKey($lightingProfileName)) {
+        throw "Atmosphere environment lighting profile '$environmentProfile' references unknown lighting profile '$lightingProfileName'."
+    }
+}
 $CellDirectory = (Resolve-Path $CellDirectory).Path
 $clearedItems = 0
 if ($ClearCellDirectory) {
@@ -105,6 +129,108 @@ function Test-GeneratedCellVmf {
         [regex]::Matches($contents, '"classname" "func_instance"').Count -eq 25
 }
 
+function Get-RecipeLightingProfile {
+    param([object]$Recipe)
+
+    $environmentProfile = ([string]$Recipe.environmentProfile).ToLowerInvariant()
+    if ($environmentLightingProfiles.ContainsKey($environmentProfile)) {
+        return [string]$environmentLightingProfiles[$environmentProfile]
+    }
+    return [string]$environmentLightingProfiles.default
+}
+
+function Set-VmfKeyValue {
+    param([string]$Vmf, [string]$Key, [string]$Value)
+
+    $pattern = '(?m)^(\s*"' + [regex]::Escape($Key) + '"\s*)"[^"]*"\r?$'
+    if ([regex]::Matches($Vmf, $pattern).Count -ne 1) {
+        throw "Expected exactly one '$Key' key in the base cell template."
+    }
+    return [regex]::Replace($Vmf, $pattern, ('${{1}}"{0}"' -f $Value), 1)
+}
+
+function Set-VmfLightingProfile {
+    param([string]$Vmf, [string]$Profile)
+
+    if (-not $lightingProfiles.ContainsKey($Profile)) {
+        throw "Unknown baked lighting profile: $Profile"
+    }
+    $lightingProfile = $lightingProfiles[$Profile]
+    $settings = [ordered]@{
+        skyname = [string]$lightingProfile.skyname
+        _ambient = (@($lightingProfile.ambient) -join ' ')
+        _light = (@($lightingProfile.light) -join ' ')
+    }
+    foreach ($key in $settings.Keys) {
+        $Vmf = Set-VmfKeyValue $Vmf $key $settings[$key]
+    }
+    return $Vmf
+}
+
+function Remove-TemplateCubemaps {
+    param([string]$Vmf)
+
+    $pattern = '(?ms)^entity\r?\n\{\r?\n\s*"id" "\d+"\r?\n\s*"classname" "env_cubemap".*?^\}\r?\n(?=cameras|entity)'
+    if ([regex]::Matches($Vmf, $pattern).Count -ne 1) {
+        throw 'Base cell template must contain exactly one env_cubemap fallback entity.'
+    }
+    return [regex]::Replace($Vmf, $pattern, '', 1)
+}
+
+function Get-CubemapAnchors {
+    param([object]$Recipe, [int]$TileGridSize, [int]$TileWidth, [int]$TileVerticalOffset)
+
+    $placements = @($Recipe.tilePlacements)
+    $center = [int][Math]::Floor($TileGridSize / 2)
+    $usedCoordinates = @{}
+    $candidates = [System.Collections.Generic.List[object]]::new()
+    $hasRoad = $false
+    $hasLandmark = $false
+
+    function Add-CubemapCandidate {
+        param([object]$Placement, [int]$Priority)
+
+        $tileX = [int]$Placement.tileX
+        $tileY = [int]$Placement.tileY
+        $key = "$tileX,$tileY"
+        if ($usedCoordinates.ContainsKey($key)) { return }
+        $usedCoordinates[$key] = $true
+        $candidates.Add([ordered]@{
+            priority = $Priority
+            distance = [Math]::Abs($tileX - $center) + [Math]::Abs($tileY - $center)
+            x = ($tileX - $center) * $TileWidth
+            y = ($center - $tileY) * $TileWidth
+            z = $TileVerticalOffset + 96
+        })
+    }
+
+    foreach ($placement in $placements) {
+        $template = ([string]$placement.template).ToLowerInvariant()
+        $isRoad = $template -match '(road|path|motorway)'
+        $isJunction = $isRoad -and $template -match '(corner|cross|tjunction|junction|onramp|bridge)'
+        $isLandmark = $template -match '(church|hospital|school|station|market|bank|tower|airport|laboratory|stadium|mall)'
+        $isOpen = -not $isRoad -and $template -match '(grass|park|plaza|open|field|lot|concrete)'
+        $hasRoad = $hasRoad -or $isRoad
+        $hasLandmark = $hasLandmark -or $isLandmark
+
+        if ($isRoad -and [int]$placement.tileX -eq $center -and [int]$placement.tileY -eq $center) {
+            Add-CubemapCandidate $placement 0
+        }
+        if ($isJunction) { Add-CubemapCandidate $placement 1 }
+        if ($isLandmark) { Add-CubemapCandidate $placement 2 }
+        if ($isOpen) { Add-CubemapCandidate $placement 3 }
+        if ($isRoad) { Add-CubemapCandidate $placement 4 }
+    }
+
+    $denseRecipe = (Get-RecipeLightingProfile $Recipe) -eq 'overcast_day'
+    $desiredCount = if ($denseRecipe -or $hasLandmark) { 3 } elseif ($hasRoad) { 2 } else { 1 }
+    $anchors = @($candidates | Sort-Object priority, distance, y, x | Select-Object -First $desiredCount)
+    if ($anchors.Count -eq 0) {
+        $anchors = @([ordered]@{ priority = 5; distance = 0; x = 0; y = 0; z = $TileVerticalOffset + 128 })
+    }
+    return $anchors
+}
+
 function New-CellVmf {
     param(
         [object]$Recipe,
@@ -113,7 +239,8 @@ function New-CellVmf {
         [int]$TileVerticalOffset,
         [string]$SourceDirectory,
         [string]$TemplateDirectory,
-        [string]$BaseTemplatePath
+        [string]$BaseTemplatePath,
+        [object[]]$CubemapAnchors
     )
 
     $expectedTileCount = $TileGridSize * $TileGridSize
@@ -123,6 +250,8 @@ function New-CellVmf {
     }
 
     $baseVmf = Get-Content -Raw $BaseTemplatePath
+    $baseVmf = Remove-TemplateCubemaps $baseVmf
+    $baseVmf = Set-VmfLightingProfile $baseVmf (Get-RecipeLightingProfile $Recipe)
     $cameraMatch = [regex]::Match($baseVmf, '(?m)^cameras\r?$')
     if (-not $cameraMatch.Success) {
         throw "Base cell template must contain a cameras block: $BaseTemplatePath"
@@ -144,6 +273,17 @@ function New-CellVmf {
             ('    "angles" "0 {0} 0"' -f [int]$placement.rotationYaw),
             ('    "file" "{0}"' -f $instancePath),
             '    "fixup_style" "0"',
+            '}'
+        ))
+        $entityId++
+    }
+    foreach ($anchor in $CubemapAnchors) {
+        $lines.AddRange([string[]]@(
+            'entity',
+            '{',
+            ('    "id" "{0}"' -f $entityId),
+            '    "classname" "env_cubemap"',
+            ('    "origin" "{0} {1} {2}"' -f $anchor.x, $anchor.y, $anchor.z),
             '}'
         ))
         $entityId++
@@ -192,6 +332,8 @@ $pruned = 0
 $safeZoneMapsWritten = 0
 $safeZoneMapsSkipped = 0
 $prunedStandaloneDenMaps = 0
+$cubemapProbeCount = 0
+$cubemapProbeReport = [System.Collections.Generic.List[string]]::new()
 if ($PruneStaleGenerated) {
     foreach ($existingVmf in (Get-ChildItem -Path $CellDirectory -Filter '*.vmf' -File)) {
         if ($requiredRecipeNames.ContainsKey($existingVmf.Name.ToLowerInvariant()) -or -not (Test-GeneratedCellVmf $existingVmf.FullName)) {
@@ -216,6 +358,11 @@ if ($RefreshGenerated -or $Force) {
 }
 foreach ($recipe in $recipes) {
     $outputPath = Join-Path $CellDirectory $recipe.cellTemplateFilename
+    $cubemapAnchors = Get-CubemapAnchors $recipe $plan.cellTileGridSize $TileSize $TileZOffset
+    $cubemapProbeCount += $cubemapAnchors.Count
+    if ($WhatIf) {
+        $cubemapProbeReport.Add("Cubemap probes: $($recipe.cellTemplateFilename) = $($cubemapAnchors.Count)")
+    }
     if ((Test-Path $outputPath) -and -not $Force) {
         if (-not $RefreshGenerated -or -not (Test-GeneratedCellVmf $outputPath)) {
             $skipped++
@@ -224,7 +371,7 @@ foreach ($recipe in $recipes) {
         $refreshed++
     }
 
-    $vmf = New-CellVmf $recipe $plan.cellTileGridSize $TileSize $TileZOffset $CellDirectory $TileDirectory $BaseCellTemplate
+    $vmf = New-CellVmf $recipe $plan.cellTileGridSize $TileSize $TileZOffset $CellDirectory $TileDirectory $BaseCellTemplate $cubemapAnchors
     if (-not $WhatIf) {
         [System.IO.File]::WriteAllText($outputPath, $vmf, [System.Text.UTF8Encoding]::new($false))
     }
@@ -253,4 +400,9 @@ foreach ($safeZoneMap in ($safeZoneSourceMaps.Values | Sort-Object mapFilename))
     $safeZoneMapsWritten++
 }
 
-Write-Output "Cell recipes: $($recipes.Count); written: $created; refreshed generated: $refreshed; skipped existing: $skipped; safe-room entrances: $($safeZoneMaps.Count); reusable safe-room maps: $($safeZoneSourceMaps.Count); maps copied: $safeZoneMapsWritten; maps skipped: $safeZoneMapsSkipped; pruned stale safe-room files: $prunedStandaloneDenMaps; pruned stale generated: $pruned; cleared source items: $clearedItems; output: $CellDirectory"
+if ($WhatIf) {
+    foreach ($line in $cubemapProbeReport) {
+        Write-Output $line
+    }
+}
+Write-Output "Cell recipes: $($recipes.Count); cubemap probes: $cubemapProbeCount; written: $created; refreshed generated: $refreshed; skipped existing: $skipped; safe-room entrances: $($safeZoneMaps.Count); reusable safe-room maps: $($safeZoneSourceMaps.Count); maps copied: $safeZoneMapsWritten; maps skipped: $safeZoneMapsSkipped; pruned stale safe-room files: $prunedStandaloneDenMaps; pruned stale generated: $pruned; cleared source items: $clearedItems; output: $CellDirectory"

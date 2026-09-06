@@ -6,6 +6,7 @@ AddCSLuaFile( "cl_player.lua" )
 AddCSLuaFile( "cl_thirdpersoncamera.lua" )
 AddCSLuaFile( "cl_hud.lua" )
 AddCSLuaFile( "cl_crosshair.lua" )
+AddCSLuaFile( "cl_atmosphere.lua" )
 AddCSLuaFile( "utils/world.lua" )
 AddCSLuaFile( "utils/safezone.lua" )
 
@@ -21,9 +22,28 @@ ZM_CreatePlayerDataTable()
 // Clients use these lightweight signals to refresh their local Player extension fields.
 util.AddNetworkString("ZM.RefreshPlayerAttributes")
 util.AddNetworkString("ZM.RefreshPlayerData")
+util.AddNetworkString("ZM.SetAtmosphereProfile")
 
 // Persists the selected city or preview data profile while the session moves into safe-room maps.
 CreateConVar("zombiesim_world_profile", "city", FCVAR_ARCHIVE + FCVAR_REPLICATED, "Active ZombieSim world-data profile.")
+
+// Sends only the compact atmosphere-profile id; clients already have the static profile table.
+function GM:SendPlayerAtmosphereProfile(ply)
+    if not IsValid(ply) then
+        return false
+    end
+
+    local cell = ply:GetWorldCell()
+    local profileIndex = cell and tonumber(cell.atmosphereProfile)
+    if not profileIndex or profileIndex < 0 or profileIndex > 255 then
+        return false
+    end
+
+    net.Start("ZM.SetAtmosphereProfile")
+        net.WriteUInt(profileIndex, 8)
+    net.Send(ply)
+    return true
+end
 
 // Starts a single-player session in the safe room attached to the generated world origin.
 // Returns false when world data is unavailable or the session is already on that safe-room map.
@@ -153,6 +173,7 @@ function GM:PlayerSpawn( ply )
     // tell the client to set the player attributes and data
     ply:SendPlayerAttributes()
     ply:SendPlayerData()
+    self:SendPlayerAtmosphereProfile(ply)
 
     // A first-time single-player session begins at the safe room attached to the world origin.
     if( !ply.PreviouslyConnected ) then

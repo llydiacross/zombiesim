@@ -35,20 +35,79 @@ function Get-CellId {
     return ($Y * $Width) + $X
 }
 
-function Get-AtmosphereProfile {
+function Get-OptionalProperty {
+    param([object]$Object, [string]$Name)
+
+    if ($null -eq $Object) {
+        return $null
+    }
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -ne $property) {
+        return $property.Value
+    }
+    return $null
+}
+
+function Get-AtmosphereProfiles {
+    param([hashtable]$Settings)
+
+    if (-not $Settings.ContainsKey('atmosphere') -or -not ($Settings.atmosphere -is [System.Collections.IDictionary])) {
+        throw 'generator-settings.json must define an atmosphere object.'
+    }
+    $profiles = @($Settings.atmosphere.profiles)
+    if ($profiles.Count -eq 0) {
+        throw 'generator-settings.json must define at least one atmosphere profile.'
+    }
+
+    $indexById = @{}
+    for ($index = 0; $index -lt $profiles.Count; $index++) {
+        $profile = $profiles[$index]
+        if (-not ($profile -is [System.Collections.IDictionary]) -or [string]::IsNullOrWhiteSpace([string]$profile.id) -or $indexById.ContainsKey([string]$profile.id)) {
+            throw "Atmosphere profile $index must have a unique non-empty id."
+        }
+        if (-not ($profile.fog -is [System.Collections.IDictionary]) -or @($profile.fog.color).Count -ne 3 -or
+            $null -eq $profile.fog.start -or $null -eq $profile.fog.end -or $null -eq $profile.fog.maxDensity -or $null -eq $profile.fog.stormMultiplier) {
+            throw "Atmosphere profile '$($profile.id)' must define fog color, start, end, maxDensity, and stormMultiplier."
+        }
+        if ([double]$profile.fog.start -lt 0 -or [double]$profile.fog.end -le [double]$profile.fog.start -or
+            [double]$profile.fog.maxDensity -lt 0 -or [double]$profile.fog.maxDensity -gt 1 -or
+            [double]$profile.fog.stormMultiplier -le 0 -or [double]$profile.fog.stormMultiplier -gt 1) {
+            throw "Atmosphere profile '$($profile.id)' has invalid fog ranges."
+        }
+        foreach ($colorComponent in @($profile.fog.color)) {
+            if ([double]$colorComponent -lt 0 -or [double]$colorComponent -gt 255) {
+                throw "Atmosphere profile '$($profile.id)' has a fog color component outside 0-255."
+            }
+        }
+        $indexById[[string]$profile.id] = $index
+    }
+
+    foreach ($requiredProfileId in @('outskirts', 'suburbs', 'inner_city', 'dead_zone', 'safe_zone')) {
+        if (-not $indexById.ContainsKey($requiredProfileId)) {
+            throw "generator-settings.json atmosphere.profiles must include the '$requiredProfileId' profile."
+        }
+    }
+
+    return [pscustomobject]@{ Profiles = $profiles; IndexById = $indexById }
+}
+
+function Get-AtmosphereProfileId {
     param([object]$MapCell, [object]$PlanCell)
 
-    if ($null -ne $MapCell.safeZone) { return 4 }
-    if ([bool]$MapCell.deadZone) { return 3 }
-    if ($PlanCell.environmentProfile -in @('commercial', 'financial')) { return 2 }
-    if ($MapCell.environment.terrain -in @('grassland', 'sandy')) { return 0 }
-    return 1
+    if ($null -ne (Get-OptionalProperty $MapCell 'safeZone')) { return 'safe_zone' }
+    if ([bool](Get-OptionalProperty $MapCell 'deadZone')) { return 'dead_zone' }
+    if ($PlanCell.environmentProfile -in @('commercial', 'financial')) { return 'inner_city' }
+    if ((Get-OptionalProperty $MapCell 'environment').terrain -in @('grassland', 'sandy')) { return 'outskirts' }
+    return 'suburbs'
 }
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
 $generatorSettings = $worldGenerationProfile.Settings
 $profileSettings = $worldGenerationProfile.Config
+$atmosphereSettings = Get-AtmosphereProfiles $generatorSettings
+$atmosphereProfiles = $atmosphereSettings.Profiles
+$atmosphereProfileIndexById = $atmosphereSettings.IndexById
 $mapDirectory = Split-Path -Leaf ([string]$profileSettings.releaseMapDirectory)
 if ([string]::IsNullOrWhiteSpace($mapDirectory)) { throw 'The runtime map directory cannot be empty.' }
 if ([string]::IsNullOrWhiteSpace($MapData)) {
@@ -190,6 +249,8 @@ foreach ($safeZone in @($map.safeZones | Sort-Object name)) {
     }
     $safeZoneMap = $safeZoneMapByCoordinate[$safeZoneKey]
     $safeZoneMapName = [System.IO.Path]::GetFileNameWithoutExtension([string]$safeZoneMap.mapFilename)
+    $safeZoneBiome = if ($null -ne $safeZoneMap.PSObject.Properties['biome']) { [string]$safeZoneMap.biome } else { '' }
+    $safeZoneLandmarkVariant = if ($null -ne $safeZoneMap.PSObject.Properties['landmarkVariant']) { [string]$safeZoneMap.landmarkVariant } else { '' }
     $safeZoneId = "safezone-$([int]$safeZone.x)-$([int]$safeZone.y)"
     $isOrigin = $null -ne $originSafeZoneKey -and $safeZoneKey -eq $originSafeZoneKey
     $safeZoneRequiredMapNames[$safeZoneMapName.ToLowerInvariant()] = $safeZoneMapName
@@ -202,8 +263,8 @@ foreach ($safeZone in @($map.safeZones | Sort-Object name)) {
         cell = Get-CellId ([int]$safeZone.x) ([int]$safeZone.y) $width
         difficult = [bool]$safeZone.difficult
         map = $safeZoneMapName
-        biome = [string]$safeZoneMap.biome
-        landmarkVariant = [string]$safeZoneMap.landmarkVariant
+        biome = $safeZoneBiome
+        landmarkVariant = $safeZoneLandmarkVariant
     })
     if ($isOrigin) {
         if ($null -ne $originSafeZoneId) { throw 'Multiple safe zones are marked as the world origin.' }
@@ -261,8 +322,9 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
     $districtName = [string]$mapCell.district.name
     if (-not $districtIndexByName.ContainsKey($districtName)) { throw "Map cell $key references unknown district '$districtName'." }
     $safeZoneId = $null
-    if ($null -ne $mapCell.safeZone) {
-        $safeZoneName = Get-RecordName $mapCell.safeZone "Map cell $key safe zone"
+    $mapCellSafeZone = Get-OptionalProperty $mapCell 'safeZone'
+    if ($null -ne $mapCellSafeZone) {
+        $safeZoneName = Get-RecordName $mapCellSafeZone "Map cell $key safe zone"
         if (-not $safeZoneIndexByCoordinate.ContainsKey($key)) { throw "Map cell $key references safe zone '$safeZoneName', but no safe zone is registered at that coordinate." }
         $safeZoneId = $safeZoneIndexByCoordinate[$key]
         if ($runtimeSafeZones[$safeZoneId].name -ne $safeZoneName) { throw "Map cell $key safe-zone name does not match its registered safe zone." }
@@ -294,19 +356,22 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
     $metroLineIds = @($mapCell.metro.lines | ForEach-Object { $metroLineIndexByName[[string]$_] } | Sort-Object -Unique)
     $metroStopId = $null
     if ($null -ne $mapCell.metro.stop) { $metroStopId = $metroStopIndexByName[(Get-RecordName $mapCell.metro.stop "Map cell $key metro stop")] }
-    $radiationIntensity = if ($null -ne $mapCell.radiation -and $null -ne $mapCell.radiation.intensity) { [double]$mapCell.radiation.intensity } else { 0.0 }
+    $cellRadiation = Get-OptionalProperty $mapCell 'radiation'
+    $radiationIntensity = if ($null -ne $cellRadiation -and $null -ne (Get-OptionalProperty $cellRadiation 'intensity')) { [double]$cellRadiation.intensity } else { 0.0 }
     $radiationIntensity = [Math]::Max(0, [Math]::Min(1, $radiationIntensity))
-    $dangerIntensity = if ($null -ne $mapCell.danger -and $null -ne $mapCell.danger.intensity) { [double]$mapCell.danger.intensity } else { 0.0 }
+    $cellDanger = Get-OptionalProperty $mapCell 'danger'
+    $dangerIntensity = if ($null -ne $cellDanger -and $null -ne (Get-OptionalProperty $cellDanger 'intensity')) { [double]$cellDanger.intensity } else { 0.0 }
     $dangerIntensity = [Math]::Max(0, [Math]::Min(1, $dangerIntensity))
+    $cellBuilding = Get-OptionalProperty $mapCell 'building'
     $runtimeCells.Add([ordered]@{
         id = $cellId
         map = $mapName
         environment = $environmentIndexByKey[$environmentKey]
         profile = [string]$planCell.environmentProfile
-        atmosphere = Get-AtmosphereProfile $mapCell $planCell
+        atmosphereProfile = $atmosphereProfileIndexById[(Get-AtmosphereProfileId $mapCell $planCell)]
         district = $districtIndexByName[$districtName]
-        deadZone = [bool]$mapCell.deadZone
-        building = [bool]$mapCell.building.present
+        deadZone = [bool](Get-OptionalProperty $mapCell 'deadZone')
+        building = [bool](Get-OptionalProperty $cellBuilding 'present')
         landmarks = $landmarkIds
         safeZone = $safeZoneId
         radiation = $radiationIntensity
@@ -330,24 +395,30 @@ if ($RequireCompiledMaps) {
 
 $mapHash = (Get-FileHash -LiteralPath $MapData -Algorithm SHA256).Hash.ToLowerInvariant()
 $planHash = (Get-FileHash -LiteralPath $PlanData -Algorithm SHA256).Hash.ToLowerInvariant()
-$radiationGeneration = if ($null -ne $map.generation.radiation) { $map.generation.radiation } else { $null }
-$radiationDamagePerSecondAtPeak = if ($null -ne $radiationGeneration -and $null -ne $radiationGeneration.damagePerSecondAtPeak) { [double]$radiationGeneration.damagePerSecondAtPeak } else { 0.0 }
-$dangerGeneration = if ($null -ne $map.generation.danger) { $map.generation.danger } else { $null }
-$dangerEnabled = if ($null -ne $dangerGeneration -and $null -ne $dangerGeneration.enabled) { [bool]$dangerGeneration.enabled } else { $false }
-$dangerPattern = if ($null -ne $dangerGeneration -and $null -ne $dangerGeneration.pattern) { [string]$dangerGeneration.pattern } else { 'none' }
-$dangerTierCount = if ($null -ne $dangerGeneration -and $null -ne $dangerGeneration.tierCount) { [int]$dangerGeneration.tierCount } else { 0 }
-$dangerOrigin = if ($null -ne $dangerGeneration -and $null -ne $dangerGeneration.origin) { [ordered]@{ worldX = [int]$dangerGeneration.origin.worldX; worldY = [int]$dangerGeneration.origin.worldY; cellX = [int]$dangerGeneration.origin.cellX; cellY = [int]$dangerGeneration.origin.cellY } } else { $null }
-$radiationEpicenter = if ($null -ne $radiationGeneration -and $null -ne $radiationGeneration.epicenter) { [ordered]@{ name = [string]$radiationGeneration.epicenter.name; x = [int]$radiationGeneration.epicenter.x; y = [int]$radiationGeneration.epicenter.y; worldX = [int]$radiationGeneration.epicenter.worldX; worldY = [int]$radiationGeneration.epicenter.worldY; falloutRadiusCells = [int]$radiationGeneration.epicenter.falloutRadiusCells; falloutRadiusMiles = [double]$radiationGeneration.epicenter.falloutRadiusMiles; loreYieldMegatons = [double]$radiationGeneration.epicenter.loreYieldMegatons } } else { $null }
+$mapGeneration = Get-OptionalProperty $map 'generation'
+$radiationGeneration = Get-OptionalProperty $mapGeneration 'radiation'
+$radiationDamagePerSecondAtPeak = [double](Get-OptionalProperty $radiationGeneration 'damagePerSecondAtPeak')
+$dangerGeneration = Get-OptionalProperty $mapGeneration 'danger'
+$dangerEnabled = [bool](Get-OptionalProperty $dangerGeneration 'enabled')
+$dangerPatternValue = Get-OptionalProperty $dangerGeneration 'pattern'
+$dangerPattern = if ($null -ne $dangerPatternValue) { [string]$dangerPatternValue } else { 'none' }
+$dangerTierCount = [int](Get-OptionalProperty $dangerGeneration 'tierCount')
+$dangerOriginSource = Get-OptionalProperty $dangerGeneration 'origin'
+$dangerOrigin = if ($null -ne $dangerOriginSource) { [ordered]@{ worldX = [int](Get-OptionalProperty $dangerOriginSource 'worldX'); worldY = [int](Get-OptionalProperty $dangerOriginSource 'worldY'); cellX = [int](Get-OptionalProperty $dangerOriginSource 'cellX'); cellY = [int](Get-OptionalProperty $dangerOriginSource 'cellY') } } else { $null }
+$radiationEpicenterSource = Get-OptionalProperty $radiationGeneration 'epicenter'
+$radiationEpicenter = if ($null -ne $radiationEpicenterSource) { [ordered]@{ name = [string](Get-OptionalProperty $radiationEpicenterSource 'name'); x = [int](Get-OptionalProperty $radiationEpicenterSource 'x'); y = [int](Get-OptionalProperty $radiationEpicenterSource 'y'); worldX = [int](Get-OptionalProperty $radiationEpicenterSource 'worldX'); worldY = [int](Get-OptionalProperty $radiationEpicenterSource 'worldY'); falloutRadiusCells = [int](Get-OptionalProperty $radiationEpicenterSource 'falloutRadiusCells'); falloutRadiusMiles = [double](Get-OptionalProperty $radiationEpicenterSource 'falloutRadiusMiles'); loreYieldMegatons = [double](Get-OptionalProperty $radiationEpicenterSource 'loreYieldMegatons') } } else { $null }
 $radiationEpicenters = @()
-if ($null -ne $radiationGeneration -and $null -ne $radiationGeneration.epicenters) {
-    foreach ($source in @($radiationGeneration.epicenters)) {
-        $radiationEpicenters += [ordered]@{ name = [string]$source.name; x = [int]$source.x; y = [int]$source.y; worldX = [int]$source.worldX; worldY = [int]$source.worldY; falloutRadiusCells = [int]$source.falloutRadiusCells; falloutRadiusMiles = [double]$source.falloutRadiusMiles; loreYieldMegatons = [double]$source.loreYieldMegatons }
+$radiationEpicenterSources = Get-OptionalProperty $radiationGeneration 'epicenters'
+if ($null -ne $radiationEpicenterSources) {
+    foreach ($source in @($radiationEpicenterSources)) {
+        $radiationEpicenters += [ordered]@{ name = [string](Get-OptionalProperty $source 'name'); x = [int](Get-OptionalProperty $source 'x'); y = [int](Get-OptionalProperty $source 'y'); worldX = [int](Get-OptionalProperty $source 'worldX'); worldY = [int](Get-OptionalProperty $source 'worldY'); falloutRadiusCells = [int](Get-OptionalProperty $source 'falloutRadiusCells'); falloutRadiusMiles = [double](Get-OptionalProperty $source 'falloutRadiusMiles'); loreYieldMegatons = [double](Get-OptionalProperty $source 'loreYieldMegatons') }
     }
 } elseif ($null -ne $radiationEpicenter) {
     $radiationEpicenters = @($radiationEpicenter)
 }
-$radiationFalloutRadiusCells = if ($null -ne $radiationGeneration -and $null -ne $radiationGeneration.falloutRadiusCells) { [int]$radiationGeneration.falloutRadiusCells } else { 0 }
-$radiationDestroyedThreshold = if ($null -ne $radiationGeneration -and $null -ne $radiationGeneration.destroyedThreshold) { [double]$radiationGeneration.destroyedThreshold } else { 1.0 }
+$radiationFalloutRadiusCells = [int](Get-OptionalProperty $radiationGeneration 'falloutRadiusCells')
+$radiationDestroyedThresholdValue = Get-OptionalProperty $radiationGeneration 'destroyedThreshold'
+$radiationDestroyedThreshold = if ($null -ne $radiationDestroyedThresholdValue) { [double]$radiationDestroyedThresholdValue } else { 1.0 }
 $runtimeWorld = [ordered]@{
     schemaVersion = 1
     world = [ordered]@{
@@ -359,7 +430,7 @@ $runtimeWorld = [ordered]@{
         mapManifestSha256 = $mapHash
         templatePlanSha256 = $planHash
     }
-    atmosphereProfiles = @('outskirts', 'suburbs', 'inner_city', 'dead_zone', 'safe_zone')
+    atmosphereProfiles = @($atmosphereProfiles)
     hazards = [ordered]@{ radiation = [ordered]@{ damagePerSecondAtPeak = [Math]::Max(0, $radiationDamagePerSecondAtPeak); epicenter = $radiationEpicenter; epicenters = @($radiationEpicenters); falloutRadiusCells = [Math]::Max(0, $radiationFalloutRadiusCells); destroyedThreshold = [Math]::Max(0.0, [Math]::Min(1.0, $radiationDestroyedThreshold)) }; danger = [ordered]@{ enabled = $dangerEnabled; pattern = $dangerPattern; origin = $dangerOrigin; tierCount = [Math]::Max(0, $dangerTierCount) } }
     environments = @($runtimeEnvironments)
     districts = @($runtimeDistricts)
