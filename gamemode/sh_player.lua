@@ -26,6 +26,7 @@ ply.MaxLevel = 300
 ply.Difficulty = 1 -- 1 = Easy, 2 = Normal, 3 = Hard, 4 = Insane
 ply.CellX = 0
 ply.CellY = 0
+ply.CurrentSafeZoneId = nil
 ply.SkillPoints = 0
 ply.SavedHealth = 100
 ply.Stamina = 100
@@ -65,6 +66,21 @@ end
 function ply:GetWorldCellId()
     local cell = self:GetWorldCell()
     return cell and cell.id or nil
+end
+
+// Returns the city safe-room entrance at the player's saved CellX/CellY, if one exists.
+function ply:GetAccessibleSafeZone()
+    return ZM_World:GetPlayerSafeZone(self)
+end
+
+// Returns the standalone safe room the player is currently in, if any.
+function ply:GetCurrentSafeZone()
+    return ZM_World:GetPlayerCurrentSafeZone(self)
+end
+
+// Returns the standalone safe-room map the player is currently in, if any.
+function ply:GetCurrentSafeZoneMap()
+    return ZM_World:GetPlayerCurrentSafeZoneMap(self)
 end
 
 // Returns one graph-connected neighbour and its exit. Directions are "N", "E", "S", or "W".

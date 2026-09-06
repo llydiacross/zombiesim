@@ -31,7 +31,6 @@ zn_di_rx-a-d1_n.vmf
 zn_emergency-services_rx-a-d1_fi.vmf
 zn_fi_rt-ms-d3_ba.vmf
 zn_fo_rd-e-bre-d1_bu.vmf
-zn_fo_rt-me-d1_bu.vmf
 zn_fo_rt-ms-d1_bu.vmf
 zn_fo_rx-a-d1_bu.vmf
 zn_gr_mc-es-d1_n.vmf
@@ -78,7 +77,6 @@ zn_gr_rx-a-d1_n-v2.vmf
 zn_gr_rx-a-d1_n-v3.vmf
 zn_gr_rx-a-d1_n-v4.vmf
 zn_gr_rx-a-d1_n-v5.vmf
-zn_mi_rt-ms-d1_ab.vmf
 zn_pk_rc-ne-d1_pk.vmf
 zn_pk_rc-nw-d1_pk.vmf
 zn_pk_rc-sw-d1_pk.vmf
@@ -120,7 +118,10 @@ zn_rc_rx-a-d2_le.vmf
 zn_rl_rt-mw-d1_ch.vmf
 zn_sa_mc-sw-d1_n.vmf
 zn_sa_rt-ms-d1_n.vmf
+zn_safe-zone_rt-me-d1_bu.vmf
+zn_safe-zone_rt-ms-d1_ab.vmf
 zn_safe-zone_rt-mw-d1_n.vmf
+zn_safe-zone_rx-a-d1_bu.vmf
 zn_safe-zone_rx-a-d1_n.vmf
 zn_service-station_rs-h-d1_ps.vmf
 zn_service-station_rt-mw-d1_ps.vmf

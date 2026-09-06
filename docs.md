@@ -8,7 +8,7 @@ The generator creates a city plan, turns that plan into reusable 5-by-5 cell rec
 
 1. Make a copy of [generator-settings.json](generator-settings.json) before experimenting.
 2. Change one group of settings at a time.
-3. Make a preview first. Preview VMFs go to `maps/src_preview`, not the production `maps/src` folder.
+3. Make a preview first. Preview VMFs go to `generated/src_preview`, not the production `generated/src` folder.
 4. Open the preview image or preview VMFs in Hammer and decide whether the change is worth keeping.
 
 Settings use JSON. Text must be inside double quotes, items in a list need commas, and there must not be a comma after the final item in a list. Do not rename setting names unless this guide calls them advanced.
@@ -43,15 +43,19 @@ This uses `paths.previewCellDirectory`, writes intermediate files to `paths.prev
 
 ## Standalone Dens
 
-Safe zones remain normal logical city cells. They are not replaced by den maps and dens are not added to the city grid or its graph. Instead, planning selects one complete standalone VMF from `paths.safeZoneTemplateDirectory` for every safe-zone coordinate, then gives it a unique stable map name such as `zn_den_gr_x14_y3`.
+Safe-room entrance cells remain normal logical city cells. They are not replaced by safe-room maps and safe-room maps are not added to the city grid or its graph. The city recipe for the entrance coordinate continues to compile as normal and should contain a `tile_saferoom` entrance plus its level-changing entity. Planning separately assigns that entrance to a reusable standalone safe-room map such as `zn_den_ra` or `zn_den_md_hospital`.
 
 `build_cell_vmfs.ps1 -RefreshGenerated` copies the selected den VMF and its optional VMX sidecar unchanged into the active source directory. `build_city_release.ps1` compiles and stages those den BSPs alongside city recipe BSPs. The runtime index exposes the selected standalone map as `safeZone.map`; future entrance entities can use `ZM_World:GetSafeZoneMap(cell)` to obtain its `city/<den-map>` transition name. The city-cell APIs continue to return the safe-zone entrance cell, never the den itself.
 
-The initial terrain mappings are `cell_gr_safezone.vmf`, `cell_sa_safezone.vmf`, and `cell_di_safezone.vmf` under `celltemplates/safezones`. The sandy and dirt files begin as copies of the grassland source and are intended to be edited into distinct dens later.
+Safe-room templates are selected by semantic biome/profile tags, never by `environment.terrain`. `settlement` is deliberately excluded because it describes the city entrance context rather than the destination. `radioactive` therefore selects `cell_ra_safezone.vmf` even when its city entrance cell happens to use grassland, sandy, or dirt terrain. `gr` means the `grasslands` default den style. The active destination codes are `gr`, `co`, `fi`, `ra`, `fo`, `mi`, `md`, `es`, `rl`, `ss`, `rc`, and `pk`. The existing `st`, `sa`, and `di` placeholder pairs are retained for future semantic profiles, but are not selected from entrance context or terrain labels.
+
+District safe-room placement first prefers an available `Hospital`, `Army Base`, or `Bunker` landmark cell; when none is available, it selects the usual generic safe-room entrance. A supported landmark at the entrance takes precedence over the generic biome map, choosing `cell_<biome>_safezone_hospital.vmf`, `cell_<biome>_safezone_army_base.vmf`, or `cell_<biome>_safezone_bunker.vmf`. All current biome and landmark templates are copies of `cell_gr_safezone.vmf` plus its VMX sidecar, ready for independent Hammer editing. When multiple supported landmarks occur, `Hospital`, then `Army Base`, then `Bunker` is the configured precedence order.
+
+All entrances selecting the same biome and landmark variant point to one compiled destination BSP. `build_cell_vmfs.ps1 -RefreshGenerated` refreshes each selected reusable map from its template and removes obsolete `zn_den_*` source maps from the active source folder. Edit the templates in `celltemplates/safezones`, not the copied `generated/src*` build inputs; normal `build_city_release.ps1` runs this refresh before compiling.
 
 ## Compile Monitoring and Profiles
 
-The compiler prints its current map, stage, elapsed stage time, and remaining map count. It writes a `compile-report.json` beside the intermediate BSPs, for example `maps/build_preview/compile-report.json` for a preview. Each map record includes its stage status, exit code, duration, and stdout/stderr log paths.
+The compiler prints its current map, stage, elapsed stage time, and remaining map count. It writes a `compile-report.json` beside the intermediate BSPs, for example `generated/build_preview/compile-report.json` for a preview. Each map record includes its stage status, exit code, duration, and stdout/stderr log paths.
 
 The default `compilation.activeProfile` is `stock-gmod`. Its VBSP, VVIS, and VRAD tools are resolved from Garry's Mod's `bin` directory and retain the existing `-game <garrysmod>` arguments. Set a longer or shorter one-run budget without editing the settings file:
 
@@ -86,7 +90,7 @@ After reviewing the preview, regenerate production recipes so they inherit the c
 .\bin\build_city_release.ps1 -MapData .\bin\map_grid_64x64_seed_1337.json -PlanData .\bin\map_grid_64x64_seed_1337_template_plan.json -CleanStagedCity
 ```
 
-`build_city_release.ps1` runs the sequential VBSP, VVIS, and VRAD compiler pass for every VMF in `paths.cellDirectory`, using `maps/build` as an intermediate folder. It copies only the recipe BSPs selected by the plan to `paths.releaseMapDirectory` and writes the compact gameplay world index to `paths.runtimeWorldData`.
+`build_city_release.ps1` runs the sequential VBSP, VVIS, and VRAD compiler pass for every VMF in `paths.cellDirectory`, using `generated/build` as an intermediate folder. It copies only the recipe BSPs selected by the plan to `paths.releaseMapDirectory` and writes the compact gameplay world index to `paths.runtimeWorldData`.
 
 The release script refreshes generated recipe VMFs first, so changes to the base cell template are included in the compile. Pass `-SkipRecipeRefresh` only when the selected source recipes have already been deliberately refreshed.
 
@@ -135,12 +139,12 @@ These are project-relative folders and files. Use forward slashes or backslashes
 | Setting | What it controls | Notes |
 | --- | --- | --- |
 | `templateDirectory` | The root folder containing hand-authored tile VMFs. | Default: `tiletemplates`. Do not point this at generated cell VMFs. |
-| `cellDirectory` | Production output folder for generated cell recipes. | Default: `maps/src`. Use only when ready to create production VMFs. |
-| `previewCellDirectory` | Preview output folder. | Default: `maps/src_preview`. Used by `-Preview` on planning, building, and checking scripts. |
+| `cellDirectory` | Production output folder for generated cell recipes. | Default: `generated/src`. Use only when ready to create production VMFs. |
+| `previewCellDirectory` | Preview output folder. | Default: `generated/src_preview`. Used by `-Preview` on planning, building, and checking scripts. |
 | `baseCellTemplate` | The border/base VMF inserted behind generated prefab instances. | Default: `celltemplates/template_border_s.vmf`. It must exist and contain a `cameras` block. |
 | `scriptOutputDirectory` | Folder for PNG previews, JSON plans, required-VMF lists, and filename keys. | Default: `bin`. |
-| `buildDirectory` | Intermediate compiler output folder. | Default: `maps/build`. The batch compiler copies VMFs here before creating BSP/VIS/RAD files. |
-| `previewBuildDirectory` | Intermediate compiler output folder for `-Preview`. | Default: `maps/build_preview`. It is isolated from production BSP artefacts. |
+| `buildDirectory` | Intermediate compiler output folder. | Default: `generated/build`. The batch compiler copies VMFs here before creating BSP/VIS/RAD files. |
+| `previewBuildDirectory` | Intermediate compiler output folder for `-Preview`. | Default: `generated/build_preview`. It is isolated from production BSP artefacts. |
 | `releaseMapDirectory` | Release staging folder for compiled city BSPs. | Default: `content/maps/city`. The final release script copies only plan-referenced BSPs here. |
 | `previewReleaseMapDirectory` | Release staging folder for `-Preview` BSPs. | Default: `content/maps/preview`. The preview runtime index uses `preview` as its map directory. |
 | `runtimeWorldData` | Release staging path for the compact gameplay world index. | Default: `content/data_static/zombiesim_world.json`. Package it as root `data_static/zombiesim_world.json` and read it from the `GAME` mount. |

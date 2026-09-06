@@ -10,7 +10,7 @@ end
 // Creates the core player table, then applies additive migrations for existing databases.
 function ZM_CreatePlayerDataTable()
     if not sql.TableExists("player_data") then
-        sql.Query("CREATE TABLE player_data (steamid TEXT PRIMARY KEY, XP INTEGER, Level INTEGER, MaxLevel INTEGER, Difficulty INTEGER, CellX INTEGER, CellY INTEGER, SkillPoints INTEGER, Health INTEGER, Stamina REAL)")
+        sql.Query("CREATE TABLE player_data (steamid TEXT PRIMARY KEY, XP INTEGER, Level INTEGER, MaxLevel INTEGER, Difficulty INTEGER, CellX INTEGER, CellY INTEGER, CurrentSafeZoneId TEXT, SkillPoints INTEGER, Health INTEGER, Stamina REAL)")
         return
     end
 
@@ -26,6 +26,10 @@ function ZM_CreatePlayerDataTable()
 
     if not existingColumns.Stamina then
         sql.Query("ALTER TABLE player_data ADD COLUMN Stamina REAL DEFAULT 100")
+    end
+
+    if not existingColumns.CurrentSafeZoneId then
+        sql.Query("ALTER TABLE player_data ADD COLUMN CurrentSafeZoneId TEXT")
     end
 end
 
@@ -65,8 +69,9 @@ function ZM_SetPlayerAttributes(steamid, attributes)
     sql.Query(query)
 end
 
-// Replaces one core data row, including the zero-based CellX/CellY city position.
+// Replaces one core data row, including city position and the optional current safe-room id.
 function ZM_SetPlayerData(steamid, data)
-    local query = "INSERT OR REPLACE INTO player_data (steamid, XP, Level, MaxLevel, Difficulty, CellX, CellY, SkillPoints, Health, Stamina) VALUES (" .. sql.SQLStr(steamid) .. ", " .. data.XP .. ", " .. data.Level .. ", " .. data.MaxLevel .. ", " .. data.Difficulty .. ", " .. data.CellX .. ", " .. data.CellY .. ", " .. data.SkillPoints .. ", " .. data.Health .. ", " .. data.Stamina .. ")"
+    local currentSafeZoneId = data.CurrentSafeZoneId and sql.SQLStr(data.CurrentSafeZoneId) or "NULL"
+    local query = "INSERT OR REPLACE INTO player_data (steamid, XP, Level, MaxLevel, Difficulty, CellX, CellY, CurrentSafeZoneId, SkillPoints, Health, Stamina) VALUES (" .. sql.SQLStr(steamid) .. ", " .. data.XP .. ", " .. data.Level .. ", " .. data.MaxLevel .. ", " .. data.Difficulty .. ", " .. data.CellX .. ", " .. data.CellY .. ", " .. currentSafeZoneId .. ", " .. data.SkillPoints .. ", " .. data.Health .. ", " .. data.Stamina .. ")"
     sql.Query(query)
 end

@@ -26,4 +26,5 @@ function ply:SetPlayerData()
     self.Level = self:GetNWInt("Level")
     self.MaxLevel = self:GetNWInt("MaxLevel")
     self.Difficulty = self:GetNWInt("Difficulty")
+    self.CurrentSafeZoneId = self:GetNWString("CurrentSafeZoneId", "")
 end

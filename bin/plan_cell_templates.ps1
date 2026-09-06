@@ -70,8 +70,8 @@ $decorationTemplates = @($templateFiles.Values | Where-Object { $_ -match $plann
 $carparkTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.carparks } | Sort-Object)
 $filenameAbbreviations = $plannerSettings.filenameAbbreviations
 $safeZoneSettings = $plannerSettings.safeZones
-if ($null -eq $safeZoneSettings -or -not $safeZoneSettings.ContainsKey('templatesByTerrain')) {
-    throw 'cellPlanning.safeZones.templatesByTerrain is required to plan standalone den maps.'
+if ($null -eq $safeZoneSettings -or -not $safeZoneSettings.ContainsKey('biomePriority') -or -not $safeZoneSettings.ContainsKey('biomeCodes') -or -not $safeZoneSettings.ContainsKey('templateFilenameFormat')) {
+    throw 'cellPlanning.safeZones must define biomePriority, biomeCodes, and templateFilenameFormat to plan standalone den maps.'
 }
 $safeZoneTemplateDirectory = Join-Path $projectRoot $generatorSettings.paths.safeZoneTemplateDirectory
 if (-not (Test-Path -LiteralPath $safeZoneTemplateDirectory -PathType Container)) {
@@ -787,31 +787,65 @@ function Resolve-Template {
     throw "No fallback template exists. Candidates: $($Candidates -join ', ')"
 }
 
-function Get-SafeZoneTemplateFilename {
-    param([string]$Terrain)
+function Get-SafeZoneBiome {
+    param([object]$Cell)
 
-    if (-not $safeZoneSettings.templatesByTerrain.ContainsKey($Terrain)) {
-        throw "No standalone safe-zone template is configured for terrain '$Terrain'."
+    $tags = @($Cell.environment.tags)
+    foreach ($biome in @($safeZoneSettings.biomePriority)) {
+        if ($tags -contains $biome) {
+            return [string]$biome
+        }
     }
-    $templateFilename = [string]$safeZoneSettings.templatesByTerrain[$Terrain]
+
+    return [string]$safeZoneSettings.defaultBiome
+}
+
+function Get-SafeZoneLandmarkVariant {
+    param([object]$Cell)
+
+    $landmarkNames = @(Get-CellLandmarks $Cell)
+    foreach ($landmark in @($safeZoneSettings.landmarkPriority)) {
+        if ($landmarkNames -contains $landmark) {
+            if (-not $safeZoneSettings.landmarkVariants.ContainsKey($landmark)) {
+                throw "Standalone safe-zone landmark '$landmark' has no configured landmarkVariants entry."
+            }
+            return [string]$safeZoneSettings.landmarkVariants[$landmark]
+        }
+    }
+
+    return ''
+}
+
+function Get-SafeZoneTemplateFilename {
+    param(
+        [string]$Biome,
+        [string]$LandmarkVariant
+    )
+
+    if (-not $safeZoneSettings.biomeCodes.ContainsKey($Biome)) {
+        throw "No standalone safe-zone biome code is configured for '$Biome'."
+    }
+    $biomeCode = [string]$safeZoneSettings.biomeCodes[$Biome]
+    $landmarkSuffix = if ([string]::IsNullOrWhiteSpace($LandmarkVariant)) { '' } else { "_$LandmarkVariant" }
+    $templateFilename = ([string]$safeZoneSettings.templateFilenameFormat).Replace('{biome}', $biomeCode).Replace('{landmarkSuffix}', $landmarkSuffix)
     if ([System.IO.Path]::GetFileName($templateFilename) -ne $templateFilename -or [System.IO.Path]::GetExtension($templateFilename) -ine '.vmf') {
-        throw "Safe-zone template for terrain '$Terrain' must be a .vmf filename without a path: $templateFilename"
+        throw "Safe-zone template for biome '$Biome' must be a .vmf filename without a path: $templateFilename"
     }
     if (-not (Test-Path -LiteralPath (Join-Path $safeZoneTemplateDirectory $templateFilename) -PathType Leaf)) {
-        throw "Safe-zone template for terrain '$Terrain' was not found: $(Join-Path $safeZoneTemplateDirectory $templateFilename)"
+        throw "Safe-zone template for biome '$Biome' was not found: $(Join-Path $safeZoneTemplateDirectory $templateFilename)"
     }
     return $templateFilename
 }
 
 function Get-SafeZoneMapFilename {
     param(
-        [string]$Terrain,
-        [int]$X,
-        [int]$Y
+        [string]$Biome,
+        [string]$LandmarkVariant
     )
 
-    $terrainCode = if ($filenameAbbreviations.environmentProfiles.ContainsKey($Terrain)) { $filenameAbbreviations.environmentProfiles[$Terrain] } else { ConvertTo-FilenamePart $Terrain }
-    return "zn_den_${terrainCode}_x${X}_y${Y}.vmf"
+    $biomeCode = [string]$safeZoneSettings.biomeCodes[$Biome]
+    $landmarkSuffix = if ([string]::IsNullOrWhiteSpace($LandmarkVariant)) { '' } else { "_$LandmarkVariant" }
+    return "zn_den_${biomeCode}${landmarkSuffix}.vmf"
 }
 
 $planCells = @()
@@ -901,14 +935,17 @@ foreach ($safeZone in @($map.safeZones | Sort-Object y, x, name)) {
     if ($null -eq $mapCell -or $null -eq $mapCell.safeZone) {
         throw "Safe zone '$($safeZone.name)' does not match a generated map cell at $coordinateKey."
     }
-    $terrain = [string]$mapCell.environment.terrain
-    $templateFilename = Get-SafeZoneTemplateFilename $terrain
-    $mapFilename = Get-SafeZoneMapFilename $terrain $x $y
+    $biome = Get-SafeZoneBiome $mapCell
+    $landmarkVariant = Get-SafeZoneLandmarkVariant $mapCell
+    $templateFilename = Get-SafeZoneTemplateFilename $biome $landmarkVariant
+    $mapFilename = Get-SafeZoneMapFilename $biome $landmarkVariant
     $safeZoneMaps += [pscustomobject]@{
         x = $x
         y = $y
         name = [string]$safeZone.name
-        terrain = $terrain
+        biome = $biome
+        biomeCode = [string]$safeZoneSettings.biomeCodes[$biome]
+        landmarkVariant = $landmarkVariant
         templateFilename = $templateFilename
         mapFilename = $mapFilename
         mapName = [System.IO.Path]::GetFileNameWithoutExtension($mapFilename)

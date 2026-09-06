@@ -58,7 +58,7 @@ function ply:Save()
     ZM_SetPlayerAttributes(self:SteamID(), self.Attributes)
     self.SavedHealth = math.max(self:Health(), 0)
     self.Stamina = math.Clamp(self.Stamina or 100, 0, self:GetMaxStamina())
-    ZM_SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina})
+    ZM_SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, CurrentSafeZoneId = self.CurrentSafeZoneId, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina})
 end
 
 // Saves only the attributes table when an attribute changes.
@@ -68,7 +68,26 @@ end
 
 // Saves only the core player-data row when progression, cell, or survival values change.
 function ply:UpdatePlayerData()
-    ZM_SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina})
+    ZM_SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, CurrentSafeZoneId = self.CurrentSafeZoneId, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina})
+end
+
+// Records the standalone safe room the player is currently in without changing their city cell.
+// Pass nil to record that the player has returned to the city.
+function ply:SetCurrentSafeZone(safeZoneId)
+    if safeZoneId == nil or safeZoneId == "" then
+        self.CurrentSafeZoneId = nil
+    else
+        local safeZone = ZM_World:GetSafeZoneById(safeZoneId)
+        if not safeZone then
+            return false, "Unknown safe-zone id: " .. tostring(safeZoneId)
+        end
+
+        self.CurrentSafeZoneId = safeZone.id
+    end
+
+    self:UpdatePlayerData()
+    self:SetNetworkPlayerData()
+    return true
 end
 
 // Loads core progression and logical city position, defaulting a first-time player to cell 0,0.
@@ -84,6 +103,7 @@ function ply:FetchPlayerData()
             Difficulty = 1, -- 1 = Easy, 2 = Normal, 3 = Hard, 4 = Insane
             CellX = 0,
             CellY = 0,
+            CurrentSafeZoneId = nil,
             SkillPoints = 0,
             Health = 100,
             Stamina = 100
@@ -96,6 +116,7 @@ function ply:FetchPlayerData()
     self.Difficulty = data.Difficulty or 1 -- 1 = Easy, 2 = Normal, 3 = Hard, 4 = Insane
     self.CellX = data.CellX or 0
     self.CellY = data.CellY or 0
+    self.CurrentSafeZoneId = data.CurrentSafeZoneId or nil
     self.SkillPoints = data.SkillPoints or 0
     self.SavedHealth = tonumber(data.Health) or 100
     self.Stamina = tonumber(data.Stamina) or 100
@@ -128,6 +149,7 @@ function ply:SetNetworkPlayerData()
     self:SetNWInt("Difficulty", self.Difficulty)
     self:SetNWInt("CellX", self.CellX)
     self:SetNWInt("CellY", self.CellY)
+    self:SetNWString("CurrentSafeZoneId", self.CurrentSafeZoneId or "")
     self:SetNWInt("SkillPoints", self.SkillPoints)
     self:SetNWInt("Health", self.SavedHealth)
     self:SetNWFloat("Stamina", self.Stamina)

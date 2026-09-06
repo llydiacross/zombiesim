@@ -290,6 +290,7 @@
                                                            "grassland",
                                                            "highway",
                                                            "metro_route",
+                                                           "metro_station",
                                                            "military",
                                                            "parkland",
                                                            "radioactive",
@@ -388,9 +389,9 @@
                           "district":  "Breakwater",
                           "difficult":  false,
                           "x":  3,
-                          "y":  14,
+                          "y":  17,
                           "worldX":  3,
-                          "worldY":  2
+                          "worldY":  5
                       },
                       {
                           "name":  "Cinder Refuge",
@@ -414,10 +415,10 @@
                           "name":  "Red Laboratory",
                           "district":  "Greyline",
                           "difficult":  true,
-                          "x":  20,
-                          "y":  3,
-                          "worldX":  20,
-                          "worldY":  -9
+                          "x":  21,
+                          "y":  6,
+                          "worldX":  21,
+                          "worldY":  -6
                       },
                       {
                           "name":  "Iron Laboratory",
@@ -433,27 +434,27 @@
                           "district":  "Southwatch",
                           "difficult":  true,
                           "x":  5,
-                          "y":  19,
+                          "y":  18,
                           "worldX":  5,
-                          "worldY":  7
+                          "worldY":  6
                       },
                       {
                           "name":  "Red Laboratory",
                           "district":  "Red Hollow",
                           "difficult":  true,
-                          "x":  11,
-                          "y":  19,
-                          "worldX":  11,
-                          "worldY":  7
+                          "x":  12,
+                          "y":  20,
+                          "worldX":  12,
+                          "worldY":  8
                       },
                       {
                           "name":  "Grey Army Base",
                           "district":  "Raven Reach",
                           "difficult":  true,
-                          "x":  22,
-                          "y":  19,
-                          "worldX":  22,
-                          "worldY":  7
+                          "x":  20,
+                          "y":  22,
+                          "worldX":  20,
+                          "worldY":  10
                       },
                       {
                           "name":  "Ash Army Base",
@@ -478,18 +479,19 @@
                                                   "hex":  "#DC3741"
                                               },
                                     "schematicPath":  [
-                                                          "4,15",
-                                                          "8,15",
-                                                          "10,13",
+                                                          "3,15",
+                                                          "7,15",
+                                                          "9,13",
                                                           "16,13"
                                                       ],
                                     "routeCells":  [
+                                                       "3,15",
                                                        "4,15",
                                                        "5,15",
                                                        "6,15",
                                                        "7,15",
-                                                       "8,15",
-                                                       "9,14",
+                                                       "8,14",
+                                                       "9,13",
                                                        "10,13",
                                                        "11,13",
                                                        "12,13",
@@ -511,9 +513,8 @@
                                               },
                                     "schematicPath":  [
                                                           "9,6",
-                                                          "9,12",
-                                                          "10,13",
-                                                          "10,9",
+                                                          "9,13",
+                                                          "9,10",
                                                           "15,4",
                                                           "20,4",
                                                           "21,5"
@@ -526,10 +527,10 @@
                                                        "9,10",
                                                        "9,11",
                                                        "9,12",
-                                                       "10,13",
-                                                       "10,12",
-                                                       "10,11",
-                                                       "10,10",
+                                                       "9,13",
+                                                       "9,12",
+                                                       "9,11",
+                                                       "9,10",
                                                        "10,9",
                                                        "11,8",
                                                        "12,7",
@@ -555,38 +556,40 @@
                                                   "hex":  "#F4B82C"
                                               },
                                     "schematicPath":  [
-                                                          "4,15",
-                                                          "4,19",
-                                                          "2,21",
-                                                          "7,21",
-                                                          "8,22",
-                                                          "17,22",
+                                                          "3,15",
+                                                          "3,19",
+                                                          "1,21",
+                                                          "6,21",
+                                                          "7,22",
+                                                          "11,22",
+                                                          "13,20",
                                                           "19,20"
                                                       ],
                                     "routeCells":  [
-                                                       "4,15",
-                                                       "4,16",
-                                                       "4,17",
-                                                       "4,18",
-                                                       "4,19",
-                                                       "3,20",
+                                                       "3,15",
+                                                       "3,16",
+                                                       "3,17",
+                                                       "3,18",
+                                                       "3,19",
+                                                       "2,20",
+                                                       "1,21",
                                                        "2,21",
                                                        "3,21",
                                                        "4,21",
                                                        "5,21",
                                                        "6,21",
-                                                       "7,21",
+                                                       "7,22",
                                                        "8,22",
                                                        "9,22",
                                                        "10,22",
                                                        "11,22",
-                                                       "12,22",
-                                                       "13,22",
-                                                       "14,22",
-                                                       "15,22",
-                                                       "16,22",
-                                                       "17,22",
-                                                       "18,21",
+                                                       "12,21",
+                                                       "13,20",
+                                                       "14,20",
+                                                       "15,20",
+                                                       "16,20",
+                                                       "17,20",
+                                                       "18,20",
                                                        "19,20"
                                                    ]
                                 },
@@ -601,13 +604,13 @@
                                                   "hex":  "#A457D3"
                                               },
                                     "schematicPath":  [
-                                                          "10,13",
-                                                          "21,13",
-                                                          "22,14",
-                                                          "22,17",
+                                                          "9,13",
+                                                          "16,13",
+                                                          "16,17",
                                                           "19,20"
                                                       ],
                                     "routeCells":  [
+                                                       "9,13",
                                                        "10,13",
                                                        "11,13",
                                                        "12,13",
@@ -615,39 +618,47 @@
                                                        "14,13",
                                                        "15,13",
                                                        "16,13",
-                                                       "17,13",
-                                                       "18,13",
-                                                       "19,13",
-                                                       "20,13",
-                                                       "21,13",
-                                                       "22,14",
-                                                       "22,15",
-                                                       "22,16",
-                                                       "22,17",
-                                                       "21,18",
-                                                       "20,19",
+                                                       "16,14",
+                                                       "16,15",
+                                                       "16,16",
+                                                       "16,17",
+                                                       "17,18",
+                                                       "18,19",
                                                        "19,20"
                                                    ]
                                 }
                             ],
                   "stops":  [
                                 {
-                                    "name":  "Cinder Ward Exchange",
+                                    "name":  "Southwatch Exchange",
                                     "major":  true,
                                     "lines":  [
-                                                  "Ash Line",
-                                                  "Cinder Line",
-                                                  "Raven Line"
+                                                  "South Line"
                                               ],
                                     "accessPath":  [
-                                                       "8,13",
-                                                       "9,13",
-                                                       "10,13"
+                                                       "1,21"
                                                    ],
-                                    "x":  10,
-                                    "y":  13,
-                                    "worldX":  10,
-                                    "worldY":  1
+                                    "x":  1,
+                                    "y":  21,
+                                    "worldX":  1,
+                                    "worldY":  9
+                                },
+                                {
+                                    "name":  "Red Hollow Exchange",
+                                    "major":  true,
+                                    "lines":  [
+                                                  "South Line"
+                                              ],
+                                    "accessPath":  [
+                                                       "10,20",
+                                                       "11,20",
+                                                       "12,20",
+                                                       "13,20"
+                                                   ],
+                                    "x":  13,
+                                    "y":  20,
+                                    "worldX":  13,
+                                    "worldY":  8
                                 },
                                 {
                                     "name":  "Glassworks Exchange",
@@ -695,20 +706,6 @@
                                     "worldY":  8
                                 },
                                 {
-                                    "name":  "Southwatch Exchange",
-                                    "major":  true,
-                                    "lines":  [
-                                                  "South Line"
-                                              ],
-                                    "accessPath":  [
-                                                       "2,21"
-                                                   ],
-                                    "x":  2,
-                                    "y":  21,
-                                    "worldX":  2,
-                                    "worldY":  9
-                                },
-                                {
                                     "name":  "Greyline Exchange",
                                     "major":  true,
                                     "lines":  [
@@ -725,26 +722,6 @@
                                     "worldY":  -7
                                 },
                                 {
-                                    "name":  "Iron Gate",
-                                    "major":  false,
-                                    "lines":  [
-                                                  "Raven Line"
-                                              ],
-                                    "accessPath":  [
-                                                       "16,15",
-                                                       "17,15",
-                                                       "18,15",
-                                                       "19,15",
-                                                       "20,15",
-                                                       "21,15",
-                                                       "22,14"
-                                                   ],
-                                    "x":  22,
-                                    "y":  14,
-                                    "worldX":  22,
-                                    "worldY":  2
-                                },
-                                {
                                     "name":  "Breakwater Exchange",
                                     "major":  true,
                                     "lines":  [
@@ -752,11 +729,11 @@
                                                   "South Line"
                                               ],
                                     "accessPath":  [
-                                                       "4,15"
+                                                       "3,15"
                                                    ],
-                                    "x":  4,
+                                    "x":  3,
                                     "y":  15,
-                                    "worldX":  4,
+                                    "worldX":  3,
                                     "worldY":  3
                                 },
                                 {
@@ -767,13 +744,29 @@
                                               ],
                                     "accessPath":  [
                                                        "6,22",
-                                                       "7,22",
-                                                       "8,22"
+                                                       "7,22"
                                                    ],
-                                    "x":  8,
+                                    "x":  7,
                                     "y":  22,
-                                    "worldX":  8,
+                                    "worldX":  7,
                                     "worldY":  10
+                                },
+                                {
+                                    "name":  "Cinder Ward Exchange",
+                                    "major":  true,
+                                    "lines":  [
+                                                  "Ash Line",
+                                                  "Cinder Line",
+                                                  "Raven Line"
+                                              ],
+                                    "accessPath":  [
+                                                       "8,13",
+                                                       "9,13"
+                                                   ],
+                                    "x":  9,
+                                    "y":  13,
+                                    "worldX":  9,
+                                    "worldY":  1
                                 },
                                 {
                                     "name":  "Ashwood Exchange",
@@ -12385,7 +12378,6 @@
                                           "tags":  [
                                                        "grassland",
                                                        "roadside",
-                                                       "safe_zone",
                                                        "settlement"
                                                    ]
                                       },
@@ -12409,11 +12401,7 @@
                       "landmarks":  [
 
                                     ],
-                      "safeZone":  {
-                                       "name":  "Red Laboratory",
-                                       "district":  "Greyline",
-                                       "difficult":  true
-                                   },
+                      "safeZone":  null,
                       "road":  {
                                    "present":  true,
                                    "connections":  [
@@ -21550,6 +21538,7 @@
                                                        "grassland",
                                                        "military",
                                                        "roadside",
+                                                       "safe_zone",
                                                        "settlement"
                                                    ]
                                       },
@@ -21584,7 +21573,11 @@
                                                       }
                                         }
                                     ],
-                      "safeZone":  null,
+                      "safeZone":  {
+                                       "name":  "Red Laboratory",
+                                       "district":  "Greyline",
+                                       "difficult":  true
+                                   },
                       "road":  {
                                    "present":  true,
                                    "connections":  [
@@ -32084,7 +32077,6 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
-                                                       "metro_route",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -32141,7 +32133,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Ash Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -35159,7 +35151,6 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
-                                                       "metro_route",
                                                        "roadside",
                                                        "safe_zone",
                                                        "settlement"
@@ -35221,7 +35212,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Ash Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -38256,7 +38247,6 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
-                                                       "metro_route",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -38313,7 +38303,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Ash Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -41217,6 +41207,8 @@
                                           "tags":  [
                                                        "commercial",
                                                        "grassland",
+                                                       "metro_route",
+                                                       "metro_station",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -41284,9 +41276,23 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "Ash Line",
+                                                  "Cinder Line",
+                                                  "Raven Line"
                                               ],
-                                    "stop":  null
+                                    "stop":  {
+                                                 "name":  "Cinder Ward Exchange",
+                                                 "major":  true,
+                                                 "lines":  [
+                                                               "Ash Line",
+                                                               "Cinder Line",
+                                                               "Raven Line"
+                                                           ],
+                                                 "accessPath":  [
+                                                                    "8,13",
+                                                                    "9,13"
+                                                                ]
+                                             }
                                 },
                       "neighbors":  [
                                         {
@@ -41357,7 +41363,6 @@
                                           "tags":  [
                                                        "grassland",
                                                        "metro_route",
-                                                       "metro_station",
                                                        "roadside"
                                                    ]
                                       },
@@ -41405,24 +41410,10 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Ash Line",
                                                   "Cinder Line",
                                                   "Raven Line"
                                               ],
-                                    "stop":  {
-                                                 "name":  "Cinder Ward Exchange",
-                                                 "major":  true,
-                                                 "lines":  [
-                                                               "Ash Line",
-                                                               "Cinder Line",
-                                                               "Raven Line"
-                                                           ],
-                                                 "accessPath":  [
-                                                                    "8,13",
-                                                                    "9,13",
-                                                                    "10,13"
-                                                                ]
-                                             }
+                                    "stop":  null
                                 },
                       "neighbors":  [
                                         {
@@ -42306,7 +42297,6 @@
                                           "tags":  [
                                                        "grassland",
                                                        "highway",
-                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -42353,7 +42343,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Raven Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -42425,7 +42415,6 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
-                                                       "metro_route",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -42481,7 +42470,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Raven Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -42553,7 +42542,6 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
-                                                       "metro_route",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -42610,7 +42598,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Raven Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -42682,7 +42670,6 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
-                                                       "metro_route",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -42739,7 +42726,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Raven Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -42811,7 +42798,6 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
-                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -42859,7 +42845,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Raven Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -43570,7 +43556,6 @@
                                           "tags":  [
                                                        "grassland",
                                                        "roadside",
-                                                       "safe_zone",
                                                        "settlement"
                                                    ]
                                       },
@@ -43594,11 +43579,7 @@
                       "landmarks":  [
 
                                     ],
-                      "safeZone":  {
-                                       "name":  "Iron Watch",
-                                       "district":  "Breakwater",
-                                       "difficult":  false
-                                   },
+                      "safeZone":  null,
                       "road":  {
                                    "present":  true,
                                    "connections":  [
@@ -44216,6 +44197,7 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
+                                                       "metro_route",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -44272,7 +44254,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "Cinder Line"
                                               ],
                                     "stop":  null
                                 },
@@ -44344,7 +44326,6 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
-                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -44392,7 +44373,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Cinder Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -45217,6 +45198,7 @@
                                           "tags":  [
                                                        "grassland",
                                                        "highway",
+                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -45263,7 +45245,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "Raven Line"
                                               ],
                                     "stop":  null
                                 },
@@ -45965,8 +45947,6 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
-                                                       "metro_route",
-                                                       "metro_station",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -46023,24 +46003,9 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Raven Line"
+
                                               ],
-                                    "stop":  {
-                                                 "name":  "Iron Gate",
-                                                 "major":  false,
-                                                 "lines":  [
-                                                               "Raven Line"
-                                                           ],
-                                                 "accessPath":  [
-                                                                    "16,15",
-                                                                    "17,15",
-                                                                    "18,15",
-                                                                    "19,15",
-                                                                    "20,15",
-                                                                    "21,15",
-                                                                    "22,14"
-                                                                ]
-                                             }
+                                    "stop":  null
                                 },
                       "neighbors":  [
                                         {
@@ -46609,6 +46574,8 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
+                                                       "metro_route",
+                                                       "metro_station",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -46664,9 +46631,20 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "Cinder Line",
+                                                  "South Line"
                                               ],
-                                    "stop":  null
+                                    "stop":  {
+                                                 "name":  "Breakwater Exchange",
+                                                 "major":  true,
+                                                 "lines":  [
+                                                               "Cinder Line",
+                                                               "South Line"
+                                                           ],
+                                                 "accessPath":  [
+                                                                    "3,15"
+                                                                ]
+                                             }
                                 },
                       "neighbors":  [
                                         {
@@ -46737,7 +46715,6 @@
                                           "tags":  [
                                                        "grassland",
                                                        "metro_route",
-                                                       "metro_station",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -46793,20 +46770,9 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Cinder Line",
-                                                  "South Line"
+                                                  "Cinder Line"
                                               ],
-                                    "stop":  {
-                                                 "name":  "Breakwater Exchange",
-                                                 "major":  true,
-                                                 "lines":  [
-                                                               "Cinder Line",
-                                                               "South Line"
-                                                           ],
-                                                 "accessPath":  [
-                                                                    "4,15"
-                                                                ]
-                                             }
+                                    "stop":  null
                                 },
                       "neighbors":  [
                                         {
@@ -47265,7 +47231,6 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
-                                                       "metro_route",
                                                        "radioactive",
                                                        "roadside"
                                                    ]
@@ -47313,7 +47278,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Cinder Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -48213,6 +48178,7 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
+                                                       "metro_route",
                                                        "recreation",
                                                        "roadside"
                                                    ]
@@ -48270,7 +48236,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "Raven Line"
                                               ],
                                     "stop":  null
                                 },
@@ -48952,7 +48918,6 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
-                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -48999,7 +48964,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Raven Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -49541,6 +49506,7 @@
                                           "tags":  [
                                                        "grassland",
                                                        "highway",
+                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -49587,7 +49553,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "South Line"
                                               ],
                                     "stop":  null
                                 },
@@ -49660,7 +49626,6 @@
                                           "tags":  [
                                                        "grassland",
                                                        "highway",
-                                                       "metro_route",
                                                        "radioactive",
                                                        "roadside"
                                                    ]
@@ -49708,7 +49673,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "South Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -51117,6 +51082,7 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
+                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -51163,7 +51129,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "Raven Line"
                                               ],
                                     "stop":  null
                                 },
@@ -51839,7 +51805,6 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
-                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -51886,7 +51851,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Raven Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -52480,8 +52445,10 @@
                                                        "civic",
                                                        "grassland",
                                                        "medical",
+                                                       "metro_route",
                                                        "radioactive",
                                                        "roadside",
+                                                       "safe_zone",
                                                        "settlement"
                                                    ]
                                       },
@@ -52516,7 +52483,11 @@
                                                       }
                                         }
                                     ],
-                      "safeZone":  null,
+                      "safeZone":  {
+                                       "name":  "Iron Watch",
+                                       "district":  "Breakwater",
+                                       "difficult":  false
+                                   },
                       "road":  {
                                    "present":  true,
                                    "connections":  [
@@ -52547,7 +52518,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "South Line"
                                               ],
                                     "stop":  null
                                 },
@@ -52619,7 +52590,6 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
-                                                       "metro_route",
                                                        "parkland",
                                                        "radioactive",
                                                        "roadside",
@@ -52688,7 +52658,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "South Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -54144,6 +54114,7 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
+                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -54190,7 +54161,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "Raven Line"
                                               ],
                                     "stop":  null
                                 },
@@ -54852,7 +54823,6 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
-                                                       "metro_route",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -54907,7 +54877,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Raven Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -55494,6 +55464,7 @@
                                           "tags":  [
                                                        "fortified",
                                                        "grassland",
+                                                       "metro_route",
                                                        "military",
                                                        "radioactive",
                                                        "roadside",
@@ -55563,7 +55534,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "South Line"
                                               ],
                                     "stop":  null
                                 },
@@ -55635,7 +55606,6 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
-                                                       "metro_route",
                                                        "radioactive",
                                                        "roadside",
                                                        "settlement"
@@ -55693,7 +55663,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "South Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -55769,6 +55739,7 @@
                                                        "military",
                                                        "radioactive",
                                                        "roadside",
+                                                       "safe_zone",
                                                        "settlement"
                                                    ]
                                       },
@@ -55803,7 +55774,11 @@
                                                       }
                                         }
                                     ],
-                      "safeZone":  null,
+                      "safeZone":  {
+                                       "name":  "West Laboratory",
+                                       "district":  "Southwatch",
+                                       "difficult":  true
+                                   },
                       "road":  {
                                    "present":  true,
                                    "connections":  [
@@ -57279,6 +57254,7 @@
                                           "tags":  [
                                                        "dirt",
                                                        "highway",
+                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -57325,7 +57301,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "Raven Line"
                                               ],
                                     "stop":  null
                                 },
@@ -57755,7 +57731,6 @@
                                           "tags":  [
                                                        "dirt",
                                                        "highway",
-                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -57802,7 +57777,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Raven Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -58504,6 +58479,7 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
+                                                       "metro_route",
                                                        "radioactive",
                                                        "roadside"
                                                    ]
@@ -58552,7 +58528,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "South Line"
                                               ],
                                     "stop":  null
                                 },
@@ -58626,7 +58602,6 @@
                                                        "dirt",
                                                        "industrial",
                                                        "laboratory",
-                                                       "metro_route",
                                                        "radioactive",
                                                        "roadside",
                                                        "settlement"
@@ -58695,7 +58670,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "South Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -58769,7 +58744,6 @@
                                                        "dirt",
                                                        "radioactive",
                                                        "roadside",
-                                                       "safe_zone",
                                                        "settlement"
                                                    ]
                                       },
@@ -58793,11 +58767,7 @@
                       "landmarks":  [
 
                                     ],
-                      "safeZone":  {
-                                       "name":  "West Laboratory",
-                                       "district":  "Southwatch",
-                                       "difficult":  true
-                                   },
+                      "safeZone":  null,
                       "road":  {
                                    "present":  true,
                                    "connections":  [
@@ -59535,7 +59505,6 @@
                                           "tags":  [
                                                        "dirt",
                                                        "roadside",
-                                                       "safe_zone",
                                                        "settlement"
                                                    ]
                                       },
@@ -59559,11 +59528,7 @@
                       "landmarks":  [
 
                                     ],
-                      "safeZone":  {
-                                       "name":  "Red Laboratory",
-                                       "district":  "Red Hollow",
-                                       "difficult":  true
-                                   },
+                      "safeZone":  null,
                       "road":  {
                                    "present":  true,
                                    "connections":  [
@@ -60403,6 +60368,7 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
+                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -60449,7 +60415,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "Raven Line"
                                               ],
                                     "stop":  null
                                 },
@@ -60639,7 +60605,6 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
-                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -60686,7 +60651,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "Raven Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -60898,7 +60863,6 @@
                                           "tags":  [
                                                        "dirt",
                                                        "roadside",
-                                                       "safe_zone",
                                                        "settlement"
                                                    ]
                                       },
@@ -60922,11 +60886,7 @@
                       "landmarks":  [
 
                                     ],
-                      "safeZone":  {
-                                       "name":  "Grey Army Base",
-                                       "district":  "Raven Reach",
-                                       "difficult":  true
-                                   },
+                      "safeZone":  null,
                       "road":  {
                                    "present":  true,
                                    "connections":  [
@@ -61399,6 +61359,7 @@
                                           "terrain":  "grassland",
                                           "tags":  [
                                                        "grassland",
+                                                       "metro_route",
                                                        "radioactive",
                                                        "roadside"
                                                    ]
@@ -61447,7 +61408,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "South Line"
                                               ],
                                     "stop":  null
                                 },
@@ -61519,7 +61480,6 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
-                                                       "metro_route",
                                                        "radioactive",
                                                        "roadside"
                                                    ]
@@ -61568,7 +61528,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "South Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -62667,7 +62627,8 @@
                                                        "dirt",
                                                        "fortified",
                                                        "military",
-                                                       "roadside"
+                                                       "roadside",
+                                                       "safe_zone"
                                                    ]
                                       },
                       "district":  {
@@ -62693,7 +62654,11 @@
                                                       }
                                         }
                                     ],
-                      "safeZone":  null,
+                      "safeZone":  {
+                                       "name":  "Red Laboratory",
+                                       "district":  "Red Hollow",
+                                       "difficult":  true
+                                   },
                       "road":  {
                                    "present":  true,
                                    "connections":  [
@@ -62797,6 +62762,8 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
+                                                       "metro_route",
+                                                       "metro_station",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -62853,9 +62820,21 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "South Line"
                                               ],
-                                    "stop":  null
+                                    "stop":  {
+                                                 "name":  "Red Hollow Exchange",
+                                                 "major":  true,
+                                                 "lines":  [
+                                                               "South Line"
+                                                           ],
+                                                 "accessPath":  [
+                                                                    "10,20",
+                                                                    "11,20",
+                                                                    "12,20",
+                                                                    "13,20"
+                                                                ]
+                                             }
                                 },
                       "neighbors":  [
                                         {
@@ -62925,6 +62904,7 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
+                                                       "metro_route",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -62980,7 +62960,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "South Line"
                                               ],
                                     "stop":  null
                                 },
@@ -63053,6 +63033,7 @@
                                           "tags":  [
                                                        "dirt",
                                                        "highway",
+                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -63099,7 +63080,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "South Line"
                                               ],
                                     "stop":  null
                                 },
@@ -63171,6 +63152,7 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
+                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -63217,7 +63199,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "South Line"
                                               ],
                                     "stop":  null
                                 },
@@ -63289,6 +63271,7 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
+                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -63336,7 +63319,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "South Line"
                                               ],
                                     "stop":  null
                                 },
@@ -63408,6 +63391,7 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
+                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -63455,7 +63439,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "South Line"
                                               ],
                                     "stop":  null
                                 },
@@ -64292,6 +64276,8 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
+                                                       "metro_route",
+                                                       "metro_station",
                                                        "roadside"
                                                    ]
                                       },
@@ -64339,9 +64325,18 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "South Line"
                                               ],
-                                    "stop":  null
+                                    "stop":  {
+                                                 "name":  "Southwatch Exchange",
+                                                 "major":  true,
+                                                 "lines":  [
+                                                               "South Line"
+                                                           ],
+                                                 "accessPath":  [
+                                                                    "1,21"
+                                                                ]
+                                             }
                                 },
                       "neighbors":  [
                                         {
@@ -64412,7 +64407,6 @@
                                           "tags":  [
                                                        "dirt",
                                                        "metro_route",
-                                                       "metro_station",
                                                        "radioactive",
                                                        "roadside"
                                                    ]
@@ -64463,16 +64457,7 @@
                                     "lines":  [
                                                   "South Line"
                                               ],
-                                    "stop":  {
-                                                 "name":  "Southwatch Exchange",
-                                                 "major":  true,
-                                                 "lines":  [
-                                                               "South Line"
-                                                           ],
-                                                 "accessPath":  [
-                                                                    "2,21"
-                                                                ]
-                                             }
+                                    "stop":  null
                                 },
                       "neighbors":  [
                                         {
@@ -65025,7 +65010,6 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
-                                                       "metro_route",
                                                        "radioactive",
                                                        "roadside",
                                                        "settlement"
@@ -65082,7 +65066,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "South Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -65678,6 +65662,7 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
+                                                       "metro_route",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -65734,7 +65719,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "South Line"
                                               ],
                                     "stop":  null
                                 },
@@ -66438,7 +66423,6 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
-                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -66486,7 +66470,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "South Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -68039,6 +68023,8 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
+                                                       "metro_route",
+                                                       "metro_station",
                                                        "radioactive",
                                                        "roadside",
                                                        "safe_zone",
@@ -68100,9 +68086,19 @@
                                   },
                       "metro":  {
                                     "lines":  [
-
+                                                  "South Line"
                                               ],
-                                    "stop":  null
+                                    "stop":  {
+                                                 "name":  "Dustfield Exchange",
+                                                 "major":  true,
+                                                 "lines":  [
+                                                               "South Line"
+                                                           ],
+                                                 "accessPath":  [
+                                                                    "6,22",
+                                                                    "7,22"
+                                                                ]
+                                             }
                                 },
                       "neighbors":  [
                                         {
@@ -68173,7 +68169,6 @@
                                           "tags":  [
                                                        "dirt",
                                                        "metro_route",
-                                                       "metro_station",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -68232,18 +68227,7 @@
                                     "lines":  [
                                                   "South Line"
                                               ],
-                                    "stop":  {
-                                                 "name":  "Dustfield Exchange",
-                                                 "major":  true,
-                                                 "lines":  [
-                                                               "South Line"
-                                                           ],
-                                                 "accessPath":  [
-                                                                    "6,22",
-                                                                    "7,22",
-                                                                    "8,22"
-                                                                ]
-                                             }
+                                    "stop":  null
                                 },
                       "neighbors":  [
                                         {
@@ -68704,7 +68688,6 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
-                                                       "metro_route",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -68761,7 +68744,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "South Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -68833,7 +68816,6 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
-                                                       "metro_route",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -68890,7 +68872,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "South Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -68962,7 +68944,6 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
-                                                       "metro_route",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -69017,7 +68998,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "South Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -69090,7 +69071,6 @@
                                           "tags":  [
                                                        "dirt",
                                                        "highway",
-                                                       "metro_route",
                                                        "roadside"
                                                    ]
                                       },
@@ -69137,7 +69117,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "South Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -69209,7 +69189,6 @@
                                           "terrain":  "dirt",
                                           "tags":  [
                                                        "dirt",
-                                                       "metro_route",
                                                        "roadside",
                                                        "settlement"
                                                    ]
@@ -69265,7 +69244,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "South Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -69338,7 +69317,6 @@
                                           "tags":  [
                                                        "dirt",
                                                        "fortified",
-                                                       "metro_route",
                                                        "military",
                                                        "roadside"
                                                    ]
@@ -69398,7 +69376,7 @@
                                   },
                       "metro":  {
                                     "lines":  [
-                                                  "South Line"
+
                                               ],
                                     "stop":  null
                                 },
@@ -69720,6 +69698,7 @@
                                                        "fortified",
                                                        "military",
                                                        "roadside",
+                                                       "safe_zone",
                                                        "settlement"
                                                    ]
                                       },
@@ -69754,7 +69733,11 @@
                                                       }
                                         }
                                     ],
-                      "safeZone":  null,
+                      "safeZone":  {
+                                       "name":  "Grey Army Base",
+                                       "district":  "Raven Reach",
+                                       "difficult":  true
+                                   },
                       "road":  {
                                    "present":  true,
                                    "connections":  [

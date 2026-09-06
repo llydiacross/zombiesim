@@ -66,7 +66,7 @@ $CellDirectory = (Resolve-Path $CellDirectory).Path
 $clearedItems = 0
 if ($ClearCellDirectory) {
     $projectRoot = (Resolve-Path (Split-Path -Parent $PSScriptRoot)).Path.TrimEnd('\')
-    $expectedCellDirectory = (Join-Path $projectRoot 'maps\src').TrimEnd('\')
+    $expectedCellDirectory = (Join-Path $projectRoot 'generated\src').TrimEnd('\')
     if (-not [string]::Equals($CellDirectory.TrimEnd('\'), $expectedCellDirectory, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "-ClearCellDirectory only supports the project source directory: $expectedCellDirectory"
     }
@@ -161,6 +161,7 @@ foreach ($recipe in $recipes) {
     $requiredRecipeNames[$recipe.cellTemplateFilename.ToLowerInvariant()] = $true
 }
 $safeZoneMapNames = @{}
+$safeZoneSourceMaps = @{}
 foreach ($safeZoneMap in $safeZoneMaps) {
     $mapFilename = [string]$safeZoneMap.mapFilename
     $templateFilename = [string]$safeZoneMap.templateFilename
@@ -170,10 +171,19 @@ foreach ($safeZoneMap in $safeZoneMaps) {
     if ([System.IO.Path]::GetFileName($templateFilename) -ne $templateFilename -or [System.IO.Path]::GetExtension($templateFilename) -ine '.vmf') {
         throw "Standalone safe-zone template must be a .vmf filename without a path: $templateFilename"
     }
-    if ($requiredRecipeNames.ContainsKey($mapFilename.ToLowerInvariant()) -or $safeZoneMapNames.ContainsKey($mapFilename.ToLowerInvariant())) {
-        throw "Standalone safe-zone map filename conflicts with another source map: $mapFilename"
+    $mapFilenameKey = $mapFilename.ToLowerInvariant()
+    if ($requiredRecipeNames.ContainsKey($mapFilenameKey)) {
+        throw "Standalone safe-zone map filename conflicts with a city recipe source map: $mapFilename"
     }
-    $safeZoneMapNames[$mapFilename.ToLowerInvariant()] = $true
+    if ($safeZoneSourceMaps.ContainsKey($mapFilenameKey)) {
+        $existingTemplateFilename = [string]$safeZoneSourceMaps[$mapFilenameKey].templateFilename
+        if (-not [string]::Equals($existingTemplateFilename, $templateFilename, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "Standalone safe-zone map '$mapFilename' references conflicting templates: $existingTemplateFilename and $templateFilename"
+        }
+        continue
+    }
+    $safeZoneMapNames[$mapFilenameKey] = $true
+    $safeZoneSourceMaps[$mapFilenameKey] = $safeZoneMap
 }
 $created = 0
 $refreshed = 0
@@ -181,6 +191,7 @@ $skipped = 0
 $pruned = 0
 $safeZoneMapsWritten = 0
 $safeZoneMapsSkipped = 0
+$prunedStandaloneDenMaps = 0
 if ($PruneStaleGenerated) {
     foreach ($existingVmf in (Get-ChildItem -Path $CellDirectory -Filter '*.vmf' -File)) {
         if ($requiredRecipeNames.ContainsKey($existingVmf.Name.ToLowerInvariant()) -or -not (Test-GeneratedCellVmf $existingVmf.FullName)) {
@@ -190,6 +201,17 @@ if ($PruneStaleGenerated) {
             Remove-Item -LiteralPath $existingVmf.FullName
         }
         $pruned++
+    }
+}
+if ($RefreshGenerated -or $Force) {
+    foreach ($existingDenMap in (Get-ChildItem -Path $CellDirectory -Filter 'zn_den_*' -File)) {
+        if ($safeZoneMapNames.ContainsKey([System.IO.Path]::ChangeExtension($existingDenMap.Name, '.vmf').ToLowerInvariant())) {
+            continue
+        }
+        if (-not $WhatIf) {
+            Remove-Item -LiteralPath $existingDenMap.FullName -Force
+        }
+        $prunedStandaloneDenMaps++
     }
 }
 foreach ($recipe in $recipes) {
@@ -209,7 +231,7 @@ foreach ($recipe in $recipes) {
     $created++
 }
 
-foreach ($safeZoneMap in $safeZoneMaps) {
+foreach ($safeZoneMap in ($safeZoneSourceMaps.Values | Sort-Object mapFilename)) {
     $templateVmfPath = Join-Path $safeZoneTemplateDirectory $safeZoneMap.templateFilename
     $outputVmfPath = Join-Path $CellDirectory $safeZoneMap.mapFilename
     if (-not (Test-Path -LiteralPath $templateVmfPath -PathType Leaf)) {
@@ -231,4 +253,4 @@ foreach ($safeZoneMap in $safeZoneMaps) {
     $safeZoneMapsWritten++
 }
 
-Write-Output "Cell recipes: $($recipes.Count); written: $created; refreshed generated: $refreshed; skipped existing: $skipped; standalone dens: $($safeZoneMaps.Count); dens copied: $safeZoneMapsWritten; dens skipped: $safeZoneMapsSkipped; pruned stale generated: $pruned; cleared source items: $clearedItems; output: $CellDirectory"
+Write-Output "Cell recipes: $($recipes.Count); written: $created; refreshed generated: $refreshed; skipped existing: $skipped; safe-room entrances: $($safeZoneMaps.Count); reusable safe-room maps: $($safeZoneSourceMaps.Count); maps copied: $safeZoneMapsWritten; maps skipped: $safeZoneMapsSkipped; pruned stale safe-room files: $prunedStandaloneDenMaps; pruned stale generated: $pruned; cleared source items: $clearedItems; output: $CellDirectory"

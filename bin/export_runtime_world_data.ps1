@@ -73,7 +73,7 @@ if ([string]::IsNullOrWhiteSpace($PlanData) -or -not (Test-Path -LiteralPath $Pl
 }
 if ([string]::IsNullOrWhiteSpace($BuildDirectory)) {
     $buildDirectoryKey = if ($Preview) { 'previewBuildDirectory' } else { 'buildDirectory' }
-    $buildDirectoryFallback = if ($Preview) { 'maps/build_preview' } else { 'maps/build' }
+    $buildDirectoryFallback = if ($Preview) { 'generated/build_preview' } else { 'generated/build' }
     $buildDirectorySetting = if ($generatorSettings.paths.ContainsKey($buildDirectoryKey)) { $generatorSettings.paths[$buildDirectoryKey] } else { $buildDirectoryFallback }
     $BuildDirectory = Join-Path $projectRoot $buildDirectorySetting
 }
@@ -138,7 +138,7 @@ foreach ($safeZoneMap in @($plan.safeZoneMaps)) {
     if ($safeZoneMapByCoordinate.ContainsKey($key) -or [System.IO.Path]::GetFileName($mapFilename) -ne $mapFilename -or [System.IO.Path]::GetExtension($mapFilename) -ine '.vmf') {
         throw "Template plan has an invalid standalone safe-zone map at $key. Re-run plan_cell_templates.ps1."
     }
-    $safeZoneMapByCoordinate[$key] = [System.IO.Path]::GetFileNameWithoutExtension($mapFilename)
+    $safeZoneMapByCoordinate[$key] = $safeZoneMap
 }
 if (@($map.safeZones).Count -gt 0 -and $safeZoneMapByCoordinate.Count -eq 0) {
     throw 'Template plan has no standalone safe-zone maps. Re-run plan_cell_templates.ps1.'
@@ -178,6 +178,10 @@ foreach ($mapCell in $mapCells) {
 $safeZoneIndexByCoordinate = @{}
 $safeZoneRequiredMapNames = @{}
 $runtimeSafeZones = [System.Collections.Generic.List[object]]::new()
+$originSafeZoneId = $null
+if ($null -ne $map.map.origin) {
+    $originSafeZoneKey = Get-CoordinateKey ([int]$map.map.origin.cellX) ([int]$map.map.origin.cellY)
+}
 foreach ($safeZone in @($map.safeZones | Sort-Object name)) {
     $safeZoneName = Get-RecordName $safeZone 'Safe zone'
     $safeZoneKey = Get-CoordinateKey ([int]$safeZone.x) ([int]$safeZone.y)
@@ -191,17 +195,29 @@ foreach ($safeZone in @($map.safeZones | Sort-Object name)) {
     if (-not $safeZoneMapByCoordinate.ContainsKey($safeZoneKey)) {
         throw "Safe zone '$safeZoneName' has no standalone map at $safeZoneKey. Re-run plan_cell_templates.ps1."
     }
-    $safeZoneMapName = $safeZoneMapByCoordinate[$safeZoneKey]
+    $safeZoneMap = $safeZoneMapByCoordinate[$safeZoneKey]
+    $safeZoneMapName = [System.IO.Path]::GetFileNameWithoutExtension([string]$safeZoneMap.mapFilename)
+    $safeZoneId = "safezone-$([int]$safeZone.x)-$([int]$safeZone.y)"
+    $isOrigin = $null -ne $originSafeZoneKey -and $safeZoneKey -eq $originSafeZoneKey
     $safeZoneRequiredMapNames[$safeZoneMapName.ToLowerInvariant()] = $safeZoneMapName
     $safeZoneIndexByCoordinate[$safeZoneKey] = $runtimeSafeZones.Count
     $runtimeSafeZones.Add([ordered]@{
+        id = $safeZoneId
         name = $safeZoneName
+        isOrigin = $isOrigin
         district = $districtId
         cell = Get-CellId ([int]$safeZone.x) ([int]$safeZone.y) $width
         difficult = [bool]$safeZone.difficult
         map = $safeZoneMapName
+        biome = [string]$safeZoneMap.biome
+        landmarkVariant = [string]$safeZoneMap.landmarkVariant
     })
+    if ($isOrigin) {
+        if ($null -ne $originSafeZoneId) { throw 'Multiple safe zones are marked as the world origin.' }
+        $originSafeZoneId = $safeZoneId
+    }
 }
+if ($null -eq $originSafeZoneId) { throw 'The world-origin city cell has no safe-zone entrance.' }
 
 $runtimeMetroStops = [System.Collections.Generic.List[object]]::new()
 $metroStopIndexByName = @{}
@@ -322,6 +338,7 @@ $runtimeWorld = [ordered]@{
         grid = @($width, $height)
         origin = @([int]$map.map.origin.worldX, [int]$map.map.origin.worldY)
         mapDirectory = $mapDirectory
+        originSafeZoneId = $originSafeZoneId
         mapManifestSha256 = $mapHash
         templatePlanSha256 = $planHash
     }

@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "paths": {
     "templateDirectory": "tiletemplates",
-    "cellDirectory": "maps/src",
-    "previewCellDirectory": "maps/src_preview",
+    "cellDirectory": "generated/src",
+    "previewCellDirectory": "generated/src_preview",
     "baseCellTemplate": "celltemplates/template_border_s.vmf",
     "scriptOutputDirectory": "bin",
-    "buildDirectory": "maps/build",
-    "previewBuildDirectory": "maps/build_preview",
+    "buildDirectory": "generated/build",
+    "previewBuildDirectory": "generated/build_preview",
     "releaseMapDirectory": "content/maps/city",
     "previewReleaseMapDirectory": "content/maps/preview",
     "runtimeWorldData": "content/data_static/zombiesim_world.json",
@@ -129,11 +129,30 @@
       "carparks": "^carparks/tile_carpark_[a-e]\\.vmf$"
     },
     "safeZones": {
-      "templatesByTerrain": {
-        "grassland": "cell_gr_safezone.vmf",
-        "sandy": "cell_sa_safezone.vmf",
-        "dirt": "cell_di_safezone.vmf"
-      }
+      "biomePriority": ["radioactive", "fortified", "military", "medical", "emergency_services", "religious", "service_station", "financial", "commercial", "recreation", "parkland"],
+      "biomeCodes": {
+        "grasslands": "gr",
+        "settlement": "st",
+        "commercial": "co",
+        "financial": "fi",
+        "radioactive": "ra",
+        "fortified": "fo",
+        "military": "mi",
+        "medical": "md",
+        "emergency_services": "es",
+        "religious": "rl",
+        "service_station": "ss",
+        "recreation": "rc",
+        "parkland": "pk"
+      },
+      "defaultBiome": "grasslands",
+      "landmarkPriority": ["Hospital", "Army Base", "Bunker"],
+      "landmarkVariants": {
+        "Hospital": "hospital",
+        "Army Base": "army_base",
+        "Bunker": "bunker"
+      },
+      "templateFilenameFormat": "cell_{biome}_safezone{landmarkSuffix}.vmf"
     },
     "terrainTemplates": {
       "grassland": "terrain/tile_grass.vmf",

@@ -1949,18 +1949,35 @@ foreach ($key in $eligibleLandmarkCandidates) {
 }
 
 # The world origin and every district receive a named safe-zone den on a reachable local road.
+# Prefer Hospital, Army Base, and Bunker cells so their standalone safe-room variants are reachable.
 $denCells[$originKey] = @{ Name = "The Evac Zone"; District = -1; Difficult = $false }
+$safeRoomLandmarkPriority = @("Hospital", "Army Base", "Bunker")
 for ($districtIndex = 0; $districtIndex -lt $zones.Count; $districtIndex++) {
     $zone = $zones[$districtIndex]
     $isDifficultDistrict = $zone.X -ge [int]($GridCells * 0.65) -or $zone.Y -ge [int]($GridCells * 0.75)
     $districtCandidates = @($eligibleLandmarkCandidates | Where-Object {
-        if ($denCells.ContainsKey($_) -or $landmarkCells.ContainsKey($_)) { return $false }
+        if ($denCells.ContainsKey($_)) { return $false }
         $coordinates = $_ -split ","
         [Math]::Sqrt([Math]::Pow([int]$coordinates[0] - $zone.X, 2) + [Math]::Pow([int]$coordinates[1] - $zone.Y, 2)) -le $zone.Radius
+    })
+    $landmarkSafeRoomCandidates = @($districtCandidates | Where-Object {
+        $landmarkNames = @($landmarkCells[$_] | ForEach-Object { $_.Name })
+        @($landmarkNames | Where-Object { $_ -in $safeRoomLandmarkPriority }).Count -gt 0
     } | Sort-Object {
+        $landmarkNames = @($landmarkCells[$_] | ForEach-Object { $_.Name })
+        ($safeRoomLandmarkPriority | Where-Object { $_ -in $landmarkNames } | ForEach-Object { [array]::IndexOf($safeRoomLandmarkPriority, $_) } | Measure-Object -Minimum).Minimum
+    }, {
         $coordinates = $_ -split ","
         [Math]::Abs([int]$coordinates[0] - $zone.X) + [Math]::Abs([int]$coordinates[1] - $zone.Y)
     })
+    if ($landmarkSafeRoomCandidates.Count -gt 0) {
+        $districtCandidates = $landmarkSafeRoomCandidates
+    } else {
+        $districtCandidates = @($districtCandidates | Where-Object { -not $landmarkCells.ContainsKey($_) } | Sort-Object {
+            $coordinates = $_ -split ","
+            [Math]::Abs([int]$coordinates[0] - $zone.X) + [Math]::Abs([int]$coordinates[1] - $zone.Y)
+        })
+    }
     if ($districtCandidates.Count -eq 0) {
         $districtCandidates = @($eligibleLandmarkCandidates | Where-Object { -not $denCells.ContainsKey($_) -and -not $landmarkCells.ContainsKey($_) })
     }

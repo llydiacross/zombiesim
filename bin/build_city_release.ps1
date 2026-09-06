@@ -48,7 +48,7 @@ if ([string]::IsNullOrWhiteSpace($SourceDirectory)) {
 }
 if ([string]::IsNullOrWhiteSpace($BuildDirectory)) {
     $buildDirectoryKey = if ($Preview) { 'previewBuildDirectory' } else { 'buildDirectory' }
-    $buildDirectoryFallback = if ($Preview) { 'maps/build_preview' } else { 'maps/build' }
+    $buildDirectoryFallback = if ($Preview) { 'generated/build_preview' } else { 'generated/build' }
     $buildDirectorySetting = if ($generatorSettings.paths.ContainsKey($buildDirectoryKey)) { $generatorSettings.paths[$buildDirectoryKey] } else { $buildDirectoryFallback }
     $BuildDirectory = Join-Path $projectRoot $buildDirectorySetting
 }

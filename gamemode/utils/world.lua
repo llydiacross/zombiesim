@@ -160,7 +160,8 @@ function World:Load(path)
 		cellsByMap = {},
 		cellsByDistrict = {},
 		cellsByLandmark = {},
-		cellsByMetroLine = {}
+		cellsByMetroLine = {},
+		safeZonesById = {}
 	}
 
 	for _, cell in ipairs(data.cells) do
@@ -201,6 +202,24 @@ function World:Load(path)
 		self.Data = nil
 		self.Indexes = nil
 		self.LastError = "Runtime world data at " .. path .. " does not contain a complete grid"
+		return false, self.LastError
+	end
+
+	for _, safeZone in ipairs(data.safeZones or {}) do
+		if type(safeZone.id) ~= "string" or safeZone.id == "" or indexes.safeZonesById[safeZone.id] then
+			self.Data = nil
+			self.Indexes = nil
+			self.LastError = "Runtime world data at " .. path .. " has duplicate or invalid safe-zone ids"
+			return false, self.LastError
+		end
+
+		indexes.safeZonesById[safeZone.id] = safeZone
+	end
+
+	if type(data.world.originSafeZoneId) ~= "string" or not indexes.safeZonesById[data.world.originSafeZoneId] then
+		self.Data = nil
+		self.Indexes = nil
+		self.LastError = "Runtime world data at " .. path .. " has no valid origin safe-zone id"
 		return false, self.LastError
 	end
 
@@ -371,15 +390,90 @@ function World:GetDistrict(reference, y)
 end
 
 // Returns the safe-zone record for a cell, or nil outside a safe zone.
+// Its biome and landmarkVariant values identify the selected standalone den template.
 function World:GetSafeZone(reference, y)
 	local cell = self:ResolveCell(reference, y)
 	return cell and indexedValue(self.Data.safeZones, cell.safeZone) or nil
+end
+
+// Retrieves one standalone safe-zone record by its stable id, such as "safezone-3-17".
+function World:GetSafeZoneById(safeZoneId)
+	if not self:IsLoaded() or type(safeZoneId) ~= "string" or safeZoneId == "" then
+		return nil
+	end
+
+	return self.Indexes.safeZonesById[safeZoneId]
+end
+
+// Returns the safe-room entrance anchored at the generated world origin.
+function World:GetOriginSafeZone()
+	if not self:IsLoaded() then
+		return nil
+	end
+
+	return self:GetSafeZoneById(self.Data.world.originSafeZoneId)
 end
 
 // Returns the standalone den transition name for a safe-zone cell, or nil elsewhere.
 // Dens are separate maps, not city-grid cells, even though their entrance belongs to a city cell.
 function World:GetSafeZoneMap(reference, y)
 	local safeZone = self:GetSafeZone(reference, y)
+	if not safeZone or type(safeZone.map) ~= "string" or safeZone.map == "" then
+		return nil
+	end
+
+	return self.Data.world.mapDirectory .. "/" .. safeZone.map
+end
+
+// Returns the reusable safe-room transition map anchored at the generated world origin.
+function World:GetOriginSafeZoneMap()
+	local safeZone = self:GetOriginSafeZone()
+	if not safeZone or type(safeZone.map) ~= "string" or safeZone.map == "" then
+		return nil
+	end
+
+	return self.Data.world.mapDirectory .. "/" .. safeZone.map
+end
+
+// Returns the current safe-zone record for a player using its persisted CellX/CellY.
+// It returns nil when the player has no valid city position or is outside a safe-zone entrance.
+function World:GetPlayerSafeZone(player)
+	if player == nil then
+		return nil
+	end
+
+	local x = tonumber(player.CellX)
+	local y = tonumber(player.CellY)
+	if not x or not y then
+		return nil
+	end
+
+	return self:GetSafeZone(math.floor(x), math.floor(y))
+end
+
+// Returns the reusable safe-room transition map for a player's current city cell.
+function World:GetPlayerSafeZoneMap(player)
+	local safeZone = self:GetPlayerSafeZone(player)
+	if not safeZone or type(safeZone.map) ~= "string" or safeZone.map == "" then
+		return nil
+	end
+
+	return self.Data.world.mapDirectory .. "/" .. safeZone.map
+end
+
+// Returns the standalone safe room the player is currently in, not the city entrance they can access.
+// CurrentSafeZoneId is persisted independently because CellX/CellY remains the player's city position.
+function World:GetPlayerCurrentSafeZone(player)
+	if player == nil then
+		return nil
+	end
+
+	return self:GetSafeZoneById(player.CurrentSafeZoneId)
+end
+
+// Returns the current standalone safe-room transition map for a player, or nil while they are in the city.
+function World:GetPlayerCurrentSafeZoneMap(player)
+	local safeZone = self:GetPlayerCurrentSafeZone(player)
 	if not safeZone or type(safeZone.map) ~= "string" or safeZone.map == "" then
 		return nil
 	end
