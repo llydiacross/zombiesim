@@ -5,7 +5,38 @@
     "cellDirectory": "maps/src",
     "previewCellDirectory": "maps/src_preview",
     "baseCellTemplate": "celltemplates/template_border_s.vmf",
-    "scriptOutputDirectory": "bin"
+    "scriptOutputDirectory": "bin",
+    "buildDirectory": "maps/build",
+    "previewBuildDirectory": "maps/build_preview",
+    "releaseMapDirectory": "content/maps/city",
+    "previewReleaseMapDirectory": "content/maps/preview",
+    "runtimeWorldData": "content/data_static/zombiesim_world.json",
+    "previewRuntimeWorldData": "content/data_static/zombiesim_world_preview.json"
+  },
+  "compilation": {
+    "activeProfile": "stock-gmod",
+    "progressRefreshMilliseconds": 1000,
+    "stageTimeoutSeconds": {
+      "vbsp": 300,
+      "vvis": 900,
+      "vrad": 1800
+    },
+    "deferredGraceSeconds": 300,
+    "profiles": {
+      "stock-gmod": {
+        "toolDirectory": "",
+        "executables": {
+          "vbsp": "vbsp.exe",
+          "vvis": "vvis.exe",
+          "vrad": "vrad.exe"
+        },
+        "arguments": {
+          "vbsp": ["-game", "{gameDirectory}", "{mapVmf}"],
+          "vvis": ["-game", "{gameDirectory}", "{mapBsp}"],
+          "vrad": ["-game", "{gameDirectory}", "{mapBsp}"]
+        }
+      }
+    }
   },
   "directions": {
     "cardinal": ["N", "E", "S", "W"],

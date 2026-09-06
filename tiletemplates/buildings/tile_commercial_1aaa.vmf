@@ -2534,7 +2534,7 @@ entity
 entity
 {
 	"id" "3262"
-	"classname" "prop_static"
+	"classname" "prop_dynamic"
 	"angles" "0 0 0"
 	"fademindist" "-1"
 	"fadescale" "1"

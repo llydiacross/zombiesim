@@ -25,11 +25,11 @@ Based upon Dead Frontier In Gmod.
   
   Further into content is the `maps/city` folder
 
-  These are the maps of the city. The filename can be used to deduce which cell it is by following this table
+   These are compiled reusable recipe maps for the city. A recipe can serve more than one logical city cell, so its filename does not identify a coordinate.
 
-  `zn_<identifier>_<x>_<y>_<z:optional>.bsp`
+   `content/data_static/zombiesim_world.json` maps every cell coordinate to its selected recipe BSP and provides the navigation graph and gameplay metadata. Build a transition map name from `world.mapDirectory .. "/" .. cell.map`; it is the authoritative lookup for map transitions.
 
-   - x and y are the coordinates of the cell in the city, z is the layer/floor of the cell, identifier is a string that can be used to identify the map, for example "downtown" or "suburbs" or commonly "city"
+   Recipe BSPs use the generated VMF basename, for example `zn_grassland_open_none.bsp`.
 
 - ./source
 

@@ -769,7 +769,7 @@ entity
 entity
 {
 	"id" "183"
-	"classname" "prop_static"
+	"classname" "prop_dynamic"
 	"angles" "0 90 0"
 	"fademindist" "-1"
 	"fadescale" "1"

@@ -18,18 +18,71 @@ Settings use JSON. Text must be inside double quotes, items in a list need comma
 Run these commands from the project root. This uses the small preview city and leaves production cell VMFs alone.
 
 ```powershell
-.\bin\generate_map_grid.ps1 -Preview -Seed 293848
-.\bin\plan_cell_templates.ps1 -Preview -MapData .\bin\preview_grid_24x24_seed_293848.json
-.\bin\build_cell_vmfs.ps1 -Preview -PlanData .\bin\preview_grid_24x24_seed_293848_template_plan.json -RefreshGenerated -PruneStaleGenerated
-.\bin\expand_cell_filenames.ps1 -PlanData .\bin\preview_grid_24x24_seed_293848_template_plan.json
-.\bin\check_required_cells.ps1 -Preview -RequiredCellList .\bin\preview_grid_24x24_seed_293848_required_cell_vmfs.txt
+.\bin\generate_map_grid.ps1 -Preview -Seed 1337
+.\bin\plan_cell_templates.ps1 -Preview -MapData .\bin\preview_grid_24x24_seed_1337.json
+.\bin\build_cell_vmfs.ps1 -Preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json -RefreshGenerated -PruneStaleGenerated
+.\bin\expand_cell_filenames.ps1 -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json
+.\bin\check_required_cells.ps1 -Preview -RequiredCellList .\bin\preview_grid_24x24_seed_1337_required_cell_vmfs.txt
 ```
 
 `-Preview` makes the map generator use `mapGeneration.previewGridCells` and makes planning, building, and checking use `paths.previewCellDirectory` when no folder is supplied.
 
-`-Seed 293848` is a one-run override. It does not edit the settings file. Keep a seed you like so you can reproduce the same city after changing unrelated assets.
+`-Seed 1337` is a one-run override. It does not edit the settings file. Keep a seed you like so you can reproduce the same city after changing unrelated assets.
 
 Every generator script also accepts `-SettingsPath <file>`. This lets you keep named presets, such as a testing copy or a large-city copy, without repeatedly editing the main settings file.
+
+## Preview Compile Check
+
+Before committing to the long VVIS and VRAD production compile, run the fast structural check below. It runs VBSP against every preview recipe, so it validates VMF syntax, referenced instances, skybox materials, brushes, props, and BSP generation. It does not calculate visibility or lightmaps.
+
+```powershell
+.\bin\build_city_release.ps1 -Preview -VBSPOnly -OnlyRequiredMaps -CleanStagedCity
+```
+
+This uses `paths.previewCellDirectory`, writes intermediate files to `paths.previewBuildDirectory`, stages test BSPs in `paths.previewReleaseMapDirectory`, and exports a separate runtime index at `paths.previewRuntimeWorldData`. It leaves `content/maps/city` and `zombiesim_world.json` untouched. Omit `-VBSPOnly` only when you want the slower preview VVIS and VRAD pass.
+
+## Compile Monitoring and Profiles
+
+The compiler prints its current map, stage, elapsed stage time, and remaining map count. It writes a `compile-report.json` beside the intermediate BSPs, for example `maps/build_preview/compile-report.json` for a preview. Each map record includes its stage status, exit code, duration, and stdout/stderr log paths.
+
+The default `compilation.activeProfile` is `stock-gmod`. Its VBSP, VVIS, and VRAD tools are resolved from Garry's Mod's `bin` directory and retain the existing `-game <garrysmod>` arguments. Set a longer or shorter one-run budget without editing the settings file:
+
+```powershell
+.\bin\compile_cell_vmfs.ps1 -Preview -VBSPOnly -VbspTimeoutSeconds 120 -DeferredGraceSeconds 180
+```
+
+When a stage reaches its timeout it is deferred, not killed, and the next map starts. After all normal work has started, the runner waits for `deferredGraceSeconds`, then records the remaining deferred work in the report. By default it returns an error while any map is failed or unfinished. Pass `-FinalizeWithIncomplete` to finish after writing the report without waiting further. That option does not stage an incomplete release through `build_city_release.ps1`; it stops before copying BSPs or writing runtime data.
+
+To use another compiler suite, add a complete profile under `compilation.profiles`, then select it with `compilation.activeProfile` or `-CompilerProfile`. `toolDirectory` may be absolute or project-relative. Argument templates are JSON arrays and may use `{gameDirectory}`, `{mapVmf}`, and `{mapBsp}`:
+
+```json
+"my-compiler": {
+	"toolDirectory": "C:\\Tools\\my-compiler",
+	"executables": { "vbsp": "vbsp.exe", "vvis": "vvis.exe", "vrad": "vrad.exe" },
+	"arguments": {
+		"vbsp": ["-game", "{gameDirectory}", "{mapVmf}"],
+		"vvis": ["-game", "{gameDirectory}", "{mapBsp}"],
+		"vrad": ["-game", "{gameDirectory}", "{mapBsp}"]
+	}
+}
+```
+
+Hammer++ is an editor/orchestration tool and BSPSource is a decompiler, so neither is a drop-in compiler profile. Compatibility of third-party compiler suites, including HVAC/HAC-style tools, with Garry's Mod's Source branch is not established here. Keep them opt-in and validate a preview `-VBSPOnly` build before a full VVIS/VRAD pass.
+
+## Production Release Workflow
+
+After reviewing the preview, regenerate production recipes so they inherit the current base cell template, including its lighting and fog entities. Then build the release:
+
+```powershell
+.\bin\build_cell_vmfs.ps1 -PlanData .\bin\map_grid_64x64_seed_1337_template_plan.json -RefreshGenerated
+.\bin\build_city_release.ps1 -MapData .\bin\map_grid_64x64_seed_1337.json -PlanData .\bin\map_grid_64x64_seed_1337_template_plan.json -CleanStagedCity
+```
+
+`build_city_release.ps1` runs the sequential VBSP, VVIS, and VRAD compiler pass for every VMF in `paths.cellDirectory`, using `maps/build` as an intermediate folder. It copies only the recipe BSPs selected by the plan to `paths.releaseMapDirectory` and writes the compact gameplay world index to `paths.runtimeWorldData`.
+
+The release script refreshes generated recipe VMFs first, so changes to the base cell template are included in the compile. Pass `-SkipRecipeRefresh` only when the selected source recipes have already been deliberately refreshed.
+
+The BSP names identify reusable recipes, not coordinates. The runtime index maps every logical cell coordinate to its selected BSP name and contains its navigation graph, environment, safe zone, landmark, metro, and atmosphere data. Build a map transition name from `world.mapDirectory .. "/" .. cell.map`, which defaults to `city/<recipe>`. Read the staged index in Garry's Mod with `file.Read("data_static/zombiesim_world.json", "GAME")` after it is packaged at the addon root.
 
 ## What Is Safe To Change?
 
@@ -78,6 +131,26 @@ These are project-relative folders and files. Use forward slashes or backslashes
 | `previewCellDirectory` | Preview output folder. | Default: `maps/src_preview`. Used by `-Preview` on planning, building, and checking scripts. |
 | `baseCellTemplate` | The border/base VMF inserted behind generated prefab instances. | Default: `celltemplates/template_border_s.vmf`. It must exist and contain a `cameras` block. |
 | `scriptOutputDirectory` | Folder for PNG previews, JSON plans, required-VMF lists, and filename keys. | Default: `bin`. |
+| `buildDirectory` | Intermediate compiler output folder. | Default: `maps/build`. The batch compiler copies VMFs here before creating BSP/VIS/RAD files. |
+| `previewBuildDirectory` | Intermediate compiler output folder for `-Preview`. | Default: `maps/build_preview`. It is isolated from production BSP artefacts. |
+| `releaseMapDirectory` | Release staging folder for compiled city BSPs. | Default: `content/maps/city`. The final release script copies only plan-referenced BSPs here. |
+| `previewReleaseMapDirectory` | Release staging folder for `-Preview` BSPs. | Default: `content/maps/preview`. The preview runtime index uses `preview` as its map directory. |
+| `runtimeWorldData` | Release staging path for the compact gameplay world index. | Default: `content/data_static/zombiesim_world.json`. Package it as root `data_static/zombiesim_world.json` and read it from the `GAME` mount. |
+| `previewRuntimeWorldData` | Release staging path for the compact `-Preview` gameplay world index. | Default: `content/data_static/zombiesim_world_preview.json`. Keep it separate from the production index. |
+
+## `compilation`
+
+These settings control the profile-driven VMF compiler runner. Command-line timeout/profile parameters override them for one command.
+
+| Setting | What it controls | Notes |
+| --- | --- | --- |
+| `activeProfile` | Compiler profile used when `-CompilerProfile` is omitted. | Default: `stock-gmod`. |
+| `progressRefreshMilliseconds` | How often the active-stage progress display refreshes. | Keep at least `100`. Default: `1000`. |
+| `stageTimeoutSeconds.vbsp`, `.vvis`, `.vrad` | Soft timeout budget for each compiler stage. | A stage is deferred after this budget while the remaining queue continues. Defaults: `300`, `900`, `1800`. |
+| `deferredGraceSeconds` | Extra wait after the normal queue for deferred compiler processes. | Default: `300`. |
+| `profiles.<name>.toolDirectory` | Folder containing that profile's executables. | Empty for the stock Garry's Mod `bin`; otherwise absolute or project-relative. |
+| `profiles.<name>.executables` | Names or absolute paths for `vbsp`, `vvis`, and `vrad`. | All three keys are required, including VBSP-only runs. |
+| `profiles.<name>.arguments` | Argument-template arrays for `vbsp`, `vvis`, and `vrad`. | Use the supported placeholders shown above. |
 
 ## `directions` (Advanced)
 

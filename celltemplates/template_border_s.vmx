@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "6"
+	"mapversion" "7"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "6"
+	"mapversion" "7"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -852,14 +852,99 @@ world
 			"visgroupautoshown" "1"
 		}
 	}
+	group
+	{
+		"id" "221"
+		editor
+		{
+			"color" "164 225 0"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+}
+entity
+{
+	"id" "222"
+	"classname" "info_player_start"
+	"angles" "0 90 0"
+	"origin" "0 -1512 33.00006"
+	editor
+	{
+		"color" "164 225 0"
+		"groupid" "221"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 11000]"
+	}
+}
+entity
+{
+	"id" "224"
+	"classname" "info_landmark"
+	"targetname" "SOUTH_ENTRANCE"
+	"origin" "0 -1536 40"
+	editor
+	{
+		"color" "164 225 0"
+		"groupid" "221"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 11500]"
+	}
+}
+entity
+{
+	"id" "226"
+	"classname" "info_landmark"
+	"targetname" "EAST_ENTRANCE"
+	"origin" "1536 0 40"
+	editor
+	{
+		"color" "164 225 0"
+		"groupid" "221"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 11500]"
+	}
+}
+entity
+{
+	"id" "228"
+	"classname" "info_landmark"
+	"targetname" "WEST_ENTRANCE"
+	"origin" "-1536 0 40"
+	editor
+	{
+		"color" "164 225 0"
+		"groupid" "221"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 11500]"
+	}
+}
+entity
+{
+	"id" "230"
+	"classname" "info_landmark"
+	"targetname" "NORTH_ENTRANCE"
+	"origin" "0 1472 40"
+	editor
+	{
+		"color" "164 225 0"
+		"groupid" "221"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 11500]"
+	}
 }
 cameras
 {
 	"activecamera" "0"
 	camera
 	{
-		"position" "[-2023.84 -1928.2 788.349]"
-		"look" "[-2013.05 -1913.08 635.104]"
+		"position" "[-1517.48 462.515 675.271]"
+		"look" "[-1377.24 425.46 622.475]"
 	}
 }
 cordons

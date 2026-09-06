@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "7"
+	"mapversion" "8"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,12 +89,12 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "7"
+	"mapversion" "8"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
 	"maxpropscreenwidth" "-1"
-	"skyname" "sky_day01_01"
+	"skyname" "painted"
 	solid
 	{
 		"id" "203"
@@ -868,7 +868,7 @@ entity
 	"id" "222"
 	"classname" "info_player_start"
 	"angles" "0 90 0"
-	"origin" "0 -1512 33.00006"
+	"origin" "0 -1512 33.0001"
 	editor
 	{
 		"color" "164 225 0"
@@ -940,11 +940,88 @@ entity
 }
 entity
 {
+	"id" "236"
+	"classname" "light_environment"
+	"_ambient" "255 255 255 20"
+	"_ambientHDR" "-1 -1 -1 1"
+	"_AmbientScaleHDR" "1"
+	"_light" "255 255 255 200"
+	"_lightHDR" "0 18 255 1"
+	"_lightscaleHDR" "1"
+	"angles" "0 0 0"
+	"pitch" "-75"
+	"targetname" "LIGHT_ENVIRONMENT"
+	"origin" "0 24 192"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "241"
+	"classname" "env_fog_controller"
+	"angles" "0 240 0"
+	"farz" "-1"
+	"fogblend" "1"
+	"fogcolor" "204 204 204"
+	"fogcolor2" "255 120 120"
+	"fogcolor2_hdr" "0 0 0"
+	"fogcolor_hdr" "0 0 0"
+	"fogdir" "1 0 0"
+	"fogend" "2000.0"
+	"fogmaxdensity" "1"
+	"fogstart" "200.0"
+	"targetname" "FOG_CONTROLLER"
+	"origin" "0 0 192"
+	editor
+	{
+		"color" "255 255 255"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 500]"
+	}
+}
+entity
+{
+	"id" "245"
+	"classname" "shadow_control"
+	"angles" "80 30 0"
+	"color" "0 0 0"
+	"distance" "750"
+	"targetname" "SHADOW_CONTROLLER"
+	"origin" "0 -24 192"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1000]"
+	}
+}
+entity
+{
+	"id" "254"
+	"classname" "env_cubemap"
+	"origin" "0 0 128"
+	editor
+	{
+		"color" "0 0 255"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
     "id" "643"
     "classname" "func_instance"
     "origin" "-1280 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1a.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
     "fixup_style" "0"
 }
 entity
@@ -953,7 +1030,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aaa.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
     "fixup_style" "0"
 }
 entity
@@ -962,7 +1039,7 @@ entity
     "classname" "func_instance"
     "origin" "0 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "file" "../../tiletemplates/buildings/tile_commercial_1a.vmf"
     "fixup_style" "0"
 }
 entity
@@ -971,7 +1048,7 @@ entity
     "classname" "func_instance"
     "origin" "640 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
     "fixup_style" "0"
 }
 entity
@@ -980,7 +1057,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
     "fixup_style" "0"
 }
 entity
@@ -989,7 +1066,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
     "fixup_style" "0"
 }
 entity
@@ -998,7 +1075,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1007,7 +1084,7 @@ entity
     "classname" "func_instance"
     "origin" "0 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1016,7 +1093,7 @@ entity
     "classname" "func_instance"
     "origin" "640 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1025,7 +1102,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1aaa.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1079,7 +1156,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1088,7 +1165,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1124,7 +1201,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aaa.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1133,7 +1210,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bbb.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1168,8 +1245,8 @@ cameras
 	"activecamera" "0"
 	camera
 	{
-		"position" "[-1517.48 462.515 675.271]"
-		"look" "[-1377.24 425.46 622.475]"
+		"position" "[-231.666 16.0071 181.274]"
+		"look" "[-91.4261 -21.0479 128.478]"
 	}
 }
 cordons

@@ -2213,57 +2213,6 @@ foreach ($key in $roadCells.Keys) {
     $graphics.DrawString($questionMark, $questionFont, $deadEndBrush, $centerX - ($textSize.Width / 2), $centerY - ($textSize.Height / 2))
 }
 
-# Draw landmarks last so icons remain visible over roads, blockades, and buildings.
-$iconRadius = [Math]::Max(10, [int]($CellSize * 0.22))
-foreach ($key in $landmarkCells.Keys) {
-    $coordinates = $key -split ","
-    $cellX = [int]$coordinates[0]
-    $cellY = [int]$coordinates[1]
-    $cellLeft = $cellX * $CellSize
-    $cellTop = $cellY * $CellSize
-    $centerX = $cellLeft + [int]($CellSize / 2)
-    $centerY = $cellTop + [int]($CellSize / 2)
-    $icons = @($landmarkCells[$key])
-    $iconSpacing = [int]($iconRadius * 1.8)
-    $gridColumns = [Math]::Min(2, $icons.Count)
-    $gridRows = [Math]::Ceiling($icons.Count / 2.0)
-
-    for ($iconIndex = 0; $iconIndex -lt $icons.Count; $iconIndex++) {
-        $icon = $icons[$iconIndex]
-        $gridColumn = $iconIndex % 2
-        $gridRow = [Math]::Floor($iconIndex / 2)
-        $iconX = $centerX + ($gridColumn - (($gridColumns - 1) / 2)) * $iconSpacing
-        $iconY = $centerY + ($gridRow - (($gridRows - 1) / 2)) * $iconSpacing
-        $iconBrush = New-Object System.Drawing.SolidBrush($icon.Color)
-        $outlineColor = [System.Drawing.Color]::FromArgb(255, 245, 245, 245)
-        if ($icon.Label -eq "LAB" -or $icon.Label -eq "B") {
-            $outlineColor = [System.Drawing.Color]::FromArgb(255, 230, 45, 45)
-        }
-        $iconOutline = New-Object System.Drawing.Pen($outlineColor, 3)
-        $isLaboratory = $icon.Label -eq "LAB"
-        $displayLabel = if ($isLaboratory) { "L" } else { $icon.Label }
-        $iconWidth = if ($isLaboratory) { 34 } else { $iconRadius * 2 }
-        $iconHeight = if ($isLaboratory) { 22 } else { $iconRadius * 2 }
-        $iconLeft = [int]($iconX - ($iconWidth / 2))
-        $iconTop = [int]($iconY - ($iconHeight / 2))
-        if ($isLaboratory) {
-            $graphics.FillRectangle($iconBrush, $iconLeft, $iconTop, $iconWidth, $iconHeight)
-            $graphics.DrawRectangle($iconOutline, $iconLeft, $iconTop, $iconWidth - 1, $iconHeight - 1)
-        } else {
-            $graphics.FillEllipse($iconBrush, $iconLeft, $iconTop, $iconWidth, $iconHeight)
-            $graphics.DrawEllipse($iconOutline, $iconLeft, $iconTop, $iconWidth, $iconHeight)
-        }
-        $iconTextFont = if ($isLaboratory) { New-Object System.Drawing.Font("Arial", 8, [System.Drawing.FontStyle]::Bold) } else { $landmarkFont }
-        $textSize = $graphics.MeasureString($displayLabel, $iconTextFont)
-        $textBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::White)
-        $graphics.DrawString($displayLabel, $iconTextFont, $textBrush, $iconX - ($textSize.Width / 2), $iconY - ($textSize.Height / 2))
-        $textBrush.Dispose()
-        if ($isLaboratory) { $iconTextFont.Dispose() }
-        $iconBrush.Dispose()
-        $iconOutline.Dispose()
-    }
-}
-
 $population = [int](25000 + ($buildingCells.Count * 145) + ($seedMagnitude % 15000))
 $population = [int]([Math]::Round($population / 100.0) * 100)
 $graphics.DrawString($cityName.ToUpperInvariant(), $cityTitleFont, $cityTitleBrush, 28, 20)
@@ -2277,48 +2226,10 @@ for ($coordinate = 0; $coordinate -le $height; $coordinate += $CellSize) {
     $graphics.DrawLine($gridPen, 0, $coordinate, $width, $coordinate)
 }
 
-# Highlight cells containing guaranteed rare landmarks.
-foreach ($key in $landmarkCells.Keys) {
-    $coordinates = $key -split ","
-    $cellX = [int]$coordinates[0]
-    $cellY = [int]$coordinates[1]
-    $cellLeft = $cellX * $CellSize + 2
-    $cellTop = $cellY * $CellSize + 2
-    foreach ($icon in @($landmarkCells[$key])) {
-        if ($icon.Label -eq "LAB") {
-            $graphics.DrawRectangle($laboratoryCellPen, $cellLeft, $cellTop, $CellSize - 5, $CellSize - 5)
-            break
-        }
-        if ($icon.Label -eq "B") {
-            $graphics.DrawRectangle($bunkerCellPen, $cellLeft, $cellTop, $CellSize - 5, $CellSize - 5)
-            break
-        }
-    }
-}
-
-# Draw named den safe zones above ordinary map details.
-$denFormat = New-Object System.Drawing.StringFormat
-$denFormat.Alignment = [System.Drawing.StringAlignment]::Center
-$denFormat.LineAlignment = [System.Drawing.StringAlignment]::Center
-foreach ($key in $denCells.Keys) {
-    $coordinates = $key -split ","
-    $cellLeft = [int]$coordinates[0] * $CellSize
-    $cellTop = [int]$coordinates[1] * $CellSize
-    $denName = $denCells[$key].Name
-    $denWords = $denName -split " "
-    $denDisplayName = if ($denWords.Count -gt 1) { "$($denWords[0])`n$($denWords[1..($denWords.Count - 1)] -join ' ')" } else { $denName }
-    $denRectangle = [System.Drawing.Rectangle]::new([int]($cellLeft + 3), [int]($cellTop + 3), [int]($CellSize - 6), [int]($CellSize - 6))
-    $denTextRectangle = [System.Drawing.RectangleF]::new([single]$denRectangle.X, [single]$denRectangle.Y, [single]$denRectangle.Width, [single]$denRectangle.Height)
-    $graphics.FillRectangle($denBrush, $denRectangle)
-    $graphics.DrawRectangle($denCellPen, $denRectangle)
-    $graphics.DrawString($denDisplayName, $denNameFont, $denTextBrush, $denTextRectangle, $denFormat)
-}
-$denFormat.Dispose()
-
-# Draw the Metro after local map details, using direct station-to-station segments and labeled Tube-style roundels.
+# Draw the Metro before text and location markers so the map remains readable at crossings.
 Draw-MetroLayer $graphics
 
-# Large district labels sit above roads, landmarks, and dens while staying below map UI panels.
+# Large district labels remain below all location markers and the map UI panels.
 $districtFormat = New-Object System.Drawing.StringFormat
 $districtFormat.Alignment = [System.Drawing.StringAlignment]::Center
 $districtFormat.LineAlignment = [System.Drawing.StringAlignment]::Center
@@ -2331,6 +2242,12 @@ foreach ($zone in $zones) {
     $graphics.DrawString($zone.Name.ToUpperInvariant(), $districtNameFont, $districtNameBrush, $districtLabelRectangle, $districtFormat)
 }
 $districtFormat.Dispose()
+
+# Landmarks sit above metro lines and all map text; their marker letters remain readable.
+Draw-LandmarkLayer $graphics
+
+# Safe zones are the topmost map locations, but the key tables below are drawn last.
+Draw-SafeZoneLayer $graphics
 
 # Draw an icon key in the upper-right corner.
 $keyEntries = @(

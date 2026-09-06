@@ -1,2 +1,12 @@
-# Ignore node_modules
+# JavaScript dependencies
 node_modules/
+
+# Reproducible Source compiler intermediates and logs
+maps/build/
+maps/build_preview/
+
+# Generated release staging output
+content/maps/city/
+content/maps/preview/
+content/data_static/zombiesim_world.json
+content/data_static/zombiesim_world_preview.json
