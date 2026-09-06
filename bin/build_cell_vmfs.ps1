@@ -10,6 +10,7 @@ param(
     [switch]$PruneStaleGenerated,
     [switch]$ClearCellDirectory,
     [switch]$WhatIf,
+    [string]$WorldProfile = '',
     [switch]$Preview,
     [string]$SettingsPath = ''
 )
@@ -17,12 +18,15 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$generatorSettings = & (Join-Path $PSScriptRoot 'import_generator_settings.ps1') -SettingsPath $SettingsPath
+$worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
+$generatorSettings = $worldGenerationProfile.Settings
+$profileSettings = $worldGenerationProfile.Config
 if (-not $PSBoundParameters.ContainsKey('TileSize')) { $TileSize = [int]$generatorSettings.vmfBuild.tileSize }
 if (-not $PSBoundParameters.ContainsKey('TileZOffset')) { $TileZOffset = [int]$generatorSettings.vmfBuild.tileZOffset }
 
 if ([string]::IsNullOrWhiteSpace($PlanData)) {
-    $PlanData = @(Get-ChildItem -Path $PSScriptRoot -Filter '*_template_plan.json' -File |
+    $planFilePattern = "$($profileSettings.filePrefix)_grid_*_template_plan.json"
+    $PlanData = @(Get-ChildItem -Path $PSScriptRoot -Filter $planFilePattern -File |
         Sort-Object LastWriteTime -Descending |
         Select-Object -First 1)[0].FullName
 }
@@ -41,11 +45,7 @@ if ($safeZoneMaps.Count -gt 0 -and ([string]::IsNullOrWhiteSpace($safeZoneTempla
 }
 
 if ([string]::IsNullOrWhiteSpace($CellDirectory)) {
-    if ($Preview) {
-        $CellDirectory = Join-Path $projectRoot $generatorSettings.paths.previewCellDirectory
-    } else {
-        $CellDirectory = $plan.cellDirectory
-    }
+    $CellDirectory = Join-Path $projectRoot $profileSettings.cellDirectory
 }
 if ([string]::IsNullOrWhiteSpace($TileDirectory)) {
     $TileDirectory = $plan.chunkTemplateDirectory
@@ -66,7 +66,7 @@ $CellDirectory = (Resolve-Path $CellDirectory).Path
 $clearedItems = 0
 if ($ClearCellDirectory) {
     $projectRoot = (Resolve-Path (Split-Path -Parent $PSScriptRoot)).Path.TrimEnd('\')
-    $expectedCellDirectory = (Join-Path $projectRoot 'generated\src').TrimEnd('\')
+    $expectedCellDirectory = (Join-Path $projectRoot $profileSettings.cellDirectory).TrimEnd('\')
     if (-not [string]::Equals($CellDirectory.TrimEnd('\'), $expectedCellDirectory, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "-ClearCellDirectory only supports the project source directory: $expectedCellDirectory"
     }

@@ -8,24 +8,61 @@ The generator creates a city plan, turns that plan into reusable 5-by-5 cell rec
 
 1. Make a copy of [generator-settings.json](generator-settings.json) before experimenting.
 2. Change one group of settings at a time.
-3. Make a preview first. Preview VMFs go to `generated/src_preview`, not the production `generated/src` folder.
+3. Make a preview first. The `preview` profile writes VMFs to `generated/src_preview`, separate from the `city` profile's `generated/src` folder.
 4. Open the preview image or preview VMFs in Hammer and decide whether the change is worth keeping.
 
 Settings use JSON. Text must be inside double quotes, items in a list need commas, and there must not be a comma after the final item in a list. Do not rename setting names unless this guide calls them advanced.
+
+## World-Generation Profiles
+
+`worldGeneration.profiles` in [generator-settings.json](generator-settings.json) defines every generated world. A profile owns its grid size, generated file prefix, layer-image setting, source VMF folder, compiler build folder, staged map folder, runtime-world JSON, and optional launcher thumbnail. The included `city` and `preview` entries are normal profiles; add another entry such as `coast` to build a separate custom city without adding another set of special-case settings.
+
+Use `-WorldProfile <name>` with every generator script. Without it, the scripts use `worldGeneration.defaultProfile`, currently `city`. `-Preview` remains a compatibility alias for `-WorldProfile preview` on scripts that already supported it.
+
+```json
+"coast": {
+	"filePrefix": "coast",
+	"gridCells": 48,
+	"exportLayers": false,
+	"cellDirectory": "generated/src_coast",
+	"buildDirectory": "generated/build_coast",
+	"releaseMapDirectory": "content/maps/coast",
+	"runtimeWorldData": "content/data_static/zombiesim_world_coast.json",
+	"overrides": {
+		"mapGeneration": {
+			"road": { "growthDepth": 4 },
+			"blockades": { "chance": 0.15 }
+		},
+		"cellPlanning": {
+			"variants": { "usageThreshold": 8 }
+		}
+	},
+	"thumbnail": {
+		"map": "zn_coast",
+		"source": "bin/coast_grid_48x48_seed_2026.png",
+		"title": "COAST CITY",
+		"showLogo": true
+	}
+}
+```
+
+The optional `overrides` object can replace any ordinary generator setting for that profile, including nested `mapGeneration`, `cellPlanning`, `vmfBuild`, `compilation`, `paths`, or `directions` settings. Objects merge recursively, while a scalar value or array replaces the shared value. Command-line parameters still take precedence for one run. Profiles cannot override `schemaVersion` or `worldGeneration` itself.
+
+The profile name should match the `world_profile` key on its launcher map. After adding one, run the ordinary generator pipeline with `-WorldProfile coast`; the configured `filePrefix` keeps its manifests, template plans, required-recipe lists, source maps, build files, staged BSPs, and runtime data separate from all other profiles.
 
 ## Preview Workflow
 
 Run these commands from the project root. This uses the small preview city and leaves production cell VMFs alone.
 
 ```powershell
-.\bin\generate_map_grid.ps1 -Preview -Seed 1337
-.\bin\plan_cell_templates.ps1 -Preview -MapData .\bin\preview_grid_24x24_seed_1337.json
-.\bin\build_cell_vmfs.ps1 -Preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json -RefreshGenerated -PruneStaleGenerated
-.\bin\expand_cell_filenames.ps1 -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json
-.\bin\check_required_cells.ps1 -Preview -RequiredCellList .\bin\preview_grid_24x24_seed_1337_required_cell_vmfs.txt
+.\bin\generate_map_grid.ps1 -WorldProfile preview -Seed 1337
+.\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json
+.\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json -RefreshGenerated -PruneStaleGenerated
+.\bin\expand_cell_filenames.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json
+.\bin\check_required_cells.ps1 -WorldProfile preview -RequiredCellList .\bin\preview_grid_24x24_seed_1337_required_cell_vmfs.txt
 ```
 
-`-Preview` makes the map generator use `mapGeneration.previewGridCells` and makes planning, building, and checking use `paths.previewCellDirectory` when no folder is supplied.
+`-WorldProfile preview` makes the map generator use `worldGeneration.profiles.preview.gridCells` and makes planning, building, and checking use the preview profile's configured folders when no explicit path is supplied. `-Preview` is accepted for existing command files and means the same thing.
 
 `-Seed 1337` is a one-run override. It does not edit the settings file. Keep a seed you like so you can reproduce the same city after changing unrelated assets.
 
@@ -36,10 +73,47 @@ Every generator script also accepts `-SettingsPath <file>`. This lets you keep n
 Before committing to the long VVIS and VRAD production compile, run the fast structural check below. It runs VBSP against every preview recipe, so it validates VMF syntax, referenced instances, skybox materials, brushes, props, and BSP generation. It does not calculate visibility or lightmaps.
 
 ```powershell
-.\bin\build_city_release.ps1 -Preview -VBSPOnly -OnlyRequiredMaps -CleanStagedCity
+.\bin\build_city_release.ps1 -WorldProfile preview -VBSPOnly -OnlyRequiredMaps -CleanStagedCity
 ```
 
-This uses `paths.previewCellDirectory`, writes intermediate files to `paths.previewBuildDirectory`, stages test BSPs in `paths.previewReleaseMapDirectory`, and exports a separate runtime index at `paths.previewRuntimeWorldData`. It leaves `content/maps/city` and `zombiesim_world.json` untouched. Omit `-VBSPOnly` only when you want the slower preview VVIS and VRAD pass.
+This uses the preview profile's `cellDirectory`, `buildDirectory`, `releaseMapDirectory`, and `runtimeWorldData`. It leaves the city profile's maps and runtime data untouched. Omit `-VBSPOnly` only when you want the slower preview VVIS and VRAD pass.
+
+## Selecting City Data In Hammer
+
+Place exactly one `zn_world_profile` point entity in a launcher map and set its `world_profile` keyvalue. It is a dedicated ZombieSim entity, so other `info_target` or map-logic entities are ignored. Add [zombiesim.fgd](zombiesim.fgd) to the Hammer game configuration to expose it in the entity browser.
+
+The built-in values are `city`, which loads `data_static/zombiesim_world.json`, and `preview`, which loads `data_static/zombiesim_world_preview.json`. The included `zn_start` and `zn_preview` launcher maps use those values. A custom profile such as `coast` loads `data_static/zombiesim_world_coast.json`; profile names may only use lowercase letters, digits, `_`, and `-`. Its optional `start_delay` property is a non-negative number of seconds to wait before a first-time player changes level to the world-origin safe room, allowing an opening intro to play. The default is `0`.
+
+The selected profile is retained when changing level to a city recipe or standalone safe-room map, where no selector entity is needed. A map containing conflicting `zn_world_profile` values is rejected so it cannot load ambiguous city data.
+
+## Launcher Thumbnails
+
+`build_launcher_thumbnails.ps1` writes map-menu thumbnails only for profiles with a `thumbnail` entry under `worldGeneration.profiles` in [generator-settings.json](generator-settings.json). By default it refreshes the built-in `city` and `preview` entries:
+
+```powershell
+.\bin\build_launcher_thumbnails.ps1
+```
+
+Use `-Profile` to refresh one or more named profiles, or `-AllProfiles` to refresh every configured entry that defines a thumbnail. A selected profile only writes its configured target map thumbnail.
+
+```powershell
+.\bin\build_launcher_thumbnails.ps1 -Profile coast
+.\bin\build_launcher_thumbnails.ps1 -Profile city, coast
+.\bin\build_launcher_thumbnails.ps1 -AllProfiles
+```
+
+To give a custom city its own launcher thumbnail, add a `thumbnail` object to its profile. `map` is the launcher BSP name without `.bsp`, `source` is an existing project-relative image path, and `title` and `showLogo` control the thumbnail overlay:
+
+```json
+"thumbnail": {
+  "map": "zn_coast",
+  "source": "bin/coast_grid_48x48_seed_2026.png",
+  "title": "COAST CITY",
+  "showLogo": true
+}
+```
+
+The script writes the result as `content/maps/thumb/<map>.png`, so this example produces `content/maps/thumb/zn_coast.png`. Use `-SettingsPath` with a separate settings preset when the custom city does not use the main configuration.
 
 ## Standalone Dens
 
@@ -90,7 +164,7 @@ After reviewing the preview, regenerate production recipes so they inherit the c
 .\bin\build_city_release.ps1 -MapData .\bin\map_grid_64x64_seed_1337.json -PlanData .\bin\map_grid_64x64_seed_1337_template_plan.json -CleanStagedCity
 ```
 
-`build_city_release.ps1` runs the sequential VBSP, VVIS, and VRAD compiler pass for every VMF in `paths.cellDirectory`, using `generated/build` as an intermediate folder. It copies only the recipe BSPs selected by the plan to `paths.releaseMapDirectory` and writes the compact gameplay world index to `paths.runtimeWorldData`.
+`build_city_release.ps1` runs the sequential VBSP, VVIS, and VRAD compiler pass for every VMF in the selected profile's `cellDirectory`, using that profile's `buildDirectory` as an intermediate folder. It copies only the recipe BSPs selected by the plan to the profile's `releaseMapDirectory` and writes the compact gameplay world index to its `runtimeWorldData` path.
 
 The release script refreshes generated recipe VMFs first, so changes to the base cell template are included in the compile. Pass `-SkipRecipeRefresh` only when the selected source recipes have already been deliberately refreshed.
 
@@ -101,7 +175,7 @@ The BSP names identify reusable recipes, not coordinates. The runtime index maps
 Safe first experiments are:
 
 - `mapGeneration.seed`
-- `mapGeneration.gridCells` and `mapGeneration.previewGridCells`
+- Each profile's `gridCells`
 - Road, bridge, blockade, and carpark chances
 - Building-density values
 - District names, positions, radii, and colours
@@ -123,14 +197,14 @@ Advanced settings control how prefabs connect or rotate. Change those only after
 The default values come from [generator-settings.json](generator-settings.json). A command-line value takes priority for that one command. For example:
 
 ```powershell
-.\bin\generate_map_grid.ps1 -Preview -Seed 9001 -RoadDepth 5
+.\bin\generate_map_grid.ps1 -WorldProfile preview -Seed 9001 -RoadDepth 5
 ```
 
 uses seed `9001` and road depth `5` once, even if the JSON file says something else. The next run returns to the JSON defaults.
 
 ## `schemaVersion`
 
-`schemaVersion` identifies the format of the settings file. Leave it as `1`. The scripts refuse a settings file with an unsupported version instead of guessing how to read it.
+`schemaVersion` identifies the format of the settings file. Use `2` for named world-generation profiles. The scripts also accept version `1` settings files, translating their city and preview values for compatibility, but new profiles require version `2`.
 
 ## `paths`
 
@@ -139,17 +213,25 @@ These are project-relative folders and files. Use forward slashes or backslashes
 | Setting | What it controls | Notes |
 | --- | --- | --- |
 | `templateDirectory` | The root folder containing hand-authored tile VMFs. | Default: `tiletemplates`. Do not point this at generated cell VMFs. |
-| `cellDirectory` | Production output folder for generated cell recipes. | Default: `generated/src`. Use only when ready to create production VMFs. |
-| `previewCellDirectory` | Preview output folder. | Default: `generated/src_preview`. Used by `-Preview` on planning, building, and checking scripts. |
 | `baseCellTemplate` | The border/base VMF inserted behind generated prefab instances. | Default: `celltemplates/template_border_s.vmf`. It must exist and contain a `cameras` block. |
 | `scriptOutputDirectory` | Folder for PNG previews, JSON plans, required-VMF lists, and filename keys. | Default: `bin`. |
-| `buildDirectory` | Intermediate compiler output folder. | Default: `generated/build`. The batch compiler copies VMFs here before creating BSP/VIS/RAD files. |
-| `previewBuildDirectory` | Intermediate compiler output folder for `-Preview`. | Default: `generated/build_preview`. It is isolated from production BSP artefacts. |
-| `releaseMapDirectory` | Release staging folder for compiled city BSPs. | Default: `content/maps/city`. The final release script copies only plan-referenced BSPs here. |
-| `previewReleaseMapDirectory` | Release staging folder for `-Preview` BSPs. | Default: `content/maps/preview`. The preview runtime index uses `preview` as its map directory. |
-| `runtimeWorldData` | Release staging path for the compact gameplay world index. | Default: `content/data_static/zombiesim_world.json`. Package it as root `data_static/zombiesim_world.json` and read it from the `GAME` mount. |
-| `previewRuntimeWorldData` | Release staging path for the compact `-Preview` gameplay world index. | Default: `content/data_static/zombiesim_world_preview.json`. Keep it separate from the production index. |
 | `safeZoneTemplateDirectory` | Complete standalone den-map templates. | Default: `celltemplates/safezones`. These are copied as whole VMFs, not assembled from tiles. |
+
+## `worldGeneration`
+
+`defaultProfile` is used when a generator command has no `-WorldProfile` argument. Every entry in `profiles` is a complete, isolated generated-world configuration.
+
+| Profile setting | What it controls |
+| --- | --- |
+| `filePrefix` | Prefix for the profile's generated map image, manifest, template plan, required-recipe list, and filename key. |
+| `gridCells` | Width and height of this city in logical cells. `64` means a 64-by-64 city. |
+| `exportLayers` | Whether generation writes separate terrain, roads, buildings, highways, landmarks, safe zones, metro, grid, labels, and key PNG layers. |
+| `cellDirectory` | Generated VMF source folder for this profile. |
+| `buildDirectory` | Intermediate compiler output folder for this profile. |
+| `releaseMapDirectory` | Staging folder for the profile's compiled BSPs; its leaf directory becomes the runtime map directory. |
+| `runtimeWorldData` | Compact gameplay world index. Package it under `data_static` and select the matching profile with `zn_world_profile`. |
+| `overrides` | Optional partial generator settings that recursively merge over the shared settings for this profile. |
+| `thumbnail` | Optional map-menu image definition for `build_launcher_thumbnails.ps1`. |
 
 ## `compilation`
 
@@ -178,14 +260,12 @@ The generator treats roads as a north, east, south, west grid. These settings de
 
 ## `mapGeneration`
 
-This section creates the city-wide map layout and its PNG preview. A map cell is one playable VMF recipe. `gridCells` is the number of cells across and down, not the number of 640-unit chunks inside a cell.
+This section creates the city-wide map layout and its PNG preview. A map cell is one playable VMF recipe. The selected profile's `gridCells` is the number of cells across and down, not the number of 640-unit chunks inside a cell.
 
 ### Basic Size And Seed
 
 | Setting | What it controls | Good values |
 | --- | --- | --- |
-| `gridCells` | Width and height of a normal generated city. `64` means a 64-by-64 city, or 4,096 map cells. | Use `24` to `64` while testing. Larger values create many more unique recipes and take longer to inspect. |
-| `previewGridCells` | Width and height used by `-Preview`. | `24` is a fast, useful default. Keep it smaller than `gridCells`. |
 | `cellSizePixels` | Size of one cell in the PNG planning image. | `64` gives a 1536-by-1536 image for a 24-by-24 preview. This affects the picture, not Hammer tile size. |
 | `seed` | Default random seed. The same seed and the same settings create the same layout. | Any whole number. Prefer passing `-Seed` for a temporary test. |
 
@@ -203,6 +283,15 @@ Road settings determine how far the road network grows and how tangled it become
 | `maximumSegmentStepsExclusive` | First length the random road segment will not use. | Shorter maximum road run. | Longer maximum road run. The actual maximum is this value minus one. |
 | `deadEndRepairRadius` | Furthest search distance, in map cells, used to connect repairable dead ends. | Keeps more dead ends. | Repairs more dead ends into connected roads. |
 | `centralSpineChance` | Chance from `0` to `1` for each regular position on the central arterial to grow a north/south branch. | A cleaner main road. | More districts linked to the main road. |
+| `maximumJunctionDegree` | Most connections allowed at one ordinary-road cell, from `2` to `4`. | `3` prevents four-way cross junctions. | `4` allows full intersections. |
+
+After generating local roads, the generator checks every district center for a route to the origin road network. An isolated district receives a direct ordinary-road connection that respects `maximumJunctionDegree` and avoids highway cells. This guarantee also applies when highways and metro are disabled.
+
+### `highways`
+
+| Setting | What it controls |
+| --- | --- |
+| `enabled` | Enables the deterministic interstate grid, its crossings, bridges, and district ramps. Set `false` for a local-road-only profile. |
 
 ### `bridges` And `blockades`
 
@@ -236,9 +325,67 @@ The default terrain recipe makes grass more common to the west/north, dirt more 
 
 | Setting | What it controls | Editing advice |
 | --- | --- | --- |
+| `enabled` | Enables the guided metro routes and stops. | Set `false` for a profile with no metro system. |
 | `minimumStationSpacing` | Minimum straight-line distance, in map cells, between metro stops. | `6` avoids crowded labels. Lower values create more nearby stops. |
 | `routeStopInterval` | Number of route cells between automatically considered metro stops. | Higher values make lines have fewer stops. Keep it a positive whole number. |
 | `stopSuffixes` | Words used to name minor metro stops. | Add or replace simple names. Empty lists are invalid because a stop needs a name. |
+
+### `settlements` And `population`
+
+| Setting | What it controls |
+| --- | --- |
+| `settlements.minimumDensity` | Baseline chance for an eligible roadside district cell to become settled in `random` mode. |
+| `settlements.districtCenterDensity` | Additional settlement chance at a district center in `random` mode. |
+| `settlements.placementMode` | `random` uses the density values above. `hash_modulo` selects a stable sparse scattering based on each cell's coordinates and seed. |
+| `settlements.spacing` | In `hash_modulo` mode, selects roughly one eligible cell in this many cells. Must be at least `2`. |
+| `population.base` | Starting population used in the generator overview. |
+| `population.perBuildingCell` | Population added for every settled city cell. |
+| `population.seedVariation` | Deterministic seed-based population variation. Set `0` to disable it. |
+| `population.roundToNearest` | Rounds the generated population to this interval. Use `1` to avoid rounding. |
+
+### `radiation`
+
+Radiation is a deterministic, source-centered fallout field. The first detonation is placed at `epicenterXFraction` across the map and at a seed-selected Y coordinate within the configured range. Larger maps add more deterministically placed sources, subject to `additionalSourceEveryGridCells` and `maximumSources`. Intensity decreases linearly with radial distance until it reaches `0` at the fallout radius. The generator exports a transparent `radiation` PNG layer, and the runtime applies radiation damage outside standalone safe rooms.
+
+Every source cell is a special `The Epicenter` landmark, marked with an `EPI` map key and an `epicenter` environment tag. Cells at or above `destroyedThreshold` receive the `destroyed` environment tag. The planner gives these cells a high building density and prefers templates matching `destroyedBuildings` when they are available; until then, it falls back to ordinary building templates.
+
+`cellMiles` supplies a lore scale for the grid. The displayed yield equivalence uses $Y = (R / R_{1\,MT})^3$, where $R$ is `falloutRadiusCells * cellMiles` and $R_{1\,MT}$ is `loreReferenceFalloutMilesAtOneMegaton`. With the preview defaults, a 9-cell radius at 4 miles per cell is 36 miles and produces a `27 MT` equivalence. This is a configurable lore approximation, not a physical fallout prediction: real deposition also depends on burst height, weapon design, wind, weather, terrain, and time.
+
+| Setting | What it controls |
+| --- | --- |
+| `enabled` | Enables radiation intensity, the fallout overlay, and runtime damage data. |
+| `epicenterXFraction` | Horizontal source location. `0.6` places the detonation three-fifths of the way east. Must be greater than `0` and less than `1`. |
+| `epicenterYMinimumFraction`, `epicenterYMaximumFraction` | Inclusive vertical range used to choose the source from the seed. Both must be from `0` through `1` and ordered low to high. |
+| `falloutRadiusCells` | Fixed fallout radius in grid cells. Intensity is `0` beyond this distance from each epicenter. |
+| `additionalSourceEveryGridCells` | Adds one possible source for each complete interval of grid width after the first source. |
+| `maximumSources` | Upper limit on the total number of detonation sources. |
+| `cellMiles` | Lore distance represented by one grid cell. |
+| `loreReferenceFalloutMilesAtOneMegaton` | Lore reference radius representing 1 MT in the yield-equivalence calculation. |
+| `destroyedThreshold` | Radiation intensity from greater than `0` to `1` at which a cell receives the `destroyed` tag and destroyed-city planning. |
+| `damagePerSecondAtPeak` | Health damage per second at full radiation intensity. Damage scales linearly below the peak. |
+| `overlayMaximumAlpha` | Opacity from `0` to `255` used by every discrete radiation grid cell. |
+
+### `danger`
+
+Danger is a generated scalar for enemy scaling, stored on every world cell alongside, but independent from, its environment tags and radiation level. It begins at world `(0,0)` and progresses in nested right-facing chevrons using $d=x+|y|$. Safe-zone cells always have danger `0`. The generator exports a transparent `danger` layer that colors each cell outline by its discrete danger tier, leaving the filled building square visible.
+
+The generated value is clamped to $0 \leq D \leq 1$ and classified in the manifest as `safe`, `low`, `moderate`, `high`, or `extreme`. Runtime consumers can read it through `ZM_World:GetDangerIntensity(...)` or `ply:GetDangerIntensity()` and combine it with `ZM_World:GetEnvironment(...)` tags when selecting enemy types, counts, or modifiers. Radiation is visualized separately as discrete grid-cell fills with fixed contamination colors.
+
+| Setting | What it controls |
+| --- | --- |
+| `enabled` | Enables danger generation and the danger overlay. |
+| `tierCount` | Number of discrete danger bands expanding from world origin `(0,0)`. Must be from `2` through `12`. |
+
+### `airports`
+
+Airports are deterministic `AIR` landmarks on reachable roads outside the radiation field. Normal map sizes receive exactly one airport. Larger maps can receive additional airports only after `additionalAirportEveryGridCells`, and each one must be at least `minimumSeparationCells` away from every other airport. The planner uses an ordinary fallback until a template matching `tile_airport*.vmf` exists.
+
+| Setting | What it controls |
+| --- | --- |
+| `enabled` | Enables airport placement. |
+| `additionalAirportEveryGridCells` | Grid-width interval required before another airport may be considered. |
+| `maximumAirports` | Hard limit on airport count. |
+| `minimumSeparationCells` | Required Euclidean distance between airports in grid cells. |
 
 ### `cityNaming`
 
@@ -266,7 +413,6 @@ Each dead-zone item has `x`, `y`, and `radius`, using the same 64-by-64 referenc
 | Setting | What it controls |
 | --- | --- |
 | `biomeOpacity` | Transparency of terrain colour on the planning image, from `0` to `255`. It changes only the image, not the game world. |
-| `previewExportsLayers` | Whether `-Preview` writes separate terrain, roads, buildings, highways, landmarks, safe zones, metro, grid, labels, and key PNG layers. `true` is recommended for troubleshooting. You can still explicitly request `-ExportLayers` for a non-preview run. |
 
 ## `cellPlanning`
 
@@ -285,6 +431,7 @@ These regular-expression filters decide which VMF files from `templateDirectory`
 | Setting | Eligible files |
 | --- | --- |
 | `genericBuildings` | Ordinary building and construction assets. Special landmarks are intentionally excluded. |
+| `destroyedBuildings` | Optional destroyed building assets, such as `buildings/tile_destroyed_*.vmf`. They are selected for `destroyed` fallout-core cells when at least one matching template exists. |
 | `warehouses` | Warehouse assets usable by generic building selection. |
 | `commercial` | Commercial assets. They are only allowed in commercial profiles or a Market landmark cell. |
 | `industry` | Industry assets. They are only allowed on dirt terrain or radioactive profiles. |
@@ -334,7 +481,7 @@ Use only `0`, `90`, `180`, or `270` for the current square tiles. Test any chang
 
 ### `environment`
 
-`profilePriority` decides which special identity a cell gets when it has more than one environment tag. The first matching item wins. For example, with the default order, `radioactive` wins over `commercial` if both tags exist. Moving an item higher makes it override the entries below it.
+`profilePriority` decides which special identity a cell gets when it has more than one environment tag. The first matching item wins. For example, with the default order, `destroyed` wins over `radioactive` and `commercial` when a cell lies in the fallout core. Moving an item higher makes it override the entries below it.
 
 `buildingDensity` is the chance from `0` to `1` that an eligible empty prefab space receives a building or decoration.
 
@@ -494,7 +641,7 @@ Restore the canonical source VMF first. Then inspect the appropriate `rotations`
 
 ### Preview generation is too slow or produces too many recipes
 
-Reduce `previewGridCells`, use a smaller `growthDepth`, lower `branchChance`, or raise `variants.usageThreshold`. Make one change, regenerate, and compare the preview key before changing more.
+Reduce `worldGeneration.profiles.preview.gridCells`, use a smaller `growthDepth`, lower `branchChance`, or raise `variants.usageThreshold`. Make one change, regenerate, and compare the preview key before changing more.
 
 ## Future 2x Prefabs
 

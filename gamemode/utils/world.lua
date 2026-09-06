@@ -7,8 +7,18 @@ ZM_World = ZM_World or {}
 
 local World = ZM_World
 
-// The exported production index is read from the addon GAME mount on both realms.
-World.DataPath = "data_static/zombiesim_world.json"
+// Exported world-data profiles are read from the addon GAME mount on both realms.
+World.DataProfiles = {
+	city = "data_static/zombiesim_world.json",
+	preview = "data_static/zombiesim_world_preview.json"
+}
+World.LauncherMapProfiles = {
+	zn_start = "city",
+	zn_preview = "preview"
+}
+World.CustomProfileDataPrefix = "data_static/zombiesim_world_"
+World.DataPath = World.DataProfiles.city
+World.ActiveProfile = "city"
 World.Data = nil
 World.Indexes = nil
 World.LastError = nil
@@ -115,6 +125,117 @@ end
 // Returns the raw exported table. Prefer the helpers below for gameplay queries.
 function World:GetData()
 	return self.Data
+end
+
+// Returns the GAME-relative data file for a built-in or safely named custom world profile.
+function World:GetProfileDataPath(profile)
+	if type(profile) ~= "string" then
+		return nil
+	end
+
+	profile = string.lower(profile)
+	if self.DataProfiles[profile] then
+		return self.DataProfiles[profile]
+	end
+	if not string.match(profile, "^[a-z0-9_-]+$") then
+		return nil
+	end
+
+	return self.CustomProfileDataPrefix .. profile .. ".json"
+end
+
+// Returns the dedicated map entity that selects this map's world-data profile.
+// More than one marker is allowed only when every marker selects the same profile.
+function World:GetMapProfileMarker()
+	if not ents or not ents.FindByClass then
+		return nil
+	end
+
+	local selectedProfile = nil
+	local selectedMarker = nil
+	for _, marker in ipairs(ents.FindByClass("zn_world_profile")) do
+		local profile = marker.GetWorldProfile and marker:GetWorldProfile() or ""
+		profile = string.lower(string.Trim(profile))
+		if profile ~= "" then
+			if selectedProfile and selectedProfile ~= profile then
+				return nil, "Map has conflicting zn_world_profile entities"
+			end
+			selectedProfile = profile
+			selectedMarker = marker
+		end
+	end
+
+	return selectedMarker
+end
+
+// Returns the profile selected by the dedicated zn_world_profile map entity.
+function World:GetMapDataProfile()
+	local marker, markerError = self:GetMapProfileMarker()
+	if markerError then
+		return nil, markerError
+	end
+
+	if marker then
+		return marker:GetWorldProfile()
+	end
+	if not game or not game.GetMap then
+		return nil
+	end
+
+	local mapName = string.lower(string.match(game.GetMap(), "([^/\\]+)$") or game.GetMap())
+	return self.LauncherMapProfiles[mapName]
+end
+
+// Returns the current map marker's non-negative opening delay in seconds.
+// It is used only before a first-time player transitions to the origin safe room.
+function World:GetMapStartDelay()
+	local marker, markerError = self:GetMapProfileMarker()
+	if markerError then
+		return nil, markerError
+	end
+	if not marker or not marker.GetStartDelay then
+		return 0
+	end
+
+	return math.max(tonumber(marker:GetStartDelay()) or 0, 0)
+end
+
+// Loads a named city-data profile and remembers it for safe-room maps without a selector marker.
+function World:LoadProfile(profile)
+	profile = type(profile) == "string" and string.lower(profile) or nil
+	local path = self:GetProfileDataPath(profile)
+	if not path then
+		return false, "Unknown ZombieSim world-data profile: " .. tostring(profile)
+	end
+
+	local loaded, loadError = self:Load(path)
+	if loaded then
+		self.DataPath = path
+		self.ActiveProfile = profile
+	end
+	return loaded, loadError
+end
+
+// Applies a map profile marker when present; otherwise restores the saved session profile.
+function World:LoadMapProfile()
+	local profile, markerError = self:GetMapDataProfile()
+	if markerError then
+		return false, markerError
+	end
+
+	if SERVER then
+		local profileConVar = GetConVar("zombiesim_world_profile")
+		if profile then
+			profileConVar:SetString(profile)
+		elseif profileConVar then
+			profile = profileConVar:GetString()
+		end
+	elseif not profile then
+		local profileConVar = GetConVar("zombiesim_world_profile")
+		profile = profileConVar and profileConVar:GetString() or nil
+	end
+
+	return self:LoadProfile(profile or "city")
 end
 
 // Loads and indexes a runtime file. Returns true, or false plus a readable error.
@@ -387,6 +508,24 @@ end
 function World:GetDistrict(reference, y)
 	local cell = self:ResolveCell(reference, y)
 	return cell and indexedValue(self.Data.districts, cell.district) or nil
+end
+
+// Returns a cell's ambient radiation intensity from 0 (safe) to 1 (peak exposure).
+function World:GetRadiationIntensity(reference, y)
+	local cell = self:ResolveCell(reference, y)
+	return math.Clamp(tonumber(cell and cell.radiation) or 0, 0, 1)
+end
+
+// Returns a generated enemy-scaling danger intensity from 0 (safe) to 1 (extreme).
+function World:GetDangerIntensity(reference, y)
+	local cell = self:ResolveCell(reference, y)
+	return math.Clamp(tonumber(cell and cell.danger) or 0, 0, 1)
+end
+
+// Returns the damage per second associated with peak radiation intensity.
+function World:GetRadiationDamagePerSecondAtPeak()
+	local hazards = self.Data and self.Data.hazards
+	return math.max(tonumber(hazards and hazards.radiation and hazards.radiation.damagePerSecondAtPeak) or 0, 0)
 end
 
 // Returns the safe-zone record for a cell, or nil outside a safe zone.

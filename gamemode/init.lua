@@ -22,9 +22,16 @@ ZM_CreatePlayerDataTable()
 util.AddNetworkString("ZM.RefreshPlayerAttributes")
 util.AddNetworkString("ZM.RefreshPlayerData")
 
+// Persists the selected city or preview data profile while the session moves into safe-room maps.
+CreateConVar("zombiesim_world_profile", "city", FCVAR_ARCHIVE + FCVAR_REPLICATED, "Active ZombieSim world-data profile.")
+
 // Starts a single-player session in the safe room attached to the generated world origin.
 // Returns false when world data is unavailable or the session is already on that safe-room map.
 function GM:EnterOriginSafeZone(ply)
+    if self.OriginSafeZoneTransitionQueued then
+        return false
+    end
+
     local safeZone = ZM_SafeZones:GetOrigin()
     local destination = ZM_SafeZones:GetOriginMap()
     if not safeZone or not destination then
@@ -37,23 +44,94 @@ function GM:EnterOriginSafeZone(ply)
         return false
     end
 
-    local set, setError = ply:SetCurrentSafeZone(safeZone.id)
-    if not set then
-        ErrorNoHalt("[ZombieSim] Could not enter origin safe room: " .. setError .. "\n")
+    local startDelay, delayError = ZM_World:GetMapStartDelay()
+    if delayError then
+        ErrorNoHalt("[ZombieSim] Could not read start delay: " .. delayError .. "\n")
         return false
     end
 
-    game.ConsoleCommand("changelevel " .. destination .. "\n")
+    local function transitionToOriginSafeZone()
+        self.OriginSafeZoneTransitionQueued = false
+        if not IsValid(ply) then
+            return
+        end
+
+        local activeMap = string.match(game.GetMap(), "([^/]+)$") or game.GetMap()
+        if activeMap == destinationMap then
+            return
+        end
+
+        local set, setError = ply:SetCurrentSafeZone(safeZone.id)
+        if not set then
+            ErrorNoHalt("[ZombieSim] Could not enter origin safe room: " .. setError .. "\n")
+            return
+        end
+
+        game.ConsoleCommand("changelevel " .. destination .. "\n")
+    end
+
+    self.OriginSafeZoneTransitionQueued = true
+    if startDelay > 0 then
+        timer.Simple(startDelay, transitionToOriginSafeZone)
+    else
+        transitionToOriginSafeZone()
+    end
     return true
+end
+
+// Returns the map a saved player belongs on in the active world-data profile.
+// A current safe-room id takes priority over the city cell used as that room's entrance.
+function GM:GetExpectedPlayerMap(ply)
+    local safeZoneId = ply.CurrentSafeZoneId
+    if type(safeZoneId) == "string" and safeZoneId ~= "" then
+        local safeZone = ZM_SafeZones:Get(safeZoneId)
+        if not safeZone then
+            return nil, "Saved safe-zone id is not available in the active profile: " .. safeZoneId
+        end
+
+        return ZM_SafeZones:GetMap(safeZoneId)
+    end
+
+    local cell, cellError = ply:GetWorldCell()
+    if not cell then
+        return nil, cellError or "Player has no valid saved city cell"
+    end
+
+    return ZM_World:GetMapPath(cell)
+end
+
+// Changes level only when the loaded map differs from the player's persisted city or safe-room state.
+function GM:EnsurePlayerWorldMap(ply)
+    if self.PlayerWorldMapTransitionQueued then
+        return false
+    end
+
+    local expectedMap, mapError = self:GetExpectedPlayerMap(ply)
+    if not expectedMap then
+        ErrorNoHalt("[ZombieSim] Could not resolve player map: " .. mapError .. "\n")
+        return false
+    end
+
+    local expectedMapName = string.lower(string.match(expectedMap, "([^/]+)$") or expectedMap)
+    local currentMapName = string.lower(string.match(game.GetMap(), "([^/]+)$") or game.GetMap())
+    if currentMapName == expectedMapName then
+        return false
+    end
+
+    self.PlayerWorldMapTransitionQueued = true
+    game.ConsoleCommand("changelevel " .. expectedMap .. "\n")
+    return true
+end
+
+function GM:NewPlayer(ply)
+    ply.SkillPoints = 10 // give the player 10 skill points to start with
 end
 
 // Restores persistent state, applies new-player defaults, and synchronizes the spawned player.
 function GM:PlayerSpawn( ply )
 
-    // check if the player has previously connected to the server
-    if( !ZM_PlayerPreviouslyExists( ply:SteamID() ) ) then
-        ply.PreviouslyConnected = true
-    end
+    // A first-time player receives the starting skills and origin safe-room transition.
+    ply.PreviouslyConnected = ZM_PlayerPreviouslyExists( ply:SteamID() )
 
     // fetch the player attributes and data from the database
     ply:FetchAttributes()
@@ -61,11 +139,10 @@ function GM:PlayerSpawn( ply )
     ply:SetHealth(math.max(ply.SavedHealth, 1))
     ply.Stamina = math.Clamp(tonumber(ply.Stamina) or ply:GetMaxStamina(), 0, ply:GetMaxStamina())
 
-    if( !ply.PreviouslyConnected ) then
-        ply.SkillPoints = 10 // give the player 10 skill points to start with
-        self:EnterOriginSafeZone(ply)
+    if not ply.PreviouslyConnected then
+        self:NewPlayer(ply)
     end
-
+    
     // save the player attributes and data to the database
     ply:Save()
 
@@ -77,9 +154,11 @@ function GM:PlayerSpawn( ply )
     ply:SendPlayerAttributes()
     ply:SendPlayerData()
 
-    // enter the origin safe zone
+    // A first-time single-player session begins at the safe room attached to the world origin.
     if( !ply.PreviouslyConnected ) then
         self:EnterOriginSafeZone(ply)
+    else
+        self:EnsurePlayerWorldMap(ply)
     end
 end
 

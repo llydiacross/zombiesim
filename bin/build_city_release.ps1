@@ -13,6 +13,7 @@ param(
     [int]$VradTimeoutSeconds = 0,
     [int]$DeferredGraceSeconds = 0,
     [switch]$OnlyRequiredMaps,
+    [string]$WorldProfile = '',
     [switch]$Preview,
     [switch]$VBSPOnly,
     [switch]$SkipRecipeRefresh,
@@ -28,41 +29,32 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$generatorSettings = & (Join-Path $PSScriptRoot 'import_generator_settings.ps1') -SettingsPath $SettingsPath
+$worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
+$profileSettings = $worldGenerationProfile.Config
 if ([string]::IsNullOrWhiteSpace($MapData)) {
-    $mapFilePattern = if ($Preview) { 'preview_grid_*.json' } else { 'map_grid_*.json' }
+    $mapFilePattern = "$($profileSettings.filePrefix)_grid_*.json"
     $MapData = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter $mapFilePattern -File |
         Where-Object { $_.Name -notlike '*_template_plan.json' } |
         Sort-Object LastWriteTime -Descending |
         Select-Object -First 1)[0].FullName
 }
 if ([string]::IsNullOrWhiteSpace($PlanData)) {
-    $planFilePattern = if ($Preview) { 'preview_grid_*_template_plan.json' } else { 'map_grid_*_template_plan.json' }
+    $planFilePattern = "$($profileSettings.filePrefix)_grid_*_template_plan.json"
     $PlanData = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter $planFilePattern -File |
         Sort-Object LastWriteTime -Descending |
         Select-Object -First 1)[0].FullName
 }
 if ([string]::IsNullOrWhiteSpace($SourceDirectory)) {
-    $sourceDirectorySetting = if ($Preview) { $generatorSettings.paths.previewCellDirectory } else { $generatorSettings.paths.cellDirectory }
-    $SourceDirectory = Join-Path $projectRoot $sourceDirectorySetting
+    $SourceDirectory = Join-Path $projectRoot $profileSettings.cellDirectory
 }
 if ([string]::IsNullOrWhiteSpace($BuildDirectory)) {
-    $buildDirectoryKey = if ($Preview) { 'previewBuildDirectory' } else { 'buildDirectory' }
-    $buildDirectoryFallback = if ($Preview) { 'generated/build_preview' } else { 'generated/build' }
-    $buildDirectorySetting = if ($generatorSettings.paths.ContainsKey($buildDirectoryKey)) { $generatorSettings.paths[$buildDirectoryKey] } else { $buildDirectoryFallback }
-    $BuildDirectory = Join-Path $projectRoot $buildDirectorySetting
+    $BuildDirectory = Join-Path $projectRoot $profileSettings.buildDirectory
 }
 if ([string]::IsNullOrWhiteSpace($ContentMapDirectory)) {
-    $releaseMapDirectoryKey = if ($Preview) { 'previewReleaseMapDirectory' } else { 'releaseMapDirectory' }
-    $releaseMapDirectoryFallback = if ($Preview) { 'content/maps/preview' } else { 'content/maps/city' }
-    $releaseMapDirectorySetting = if ($generatorSettings.paths.ContainsKey($releaseMapDirectoryKey)) { $generatorSettings.paths[$releaseMapDirectoryKey] } else { $releaseMapDirectoryFallback }
-    $ContentMapDirectory = Join-Path $projectRoot $releaseMapDirectorySetting
+    $ContentMapDirectory = Join-Path $projectRoot $profileSettings.releaseMapDirectory
 }
 if ([string]::IsNullOrWhiteSpace($RuntimeWorldData)) {
-    $runtimeWorldDataKey = if ($Preview) { 'previewRuntimeWorldData' } else { 'runtimeWorldData' }
-    $runtimeWorldDataFallback = if ($Preview) { 'content/data_static/zombiesim_world_preview.json' } else { 'content/data_static/zombiesim_world.json' }
-    $runtimeWorldDataSetting = if ($generatorSettings.paths.ContainsKey($runtimeWorldDataKey)) { $generatorSettings.paths[$runtimeWorldDataKey] } else { $runtimeWorldDataFallback }
-    $RuntimeWorldData = Join-Path $projectRoot $runtimeWorldDataSetting
+    $RuntimeWorldData = Join-Path $projectRoot $profileSettings.runtimeWorldData
 }
 if ([string]::IsNullOrWhiteSpace($MapData) -or -not (Test-Path -LiteralPath $MapData -PathType Leaf)) {
     throw 'A generated map manifest is required. Pass -MapData with a map_grid_*.json path.'
@@ -89,7 +81,7 @@ if (-not $SkipRecipeRefresh) {
         CellDirectory = $SourceDirectory
         RefreshGenerated = $true
         WhatIf = $WhatIf
-        Preview = $Preview
+        WorldProfile = $worldGenerationProfile.Name
         SettingsPath = $SettingsPath
     }
     & (Join-Path $PSScriptRoot 'build_cell_vmfs.ps1') @refreshArguments
@@ -115,7 +107,7 @@ if (-not $SkipCompile) {
         DeferredGraceSeconds = $DeferredGraceSeconds
         Force = $Force
         WhatIf = $WhatIf
-        Preview = $Preview
+        WorldProfile = $worldGenerationProfile.Name
         VBSPOnly = $VBSPOnly
         FinalizeWithIncomplete = $FinalizeWithIncomplete
         SettingsPath = $SettingsPath
@@ -165,7 +157,7 @@ foreach ($bspName in $requiredBspNames) {
     Copy-Item -LiteralPath (Join-Path $BuildDirectory $bspName) -Destination (Join-Path $ContentMapDirectory $bspName) -Force
 }
 
-& (Join-Path $PSScriptRoot 'export_runtime_world_data.ps1') -MapData $MapData -PlanData $PlanData -BuildDirectory $BuildDirectory -Output $RuntimeWorldData -Preview:$Preview -RequireCompiledMaps -SettingsPath $SettingsPath
+& (Join-Path $PSScriptRoot 'export_runtime_world_data.ps1') -MapData $MapData -PlanData $PlanData -BuildDirectory $BuildDirectory -Output $RuntimeWorldData -WorldProfile $worldGenerationProfile.Name -RequireCompiledMaps -SettingsPath $SettingsPath
 if (-not (Test-Path -LiteralPath $RuntimeWorldData -PathType Leaf)) {
     throw "Runtime-world exporter did not create the expected data file: $RuntimeWorldData"
 }

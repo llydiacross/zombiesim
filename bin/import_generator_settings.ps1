@@ -36,8 +36,8 @@ if (-not (Test-Path $SettingsPath)) {
 }
 
 $settings = ConvertTo-GeneratorSettingsHashtable (Get-Content -Raw $SettingsPath | ConvertFrom-Json)
-if ($settings.schemaVersion -ne 1) {
-    throw "Unsupported generator settings schema version '$($settings.schemaVersion)'. Expected 1."
+if ($settings.schemaVersion -notin @(1, 2)) {
+    throw "Unsupported generator settings schema version '$($settings.schemaVersion)'. Expected 1 or 2."
 }
 foreach ($requiredSection in @('paths', 'directions', 'mapGeneration', 'cellPlanning', 'vmfBuild')) {
     if (-not $settings.ContainsKey($requiredSection)) {

@@ -1,18 +1,116 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "paths": {
     "templateDirectory": "tiletemplates",
-    "cellDirectory": "generated/src",
-    "previewCellDirectory": "generated/src_preview",
     "baseCellTemplate": "celltemplates/template_border_s.vmf",
     "scriptOutputDirectory": "bin",
-    "buildDirectory": "generated/build",
-    "previewBuildDirectory": "generated/build_preview",
-    "releaseMapDirectory": "content/maps/city",
-    "previewReleaseMapDirectory": "content/maps/preview",
-    "runtimeWorldData": "content/data_static/zombiesim_world.json",
-    "previewRuntimeWorldData": "content/data_static/zombiesim_world_preview.json",
     "safeZoneTemplateDirectory": "celltemplates/safezones"
+  },
+  "worldGeneration": {
+    "defaultProfile": "city",
+    "profiles": {
+      "city": {
+        "filePrefix": "map",
+        "gridCells": 64,
+        "exportLayers": false,
+        "cellDirectory": "generated/src",
+        "buildDirectory": "generated/build",
+        "releaseMapDirectory": "content/maps/city",
+        "runtimeWorldData": "content/data_static/zombiesim_world.json",
+        "thumbnail": {
+          "map": "zn_start",
+          "source": "backgrounds/1.jpg",
+          "title": "CITY CAMPAIGN",
+          "showLogo": true
+        }
+      },
+      "preview": {
+        "filePrefix": "preview",
+        "gridCells": 24,
+        "exportLayers": true,
+        "cellDirectory": "generated/src_preview",
+        "buildDirectory": "generated/build_preview",
+        "releaseMapDirectory": "content/maps/preview",
+        "runtimeWorldData": "content/data_static/zombiesim_world_preview.json",
+        "thumbnail": {
+          "map": "zn_preview",
+          "source": "bin/preview_grid_24x24_seed_1337.png",
+          "title": "PREVIEW CITY",
+          "showLogo": false
+        }
+      },
+      "desert": {
+        "filePrefix": "desert",
+        "gridCells": 48,
+        "exportLayers": true,
+        "cellDirectory": "generated/src_desert",
+        "buildDirectory": "generated/build_desert",
+        "releaseMapDirectory": "content/maps/desert",
+        "runtimeWorldData": "content/data_static/zombiesim_world_desert.json",
+        "overrides": {
+          "mapGeneration": {
+            "highways": { "enabled": false },
+            "metro": { "enabled": false },
+            "settlements": {
+              "placementMode": "hash_modulo",
+              "spacing": 12
+            },
+            "population": {
+              "base": 1200,
+              "perBuildingCell": 65,
+              "seedVariation": 800,
+              "roundToNearest": 100
+            },
+            "road": {
+              "growthDepth": 4,
+              "branchChance": 0.08,
+              "turnChance": 0.02,
+              "minimumSegmentSteps": 10,
+              "maximumSegmentStepsExclusive": 22,
+              "deadEndRepairRadius": 0,
+              "centralSpineChance": 0.16,
+              "maximumJunctionDegree": 3
+            },
+            "terrain": {
+              "minimumWeight": 0.01,
+              "grassBaseWeight": 0.02,
+              "grassYWeight": 0.0,
+              "grassWestWeight": 0.0,
+              "sandBaseWeight": 1.0,
+              "sandCenterWeight": 0.15,
+              "sandNorthWeight": 0.0,
+              "dirtBaseWeight": 0.02,
+              "dirtYWeight": 0.0,
+              "dirtEastWeight": 0.0
+            }
+          },
+          "cellPlanning": {
+            "environment": {
+              "buildingDensity": {
+                "grassland": 0.08,
+                "sandy": 0.08,
+                "dirt": 0.08,
+                "parkland": 0.08,
+                "recreation": 0.08,
+                "settlement": 0.12,
+                "fallbackByTerrain": {
+                  "grassland": 0.08,
+                  "sandy": 0.08,
+                  "default": 0.08
+                }
+              },
+              "densityTiers": {
+                "highProfiles": [],
+                "mediumProfiles": []
+              }
+            },
+            "buildingSelection": {
+              "maximumHeightTier": 1
+            }
+          }
+        }
+      }
+    }
   },
   "compilation": {
     "activeProfile": "stock-gmod",
@@ -46,8 +144,6 @@
     "linearTileYaw": { "N": 0, "E": 90, "S": 0, "W": 90 }
   },
   "mapGeneration": {
-    "gridCells": 64,
-    "previewGridCells": 24,
     "cellSizePixels": 64,
     "seed": 1337,
     "road": {
@@ -58,7 +154,8 @@
       "minimumSegmentSteps": 3,
       "maximumSegmentStepsExclusive": 10,
       "deadEndRepairRadius": 8,
-      "centralSpineChance": 0.85
+      "centralSpineChance": 0.85,
+      "maximumJunctionDegree": 4
     },
     "bridges": {
       "chance": 0.04,
@@ -86,9 +183,48 @@
       "dirtNoiseMultiplier": 0.5
     },
     "metro": {
+      "enabled": true,
       "minimumStationSpacing": 6,
       "routeStopInterval": 8,
       "stopSuffixes": ["Arcade", "Bridge", "Cross", "Gate", "Gardens", "Heights", "Junction", "Market", "Park", "Quay", "Square", "Terrace", "Works", "Yard"]
+    },
+    "highways": {
+      "enabled": true
+    },
+    "settlements": {
+      "minimumDensity": 0.75,
+      "districtCenterDensity": 0.25,
+      "placementMode": "random"
+    },
+    "population": {
+      "base": 25000,
+      "perBuildingCell": 145,
+      "seedVariation": 15000,
+      "roundToNearest": 100
+    },
+    "radiation": {
+      "enabled": true,
+      "epicenterXFraction": 0.6,
+      "epicenterYMinimumFraction": 0.3,
+      "epicenterYMaximumFraction": 0.7,
+      "falloutRadiusCells": 9,
+      "additionalSourceEveryGridCells": 48,
+      "maximumSources": 3,
+      "cellMiles": 4,
+      "loreReferenceFalloutMilesAtOneMegaton": 12,
+      "destroyedThreshold": 0.7,
+      "damagePerSecondAtPeak": 8,
+      "overlayMaximumAlpha": 175
+    },
+    "danger": {
+      "enabled": true,
+      "tierCount": 6
+    },
+    "airports": {
+      "enabled": true,
+      "additionalAirportEveryGridCells": 96,
+      "maximumAirports": 3,
+      "minimumSeparationCells": 48
     },
     "cityNaming": {
       "prefixes": ["Ash", "Black", "Cinder", "Dun", "East", "Grey", "Iron", "New", "North", "Raven", "Red", "West"],
@@ -114,14 +250,14 @@
       { "x": 9, "y": 57, "radius": 5 }
     ],
     "rendering": {
-      "biomeOpacity": 45,
-      "previewExportsLayers": true
+      "biomeOpacity": 45
     }
   },
   "cellPlanning": {
     "cellTileGridSize": 5,
     "templatePatterns": {
       "genericBuildings": "^buildings/tile_(building|construction)_[0-9]+[a-z]+\\.vmf$",
+      "destroyedBuildings": "^buildings/tile_destroyed.*\\.vmf$",
       "warehouses": "^buildings/tile_warehouse_.*\\.vmf$",
       "commercial": "^buildings/tile_commercial_[0-9]+[a-z]+\\.vmf$",
       "industry": "^buildings/tile_industry_[0-9]+[a-z]+\\.vmf$",
@@ -195,11 +331,12 @@
       }
     },
     "environment": {
-      "profilePriority": ["radioactive", "safe_zone", "fortified", "military", "medical", "emergency_services", "religious", "service_station", "financial", "commercial", "recreation", "parkland"],
+      "profilePriority": ["destroyed", "radioactive", "safe_zone", "fortified", "military", "medical", "emergency_services", "religious", "service_station", "financial", "commercial", "recreation", "parkland"],
       "buildingDensity": {
         "grassland": 0.3,
         "sandy": 0.4,
         "dirt": 0.5,
+        "destroyed": 0.85,
         "parkland": 0.25,
         "recreation": 0.4,
         "settlement": 0.7,
@@ -246,15 +383,16 @@
       "Army Base": "*/tile_army*.vmf",
       "Laboratory": "*/tile_laboratory*.vmf",
       "Bunker": "*/tile_bunker*.vmf",
-      "Market": "*/tile_market*.vmf"
+      "Market": "*/tile_market*.vmf",
+      "Airport": "*/tile_airport*.vmf"
     },
     "filenameAbbreviations": {
       "format": "zn_<environment>_<topology>-<orientation>[-<transport>]-d<density>_<landmarks>.vmf",
-      "environmentProfiles": { "grassland": "gr", "sandy": "sa", "dirt": "di", "settlement": "st", "commercial": "co", "financial": "fi", "radioactive": "ra", "safe_zone": "sz", "fortified": "fo", "military": "mi", "medical": "md", "emergency_services": "es", "religious": "rl", "service_station": "ss", "recreation": "rc", "parkland": "pk" },
+      "environmentProfiles": { "grassland": "gr", "sandy": "sa", "dirt": "di", "settlement": "st", "commercial": "co", "financial": "fi", "radioactive": "ra", "destroyed": "dx", "safe_zone": "sz", "fortified": "fo", "military": "mi", "medical": "md", "emergency_services": "es", "religious": "rl", "service_station": "ss", "recreation": "rc", "parkland": "pk" },
       "topologies": { "open": "o", "road-straight": "rs", "road-corner": "rc", "road-tjunction": "rt", "road-crossjunction": "rx", "road-deadend": "rd", "road-isolated": "ri", "motorway-straight": "ms", "motorway-corner": "mc", "motorway-tjunction": "mt", "motorway-crossjunction": "mx", "motorway-deadend": "md", "motorway-isolated": "mi" },
       "orientations": { "none": "n", "all": "a", "vertical": "v", "horizontal": "h", "north": "n", "east": "e", "south": "s", "west": "w", "north-east": "ne", "east-south": "es", "south-west": "sw", "north-west": "nw", "missing-north": "mn", "missing-east": "me", "missing-south": "ms", "missing-west": "mw" },
       "transportFeatures": { "none": "", "bridge-vertical": "bv", "bridge-horizontal": "bh", "bridge-ramp": "br<direction>", "onramp": "o<direction>", "onramp-dual": "od<directions>" },
-      "landmarks": { "none": "n", "church": "ch", "hospital": "ho", "police": "po", "fire": "fi", "petrol-station": "ps", "bank": "ba", "army-base": "ab", "laboratory": "la", "bunker": "bu", "market": "ma", "leisure": "le", "park": "pk" }
+      "landmarks": { "none": "n", "church": "ch", "hospital": "ho", "police": "po", "fire": "fi", "petrol-station": "ps", "bank": "ba", "army-base": "ab", "laboratory": "la", "bunker": "bu", "the-epicenter": "ep", "airport": "ap", "market": "ma", "leisure": "le", "park": "pk" }
     }
   },
   "vmfBuild": {

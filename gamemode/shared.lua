@@ -8,10 +8,9 @@ GM.Author = "N/A"
 GM.Email = "N/A"
 GM.Website = "N/A"
 
-// Loads the packaged production world index. Failure is logged instead of aborting the gamemode,
-// allowing development maps to start before the release data has been generated.
-function GM:Initialize()
-	local loaded, loadError = ZM_World:Load()
+// Loads the city-data profile selected by the current map's optional zn_world_profile entity.
+function GM:InitPostEntity()
+	local loaded, loadError = ZM_World:LoadMapProfile()
 	if not loaded then
 		ErrorNoHalt("[ZombieSim] " .. loadError .. "\n")
 	end

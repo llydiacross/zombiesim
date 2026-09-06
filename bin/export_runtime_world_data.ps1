@@ -3,6 +3,7 @@ param(
     [string]$PlanData = '',
     [string]$Output = '',
     [string]$BuildDirectory = '',
+    [string]$WorldProfile = '',
     [switch]$Preview,
     [switch]$RequireCompiledMaps,
     [string]$SettingsPath = ''
@@ -45,15 +46,13 @@ function Get-AtmosphereProfile {
 }
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$generatorSettings = & (Join-Path $PSScriptRoot 'import_generator_settings.ps1') -SettingsPath $SettingsPath
-$releaseMapDirectoryKey = if ($Preview) { 'previewReleaseMapDirectory' } else { 'releaseMapDirectory' }
-$mapDirectory = if ($Preview) { 'preview' } else { 'city' }
-if ($generatorSettings.paths.ContainsKey($releaseMapDirectoryKey)) {
-    $mapDirectory = Split-Path -Leaf ([string]$generatorSettings.paths[$releaseMapDirectoryKey])
-}
+$worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
+$generatorSettings = $worldGenerationProfile.Settings
+$profileSettings = $worldGenerationProfile.Config
+$mapDirectory = Split-Path -Leaf ([string]$profileSettings.releaseMapDirectory)
 if ([string]::IsNullOrWhiteSpace($mapDirectory)) { throw 'The runtime map directory cannot be empty.' }
 if ([string]::IsNullOrWhiteSpace($MapData)) {
-    $mapFilePattern = if ($Preview) { 'preview_grid_*.json' } else { 'map_grid_*.json' }
+    $mapFilePattern = "$($profileSettings.filePrefix)_grid_*.json"
     $MapData = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter $mapFilePattern -File |
         Where-Object { $_.Name -notlike '*_template_plan.json' } |
         Sort-Object LastWriteTime -Descending |
@@ -63,7 +62,7 @@ if ([string]::IsNullOrWhiteSpace($MapData) -or -not (Test-Path -LiteralPath $Map
     throw 'A generated map manifest is required. Pass -MapData with a map_grid_*.json path.'
 }
 if ([string]::IsNullOrWhiteSpace($PlanData)) {
-    $planFilePattern = if ($Preview) { 'preview_grid_*_template_plan.json' } else { 'map_grid_*_template_plan.json' }
+    $planFilePattern = "$($profileSettings.filePrefix)_grid_*_template_plan.json"
     $PlanData = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter $planFilePattern -File |
         Sort-Object LastWriteTime -Descending |
         Select-Object -First 1)[0].FullName
@@ -72,16 +71,10 @@ if ([string]::IsNullOrWhiteSpace($PlanData) -or -not (Test-Path -LiteralPath $Pl
     throw 'A template plan is required. Pass -PlanData with a map_grid_*_template_plan.json path.'
 }
 if ([string]::IsNullOrWhiteSpace($BuildDirectory)) {
-    $buildDirectoryKey = if ($Preview) { 'previewBuildDirectory' } else { 'buildDirectory' }
-    $buildDirectoryFallback = if ($Preview) { 'generated/build_preview' } else { 'generated/build' }
-    $buildDirectorySetting = if ($generatorSettings.paths.ContainsKey($buildDirectoryKey)) { $generatorSettings.paths[$buildDirectoryKey] } else { $buildDirectoryFallback }
-    $BuildDirectory = Join-Path $projectRoot $buildDirectorySetting
+    $BuildDirectory = Join-Path $projectRoot $profileSettings.buildDirectory
 }
 if ([string]::IsNullOrWhiteSpace($Output)) {
-    $runtimeWorldDataKey = if ($Preview) { 'previewRuntimeWorldData' } else { 'runtimeWorldData' }
-    $runtimeWorldDataFallback = if ($Preview) { 'content/data_static/zombiesim_world_preview.json' } else { 'content/data_static/zombiesim_world.json' }
-    $runtimeWorldDataSetting = if ($generatorSettings.paths.ContainsKey($runtimeWorldDataKey)) { $generatorSettings.paths[$runtimeWorldDataKey] } else { $runtimeWorldDataFallback }
-    $Output = Join-Path $projectRoot $runtimeWorldDataSetting
+    $Output = Join-Path $projectRoot $profileSettings.runtimeWorldData
 }
 
 $map = Get-Content -Raw -LiteralPath $MapData | ConvertFrom-Json
@@ -301,6 +294,10 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
     $metroLineIds = @($mapCell.metro.lines | ForEach-Object { $metroLineIndexByName[[string]$_] } | Sort-Object -Unique)
     $metroStopId = $null
     if ($null -ne $mapCell.metro.stop) { $metroStopId = $metroStopIndexByName[(Get-RecordName $mapCell.metro.stop "Map cell $key metro stop")] }
+    $radiationIntensity = if ($null -ne $mapCell.radiation -and $null -ne $mapCell.radiation.intensity) { [double]$mapCell.radiation.intensity } else { 0.0 }
+    $radiationIntensity = [Math]::Max(0, [Math]::Min(1, $radiationIntensity))
+    $dangerIntensity = if ($null -ne $mapCell.danger -and $null -ne $mapCell.danger.intensity) { [double]$mapCell.danger.intensity } else { 0.0 }
+    $dangerIntensity = [Math]::Max(0, [Math]::Min(1, $dangerIntensity))
     $runtimeCells.Add([ordered]@{
         id = $cellId
         map = $mapName
@@ -312,6 +309,8 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
         building = [bool]$mapCell.building.present
         landmarks = $landmarkIds
         safeZone = $safeZoneId
+        radiation = $radiationIntensity
+        danger = $dangerIntensity
         topology = [string]$planCell.topology
         entrances = @($planCell.activeEntrances)
         transport = [ordered]@{ bridge = [bool]$mapCell.highway.bridge; rampExits = @($mapCell.highway.rampExits); diagonal = [bool]$mapCell.highway.diagonal }
@@ -331,6 +330,24 @@ if ($RequireCompiledMaps) {
 
 $mapHash = (Get-FileHash -LiteralPath $MapData -Algorithm SHA256).Hash.ToLowerInvariant()
 $planHash = (Get-FileHash -LiteralPath $PlanData -Algorithm SHA256).Hash.ToLowerInvariant()
+$radiationGeneration = if ($null -ne $map.generation.radiation) { $map.generation.radiation } else { $null }
+$radiationDamagePerSecondAtPeak = if ($null -ne $radiationGeneration -and $null -ne $radiationGeneration.damagePerSecondAtPeak) { [double]$radiationGeneration.damagePerSecondAtPeak } else { 0.0 }
+$dangerGeneration = if ($null -ne $map.generation.danger) { $map.generation.danger } else { $null }
+$dangerEnabled = if ($null -ne $dangerGeneration -and $null -ne $dangerGeneration.enabled) { [bool]$dangerGeneration.enabled } else { $false }
+$dangerPattern = if ($null -ne $dangerGeneration -and $null -ne $dangerGeneration.pattern) { [string]$dangerGeneration.pattern } else { 'none' }
+$dangerTierCount = if ($null -ne $dangerGeneration -and $null -ne $dangerGeneration.tierCount) { [int]$dangerGeneration.tierCount } else { 0 }
+$dangerOrigin = if ($null -ne $dangerGeneration -and $null -ne $dangerGeneration.origin) { [ordered]@{ worldX = [int]$dangerGeneration.origin.worldX; worldY = [int]$dangerGeneration.origin.worldY; cellX = [int]$dangerGeneration.origin.cellX; cellY = [int]$dangerGeneration.origin.cellY } } else { $null }
+$radiationEpicenter = if ($null -ne $radiationGeneration -and $null -ne $radiationGeneration.epicenter) { [ordered]@{ name = [string]$radiationGeneration.epicenter.name; x = [int]$radiationGeneration.epicenter.x; y = [int]$radiationGeneration.epicenter.y; worldX = [int]$radiationGeneration.epicenter.worldX; worldY = [int]$radiationGeneration.epicenter.worldY; falloutRadiusCells = [int]$radiationGeneration.epicenter.falloutRadiusCells; falloutRadiusMiles = [double]$radiationGeneration.epicenter.falloutRadiusMiles; loreYieldMegatons = [double]$radiationGeneration.epicenter.loreYieldMegatons } } else { $null }
+$radiationEpicenters = @()
+if ($null -ne $radiationGeneration -and $null -ne $radiationGeneration.epicenters) {
+    foreach ($source in @($radiationGeneration.epicenters)) {
+        $radiationEpicenters += [ordered]@{ name = [string]$source.name; x = [int]$source.x; y = [int]$source.y; worldX = [int]$source.worldX; worldY = [int]$source.worldY; falloutRadiusCells = [int]$source.falloutRadiusCells; falloutRadiusMiles = [double]$source.falloutRadiusMiles; loreYieldMegatons = [double]$source.loreYieldMegatons }
+    }
+} elseif ($null -ne $radiationEpicenter) {
+    $radiationEpicenters = @($radiationEpicenter)
+}
+$radiationFalloutRadiusCells = if ($null -ne $radiationGeneration -and $null -ne $radiationGeneration.falloutRadiusCells) { [int]$radiationGeneration.falloutRadiusCells } else { 0 }
+$radiationDestroyedThreshold = if ($null -ne $radiationGeneration -and $null -ne $radiationGeneration.destroyedThreshold) { [double]$radiationGeneration.destroyedThreshold } else { 1.0 }
 $runtimeWorld = [ordered]@{
     schemaVersion = 1
     world = [ordered]@{
@@ -343,6 +360,7 @@ $runtimeWorld = [ordered]@{
         templatePlanSha256 = $planHash
     }
     atmosphereProfiles = @('outskirts', 'suburbs', 'inner_city', 'dead_zone', 'safe_zone')
+    hazards = [ordered]@{ radiation = [ordered]@{ damagePerSecondAtPeak = [Math]::Max(0, $radiationDamagePerSecondAtPeak); epicenter = $radiationEpicenter; epicenters = @($radiationEpicenters); falloutRadiusCells = [Math]::Max(0, $radiationFalloutRadiusCells); destroyedThreshold = [Math]::Max(0.0, [Math]::Min(1.0, $radiationDestroyedThreshold)) }; danger = [ordered]@{ enabled = $dangerEnabled; pattern = $dangerPattern; origin = $dangerOrigin; tierCount = [Math]::Max(0, $dangerTierCount) } }
     environments = @($runtimeEnvironments)
     districts = @($runtimeDistricts)
     landmarks = @($runtimeLandmarks)

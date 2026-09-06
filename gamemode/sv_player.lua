@@ -190,13 +190,38 @@ hook.Add("Think", "ZM.Stamina", function()
                 stamina = stamina + recoveryRate * delta
             end
 
-            print( string.format("Player: %s, Stamina: %.2f, MaxStamina: %.2f, IsSprinting: %s", ply:Nick(), stamina, maxStamina, tostring(isSprinting)) )
-
             ply.Stamina = math.Clamp(stamina, 0, maxStamina)
 
             ply:SetNWFloat("Stamina", ply.Stamina)
             ply:SetNWFloat("MaxStamina", maxStamina)
         end
+    end
+end)
+
+// Applies ambient radiation once per second; standalone safe rooms remain protected.
+local nextRadiationDamageAt = 0
+hook.Add("Think", "ZM.RadiationDamage", function()
+    if CurTime() < nextRadiationDamageAt then return end
+    nextRadiationDamageAt = CurTime() + 1
+
+    for _, ply in ipairs(player.GetAll()) do
+        if not IsValid(ply) or not ply:Alive() then continue end
+
+        local inSafeZone = type(ply.CurrentSafeZoneId) == "string" and ply.CurrentSafeZoneId ~= ""
+        local intensity = inSafeZone and 0 or ply:GetRadiationIntensity()
+        intensity = tonumber(intensity) or 0
+        ply:SetNWFloat("RadiationIntensity", intensity)
+        if intensity <= 0 then continue end
+
+        local damagePerSecond = ply:GetRadiationDamagePerSecond()
+        if not damagePerSecond or damagePerSecond <= 0 then continue end
+
+        local damageInfo = DamageInfo()
+        damageInfo:SetDamage(damagePerSecond)
+        damageInfo:SetDamageType(DMG_RADIATION)
+        damageInfo:SetAttacker(game.GetWorld())
+        damageInfo:SetInflictor(game.GetWorld())
+        ply:TakeDamageInfo(damageInfo)
     end
 end)
 

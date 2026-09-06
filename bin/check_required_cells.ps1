@@ -3,6 +3,7 @@ param(
     [Alias('MapDirectory')]
     [string]$CellDirectory = '',
     [switch]$ListOnly,
+    [string]$WorldProfile = '',
     [switch]$Preview,
     [string]$SettingsPath = ''
 )
@@ -10,10 +11,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$generatorSettings = & (Join-Path $PSScriptRoot 'import_generator_settings.ps1') -SettingsPath $SettingsPath
+$worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
+$profileSettings = $worldGenerationProfile.Config
 
 if ([string]::IsNullOrWhiteSpace($RequiredCellList)) {
-    $RequiredCellList = @(Get-ChildItem -Path $PSScriptRoot -Filter '*_required_cell_vmfs.txt' -File |
+    $requiredListPattern = "$($profileSettings.filePrefix)_grid_*_required_cell_vmfs.txt"
+    $RequiredCellList = @(Get-ChildItem -Path $PSScriptRoot -Filter $requiredListPattern -File |
         Sort-Object LastWriteTime -Descending |
         Select-Object -First 1)[0].FullName
 }
@@ -21,8 +24,7 @@ if ([string]::IsNullOrWhiteSpace($RequiredCellList) -or -not (Test-Path $Require
     throw 'A required-cell list is required. Pass -RequiredCellList with a *_required_cell_vmfs.txt path.'
 }
 if ([string]::IsNullOrWhiteSpace($CellDirectory)) {
-    $cellDirectorySetting = if ($Preview) { $generatorSettings.paths.previewCellDirectory } else { $generatorSettings.paths.cellDirectory }
-    $CellDirectory = Join-Path $projectRoot $cellDirectorySetting
+    $CellDirectory = Join-Path $projectRoot $profileSettings.cellDirectory
 }
 if (-not (Test-Path $CellDirectory)) {
     throw "Cell source directory was not found: $CellDirectory"

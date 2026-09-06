@@ -62,6 +62,52 @@ function ply:GetWorldCell()
     return cell
 end
 
+// Returns the district record for the player's current world cell.
+function ply:GetCurrentDistrict()
+    local cell, loadError = self:GetWorldCell()
+    if not cell then
+        return nil, loadError
+    end
+
+    return ZM_World:GetDistrict(cell)
+end
+
+// Returns the display name of the district containing the player's current world cell.
+function ply:GetCurrentDistrictName()
+    local district, loadError = self:GetCurrentDistrict()
+    return district and district.name or nil, loadError
+end
+
+// Returns the ambient radiation intensity for the player's current city cell.
+function ply:GetRadiationIntensity()
+    local cell, loadError = self:GetWorldCell()
+    if not cell then
+        return nil, loadError
+    end
+
+    return ZM_World:GetRadiationIntensity(cell)
+end
+
+// Returns the generated enemy-scaling danger intensity for the player's current city cell.
+function ply:GetDangerIntensity()
+    local cell, loadError = self:GetWorldCell()
+    if not cell then
+        return nil, loadError
+    end
+
+    return ZM_World:GetDangerIntensity(cell)
+end
+
+// Returns radiation damage per second for the player's current city cell.
+function ply:GetRadiationDamagePerSecond()
+    local intensity, loadError = self:GetRadiationIntensity()
+    if intensity == nil then
+        return nil, loadError
+    end
+
+    return intensity * ZM_World:GetRadiationDamagePerSecondAtPeak()
+end
+
 // Returns the compact world-data id for the player's current logical cell.
 function ply:GetWorldCellId()
     local cell = self:GetWorldCell()

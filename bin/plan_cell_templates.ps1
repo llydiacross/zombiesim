@@ -7,6 +7,7 @@ param(
     [string]$Output = '',
     [string]$ListOutput = '',
     [switch]$ListOnly,
+    [string]$WorldProfile = '',
     [switch]$Preview,
     [string]$SettingsPath = ''
 )
@@ -14,14 +15,20 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$generatorSettings = & (Join-Path $PSScriptRoot 'import_generator_settings.ps1') -SettingsPath $SettingsPath
+$worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
+$generatorSettings = $worldGenerationProfile.Settings
+$profileSettings = $worldGenerationProfile.Config
 $plannerSettings = $generatorSettings.cellPlanning
 if (-not $PSBoundParameters.ContainsKey('CellTileSize')) {
     $CellTileSize = [int]$plannerSettings.cellTileGridSize
 }
 
 if ([string]::IsNullOrWhiteSpace($MapData)) {
-    $MapData = @(Get-ChildItem -Path $PSScriptRoot -Filter 'map_grid_*.json' -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1)[0].FullName
+    $mapFilePattern = "$($profileSettings.filePrefix)_grid_*.json"
+    $MapData = @(Get-ChildItem -Path $PSScriptRoot -Filter $mapFilePattern -File |
+        Where-Object { $_.Name -notlike '*_template_plan.json' } |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1)[0].FullName
 }
 if ([string]::IsNullOrWhiteSpace($MapData) -or -not (Test-Path $MapData)) {
     throw 'A generated map JSON file is required. Pass -MapData with the manifest path.'
@@ -33,11 +40,10 @@ if (-not (Test-Path $TemplateDirectory)) {
     throw "Template directory was not found: $TemplateDirectory"
 }
 if ([string]::IsNullOrWhiteSpace($CellDirectory)) {
-    $cellDirectorySetting = if ($Preview) { $generatorSettings.paths.previewCellDirectory } else { $generatorSettings.paths.cellDirectory }
-    $CellDirectory = Join-Path $projectRoot $cellDirectorySetting
+    $CellDirectory = Join-Path $projectRoot $profileSettings.cellDirectory
 }
 if (-not (Test-Path $CellDirectory)) {
-    throw "Cell source directory was not found: $CellDirectory"
+    [System.IO.Directory]::CreateDirectory($CellDirectory) | Out-Null
 }
 if ([string]::IsNullOrWhiteSpace($Output)) {
     $mapBaseName = [System.IO.Path]::GetFileNameWithoutExtension($MapData)
@@ -63,6 +69,11 @@ if ($templateFiles.Count -eq 0) {
     throw "No VMF templates were found in $TemplateDirectory"
 }
 $buildingTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.genericBuildings } | Sort-Object)
+if ($plannerSettings.templatePatterns.ContainsKey('destroyedBuildings')) {
+    $destroyedBuildingTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.destroyedBuildings } | Sort-Object)
+} else {
+    $destroyedBuildingTemplates = @()
+}
 $warehouseTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.warehouses } | Sort-Object)
 $commercialTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.commercial } | Sort-Object)
 $industryTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.industry } | Sort-Object)
@@ -627,7 +638,7 @@ function Get-ProfileFallbackTemplates {
     $candidates = [System.Collections.Generic.List[string]]::new()
     $allowCommercial = $Profile -in $plannerSettings.buildingSelection.commercialProfiles -or $Landmarks -contains 'Market'
     $allowIndustry = $Cell.environment.terrain -in $plannerSettings.buildingSelection.industryTerrains -or $Profile -in $plannerSettings.buildingSelection.industryProfiles
-    $candidatePool = @($buildingTemplates) + @($warehouseTemplates)
+    $candidatePool = if ($Profile -eq 'destroyed' -and $destroyedBuildingTemplates.Count -gt 0) { @($destroyedBuildingTemplates) } else { @($buildingTemplates) + @($warehouseTemplates) }
     if ($allowCommercial) { $candidatePool += @($commercialTemplates) }
     if ($allowIndustry) { $candidatePool += @($industryTemplates) }
     foreach ($candidate in $candidatePool) {

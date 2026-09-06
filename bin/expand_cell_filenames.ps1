@@ -1,16 +1,20 @@
 param(
     [string]$PlanData = '',
     [string]$Output = '',
+    [string]$WorldProfile = '',
     [string]$SettingsPath = ''
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$generatorSettings = & (Join-Path $PSScriptRoot 'import_generator_settings.ps1') -SettingsPath $SettingsPath
+$worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -SettingsPath $SettingsPath
+$generatorSettings = $worldGenerationProfile.Settings
+$profileSettings = $worldGenerationProfile.Config
 
 if ([string]::IsNullOrWhiteSpace($PlanData)) {
-    $PlanData = @(Get-ChildItem -Path $PSScriptRoot -Filter '*_template_plan.json' -File |
+    $planFilePattern = "$($profileSettings.filePrefix)_grid_*_template_plan.json"
+    $PlanData = @(Get-ChildItem -Path $PSScriptRoot -Filter $planFilePattern -File |
         Sort-Object LastWriteTime -Descending |
         Select-Object -First 1)[0].FullName
 }

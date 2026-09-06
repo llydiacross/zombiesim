@@ -10,6 +10,7 @@ param(
     [int]$VradTimeoutSeconds = 0,
     [int]$DeferredGraceSeconds = 0,
     [switch]$Force,
+    [string]$WorldProfile = '',
     [switch]$Preview,
     [switch]$VBSPOnly,
     [switch]$SkipVis,
@@ -54,7 +55,9 @@ function Resolve-CompilerExecutable {
 }
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$generatorSettings = & (Join-Path $PSScriptRoot 'import_generator_settings.ps1') -SettingsPath $SettingsPath
+$worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
+$generatorSettings = $worldGenerationProfile.Settings
+$profileSettings = $worldGenerationProfile.Config
 $compilationSettings = Get-SettingsValue $generatorSettings 'compilation' @{}
 if ([string]::IsNullOrWhiteSpace($CompilerProfile)) { $CompilerProfile = [string](Get-SettingsValue $compilationSettings 'activeProfile' 'stock-gmod') }
 if (-not $compilationSettings.ContainsKey('profiles') -or -not $compilationSettings.profiles.ContainsKey($CompilerProfile)) {
@@ -74,14 +77,10 @@ if ($VBSPOnly) {
     $SkipRad = $true
 }
 if ([string]::IsNullOrWhiteSpace($SourceDirectory)) {
-    $sourceDirectorySetting = if ($Preview) { $generatorSettings.paths.previewCellDirectory } else { $generatorSettings.paths.cellDirectory }
-    $SourceDirectory = Join-Path $projectRoot $sourceDirectorySetting
+    $SourceDirectory = Join-Path $projectRoot $profileSettings.cellDirectory
 }
 if ([string]::IsNullOrWhiteSpace($BuildDirectory)) {
-    $buildDirectoryKey = if ($Preview) { 'previewBuildDirectory' } else { 'buildDirectory' }
-    $buildDirectoryFallback = if ($Preview) { 'generated/build_preview' } else { 'generated/build' }
-    $buildDirectorySetting = if ($generatorSettings.paths.ContainsKey($buildDirectoryKey)) { $generatorSettings.paths[$buildDirectoryKey] } else { $buildDirectoryFallback }
-    $BuildDirectory = Join-Path $projectRoot $buildDirectorySetting
+    $BuildDirectory = Join-Path $projectRoot $profileSettings.buildDirectory
 }
 if ([string]::IsNullOrWhiteSpace($GameDirectory)) {
     $GameDirectory = Split-Path -Parent (Split-Path -Parent $projectRoot)
