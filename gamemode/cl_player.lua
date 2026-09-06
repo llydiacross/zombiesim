@@ -1,6 +1,7 @@
+// Client-side mirrors of the Player values replicated by sv_player.lua.
 local ply = FindMetaTable("Player")
 
-  
+// Copies all replicated attribute NWInts into fields used by local HUD/gameplay code.
 function ply:SetPlayerAttributes()
     self.Attributes.Strength = self:GetNWInt("Strength")
     self.Attributes.Agility = self:GetNWInt("Agility")
@@ -18,6 +19,8 @@ function ply:SetPlayerAttributes()
     self.Attributes.Mechanics = self:GetNWInt("Mechanics")
 end
 
+// Copies the replicated core progression NWInts into local fields.
+// Cell position remains available directly as NWInts until client code needs it.
 function ply:SetPlayerData()
     self.XP = self:GetNWInt("XP")
     self.Level = self:GetNWInt("Level")

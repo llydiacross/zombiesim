@@ -1,13 +1,16 @@
+// Short-lived messages shown around the crosshair, newest message nearest the center.
 local crosshairNotifications = {}
 local notificationDuration = 1
 local notificationFadeDuration = 0.35
 
+// Dedicated notification font keeps combat feedback independent from the default HUD font.
 surface.CreateFont("ZM_CrosshairNotification", {
     font = "Trebuchet24",
     size = 20,
     weight = 700,
 })
 
+// Queues a message that HUDPaint will fade and remove after notificationDuration seconds.
 function ZM_AddCrosshairNotification(text)
     table.insert(crosshairNotifications, {
         text = tostring(text),
@@ -15,6 +18,7 @@ function ZM_AddCrosshairNotification(text)
     })
 end
 
+// Draws queued notifications in reverse order so expired messages can be removed safely.
 hook.Add("HUDPaint", "ZM.CrosshairNotifications", function()
     local now = CurTime()
     local y = ScrH() * 0.5 - 28
@@ -46,6 +50,7 @@ hook.Add("HUDPaint", "ZM.CrosshairNotifications", function()
     end
 end)
 
+// Draws stamina only while sprinting or recovering, and hides it in the selfie camera view.
 hook.Add("HUDPaint", "ZM.StaminaBar", function()
     local ply = LocalPlayer()
     if not IsValid(ply) or not ply:Alive() then return end

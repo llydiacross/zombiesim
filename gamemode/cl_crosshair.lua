@@ -1,11 +1,14 @@
+// Suppresses the Source crosshair because ZM.CustomCrosshair draws the gameplay replacement.
 hook.Add("HUDShouldDraw", "ZM.HideDefaultCrosshair", function(name)
     if name == "CHudCrosshair" then return false end
 end)
 
+// Remove the legacy event notifier; local health comparison below prevents duplicate messages.
 hook.Remove("player_hurt", "ZM.PlayerDamageNotification")
 
 local lastPlayerHealth
 
+// Detects local health loss and adds a lightweight damage notification at the crosshair.
 hook.Add("Think", "ZM.TrackPlayerDamage", function()
     local ply = LocalPlayer()
     if not IsValid(ply) or not ply:Alive() then
@@ -22,6 +25,7 @@ hook.Add("Think", "ZM.TrackPlayerDamage", function()
     lastPlayerHealth = currentHealth
 end)
 
+// Draws a compact health-colored reticle. Sprinting animates its size; low health pulses alpha.
 hook.Add("HUDPaint", "ZM.CustomCrosshair", function()
     local ply = LocalPlayer()
     if not IsValid(ply) or not ply:Alive() then return end

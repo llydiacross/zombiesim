@@ -34,6 +34,11 @@ $plan = Get-Content -Raw $PlanData | ConvertFrom-Json
 if ($plan.schemaVersion -lt 2 -or $plan.cellTileGridSize -lt 1) {
     throw 'The template plan must contain a cellTileGridSize and tilePlacements.'
 }
+$safeZoneMaps = @($plan.safeZoneMaps)
+$safeZoneTemplateDirectory = [string]$plan.safeZoneTemplateDirectory
+if ($safeZoneMaps.Count -gt 0 -and ([string]::IsNullOrWhiteSpace($safeZoneTemplateDirectory) -or -not (Test-Path -LiteralPath $safeZoneTemplateDirectory -PathType Container))) {
+    throw 'The template plan defines standalone safe-zone maps but has no valid safeZoneTemplateDirectory. Re-run plan_cell_templates.ps1.'
+}
 
 if ([string]::IsNullOrWhiteSpace($CellDirectory)) {
     if ($Preview) {
@@ -155,10 +160,27 @@ $requiredRecipeNames = @{}
 foreach ($recipe in $recipes) {
     $requiredRecipeNames[$recipe.cellTemplateFilename.ToLowerInvariant()] = $true
 }
+$safeZoneMapNames = @{}
+foreach ($safeZoneMap in $safeZoneMaps) {
+    $mapFilename = [string]$safeZoneMap.mapFilename
+    $templateFilename = [string]$safeZoneMap.templateFilename
+    if ([System.IO.Path]::GetFileName($mapFilename) -ne $mapFilename -or [System.IO.Path]::GetExtension($mapFilename) -ine '.vmf') {
+        throw "Standalone safe-zone map filename must be a .vmf filename without a path: $mapFilename"
+    }
+    if ([System.IO.Path]::GetFileName($templateFilename) -ne $templateFilename -or [System.IO.Path]::GetExtension($templateFilename) -ine '.vmf') {
+        throw "Standalone safe-zone template must be a .vmf filename without a path: $templateFilename"
+    }
+    if ($requiredRecipeNames.ContainsKey($mapFilename.ToLowerInvariant()) -or $safeZoneMapNames.ContainsKey($mapFilename.ToLowerInvariant())) {
+        throw "Standalone safe-zone map filename conflicts with another source map: $mapFilename"
+    }
+    $safeZoneMapNames[$mapFilename.ToLowerInvariant()] = $true
+}
 $created = 0
 $refreshed = 0
 $skipped = 0
 $pruned = 0
+$safeZoneMapsWritten = 0
+$safeZoneMapsSkipped = 0
 if ($PruneStaleGenerated) {
     foreach ($existingVmf in (Get-ChildItem -Path $CellDirectory -Filter '*.vmf' -File)) {
         if ($requiredRecipeNames.ContainsKey($existingVmf.Name.ToLowerInvariant()) -or -not (Test-GeneratedCellVmf $existingVmf.FullName)) {
@@ -187,4 +209,26 @@ foreach ($recipe in $recipes) {
     $created++
 }
 
-Write-Output "Cell recipes: $($recipes.Count); written: $created; refreshed generated: $refreshed; skipped existing: $skipped; pruned stale generated: $pruned; cleared source items: $clearedItems; output: $CellDirectory"
+foreach ($safeZoneMap in $safeZoneMaps) {
+    $templateVmfPath = Join-Path $safeZoneTemplateDirectory $safeZoneMap.templateFilename
+    $outputVmfPath = Join-Path $CellDirectory $safeZoneMap.mapFilename
+    if (-not (Test-Path -LiteralPath $templateVmfPath -PathType Leaf)) {
+        throw "Standalone safe-zone template was not found: $templateVmfPath"
+    }
+    if ((Test-Path -LiteralPath $outputVmfPath -PathType Leaf) -and -not ($Force -or $RefreshGenerated)) {
+        $safeZoneMapsSkipped++
+        continue
+    }
+
+    if (-not $WhatIf) {
+        Copy-Item -LiteralPath $templateVmfPath -Destination $outputVmfPath -Force
+        $templateVmxPath = [System.IO.Path]::ChangeExtension($templateVmfPath, '.vmx')
+        if (Test-Path -LiteralPath $templateVmxPath -PathType Leaf) {
+            $outputVmxPath = Join-Path $CellDirectory ([System.IO.Path]::ChangeExtension([string]$safeZoneMap.mapFilename, '.vmx'))
+            Copy-Item -LiteralPath $templateVmxPath -Destination $outputVmxPath -Force
+        }
+    }
+    $safeZoneMapsWritten++
+}
+
+Write-Output "Cell recipes: $($recipes.Count); written: $created; refreshed generated: $refreshed; skipped existing: $skipped; standalone dens: $($safeZoneMaps.Count); dens copied: $safeZoneMapsWritten; dens skipped: $safeZoneMapsSkipped; pruned stale generated: $pruned; cleared source items: $clearedItems; output: $CellDirectory"

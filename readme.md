@@ -31,6 +31,21 @@ Based upon Dead Frontier In Gmod.
 
    Recipe BSPs use the generated VMF basename, for example `zn_grassland_open_none.bsp`.
 
+ # Runtime World Data
+
+ `ZM_World` loads `data_static/zombiesim_world.json` from the `GAME` mount during gamemode initialization. It returns `nil` or `false, error` when the index is unavailable, so gameplay code can fail safely while a release is being assembled.
+
+ ```lua
+ local cell = ZM_World:GetCell(0, 0)
+ local mapName = ZM_World:GetMapPath(cell)
+ local target, exit, mode = ZM_World:CanTravel(cell, "N", "road")
+ local route = ZM_World:FindPath({ x = 0, y = 0 }, { x = 8, y = 12 }, { mode = "any" })
+ ```
+
+ Player helpers use their persisted `CellX` and `CellY` coordinates: `ply:GetWorldCell()`, `ply:GetNeighbouringCell("N")`, `ply:GetNeighbouringCells()`, and `ply:GetReachableNeighbouringCells("road")`. Both British and American `Neighbouring`/`Neighboring` spellings are available.
+
+ The service provides cell lookup by coordinates/id/map, map transition resolution, exit and blockade checks, environment/district/safe-zone/landmark/metro/atmosphere data, indexed metadata searches, nearest-cell searches, and A* routing. Recipe map names can refer to multiple logical cells; use `GetCellsForMap` when a map name is ambiguous.
+
 - ./source
 
  The .vmf files for the cells of the city, should match a map file in the content folder idealily.

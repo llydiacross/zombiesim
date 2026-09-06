@@ -69,6 +69,15 @@ $industryTemplates = @($templateFiles.Values | Where-Object { $_ -match $planner
 $decorationTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.decorations } | Sort-Object)
 $carparkTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.carparks } | Sort-Object)
 $filenameAbbreviations = $plannerSettings.filenameAbbreviations
+$safeZoneSettings = $plannerSettings.safeZones
+if ($null -eq $safeZoneSettings -or -not $safeZoneSettings.ContainsKey('templatesByTerrain')) {
+    throw 'cellPlanning.safeZones.templatesByTerrain is required to plan standalone den maps.'
+}
+$safeZoneTemplateDirectory = Join-Path $projectRoot $generatorSettings.paths.safeZoneTemplateDirectory
+if (-not (Test-Path -LiteralPath $safeZoneTemplateDirectory -PathType Container)) {
+    throw "Safe-zone template directory was not found: $safeZoneTemplateDirectory"
+}
+$safeZoneTemplateDirectory = (Resolve-Path -LiteralPath $safeZoneTemplateDirectory).Path
 
 function Get-CellConnections {
     param([object]$Cell)
@@ -778,6 +787,33 @@ function Resolve-Template {
     throw "No fallback template exists. Candidates: $($Candidates -join ', ')"
 }
 
+function Get-SafeZoneTemplateFilename {
+    param([string]$Terrain)
+
+    if (-not $safeZoneSettings.templatesByTerrain.ContainsKey($Terrain)) {
+        throw "No standalone safe-zone template is configured for terrain '$Terrain'."
+    }
+    $templateFilename = [string]$safeZoneSettings.templatesByTerrain[$Terrain]
+    if ([System.IO.Path]::GetFileName($templateFilename) -ne $templateFilename -or [System.IO.Path]::GetExtension($templateFilename) -ine '.vmf') {
+        throw "Safe-zone template for terrain '$Terrain' must be a .vmf filename without a path: $templateFilename"
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $safeZoneTemplateDirectory $templateFilename) -PathType Leaf)) {
+        throw "Safe-zone template for terrain '$Terrain' was not found: $(Join-Path $safeZoneTemplateDirectory $templateFilename)"
+    }
+    return $templateFilename
+}
+
+function Get-SafeZoneMapFilename {
+    param(
+        [string]$Terrain,
+        [int]$X,
+        [int]$Y
+    )
+
+    $terrainCode = if ($filenameAbbreviations.environmentProfiles.ContainsKey($Terrain)) { $filenameAbbreviations.environmentProfiles[$Terrain] } else { ConvertTo-FilenamePart $Terrain }
+    return "zn_den_${terrainCode}_x${X}_y${Y}.vmf"
+}
+
 $planCells = @()
 foreach ($cell in $map.cells) {
     $topology = Get-CellTopology $cell
@@ -852,6 +888,34 @@ foreach ($cell in $map.cells) {
     }
 }
 
+$safeZoneMaps = @()
+$safeZoneMapCoordinates = @{}
+foreach ($safeZone in @($map.safeZones | Sort-Object y, x, name)) {
+    $x = [int]$safeZone.x
+    $y = [int]$safeZone.y
+    $coordinateKey = "$x,$y"
+    if ($safeZoneMapCoordinates.ContainsKey($coordinateKey)) {
+        throw "Multiple safe zones occupy map cell $coordinateKey."
+    }
+    $mapCell = @($map.cells | Where-Object { $_.x -eq $x -and $_.y -eq $y } | Select-Object -First 1)[0]
+    if ($null -eq $mapCell -or $null -eq $mapCell.safeZone) {
+        throw "Safe zone '$($safeZone.name)' does not match a generated map cell at $coordinateKey."
+    }
+    $terrain = [string]$mapCell.environment.terrain
+    $templateFilename = Get-SafeZoneTemplateFilename $terrain
+    $mapFilename = Get-SafeZoneMapFilename $terrain $x $y
+    $safeZoneMaps += [pscustomobject]@{
+        x = $x
+        y = $y
+        name = [string]$safeZone.name
+        terrain = $terrain
+        templateFilename = $templateFilename
+        mapFilename = $mapFilename
+        mapName = [System.IO.Path]::GetFileNameWithoutExtension($mapFilename)
+    }
+    $safeZoneMapCoordinates[$coordinateKey] = $true
+}
+
 $variantThreshold = [int]$plannerSettings.variants.usageThreshold
 $maximumCellVariants = [int]$plannerSettings.variants.maximumPerRecipe
 foreach ($recipeGroup in @($planCells | Group-Object baseCellTemplateFilename | Where-Object { $_.Count -gt $variantThreshold })) {
@@ -900,19 +964,22 @@ $requiredCellFiles = @($planCells | Group-Object cellTemplateFilename | Sort-Obj
 $missingCellFiles = @($requiredCellFiles | Where-Object { -not $_.cellTemplateExists })
 
 $plan = [ordered]@{
-    schemaVersion = 3
+    schemaVersion = 4
     mapData = [System.IO.Path]::GetFileName($MapData)
     cellDirectory = $CellDirectory
     chunkTemplateDirectory = $TemplateDirectory
+    safeZoneTemplateDirectory = $safeZoneTemplateDirectory
     availableChunkTemplates = @($templateFiles.Values | Sort-Object)
     filenameAbbreviations = $filenameAbbreviations
     cellTileGridSize = $CellTileSize
     selectedCellCount = $planCells.Count
     requiredCellCount = $requiredCellFiles.Count
+    requiredStandaloneMapCount = $safeZoneMaps.Count
     missingCellCount = $missingCellFiles.Count
     requiredCellList = $ListOutput
     requiredCellFiles = $requiredCellFiles
     missingCellFiles = $missingCellFiles
+    safeZoneMaps = $safeZoneMaps
     cells = $planCells
 }
 

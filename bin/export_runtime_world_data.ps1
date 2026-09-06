@@ -129,6 +129,20 @@ foreach ($key in $mapCellByCoordinate.Keys) {
         throw "Template plan has no recipe for map cell: $key"
     }
 }
+$safeZoneMapByCoordinate = @{}
+foreach ($safeZoneMap in @($plan.safeZoneMaps)) {
+    $x = [int]$safeZoneMap.x
+    $y = [int]$safeZoneMap.y
+    $key = Get-CoordinateKey $x $y
+    $mapFilename = [string]$safeZoneMap.mapFilename
+    if ($safeZoneMapByCoordinate.ContainsKey($key) -or [System.IO.Path]::GetFileName($mapFilename) -ne $mapFilename -or [System.IO.Path]::GetExtension($mapFilename) -ine '.vmf') {
+        throw "Template plan has an invalid standalone safe-zone map at $key. Re-run plan_cell_templates.ps1."
+    }
+    $safeZoneMapByCoordinate[$key] = [System.IO.Path]::GetFileNameWithoutExtension($mapFilename)
+}
+if (@($map.safeZones).Count -gt 0 -and $safeZoneMapByCoordinate.Count -eq 0) {
+    throw 'Template plan has no standalone safe-zone maps. Re-run plan_cell_templates.ps1.'
+}
 
 $districts = @($map.districts | Sort-Object name)
 $districtIndexByName = @{}
@@ -162,6 +176,7 @@ foreach ($mapCell in $mapCells) {
 }
 
 $safeZoneIndexByCoordinate = @{}
+$safeZoneRequiredMapNames = @{}
 $runtimeSafeZones = [System.Collections.Generic.List[object]]::new()
 foreach ($safeZone in @($map.safeZones | Sort-Object name)) {
     $safeZoneName = Get-RecordName $safeZone 'Safe zone'
@@ -173,12 +188,18 @@ foreach ($safeZone in @($map.safeZones | Sort-Object name)) {
         if (-not $districtIndexByName.ContainsKey($districtName)) { throw "Safe zone '$safeZoneName' references unknown district '$districtName'." }
         $districtId = $districtIndexByName[$districtName]
     }
+    if (-not $safeZoneMapByCoordinate.ContainsKey($safeZoneKey)) {
+        throw "Safe zone '$safeZoneName' has no standalone map at $safeZoneKey. Re-run plan_cell_templates.ps1."
+    }
+    $safeZoneMapName = $safeZoneMapByCoordinate[$safeZoneKey]
+    $safeZoneRequiredMapNames[$safeZoneMapName.ToLowerInvariant()] = $safeZoneMapName
     $safeZoneIndexByCoordinate[$safeZoneKey] = $runtimeSafeZones.Count
     $runtimeSafeZones.Add([ordered]@{
         name = $safeZoneName
         district = $districtId
         cell = Get-CellId ([int]$safeZone.x) ([int]$safeZone.y) $width
         difficult = [bool]$safeZone.difficult
+        map = $safeZoneMapName
     })
 }
 
@@ -208,6 +229,9 @@ $environmentIndexByKey = @{}
 $runtimeEnvironments = [System.Collections.Generic.List[object]]::new()
 $runtimeCells = [System.Collections.Generic.List[object]]::new()
 $requiredMapNames = @{}
+foreach ($safeZoneMapName in $safeZoneRequiredMapNames.Values) {
+    $requiredMapNames[$safeZoneMapName.ToLowerInvariant()] = $safeZoneMapName
+}
 foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
     $x = [int]$mapCell.x
     $y = [int]$mapCell.y

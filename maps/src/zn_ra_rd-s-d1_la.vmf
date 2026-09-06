@@ -94,7 +94,7 @@ world
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
 	"maxpropscreenwidth" "-1"
-	"skyname" "sky_day01_01"
+	"skyname" "painted"
 	solid
 	{
 		"id" "203"

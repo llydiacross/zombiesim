@@ -1,5 +1,7 @@
+// Server-only Player persistence, network synchronization, stamina, and XP behavior.
 local ply = FindMetaTable("Player")
 
+// Loads all attribute values, falling back to a zeroed record for a new player.
 function ply:FetchAttributes() 
 
     local attr = ZM_GetPlayerAttributes(self:SteamID())
@@ -39,16 +41,19 @@ function ply:FetchAttributes()
     self.Attributes.Mechanics = attr.Mechanics or 0
 end
 
+// Signals the owning client to copy its replicated attribute values into local fields.
 function ply:SendPlayerAttributes()
     net.Start("ZM.RefreshPlayerAttributes")
     net.Send(self)
 end
 
+// Signals the owning client to copy its replicated core data into local fields.
 function ply:SendPlayerData()
     net.Start("ZM.RefreshPlayerData")
     net.Send(self)
 end
 
+// Persists every player record. Health and stamina are sampled immediately before the write.
 function ply:Save()
     ZM_SetPlayerAttributes(self:SteamID(), self.Attributes)
     self.SavedHealth = math.max(self:Health(), 0)
@@ -56,14 +61,17 @@ function ply:Save()
     ZM_SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina})
 end
 
+// Saves only the attributes table when an attribute changes.
 function ply:UpdateAttributes()
     ZM_SetPlayerAttributes(self:SteamID(), self.Attributes)
 end
 
+// Saves only the core player-data row when progression, cell, or survival values change.
 function ply:UpdatePlayerData()
     ZM_SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina})
 end
 
+// Loads core progression and logical city position, defaulting a first-time player to cell 0,0.
 function ply:FetchPlayerData()
 
     local data = ZM_GetPlayerData(self:SteamID())
@@ -94,6 +102,7 @@ function ply:FetchPlayerData()
     self.Stamina = math.Clamp(self.Stamina, 0, self:GetMaxStamina())
 end
 
+// Copies server attribute fields to replicated NWInts for the owning client and HUD.
 function ply:SetNetworkAttributes()
     self:SetNWInt("Strength", self.Attributes.Strength)
     self:SetNWInt("Agility", self.Attributes.Agility)
@@ -111,6 +120,7 @@ function ply:SetNetworkAttributes()
     self:SetNWInt("Mechanics", self.Attributes.Mechanics)
 end
 
+// Copies progression, logical cell, health, and stamina to replicated NW values.
 function ply:SetNetworkPlayerData()
     self:SetNWInt("XP", self.XP)
     self:SetNWInt("Level", self.Level)
@@ -124,6 +134,7 @@ function ply:SetNetworkPlayerData()
     self:SetNWFloat("MaxStamina", self:GetMaxStamina())
 end
 
+// Prevents sprint input from moving an exhausted living player faster than walking speed.
 hook.Add("SetupMove", "ZM.StaminaMovement", function(ply, move)
     if not IsValid(ply) or not ply:Alive() then return end
 
@@ -136,6 +147,7 @@ hook.Add("SetupMove", "ZM.StaminaMovement", function(ply, move)
     move:SetButtons(bit.band(move:GetButtons(), bit.bnot(IN_SPEED)))
 end)
 
+// Continuously drains sprint stamina and restores stamina while the player is not sprinting.
 hook.Add("Think", "ZM.Stamina", function()
     local delta = engine.TickInterval()
     local baseSprintDrain = 800
@@ -166,6 +178,7 @@ hook.Add("Think", "ZM.Stamina", function()
     end
 end)
 
+// Adds XP and levels repeatedly if one award crosses several level thresholds.
 function ply:AddXP(amount)
     self.XP = self.XP + amount
     if self:CanLevelUp() then
@@ -180,6 +193,7 @@ function ply:AddXP(amount)
     end
 end
 
+// Consumes one level threshold and awards milestone bonus skill points.
 function ply:LevelUp()
     if self:CanLevelUp() then
         self.Level = self.Level + 1

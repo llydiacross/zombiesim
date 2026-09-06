@@ -41,6 +41,14 @@ Before committing to the long VVIS and VRAD production compile, run the fast str
 
 This uses `paths.previewCellDirectory`, writes intermediate files to `paths.previewBuildDirectory`, stages test BSPs in `paths.previewReleaseMapDirectory`, and exports a separate runtime index at `paths.previewRuntimeWorldData`. It leaves `content/maps/city` and `zombiesim_world.json` untouched. Omit `-VBSPOnly` only when you want the slower preview VVIS and VRAD pass.
 
+## Standalone Dens
+
+Safe zones remain normal logical city cells. They are not replaced by den maps and dens are not added to the city grid or its graph. Instead, planning selects one complete standalone VMF from `paths.safeZoneTemplateDirectory` for every safe-zone coordinate, then gives it a unique stable map name such as `zn_den_gr_x14_y3`.
+
+`build_cell_vmfs.ps1 -RefreshGenerated` copies the selected den VMF and its optional VMX sidecar unchanged into the active source directory. `build_city_release.ps1` compiles and stages those den BSPs alongside city recipe BSPs. The runtime index exposes the selected standalone map as `safeZone.map`; future entrance entities can use `ZM_World:GetSafeZoneMap(cell)` to obtain its `city/<den-map>` transition name. The city-cell APIs continue to return the safe-zone entrance cell, never the den itself.
+
+The initial terrain mappings are `cell_gr_safezone.vmf`, `cell_sa_safezone.vmf`, and `cell_di_safezone.vmf` under `celltemplates/safezones`. The sandy and dirt files begin as copies of the grassland source and are intended to be edited into distinct dens later.
+
 ## Compile Monitoring and Profiles
 
 The compiler prints its current map, stage, elapsed stage time, and remaining map count. It writes a `compile-report.json` beside the intermediate BSPs, for example `maps/build_preview/compile-report.json` for a preview. Each map record includes its stage status, exit code, duration, and stdout/stderr log paths.
@@ -137,6 +145,7 @@ These are project-relative folders and files. Use forward slashes or backslashes
 | `previewReleaseMapDirectory` | Release staging folder for `-Preview` BSPs. | Default: `content/maps/preview`. The preview runtime index uses `preview` as its map directory. |
 | `runtimeWorldData` | Release staging path for the compact gameplay world index. | Default: `content/data_static/zombiesim_world.json`. Package it as root `data_static/zombiesim_world.json` and read it from the `GAME` mount. |
 | `previewRuntimeWorldData` | Release staging path for the compact `-Preview` gameplay world index. | Default: `content/data_static/zombiesim_world_preview.json`. Keep it separate from the production index. |
+| `safeZoneTemplateDirectory` | Complete standalone den-map templates. | Default: `celltemplates/safezones`. These are copied as whole VMFs, not assembled from tiles. |
 
 ## `compilation`
 

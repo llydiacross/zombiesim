@@ -1,3 +1,4 @@
+// Third-person camera state. targetDist changes immediately; dist eases toward it each frame.
 local dist = 100
 local targetDist = 100
 local minDist = 50
@@ -6,14 +7,16 @@ local up = 20
 local zoomStep = 25
 local flipCamera = true
 
--- Mouse movement rotates the model, while the camera stays behind it.
+// Mouse movement rotates the model, while the camera stays behind it.
 local modelYaw = 0
 local modelPitch = 45
 
+// The closest zoom level flips the camera in front of the player and hides HUD reticles.
 function ZM_IsSelfieCamera()
     return flipCamera and targetDist <= minDist
 end
 
+// Produces camera angles for ordinary behind-the-player and selfie-camera modes.
 local function GetCameraAngles()
     if flipCamera and targetDist <= minDist then
         return Angle(-modelPitch, modelYaw + 180, 0)
@@ -22,6 +25,7 @@ local function GetCameraAngles()
     return Angle(modelPitch, modelYaw, 0)
 end
 
+// Consumes mouse and wheel input to rotate the model and choose the current third-person view.
 hook.Add("CreateMove", "ZM.RotateThirdPersonModel", function(cmd)
     local ply = LocalPlayer()
     if not IsValid(ply) or not ply:Alive() then return end
@@ -37,6 +41,7 @@ hook.Add("CreateMove", "ZM.RotateThirdPersonModel", function(cmd)
     ply:SetRenderAngles(modelAngles)
 end)
 
+// Positions the camera with a hull trace so walls cannot clip through the view.
 hook.Add("CalcView", "ZM.CustomThirdPersonView", function(ply, pos, angles, fov)
     if not IsValid(ply) or not ply:Alive() then return end
 
@@ -68,6 +73,7 @@ hook.Add("CalcView", "ZM.CustomThirdPersonView", function(ply, pos, angles, fov)
     return view
 end)
 
+// The camera is always external enough that the local player model should be rendered.
 hook.Add("ShouldDrawLocalPlayer", "ZM.DrawPlayer", function(ply)
     return true
 end)

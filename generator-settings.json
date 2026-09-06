@@ -11,7 +11,8 @@
     "releaseMapDirectory": "content/maps/city",
     "previewReleaseMapDirectory": "content/maps/preview",
     "runtimeWorldData": "content/data_static/zombiesim_world.json",
-    "previewRuntimeWorldData": "content/data_static/zombiesim_world_preview.json"
+    "previewRuntimeWorldData": "content/data_static/zombiesim_world_preview.json",
+    "safeZoneTemplateDirectory": "celltemplates/safezones"
   },
   "compilation": {
     "activeProfile": "stock-gmod",
@@ -126,6 +127,13 @@
       "industry": "^buildings/tile_industry_[0-9]+[a-z]+\\.vmf$",
       "decorations": "^decorations/.*\\.vmf$",
       "carparks": "^carparks/tile_carpark_[a-e]\\.vmf$"
+    },
+    "safeZones": {
+      "templatesByTerrain": {
+        "grassland": "cell_gr_safezone.vmf",
+        "sandy": "cell_sa_safezone.vmf",
+        "dirt": "cell_di_safezone.vmf"
+      }
     },
     "terrainTemplates": {
       "grassland": "terrain/tile_grass.vmf",

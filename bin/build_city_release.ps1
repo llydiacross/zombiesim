@@ -73,8 +73,10 @@ if ([string]::IsNullOrWhiteSpace($PlanData) -or -not (Test-Path -LiteralPath $Pl
 
 $plan = Get-Content -Raw -LiteralPath $PlanData | ConvertFrom-Json
 if ($plan.schemaVersion -lt 2) { throw 'The template plan must use schema version 2 or later.' }
-$requiredVmfNames = @($plan.cells | ForEach-Object { [string]$_.cellTemplateFilename } | Sort-Object -Unique)
-if ($requiredVmfNames.Count -eq 0) { throw 'The template plan does not select any cell recipe VMFs.' }
+$cityVmfNames = @($plan.cells | ForEach-Object { [string]$_.cellTemplateFilename } | Sort-Object -Unique)
+$safeZoneVmfNames = @($plan.safeZoneMaps | ForEach-Object { [string]$_.mapFilename } | Sort-Object -Unique)
+$requiredVmfNames = @($cityVmfNames + $safeZoneVmfNames | Sort-Object -Unique)
+if ($cityVmfNames.Count -eq 0) { throw 'The template plan does not select any city recipe VMFs.' }
 foreach ($filename in $requiredVmfNames) {
     if (-not (Test-Path -LiteralPath (Join-Path $SourceDirectory $filename) -PathType Leaf)) {
         throw "Required source VMF is missing: $(Join-Path $SourceDirectory $filename)"
@@ -94,7 +96,8 @@ if (-not $SkipRecipeRefresh) {
 }
 
 if ($WhatIf) {
-    Write-Output "WhatIf: required recipe BSPs: $($requiredVmfNames.Count)"
+    Write-Output "WhatIf: required city recipe BSPs: $($cityVmfNames.Count)"
+    Write-Output "WhatIf: required standalone den BSPs: $($safeZoneVmfNames.Count)"
     Write-Output "WhatIf: stage BSPs in: $ContentMapDirectory"
     Write-Output "WhatIf: write runtime world data: $RuntimeWorldData"
 }
@@ -167,4 +170,4 @@ if (-not (Test-Path -LiteralPath $RuntimeWorldData -PathType Leaf)) {
     throw "Runtime-world exporter did not create the expected data file: $RuntimeWorldData"
 }
 
-Write-Output "Release recipe BSPs: $($requiredBspNames.Count); staged maps: $ContentMapDirectory; runtime world data: $RuntimeWorldData"
+Write-Output "Release city recipe BSPs: $($cityVmfNames.Count); standalone den BSPs: $($safeZoneVmfNames.Count); staged maps: $ContentMapDirectory; runtime world data: $RuntimeWorldData"
