@@ -9,11 +9,17 @@ param(
     [switch]$RefreshGenerated,
     [switch]$PruneStaleGenerated,
     [switch]$ClearCellDirectory,
-    [switch]$WhatIf
+    [switch]$WhatIf,
+    [switch]$Preview,
+    [string]$SettingsPath = ''
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$projectRoot = Split-Path -Parent $PSScriptRoot
+$generatorSettings = & (Join-Path $PSScriptRoot 'import_generator_settings.ps1') -SettingsPath $SettingsPath
+if (-not $PSBoundParameters.ContainsKey('TileSize')) { $TileSize = [int]$generatorSettings.vmfBuild.tileSize }
+if (-not $PSBoundParameters.ContainsKey('TileZOffset')) { $TileZOffset = [int]$generatorSettings.vmfBuild.tileZOffset }
 
 if ([string]::IsNullOrWhiteSpace($PlanData)) {
     $PlanData = @(Get-ChildItem -Path $PSScriptRoot -Filter '*_template_plan.json' -File |
@@ -30,13 +36,17 @@ if ($plan.schemaVersion -lt 2 -or $plan.cellTileGridSize -lt 1) {
 }
 
 if ([string]::IsNullOrWhiteSpace($CellDirectory)) {
-    $CellDirectory = $plan.cellDirectory
+    if ($Preview) {
+        $CellDirectory = Join-Path $projectRoot $generatorSettings.paths.previewCellDirectory
+    } else {
+        $CellDirectory = $plan.cellDirectory
+    }
 }
 if ([string]::IsNullOrWhiteSpace($TileDirectory)) {
     $TileDirectory = $plan.chunkTemplateDirectory
 }
 if ([string]::IsNullOrWhiteSpace($BaseCellTemplate)) {
-    $BaseCellTemplate = Join-Path (Split-Path -Parent $PSScriptRoot) 'celltemplates\template_border_s.vmf'
+    $BaseCellTemplate = Join-Path $projectRoot $generatorSettings.paths.baseCellTemplate
 }
 if (-not (Test-Path $TileDirectory)) {
     throw "Tile template directory was not found: $TileDirectory"

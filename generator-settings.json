@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 1,
+  "paths": {
+    "templateDirectory": "tiletemplates",
+    "cellDirectory": "maps/src",
+    "previewCellDirectory": "maps/src_preview",
+    "baseCellTemplate": "celltemplates/template_border_s.vmf",
+    "scriptOutputDirectory": "bin"
+  },
+  "directions": {
+    "cardinal": ["N", "E", "S", "W"],
+    "names": { "N": "north", "E": "east", "S": "south", "W": "west" },
+    "opposites": { "N": "S", "E": "W", "S": "N", "W": "E" },
+    "linearTileYaw": { "N": 0, "E": 90, "S": 0, "W": 90 }
+  },
+  "mapGeneration": {
+    "gridCells": 64,
+    "previewGridCells": 24,
+    "cellSizePixels": 64,
+    "seed": 1337,
+    "road": {
+      "widthPixels": 18,
+      "growthDepth": 7,
+      "branchChance": 0.38,
+      "turnChance": 0.16,
+      "minimumSegmentSteps": 3,
+      "maximumSegmentStepsExclusive": 10,
+      "deadEndRepairRadius": 8,
+      "centralSpineChance": 0.85
+    },
+    "bridges": {
+      "chance": 0.04,
+      "deadEndChance": 0.3
+    },
+    "blockades": {
+      "chance": 0.28
+    },
+    "terrain": {
+      "minimumWeight": 0.05,
+      "grassBaseWeight": 0.55,
+      "grassYWeight": -0.2,
+      "grassWestWeight": 0.15,
+      "sandBaseWeight": 0.2,
+      "sandCenterWeight": 0.35,
+      "sandNorthWeight": 0.08,
+      "dirtBaseWeight": 0.2,
+      "dirtYWeight": 0.5,
+      "dirtEastWeight": 0.08,
+      "noiseXMultiplier": 37,
+      "noiseYMultiplier": 67,
+      "noiseModulo": 17,
+      "sandNoiseMultiplier": 0.5,
+      "dirtNoiseBaseline": 0.08,
+      "dirtNoiseMultiplier": 0.5
+    },
+    "metro": {
+      "minimumStationSpacing": 6,
+      "routeStopInterval": 8,
+      "stopSuffixes": ["Arcade", "Bridge", "Cross", "Gate", "Gardens", "Heights", "Junction", "Market", "Park", "Quay", "Square", "Terrace", "Works", "Yard"]
+    },
+    "cityNaming": {
+      "prefixes": ["Ash", "Black", "Cinder", "Dun", "East", "Grey", "Iron", "New", "North", "Raven", "Red", "West"],
+      "suffixes": ["bridge", "cross", "fall", "gate", "haven", "mere", "point", "reach", "ridge", "vale", "watch", "wick"]
+    },
+    "districts": [
+      { "name": "Ashwood", "x": 10, "y": 12, "radius": 15, "color": [180, 80, 180, 80] },
+      { "name": "Breakwater", "x": 8, "y": 38, "radius": 13, "color": [180, 70, 105, 190] },
+      { "name": "Cinder Ward", "x": 29, "y": 29, "radius": 17, "color": [190, 190, 150, 70] },
+      { "name": "Glassworks", "x": 37, "y": 9, "radius": 12, "color": [180, 70, 150, 145] },
+      { "name": "Greyline", "x": 54, "y": 9, "radius": 14, "color": [180, 150, 150, 150] },
+      { "name": "Iron Market", "x": 53, "y": 31, "radius": 17, "color": [180, 185, 75, 80] },
+      { "name": "Southwatch", "x": 13, "y": 51, "radius": 13, "color": [180, 150, 165, 65] },
+      { "name": "Red Hollow", "x": 31, "y": 51, "radius": 16, "color": [180, 175, 75, 75] },
+      { "name": "Raven Reach", "x": 57, "y": 51, "radius": 12, "color": [180, 165, 75, 190] },
+      { "name": "Dustfield", "x": 19, "y": 59, "radius": 9, "color": [180, 145, 75, 35] }
+    ],
+    "deadZones": [
+      { "x": 18, "y": 20, "radius": 6 },
+      { "x": 42, "y": 18, "radius": 7 },
+      { "x": 27, "y": 42, "radius": 6 },
+      { "x": 48, "y": 48, "radius": 8 },
+      { "x": 9, "y": 57, "radius": 5 }
+    ],
+    "rendering": {
+      "biomeOpacity": 45,
+      "previewExportsLayers": true
+    }
+  },
+  "cellPlanning": {
+    "cellTileGridSize": 5,
+    "templatePatterns": {
+      "genericBuildings": "^buildings/tile_(building|construction)_[0-9]+[a-z]+\\.vmf$",
+      "warehouses": "^buildings/tile_warehouse_.*\\.vmf$",
+      "commercial": "^buildings/tile_commercial_[0-9]+[a-z]+\\.vmf$",
+      "industry": "^buildings/tile_industry_[0-9]+[a-z]+\\.vmf$",
+      "decorations": "^decorations/.*\\.vmf$",
+      "carparks": "^carparks/tile_carpark_[a-e]\\.vmf$"
+    },
+    "terrainTemplates": {
+      "grassland": "terrain/tile_grass.vmf",
+      "sandy": "terrain/tile_sand.vmf",
+      "default": "terrain/tile_dirt.vmf"
+    },
+    "topologyTemplates": {
+      "road-straight": "tile_road.vmf",
+      "road-corner": "tile_road_corner.vmf",
+      "road-tjunction": "tile_road_tjunction.vmf",
+      "road-crossjunction": "tile_road_crossjunction.vmf",
+      "road-deadend": "tile_road_deadend.vmf",
+      "motorway-straight": "tile_motorway.vmf",
+      "motorway-corner": "tile_motorway_corner.vmf",
+      "motorway-tjunction": "tile_motorway_tjunction.vmf",
+      "motorway-crossjunction": "tile_motorway_crossroads.vmf",
+      "motorway-deadend": "tile_motorway_deadend.vmf"
+    },
+    "transportTemplates": {
+      "bridge-ramp": "tile_road_ramp.vmf",
+      "bridge": "tile_motorway_road_bridge.vmf",
+      "onramp": "tile_motorway_onramp.vmf",
+      "onramp-dual": "tile_motorway_onramp_dual.vmf",
+      "bridgeRoad": "tile_road_bridge.vmf",
+      "roadDeadEnd": "tile_road_deadend.vmf"
+    },
+    "rotations": {
+      "layout": {
+        "road-deadend": { "south": 0, "east": 90, "north": 180, "west": 270 },
+        "motorway-deadend": { "south": 0, "east": 90, "north": 180, "west": 270 },
+        "straight": { "vertical": 0, "horizontal": 90 },
+        "corner": { "north-east": 0, "east-south": 90, "south-west": 180, "north-west": 270 },
+        "tjunction": { "missing-south": 0, "missing-east": 90, "missing-north": 180, "missing-west": 270 }
+      },
+      "transport": {
+        "bridge-vertical": 0,
+        "bridge-horizontal": 90,
+        "bridgeRampByDirection": { "N": 0, "E": 270, "S": 180, "W": 90 },
+        "onrampByDirection": { "N": 0, "E": 90, "S": 180, "W": 270 }
+      }
+    },
+    "environment": {
+      "profilePriority": ["radioactive", "safe_zone", "fortified", "military", "medical", "emergency_services", "religious", "service_station", "financial", "commercial", "recreation", "parkland"],
+      "buildingDensity": {
+        "grassland": 0.3,
+        "sandy": 0.4,
+        "dirt": 0.5,
+        "parkland": 0.25,
+        "recreation": 0.4,
+        "settlement": 0.7,
+        "fallbackByTerrain": { "grassland": 0.55, "sandy": 0.6, "default": 0.65 }
+      },
+      "densityTiers": {
+        "highTags": ["high_density", "dense"],
+        "mediumTags": ["medium_density"],
+        "lowTags": ["low_density"],
+        "highProfiles": ["commercial", "financial"],
+        "mediumProfiles": ["settlement", "recreation"]
+      }
+    },
+    "buildingSelection": {
+      "maximumHeightTier": 3,
+      "minimumWeight": 1,
+      "baseWeight": 7,
+      "heightDistanceWeight": 3,
+      "commercialProfiles": ["commercial"],
+      "industryTerrains": ["dirt"],
+      "industryProfiles": ["radioactive"]
+    },
+    "decorations": {
+      "preferredTerrains": ["dirt"],
+      "preferredProfiles": ["radioactive"],
+      "preferredChancePercent": 65,
+      "standardChancePercent": 20
+    },
+    "carparks": {
+      "roadStraightChancePercent": 35
+    },
+    "variants": {
+      "usageThreshold": 15,
+      "maximumPerRecipe": 5,
+      "suffix": "v"
+    },
+    "landmarkTemplatePatterns": {
+      "Church": "*/tile_church*.vmf",
+      "Hospital": "*/tile_hospital*.vmf",
+      "Police": "*/tile_police*.vmf",
+      "Fire": "*/tile_fire*.vmf",
+      "Petrol Station": "*/tile_petrol*.vmf",
+      "Bank": "*/tile_bank*.vmf",
+      "Army Base": "*/tile_army*.vmf",
+      "Laboratory": "*/tile_laboratory*.vmf",
+      "Bunker": "*/tile_bunker*.vmf",
+      "Market": "*/tile_market*.vmf"
+    },
+    "filenameAbbreviations": {
+      "format": "zn_<environment>_<topology>-<orientation>[-<transport>]-d<density>_<landmarks>.vmf",
+      "environmentProfiles": { "grassland": "gr", "sandy": "sa", "dirt": "di", "settlement": "st", "commercial": "co", "financial": "fi", "radioactive": "ra", "safe_zone": "sz", "fortified": "fo", "military": "mi", "medical": "md", "emergency_services": "es", "religious": "rl", "service_station": "ss", "recreation": "rc", "parkland": "pk" },
+      "topologies": { "open": "o", "road-straight": "rs", "road-corner": "rc", "road-tjunction": "rt", "road-crossjunction": "rx", "road-deadend": "rd", "road-isolated": "ri", "motorway-straight": "ms", "motorway-corner": "mc", "motorway-tjunction": "mt", "motorway-crossjunction": "mx", "motorway-deadend": "md", "motorway-isolated": "mi" },
+      "orientations": { "none": "n", "all": "a", "vertical": "v", "horizontal": "h", "north": "n", "east": "e", "south": "s", "west": "w", "north-east": "ne", "east-south": "es", "south-west": "sw", "north-west": "nw", "missing-north": "mn", "missing-east": "me", "missing-south": "ms", "missing-west": "mw" },
+      "transportFeatures": { "none": "", "bridge-vertical": "bv", "bridge-horizontal": "bh", "bridge-ramp": "br<direction>", "onramp": "o<direction>", "onramp-dual": "od<directions>" },
+      "landmarks": { "none": "n", "church": "ch", "hospital": "ho", "police": "po", "fire": "fi", "petrol-station": "ps", "bank": "ba", "army-base": "ab", "laboratory": "la", "bunker": "bu", "market": "ma", "leisure": "le", "park": "pk" }
+    }
+  },
+  "vmfBuild": {
+    "tileSize": 640,
+    "tileZOffset": 0
+  }
+}

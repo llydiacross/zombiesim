@@ -34,3 +34,9 @@ Based upon Dead Frontier In Gmod.
 - ./source
 
  The .vmf files for the cells of the city, should match a map file in the content folder idealily.
+
+ # Generator Settings
+
+ Generation is controlled from [generator-settings.json](generator-settings.json). Start with the plain-language guide in [docs.md](docs.md); it explains every setting, shows the preview workflow, and marks settings that are safe to experiment with.
+
+ For future multi-tile prefab support, see [two_by_two_tile_templates_plan.md](two_by_two_tile_templates_plan.md).

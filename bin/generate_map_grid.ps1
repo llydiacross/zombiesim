@@ -11,13 +11,35 @@ param(
     [double]$BridgeChance = 0.04,
     [double]$DeadEndBridgeChance = 0.30,
     [switch]$ExportLayers,
-    [string]$Output = ''
+    [switch]$Preview,
+    [string]$Output = '',
+    [string]$SettingsPath = ''
 )
 
 Add-Type -AssemblyName System.Drawing
+$projectRoot = Split-Path -Parent $PSScriptRoot
+$generatorSettings = & (Join-Path $PSScriptRoot 'import_generator_settings.ps1') -SettingsPath $SettingsPath
+$mapSettings = $generatorSettings.mapGeneration
+if (-not $PSBoundParameters.ContainsKey('GridCells')) { $GridCells = [int]$mapSettings.gridCells }
+if (-not $PSBoundParameters.ContainsKey('CellSize')) { $CellSize = [int]$mapSettings.cellSizePixels }
+if (-not $PSBoundParameters.ContainsKey('RoadWidthPixels')) { $RoadWidthPixels = [int]$mapSettings.road.widthPixels }
+if (-not $PSBoundParameters.ContainsKey('Seed')) { $Seed = [int]$mapSettings.seed }
+if (-not $PSBoundParameters.ContainsKey('RoadDepth')) { $RoadDepth = [int]$mapSettings.road.growthDepth }
+if (-not $PSBoundParameters.ContainsKey('BranchChance')) { $BranchChance = [double]$mapSettings.road.branchChance }
+if (-not $PSBoundParameters.ContainsKey('DeadEndRepairRadius')) { $DeadEndRepairRadius = [int]$mapSettings.road.deadEndRepairRadius }
+if (-not $PSBoundParameters.ContainsKey('BlockadeChance')) { $BlockadeChance = [double]$mapSettings.blockades.chance }
+if (-not $PSBoundParameters.ContainsKey('BiomeOpacity')) { $BiomeOpacity = [int]$mapSettings.rendering.biomeOpacity }
+if (-not $PSBoundParameters.ContainsKey('BridgeChance')) { $BridgeChance = [double]$mapSettings.bridges.chance }
+if (-not $PSBoundParameters.ContainsKey('DeadEndBridgeChance')) { $DeadEndBridgeChance = [double]$mapSettings.bridges.deadEndChance }
+
+if ($Preview) {
+    if (-not $PSBoundParameters.ContainsKey('GridCells')) { $GridCells = [int]$mapSettings.previewGridCells }
+    if (-not $PSBoundParameters.ContainsKey('ExportLayers')) { $ExportLayers = [bool]$mapSettings.rendering.previewExportsLayers }
+}
 
 if ([string]::IsNullOrWhiteSpace($Output)) {
-    $Output = Join-Path $PSScriptRoot ("map_grid_64x64_seed_{0}.png" -f $Seed)
+    $outputKind = if ($Preview) { 'preview' } else { 'map' }
+    $Output = Join-Path (Join-Path $projectRoot $generatorSettings.paths.scriptOutputDirectory) ("{0}_grid_{1}x{1}_seed_{2}.png" -f $outputKind, $GridCells, $Seed)
 }
 
 $width = $GridCells * $CellSize
@@ -98,27 +120,25 @@ $metroStationNames = @{}
 $grassColor = [System.Drawing.Color]::FromArgb(70, 125, 62)
 $sandColor = [System.Drawing.Color]::FromArgb(175, 145, 72)
 $dirtColor = [System.Drawing.Color]::FromArgb(125, 78, 44)
-$zones = @(
-    @{ Name = "Ashwood"; X = 10; Y = 12; Radius = 15; Color = [System.Drawing.Color]::FromArgb(180, 80, 180, 80) },
-    @{ Name = "Breakwater"; X = 8; Y = 38; Radius = 13; Color = [System.Drawing.Color]::FromArgb(180, 70, 105, 190) },
-    @{ Name = "Cinder Ward"; X = 29; Y = 29; Radius = 17; Color = [System.Drawing.Color]::FromArgb(190, 190, 150, 70) },
-    @{ Name = "Glassworks"; X = 37; Y = 9; Radius = 12; Color = [System.Drawing.Color]::FromArgb(180, 70, 150, 145) },
-    @{ Name = "Greyline"; X = 54; Y = 9; Radius = 14; Color = [System.Drawing.Color]::FromArgb(180, 150, 150, 150) },
-    @{ Name = "Iron Market"; X = 53; Y = 31; Radius = 17; Color = [System.Drawing.Color]::FromArgb(180, 185, 75, 80) },
-    @{ Name = "Southwatch"; X = 13; Y = 51; Radius = 13; Color = [System.Drawing.Color]::FromArgb(180, 150, 165, 65) },
-    @{ Name = "Red Hollow"; X = 31; Y = 51; Radius = 16; Color = [System.Drawing.Color]::FromArgb(180, 175, 75, 75) },
-    @{ Name = "Raven Reach"; X = 57; Y = 51; Radius = 12; Color = [System.Drawing.Color]::FromArgb(180, 165, 75, 190) },
-    @{ Name = "Dustfield"; X = 19; Y = 59; Radius = 9; Color = [System.Drawing.Color]::FromArgb(180, 145, 75, 35) }
-)
-$deadZones = @(
-    @{ X = 18; Y = 20; Radius = 6 },
-    @{ X = 42; Y = 18; Radius = 7 },
-    @{ X = 27; Y = 42; Radius = 6 },
-    @{ X = 48; Y = 48; Radius = 8 },
-    @{ X = 9; Y = 57; Radius = 5 }
-)
-$cityPrefixes = @("Ash", "Black", "Cinder", "Dun", "East", "Grey", "Iron", "New", "North", "Raven", "Red", "West")
-$citySuffixes = @("bridge", "cross", "fall", "gate", "haven", "mere", "point", "reach", "ridge", "vale", "watch", "wick")
+$zones = @($mapSettings.districts | ForEach-Object {
+    @{ Name = $_.name; X = [int]$_.x; Y = [int]$_.y; Radius = [int]$_.radius; Color = [System.Drawing.Color]::FromArgb([int]$_.color[0], [int]$_.color[1], [int]$_.color[2], [int]$_.color[3]) }
+})
+$deadZones = @($mapSettings.deadZones | ForEach-Object { @{ X = [int]$_.x; Y = [int]$_.y; Radius = [int]$_.radius } })
+$layoutScale = ($GridCells - 1) / 63.0
+if ($GridCells -ne 64) {
+    foreach ($zone in $zones) {
+        $zone.X = [int][Math]::Round($zone.X * $layoutScale)
+        $zone.Y = [int][Math]::Round($zone.Y * $layoutScale)
+        $zone.Radius = [Math]::Max(2, [int][Math]::Round($zone.Radius * ($GridCells / 64.0)))
+    }
+    foreach ($deadZone in $deadZones) {
+        $deadZone.X = [int][Math]::Round($deadZone.X * $layoutScale)
+        $deadZone.Y = [int][Math]::Round($deadZone.Y * $layoutScale)
+        $deadZone.Radius = [Math]::Max(1, [int][Math]::Round($deadZone.Radius * ($GridCells / 64.0)))
+    }
+}
+$cityPrefixes = @($mapSettings.cityNaming.prefixes)
+$citySuffixes = @($mapSettings.cityNaming.suffixes)
 $seedMagnitude = [Math]::Abs([int64]$Seed)
 $cityName = "$($cityPrefixes[$seedMagnitude % $cityPrefixes.Count])$($citySuffixes[($seedMagnitude / $cityPrefixes.Count) % $citySuffixes.Count])"
 
@@ -212,7 +232,7 @@ function Get-TurnDirection {
         [int]$Turn
     )
 
-    $directions = @("N", "E", "S", "W")
+    $directions = @($generatorSettings.directions.cardinal)
     $index = [Array]::IndexOf($directions, $Direction)
     return $directions[($index + $Turn + 4) % 4]
 }
@@ -229,7 +249,7 @@ function Grow-Road {
 
     $cellX = $StartX
     $cellY = $StartY
-    $steps = $random.Next(3, 10)
+    $steps = $random.Next([int]$mapSettings.road.minimumSegmentSteps, [int]$mapSettings.road.maximumSegmentStepsExclusive)
     for ($step = 0; $step -lt $steps; $step++) {
         $nextX = $cellX
         $nextY = $cellY
@@ -251,7 +271,7 @@ function Grow-Road {
             Grow-Road $cellX $cellY $branchDirection ($Depth - 1)
         }
 
-        if ($random.NextDouble() -lt 0.16) {
+        if ($random.NextDouble() -lt [double]$mapSettings.road.turnChance) {
             $Direction = Get-TurnDirection $Direction $(if ($random.Next(0, 2) -eq 0) { -1 } else { 1 })
         }
     }
@@ -408,7 +428,7 @@ function Get-MetroStopName {
     $prefix = if ([string]::IsNullOrWhiteSpace($DistrictName)) { ($nearestZone.Name -split " ")[0] } else { $DistrictName }
     if ($Major) { return "$prefix Exchange" }
 
-    $stopSuffixes = @("Arcade", "Bridge", "Cross", "Gate", "Gardens", "Heights", "Junction", "Market", "Park", "Quay", "Square", "Terrace", "Works", "Yard")
+    $stopSuffixes = @($mapSettings.metro.stopSuffixes)
     $startIndex = [Math]::Abs(($stationX * 73) + ($stationY * 37) + $Seed) % $stopSuffixes.Count
     for ($offset = 0; $offset -lt $stopSuffixes.Count; $offset++) {
         $candidate = "$prefix $($stopSuffixes[($startIndex + $offset) % $stopSuffixes.Count])"
@@ -426,9 +446,10 @@ function Get-MetroStopName {
 function Test-MetroStopSpacing {
     param(
         [string]$StationKey,
-        [int]$MinimumDistance = 6
+        [int]$MinimumDistance = 0
     )
 
+    if ($MinimumDistance -le 0) { $MinimumDistance = [int]$mapSettings.metro.minimumStationSpacing }
     $coordinates = $StationKey -split ","
     $stationX = [int]$coordinates[0]
     $stationY = [int]$coordinates[1]
@@ -1107,6 +1128,15 @@ function Connect-MetroRouteThroughStops {
         $cellKey = "$CellX,$CellY"
         $roadConnections = if ($roadCells.ContainsKey($cellKey)) { @("N", "E", "S", "W" | Where-Object { $roadCells[$cellKey][$_] }) } else { @() }
         $highwayConnections = if ($highwayCells.ContainsKey($cellKey)) { @("N", "E", "S", "W" | Where-Object { $highwayCells[$cellKey][$_] }) } else { @() }
+        $highwayRampExits = @($highwayRamps | Where-Object { $_.X -eq $CellX -and $_.Y -eq $CellY } | ForEach-Object { $_.Exit } | Sort-Object -Unique)
+        $bridgeRampDirections = @()
+        foreach ($direction in @('N', 'E', 'S', 'W')) {
+            if ($roadConnections -notcontains $direction) { continue }
+            $neighborKey = Get-RoadNeighborKey $CellX $CellY $direction
+            if ($null -ne $neighborKey -and $bridgeCells.ContainsKey($neighborKey)) {
+                $bridgeRampDirections += $direction
+            }
+        }
         $blockadeDirections = @($blockadeMarkers | Where-Object { $_.CellKey -eq $cellKey } | ForEach-Object { $_.Direction })
         $cellLandmarks = @()
         if ($landmarkCells.ContainsKey($cellKey)) {
@@ -1180,8 +1210,8 @@ function Connect-MetroRouteThroughStops {
             building = if ($buildingCells.ContainsKey($cellKey)) { [ordered]@{ present = $true; color = ConvertTo-MapColor $buildingCells[$cellKey] } } else { [ordered]@{ present = $false } }
             landmarks = $cellLandmarks
             safeZone = $safeZone
-            road = [ordered]@{ present = $roadCells.ContainsKey($cellKey); connections = $roadConnections; degree = $roadConnections.Count; blockades = $blockadeDirections }
-            highway = [ordered]@{ present = $highwayCells.ContainsKey($cellKey); connections = $highwayConnections; degree = $highwayConnections.Count; bridge = $bridgeCells.ContainsKey($cellKey); bridgeCrossingDirection = $bridgeCrossingDirections[$cellKey]; diagonal = $diagonalHighwayCells.ContainsKey($cellKey) }
+            road = [ordered]@{ present = $roadCells.ContainsKey($cellKey); connections = $roadConnections; degree = $roadConnections.Count; blockades = $blockadeDirections; bridgeRampDirections = @($bridgeRampDirections | Sort-Object -Unique) }
+            highway = [ordered]@{ present = $highwayCells.ContainsKey($cellKey); connections = $highwayConnections; degree = $highwayConnections.Count; bridge = $bridgeCells.ContainsKey($cellKey); bridgeCrossingDirection = $bridgeCrossingDirections[$cellKey]; rampExits = $highwayRampExits; diagonal = $diagonalHighwayCells.ContainsKey($cellKey) }
             metro = [ordered]@{ lines = $metroLineNames; stop = $metroStop }
             neighbors = $neighbors
         }
@@ -1254,7 +1284,7 @@ function Add-MetroLine {
     }
 
     $stopsByRouteIndex = @{}
-    for ($pathIndex = 8; $pathIndex -lt ($metroRoute.Count - 1); $pathIndex += 8) {
+    for ($pathIndex = [int]$mapSettings.metro.routeStopInterval; $pathIndex -lt ($metroRoute.Count - 1); $pathIndex += [int]$mapSettings.metro.routeStopInterval) {
         if ($guideRouteIndexes.ContainsKey($pathIndex)) { continue }
         $stationKey = Add-MetroStop $metroRoute[$pathIndex] "" $false $Name $true
         if ($null -ne $stationKey) { $stopsByRouteIndex[$pathIndex] = $stationKey }
@@ -1383,7 +1413,7 @@ for ($cellX = 0; $cellX -lt ($GridCells - 1); $cellX++) {
 Grow-Road 0 $originCellY "N" $RoadDepth
 Grow-Road 0 $originCellY "S" $RoadDepth
 for ($cellX = 6; $cellX -lt ($GridCells - 2); $cellX += 6) {
-    if ($random.NextDouble() -lt 0.85) {
+    if ($random.NextDouble() -lt [double]$mapSettings.road.centralSpineChance) {
         $direction = if ($random.Next(0, 2) -eq 0) { "N" } else { "S" }
         Grow-Road $cellX $originCellY $direction $RoadDepth
     }
@@ -1692,13 +1722,14 @@ for ($cellY = 0; $cellY -lt $GridCells; $cellY++) {
         $normalizedX = $cellX / [Math]::Max($GridCells - 1, 1)
         $normalizedY = $cellY / [Math]::Max($GridCells - 1, 1)
         $centerBias = 1 - [Math]::Abs($normalizedX - 0.5) * 2
-        $grassWeight = 0.55 - ($normalizedY * 0.2) + ((1 - $normalizedX) * 0.15)
-        $sandWeight = 0.2 + ($centerBias * 0.35) + ((1 - $normalizedY) * 0.08)
-        $dirtWeight = 0.2 + ($normalizedY * 0.5) + (($normalizedX - 0.5) * 0.08)
-        $noise = (($cellX * 37 + $cellY * 67 + $Seed) % 17) / 100.0
-        $grassWeight = [Math]::Max(0.05, $grassWeight + $noise)
-        $sandWeight = [Math]::Max(0.05, $sandWeight - ($noise * 0.5))
-        $dirtWeight = [Math]::Max(0.05, $dirtWeight + (($noise - 0.08) * 0.5))
+        $terrainSettings = $mapSettings.terrain
+        $grassWeight = [double]$terrainSettings.grassBaseWeight + ($normalizedY * [double]$terrainSettings.grassYWeight) + ((1 - $normalizedX) * [double]$terrainSettings.grassWestWeight)
+        $sandWeight = [double]$terrainSettings.sandBaseWeight + ($centerBias * [double]$terrainSettings.sandCenterWeight) + ((1 - $normalizedY) * [double]$terrainSettings.sandNorthWeight)
+        $dirtWeight = [double]$terrainSettings.dirtBaseWeight + ($normalizedY * [double]$terrainSettings.dirtYWeight) + (($normalizedX - 0.5) * [double]$terrainSettings.dirtEastWeight)
+        $noise = (($cellX * [int]$terrainSettings.noiseXMultiplier + $cellY * [int]$terrainSettings.noiseYMultiplier + $Seed) % [int]$terrainSettings.noiseModulo) / 100.0
+        $grassWeight = [Math]::Max([double]$terrainSettings.minimumWeight, $grassWeight + $noise)
+        $sandWeight = [Math]::Max([double]$terrainSettings.minimumWeight, $sandWeight - ($noise * [double]$terrainSettings.sandNoiseMultiplier))
+        $dirtWeight = [Math]::Max([double]$terrainSettings.minimumWeight, $dirtWeight + (($noise - [double]$terrainSettings.dirtNoiseBaseline) * [double]$terrainSettings.dirtNoiseMultiplier))
         $weightTotal = $grassWeight + $sandWeight + $dirtWeight
         $biomeRed = [int](($grassColor.R * $grassWeight + $sandColor.R * $sandWeight + $dirtColor.R * $dirtWeight) / $weightTotal)
         $biomeGreen = [int](($grassColor.G * $grassWeight + $sandColor.G * $sandWeight + $dirtColor.G * $dirtWeight) / $weightTotal)
