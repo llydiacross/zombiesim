@@ -53,7 +53,7 @@ foreach ($cell in $cells) {
     $coordinates[$key] = $cell
 }
 
-$tileSize = [Math]::Min(64, [Math]::Floor(4096 / [Math]::Max($gridWidth, $gridHeight)))
+$tileSize = [int][Math]::Floor(4096 / [Math]::Max($gridWidth, $gridHeight))
 if ($tileSize -lt 1) {
     throw "The $gridWidth by $gridHeight city grid exceeds the 4096px satellite material limit."
 }
@@ -69,7 +69,7 @@ if (-not (Test-Path -LiteralPath $CellMaterialDirectory -PathType Container)) {
 
 Add-Type -AssemblyName System.Drawing
 [System.IO.Directory]::CreateDirectory((Split-Path -Parent $OutputPath)) | Out-Null
-$bitmap = [System.Drawing.Bitmap]::new($gridWidth * $tileSize, $gridHeight * $tileSize)
+$bitmap = [System.Drawing.Bitmap]::new([int]($gridWidth * $tileSize), [int]($gridHeight * $tileSize))
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 try {
     $graphics.Clear([System.Drawing.Color]::Black)

@@ -55,6 +55,12 @@ Refresh the generated recipe VMFs, prune obsolete generated files, and verify ev
 .\bin\check_required_cells.ps1 -WorldProfile preview
 ```
 
+Generate Hammer-only template zoos in `celltemplates/dev`. `-RefreshPlan` first replans the preview so `streets.vmf` and `carparks.vmf` reflect current placement rules; `landmarks.vmf` lists every template matched by `cellPlanning.landmarkTemplatePatterns` in `generator-settings.json` and automatically includes future configured landmark templates:
+
+```powershell
+.\bin\build_tile_zoos.ps1 -RefreshPlan
+```
+
 Create or refresh portal files only, then report portal and cluster budget violations, must be ran first to use PrioritizePortalCost flag:
 
 ```powershell

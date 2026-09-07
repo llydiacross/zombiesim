@@ -13,11 +13,61 @@ The generator creates a city plan, turns that plan into reusable 5-by-5 cell rec
 
 Settings use JSON. Text must be inside double quotes, items in a list need commas, and there must not be a comma after the final item in a list. Do not rename setting names unless this guide calls them advanced.
 
+## Canonical Tile Orientations
+
+All template rotations are measured from these `$0^\circ$` authored orientations. Keep this reference when adding generator placement rules or diagnosing a rotated tile in Hammer:
+
+| Template family | `$0^\circ$` authored direction |
+| --- | --- |
+| Straight road and motorway | South to north |
+| Road and motorway corner | East to south |
+| Road and motorway T-junction | East to west, with its connecting stem north |
+| Bridge ramp | North to south, rising toward north |
+| Motorway road bridge | Motorway east to west below; road north to south above |
+| Building | Entrance on the north edge of its tile |
+| Border wall | North to south, offset to the east tile edge |
+| Border wall corner | North to east, at the north-east tile corner |
+| Carpark entrance | Connective tip on the south tile edge; standard variants have local east and west lanes. At `$0^\circ$`, `_deadend_west` closes west and connects east, while `_deadend_east` closes east and connects west. |
+
+Buildings and landmarks rotate their authored north-edge entrance toward a directly adjacent road or transport tile. At a road corner, only its connected edges are valid frontage: a building or landmark next to the closed corner edge faces away from that edge instead.
+
+### Carpark Endcap Orientation Contract
+
+Carpark lanes that reach a cell edge receive a deadend cap in the normal generated border ring. The cap's **physical outer side** determines both its VMF and its `func_instance` `angles`; the local `carpark_lane_east` or `carpark_lane_west` role must not be used for either decision. A local west lane can, for example, terminate at the physical east border.
+
+The tile grid uses `tileX` increasing east and `tileY` increasing south. Test the edge tile first, then place the cap one tile beyond that edge:
+
+| Physical cap side | Edge-tile test | Outer cap coordinate | VMF | `angles` |
+| --- | --- | --- | --- | --- |
+| North | `tileY = 0` | `(tileX, -1)` | `carparks/tile_carpark_deadend_west.vmf` | `0 270 0` |
+| East | `tileX = gridSize - 1` | `(gridSize, tileY)` | `carparks/tile_carpark_deadend_east.vmf` | `0 0 0` |
+| South | `tileY = gridSize - 1` | `(tileX, gridSize)` | `carparks/tile_carpark_deadend_west.vmf` | `0 90 0` |
+| West | `tileX = 0` | `(-1, tileY)` | `carparks/tile_carpark_deadend_east.vmf` | `0 180 0` |
+
+These are output-instance angles, not rotations to bake into either source VMF. [carpark_endcaps.psm1](bin/carpark_endcaps.psm1) owns this table and is imported by both the regular VMF builder and the borderless carpark zoo. Do not duplicate or derive the table from lane roles elsewhere.
+
+One-sided entrance variants use their own Hammer-verified file/yaw pairing because their suffix names the **local** lateral edge that is dead-ended: `tile_carpark_entrance_deadend_west.vmf` closes local west and leaves local east connected, while `tile_carpark_entrance_deadend_east.vmf` closes local east and leaves local west connected. The road connector remains on the authored south edge. The planner selects the suffix from the local closed lane and rotates the entry piece `$180^\circ$` from the carpark assembly yaw. This yields `_east` at `0 0 0` for the south-side short preview entries and `_west` at `0 180 0` for the north-side short fixture. Ordinary deadend-cap orientation remains unchanged. `tile_carpark_entrance_deadend.vmf` is different: it keeps the ordinary entrance-facing yaw but emits no lateral lane tiles.
+
+An enabled lane is deterministically one or two straight tiles long according to `carparks.minimumLaneTiles` and `carparks.maximumLaneTiles`. Both enabled arms in one carpark use the same length. A short lane receives a `carpark_lane_endcap_east` or `carpark_lane_endcap_west` tile in the first unused in-grid space, selected through the same physical-side table. A full-length lane reaches the cell edge and receives the usual outer-border cap.
+
+For the current preview seed, [carparks.vmf](celltemplates/dev/carparks.vmf) provides one repeatable Hammer check for each side:
+
+| Zoo target | Physical side | Expected VMF and `angles` |
+| --- | --- | --- |
+| `zm_dev_carpark_0_carpark_endcap_3_-1` | North | `deadend_west`, `0 270 0` |
+| `zm_dev_carpark_1_carpark_endcap_5_3` | East | `deadend_east`, `0 0 0` |
+| `zm_dev_carpark_0_carpark_endcap_3_5` | South | `deadend_west`, `0 90 0` |
+| `zm_dev_carpark_1_carpark_endcap_-1_3` | West | `deadend_east`, `0 180 0` |
+
+After changing carpark placement code, refresh the zoo with `.\bin\build_tile_zoos.ps1 -RefreshPlan`, reopen it in Hammer, and inspect both the `file` and `angles` keyvalues against this table. Then rebuild preview source VMFs before compiling. When a carpark junction is on a bridge-ramp cell, the ramp moves to the first bridge-side tile so the junction connects to the highway.
+
+The `cellPlanning.rotations` values in [generator-settings.json](generator-settings.json) rotate these authored orientations into the recipe's required exits. Do not infer a yaw from a filename alone; verify it against this table and the template in Hammer.
+
 ## World-Generation Profiles
 
 `worldGeneration.profiles` in [generator-settings.json](generator-settings.json) defines every generated world. A profile owns its grid size, generated file prefix, layer-image setting, source VMF folder, compiler build folder, staged map folder, runtime-world JSON, and optional launcher thumbnail. The included `city` and `preview` entries are normal profiles; add another entry such as `coast` to build a separate custom city without adding another set of special-case settings.
 
-`build_city.ps1` also stages generated in-game map materials in `content/materials/worlds/<profile>`. The composite world image and its exported layers are placed in `map_layers` with stable names: `world.png` for the composite and `<layer>.png` for every individual layer. One local schematic for each reusable city recipe is rendered in `cells` using the matching BSP name with a `.png` extension. Each local map reflects its planned 5-by-5 tile layout, road or motorway topology, blocked exits, building squares, and labelled landmark squares. Both subfolders are replaced with the selected plan's images, so in-game map code cannot retain images from an earlier seed. Set `exportLayers` to `true` for any profile that needs the individual world layer images; the release build stops with an actionable error when they have not been generated.
+`build_city.ps1` also stages generated in-game map materials in `content/materials/worlds/<profile>`. The composite world image and its exported layers are placed in `map_layers` with stable names: `world.png` for the composite and `<layer>.png` for every individual layer. One local schematic for each reusable city recipe is rendered in `cells` using the matching BSP name with a `.png` extension. Each local map reflects its planned 5-by-5 tile layout, dark asphalt roads with yellow dotted centerlines, road or motorway topology, blocked exits, building squares, and every carpark entrance, junction, lane, and endcap. Carparks use a lighter surface and outlined parking bays. It marks named landmarks at their exact planned tile positions; commercial-building tiles are marked `COM`, while a future dedicated `tile_market` remains a named `MKT` landmark. Satellite mode always renders the generated named-landmarks overlay above its satellite image and is stitched from the local recipe maps at the highest whole-cell resolution within the 4096px material limit. Source map layers are replaced for each plan while the derived satellite is retained until the stitcher overwrites it. Profile generation automatically removes stale generated source world maps and layers, source VMFs, zoo VMFs, compiler artifacts, staged BSPs, cell maps, and map-layer PNGs; it does not touch authored templates or other profiles. Set `exportLayers` to `true` for any profile that needs the individual world layer images; the release build stops with an actionable error when they have not been generated.
 
 The native client map opens with `M` or the `zombiesim_map` console command. It supports layer toggles, pan and deep zoom, selected-cell inspection, selected-cell right-click waypoints, and dynamic player and road-blockade overlays. A waypoint draws a route from the player that avoids blocked roads when a valid path exists. The title and map key remain fixed in the upper-left and upper-right corners while the world map is moved. It uses Derma and the staged material PNGs directly, so no HTML, CSS, or JavaScript needs to be packaged.
 
@@ -67,6 +117,25 @@ Run these commands from the project root. This uses the small preview city and l
 ```
 
 `-WorldProfile preview` makes the map generator use `worldGeneration.profiles.preview.gridCells` and makes planning, building, and checking use the preview profile's configured folders when no explicit path is supplied. `-Preview` is accepted for existing command files and means the same thing.
+
+## Tile Zoo And Dev Cells
+
+Run the tile-zoo generator after adding, renaming, or moving a tile template. Use `-RefreshPlan` after changing placement logic so the street and carpark fixtures use a newly planned, but not VMF-generated, preview:
+
+```powershell
+.\bin\build_tile_zoos.ps1 -RefreshPlan
+```
+
+It writes one blank `zoo_<category>.vmf` grid for every direct `tiletemplates` category to `celltemplates/dev`. `streets.vmf` renders one distinct non-carpark road or motorway topology/orientation layout from the current preview plan, and every distinct real-preview layout in `carparks.vmf` renders the exact `tilePlacements` produced by `plan_cell_templates.ps1`. These fixtures exercise the same placement logic as normal generated cells without creating preview source VMFs.
+
+`carparks.vmf` has two planner-derived inspection groups:
+
+- The distinct carpark recipes in the current preview plan, including ordinary and bridge-ramp cases.
+- The seven deterministic fixtures from [carpark_zoo_fixture_map.json](bin/carpark_zoo_fixture_map.json): ordinary carparks branching north, east, south, and west; a south branch joined to an east bridge ramp; a terminal one-tile entrance; and a one-sided short row. `build_tile_zoos.ps1` runs this logical map through the same planner and refreshes its derived [carpark_zoo_fixture_template_plan.json](bin/carpark_zoo_fixture_template_plan.json) on every zoo build. It asserts the expected lane counts, short-row caps, and one-sided physical yaw contract. Do not manually compose or rotate its VMF placements.
+
+Use [zoo_carparks.vmf](celltemplates/dev/zoo_carparks.vmf) to inspect the individual authored carpark templates.
+
+The fixture target prefixes are `zm_dev_carpark_fixture_vertical_east`, `vertical_west`, `horizontal_north`, `horizontal_south`, `horizontal_south_bridge_ramp_east`, `vertical_terminal_entrance`, and `horizontal_one_sided_east_short`; use these to frame a specific generated arrangement in Hammer. `zoo_manifest.json` records every zoo tile's grid coordinate. Building zoos are grouped by type and ordered by density tier. These are Hammer-only development cells and are not included in normal city generation or release builds.
 
 `-Seed 1337` is a one-run override. It does not edit the settings file. Keep a seed you like so you can reproduce the same city after changing unrelated assets.
 
@@ -298,6 +367,7 @@ This section creates the city-wide map layout and its PNG preview. A map cell is
 | --- | --- | --- |
 | `cellSizePixels` | Size of one cell in the PNG planning image. | `64` gives a 1536-by-1536 image for a 24-by-24 preview. This affects the picture, not Hammer tile size. |
 | `seed` | Default random seed. The same seed and the same settings create the same layout. | Any whole number. Prefer passing `-Seed` for a temporary test. |
+| `landmarks.maximumPerCell` | Maximum named landmarks on an eligible city cell. | `4` is the current limit. Icons use a two-column grid and the map tooltip lists every landmark on the cell. Keep it between `1` and `4`. |
 
 ### `road`
 
@@ -560,9 +630,14 @@ Building height is inferred from the letter count after the number in names such
 | `decorations.preferredProfiles` | Profiles with the same decoration preference. |
 | `preferredChancePercent` | Decoration chance from `0` to `100` in preferred terrain/profile areas. |
 | `standardChancePercent` | Decoration chance from `0` to `100` elsewhere. |
-| `carparks.roadStraightChancePercent` | Chance from `0` to `100` that an eligible non-landmark straight-road cell gets a carpark. |
+| `carparks.roadStraightChancePercent` | Optional extra chance from `0` to `100` that an eligible non-landmark straight-road recipe gets a carpark after coverage selection. Keep it at `0` for the most even distribution. |
+| `carparks.coverageCellSpan` | World-grid width and height of each coverage region. The planner reserves carparks across each region in separate passes, preferring straight roads and using junctions only when needed. Junction carparks branch from a spare internal road arm and keep the central road exits intact. Keep it at least `1`; the current `3` spreads coverage more evenly than the former 4-cell regions. |
+| `carparks.coverageCarparksPerRegion` | Number of eligible cells reserved per coverage region. The current value is `3`; selection is separation-aware, so a road-poor region can contribute fewer rather than cluster adjacent carparks. Keep it at least `1`. |
+| `carparks.minimumCellSeparation` | Minimum Chebyshev distance between forced carpark cell coordinates. The current value is `2`, preventing side-by-side and diagonal carpark cells. Keep it at least `1`. |
+| `carparks.minimumLaneTiles` | Minimum straight-tile length for each enabled carpark lane. The current value is `2`, so ordinary straight-road carparks use their full available lane length. Keep it at least `1`. |
+| `carparks.maximumLaneTiles` | Maximum straight-tile length for each enabled carpark lane. It must be at least the minimum and no greater than the available distance to the cell edge. |
 
-Carparks only replace an eligible building space beside a road. They do not overwrite roads, ramps, bridges, or landmarks.
+Carparks only replace an eligible building space beside a road. They do not overwrite roads, ramps, bridges, or landmarks. Before recipes are built, the planner makes separate world-wide coverage passes and reserves up to `coverageCarparksPerRegion` eligible cells per `coverageCellSpan` region. It rejects candidates closer than `minimumCellSeparation` under Chebyshev grid distance and prefers full straight-road layouts before compact junction sidecars. Forced straight-road coverage uses a through entrance and two full-length arms so it reads as a long carpark on the satellite. A junction carpark replaces an internal road-arm tile with a T-junction and occupies only adjacent free tiles, leaving the center intersection intact. Its one-sided lane is one tile long so it can terminate at the cell edge without cutting a perpendicular road. Reserved recipes use a stable `-cp.vmf` basename and the plan records each selected coordinate in `carparkCoverage`; planning fails if any reserved cell lacks a carpark entrance. The selected entrance layout and its lane length are deterministic for a recipe: through entrances create two arms, `_deadend_east` and `_deadend_west` create one, and the unsuffixed `_deadend` entrance creates no arms.
 
 ### `variants`
 
@@ -571,8 +646,8 @@ Variants prevent a highly repeated recipe from making every intersection look id
 | Setting | What it controls |
 | --- | --- |
 | `usageThreshold` | A base recipe gets variants only when it is used more than this number of times. `15` means 16 or more uses. |
-| `maximumPerRecipe` | Maximum number of layouts made for one repeated base recipe. The generator distributes uses as evenly as possible among them. |
-| `suffix` | Letter before the variation number in filenames. Default `v` produces `-v1` through `-v5`. Keep `x` free for the future `_2x` prefab-footprint convention. |
+| `maximumPerRecipe` | Maximum number of layouts made for one repeated base recipe. The generator distributes uses as evenly as possible among them. The current limit is `3`. |
+| `suffix` | Letter before the variation number in filenames. The current limit produces `-v1` through `-v3`. Keep `x` free for the future `_2x` prefab-footprint convention. |
 
 Variants preserve road topology and transport pieces. They vary non-transport placement choices such as buildings and decorations. They are deterministic: the same city seed and settings produce the same variant assignments.
 

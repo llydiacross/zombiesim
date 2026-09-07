@@ -23,6 +23,25 @@ $generatorSettings = $worldGenerationProfile.Settings
 $profileSettings = $worldGenerationProfile.Config
 if (-not $PSBoundParameters.ContainsKey('TileSize')) { $TileSize = [int]$generatorSettings.vmfBuild.tileSize }
 if (-not $PSBoundParameters.ContainsKey('TileZOffset')) { $TileZOffset = [int]$generatorSettings.vmfBuild.tileZOffset }
+$vmfBuildSettings = $generatorSettings.vmfBuild
+$borderSettings = if ($vmfBuildSettings.ContainsKey('border')) { $vmfBuildSettings.border } else { @{} }
+$borderEnabled = $borderSettings.ContainsKey('enabled') -and [bool]$borderSettings.enabled
+$topologyTemplates = $generatorSettings.cellPlanning.topologyTemplates
+if (-not $PSBoundParameters.ContainsKey('PruneStaleGenerated')) { $PruneStaleGenerated = $true }
+Import-Module (Join-Path $PSScriptRoot 'carpark_endcaps.psm1') -Force
+if ($borderEnabled) {
+    if (-not $borderSettings.ContainsKey('wallTemplatesByDensity') -or @($borderSettings.wallTemplatesByDensity).Count -eq 0) {
+        throw 'vmfBuild.border must define at least one wallTemplatesByDensity entry when borders are enabled.'
+    }
+    if (-not $borderSettings.ContainsKey('cornerTemplate') -or [string]::IsNullOrWhiteSpace([string]$borderSettings.cornerTemplate)) {
+        throw 'vmfBuild.border must define cornerTemplate when borders are enabled.'
+    }
+    foreach ($requiredTopology in @('road-straight', 'motorway-straight')) {
+        if (-not $topologyTemplates.ContainsKey($requiredTopology) -or [string]::IsNullOrWhiteSpace([string]$topologyTemplates[$requiredTopology])) {
+            throw "cellPlanning.topologyTemplates must define $requiredTopology when borders are enabled."
+        }
+    }
+}
 
 if ([string]::IsNullOrWhiteSpace($PlanData)) {
     $planFilePattern = "$($profileSettings.filePrefix)_grid_*_template_plan.json"
@@ -121,12 +140,145 @@ function Get-VmfInstancePath {
     return [System.Uri]::UnescapeDataString($sourceUri.MakeRelativeUri($templateUri).ToString())
 }
 
+function Get-PlacementFootprint {
+    param([object]$Placement)
+
+    $widthProperty = $Placement.PSObject.Properties['footprintWidth']
+    $heightProperty = $Placement.PSObject.Properties['footprintHeight']
+    $width = if ($null -eq $widthProperty) { 1 } else { [int]$widthProperty.Value }
+    $height = if ($null -eq $heightProperty) { 1 } else { [int]$heightProperty.Value }
+    if ($width -lt 1 -or $height -lt 1 -or $width -ne $height -or $width -gt 3) {
+        throw "Placement '$($Placement.template)' must define a square footprint from 1x1 through 3x3."
+    }
+    return [pscustomobject]@{ width = $width; height = $height }
+}
+
+function Test-PlacementEmitsInstance {
+    param([object]$Placement)
+
+    $property = $Placement.PSObject.Properties['emitsInstance']
+    return $null -eq $property -or [bool]$property.Value
+}
+
+function Get-PlacementId {
+    param([object]$Placement)
+
+    $property = $Placement.PSObject.Properties['placementId']
+    if ($null -ne $property -and -not [string]::IsNullOrWhiteSpace([string]$property.Value)) {
+        return [string]$property.Value
+    }
+    return "tile:$([int]$Placement.tileX),$([int]$Placement.tileY)"
+}
+
+function Get-PlacementOwnerCoordinate {
+    param(
+        [object]$Placement,
+        [string]$PropertyName,
+        [int]$DefaultValue
+    )
+
+    $property = $Placement.PSObject.Properties[$PropertyName]
+    if ($null -eq $property) { return $DefaultValue }
+    return [int]$property.Value
+}
+
+function Get-PlacementCoordinates {
+    param(
+        [int]$TileX,
+        [int]$TileY,
+        [int]$FootprintWidth,
+        [int]$FootprintHeight
+    )
+
+    $coordinates = [System.Collections.Generic.List[object]]::new()
+    for ($offsetY = 0; $offsetY -lt $FootprintHeight; $offsetY++) {
+        for ($offsetX = 0; $offsetX -lt $FootprintWidth; $offsetX++) {
+            $coordinates.Add([pscustomobject]@{ tileX = $TileX + $offsetX; tileY = $TileY + $offsetY })
+        }
+    }
+    return @($coordinates)
+}
+
+function Test-RecipeTilePlacements {
+    param(
+        [object]$Recipe,
+        [int]$TileGridSize
+    )
+
+    $placements = @($Recipe.tilePlacements)
+    $expectedTileCount = $TileGridSize * $TileGridSize
+    if ($placements.Count -ne $expectedTileCount) {
+        throw "$($Recipe.cellTemplateFilename) has $($placements.Count) occupancy records; expected $expectedTileCount."
+    }
+
+    $placementByCoordinate = @{}
+    foreach ($placement in $placements) {
+        $tileX = [int]$placement.tileX
+        $tileY = [int]$placement.tileY
+        $key = "$tileX,$tileY"
+        if ($tileX -lt 0 -or $tileX -ge $TileGridSize -or $tileY -lt 0 -or $tileY -ge $TileGridSize -or $placementByCoordinate.ContainsKey($key)) {
+            throw "$($Recipe.cellTemplateFilename) has an invalid or duplicate occupancy coordinate: $key"
+        }
+        $placementByCoordinate[$key] = $placement
+    }
+
+    $ownerByCoordinate = @{}
+    foreach ($placement in $placements) {
+        if (-not (Test-PlacementEmitsInstance $placement)) { continue }
+        $tileX = [int]$placement.tileX
+        $tileY = [int]$placement.tileY
+        $footprint = Get-PlacementFootprint $placement
+        $placementId = Get-PlacementId $placement
+        foreach ($coordinate in @(Get-PlacementCoordinates $tileX $tileY $footprint.width $footprint.height)) {
+            $key = "$($coordinate.tileX),$($coordinate.tileY)"
+            if (-not $placementByCoordinate.ContainsKey($key) -or $ownerByCoordinate.ContainsKey($key)) {
+                throw "$($Recipe.cellTemplateFilename) has overlapping or incomplete footprint ownership at $key."
+            }
+            $ownerByCoordinate[$key] = $placement
+        }
+    }
+
+    if ($ownerByCoordinate.Count -ne $expectedTileCount) {
+        throw "$($Recipe.cellTemplateFilename) covers $($ownerByCoordinate.Count) interior tiles; expected $expectedTileCount."
+    }
+    foreach ($key in $placementByCoordinate.Keys) {
+        $occupancyRecord = $placementByCoordinate[$key]
+        $owner = $ownerByCoordinate[$key]
+        $ownerId = Get-PlacementId $owner
+        if ((Get-PlacementId $occupancyRecord) -ne $ownerId -or
+            (Get-PlacementOwnerCoordinate $occupancyRecord 'ownerTileX' ([int]$occupancyRecord.tileX)) -ne [int]$owner.tileX -or
+            (Get-PlacementOwnerCoordinate $occupancyRecord 'ownerTileY' ([int]$occupancyRecord.tileY)) -ne [int]$owner.tileY) {
+            throw "$($Recipe.cellTemplateFilename) has inconsistent footprint ownership at $key."
+        }
+    }
+}
+
+function Get-RecipeInteriorInstanceCount {
+    param([object]$Recipe)
+
+    return @($Recipe.tilePlacements | Where-Object { Test-PlacementEmitsInstance $_ }).Count
+}
+
 function Test-GeneratedCellVmf {
-    param([string]$Path)
+    param(
+        [string]$Path,
+        [int]$ExpectedInteriorInstanceCount = -1,
+        [int]$ExpectedBorderInstanceCount = -1
+    )
 
     $contents = Get-Content -Raw $Path
+    $instanceCount = [regex]::Matches($contents, '"classname" "func_instance"').Count
+    if ($ExpectedInteriorInstanceCount -ge 0) {
+        $expectedBorderCount = if ($ExpectedBorderInstanceCount -ge 0) { $ExpectedBorderInstanceCount } elseif ($borderEnabled) { 24 } else { 0 }
+        $expectedInstanceCount = $ExpectedInteriorInstanceCount + $expectedBorderCount
+        if ($instanceCount -ne $expectedInstanceCount) { return $false }
+    }
+    if (-not $borderEnabled) {
+        return $contents -match 'tiletemplates/' -and $instanceCount -gt 0
+    }
     return $contents -match 'tiletemplates/' -and
-        [regex]::Matches($contents, '"classname" "func_instance"').Count -eq 25
+        $instanceCount -ge 24 -and
+        [regex]::Matches($contents, '"targetname" "zm_border_').Count -eq 24
 }
 
 function Get-RecipeLightingProfile {
@@ -180,7 +332,7 @@ function Remove-TemplateCubemaps {
 function Get-CubemapAnchors {
     param([object]$Recipe, [int]$TileGridSize, [int]$TileWidth, [int]$TileVerticalOffset)
 
-    $placements = @($Recipe.tilePlacements)
+    $placements = @($Recipe.tilePlacements | Where-Object { Test-PlacementEmitsInstance $_ })
     $center = [int][Math]::Floor($TileGridSize / 2)
     $usedCoordinates = @{}
     $candidates = [System.Collections.Generic.List[object]]::new()
@@ -190,16 +342,17 @@ function Get-CubemapAnchors {
     function Add-CubemapCandidate {
         param([object]$Placement, [int]$Priority)
 
-        $tileX = [int]$Placement.tileX
-        $tileY = [int]$Placement.tileY
+        $footprint = Get-PlacementFootprint $Placement
+        $tileX = [double]$Placement.tileX + (($footprint.width - 1) / 2.0)
+        $tileY = [double]$Placement.tileY + (($footprint.height - 1) / 2.0)
         $key = "$tileX,$tileY"
         if ($usedCoordinates.ContainsKey($key)) { return }
         $usedCoordinates[$key] = $true
         $candidates.Add([ordered]@{
             priority = $Priority
             distance = [Math]::Abs($tileX - $center) + [Math]::Abs($tileY - $center)
-            x = ($tileX - $center) * $TileWidth
-            y = ($center - $tileY) * $TileWidth
+            x = [int](($tileX - $center) * $TileWidth)
+            y = [int](($center - $tileY) * $TileWidth)
             z = $TileVerticalOffset + 96
         })
     }
@@ -208,7 +361,7 @@ function Get-CubemapAnchors {
         $template = ([string]$placement.template).ToLowerInvariant()
         $isRoad = $template -match '(road|path|motorway)'
         $isJunction = $isRoad -and $template -match '(corner|cross|tjunction|junction|onramp|bridge)'
-        $isLandmark = $template -match '(church|hospital|school|station|market|bank|tower|airport|laboratory|stadium|mall)'
+        $isLandmark = $template -match '(church|hospital|school|station|market|bank|tower|airport|laboratory|stadium|mall|epicenter)'
         $isOpen = -not $isRoad -and $template -match '(grass|park|plaza|open|field|lot|concrete)'
         $hasRoad = $hasRoad -or $isRoad
         $hasLandmark = $hasLandmark -or $isLandmark
@@ -231,6 +384,121 @@ function Get-CubemapAnchors {
     return $anchors
 }
 
+function Get-RecipeEdgeConnections {
+    param([object]$Recipe)
+
+    $topology = ([string]$Recipe.topology).ToLowerInvariant()
+    $orientation = ([string]$Recipe.orientation).ToLowerInvariant()
+    if ($topology -notmatch '^(road|motorway)-') { return @() }
+    if ($topology -like '*-crossjunction') { return @('N', 'E', 'S', 'W') }
+    if ($topology -like '*-straight') {
+        if ($orientation -eq 'vertical') { return @('N', 'S') }
+        if ($orientation -eq 'horizontal') { return @('E', 'W') }
+    }
+    if ($topology -like '*-corner') {
+        $directionCodes = @{ north = 'N'; east = 'E'; south = 'S'; west = 'W' }
+        return @($orientation.Split('-') | ForEach-Object { $directionCodes[$_] } | Where-Object { $_ })
+    }
+    if ($topology -like '*-tjunction') {
+        $missingDirection = $orientation.Replace('missing-', '').Substring(0, 1).ToUpperInvariant()
+        $allDirections = @('N', 'E', 'S', 'W')
+        return @($allDirections | Where-Object { $_ -ne $missingDirection })
+    }
+    if ($topology -like '*-deadend') {
+        return @($orientation.Substring(0, 1).ToUpperInvariant())
+    }
+    return @()
+}
+
+function Get-BorderTemplateSet {
+    param([object]$Recipe)
+
+    $wallTemplates = @($borderSettings.wallTemplatesByDensity)
+    $cornerTemplate = [string]$borderSettings.cornerTemplate
+    $profile = ([string]$Recipe.environmentProfile).ToLowerInvariant()
+    if ($borderSettings.ContainsKey('profileTemplates') -and $borderSettings.profileTemplates.ContainsKey($profile)) {
+        $profileTemplates = $borderSettings.profileTemplates[$profile]
+        if ($profileTemplates.ContainsKey('wallTemplatesByDensity') -and @($profileTemplates.wallTemplatesByDensity).Count -gt 0) {
+            $wallTemplates = @($profileTemplates.wallTemplatesByDensity)
+        }
+        if ($profileTemplates.ContainsKey('cornerTemplate') -and -not [string]::IsNullOrWhiteSpace([string]$profileTemplates.cornerTemplate)) {
+            $cornerTemplate = [string]$profileTemplates.cornerTemplate
+        }
+    }
+
+    $densityTier = [Math]::Max(1, [int]$Recipe.buildingDensityTier)
+    $wallIndex = [Math]::Min($densityTier - 1, $wallTemplates.Count - 1)
+    return [ordered]@{
+        wallTemplate = [string]$wallTemplates[$wallIndex]
+        cornerTemplate = $cornerTemplate
+    }
+}
+
+function Get-BorderPlacements {
+    param([object]$Recipe, [int]$TileGridSize)
+
+    if (-not $borderEnabled) { return @() }
+
+    $edgeConnections = @(Get-RecipeEdgeConnections $Recipe)
+    $rampExits = @($Recipe.rampExits | Where-Object { $_ -in @('N', 'E', 'S', 'W') } | Sort-Object -Unique)
+    $isMotorway = ([string]$Recipe.topology).ToLowerInvariant() -like 'motorway-*'
+    $primaryRoadTemplate = if ($isMotorway) { [string]$topologyTemplates['motorway-straight'] } else { [string]$topologyTemplates['road-straight'] }
+    $rampRoadTemplate = [string]$topologyTemplates['road-straight']
+    $borderTemplates = Get-BorderTemplateSet $Recipe
+    $center = [int][Math]::Floor($TileGridSize / 2)
+    $carparkEndcapsByBorderSlot = @{}
+    foreach ($endcap in @(Get-CarparkEndcapPlacements -Recipe $Recipe -TileGridSize $TileGridSize -CarparkTemplates $generatorSettings.cellPlanning.carparks.templates)) {
+        $carparkEndcapsByBorderSlot["$($endcap.tileX),$($endcap.tileY)"] = $endcap
+    }
+    $wallYawBySide = @{ N = 90; E = 0; S = 270; W = 180 }
+    $cornerYawByPosition = @{ 'N-W' = 270; 'N-E' = 0; 'S-E' = 90; 'S-W' = 180 }
+    $roadYawBySide = @{ N = 0; E = 90; S = 0; W = 90 }
+    $placements = [System.Collections.Generic.List[object]]::new()
+
+    for ($tileY = -1; $tileY -le $TileGridSize; $tileY++) {
+        for ($tileX = -1; $tileX -le $TileGridSize; $tileX++) {
+            $isOuterRow = $tileY -eq -1 -or $tileY -eq $TileGridSize
+            $isOuterColumn = $tileX -eq -1 -or $tileX -eq $TileGridSize
+            if (-not ($isOuterRow -or $isOuterColumn)) { continue }
+
+            $isCorner = $isOuterRow -and $isOuterColumn
+            if ($isCorner) {
+                $northSouth = if ($tileY -eq -1) { 'N' } else { 'S' }
+                $eastWest = if ($tileX -eq -1) { 'W' } else { 'E' }
+                $cornerKey = "$northSouth-$eastWest"
+                $placements.Add([ordered]@{
+                    tileX = $tileX
+                    tileY = $tileY
+                    template = $borderTemplates.cornerTemplate
+                    rotationYaw = $cornerYawByPosition[$cornerKey]
+                    targetname = "zm_border_corner_$northSouth$eastWest"
+                })
+                continue
+            }
+
+            $side = if ($tileY -eq -1) { 'N' } elseif ($tileY -eq $TileGridSize) { 'S' } elseif ($tileX -eq -1) { 'W' } else { 'E' }
+            $isCenterEdgeSlot = if ($side -in @('N', 'S')) { $tileX -eq $center } else { $tileY -eq $center }
+            $usesRampRoad = $isCenterEdgeSlot -and $rampExits -contains $side
+            $usesPrimaryRoad = $isCenterEdgeSlot -and $edgeConnections -contains $side
+            $usesRoad = $usesRampRoad -or $usesPrimaryRoad
+            $carparkEndcap = $carparkEndcapsByBorderSlot["$tileX,$tileY"]
+            $placements.Add([ordered]@{
+                tileX = $tileX
+                tileY = $tileY
+                template = if ($usesRampRoad) { $rampRoadTemplate } elseif ($usesPrimaryRoad) { $primaryRoadTemplate } elseif ($null -ne $carparkEndcap) { $carparkEndcap.template } else { $borderTemplates.wallTemplate }
+                rotationYaw = if ($usesRoad) { $roadYawBySide[$side] } elseif ($null -ne $carparkEndcap) { $carparkEndcap.rotationYaw } else { $wallYawBySide[$side] }
+                targetname = "zm_border_$side`_$tileX`_$tileY"
+            })
+        }
+    }
+
+    $expectedCount = (($TileGridSize + 2) * ($TileGridSize + 2)) - ($TileGridSize * $TileGridSize)
+    if ($placements.Count -ne $expectedCount) {
+        throw "Border placement count for $($Recipe.cellTemplateFilename) was $($placements.Count), expected $expectedCount."
+    }
+    return @($placements)
+}
+
 function New-CellVmf {
     param(
         [object]$Recipe,
@@ -240,14 +508,12 @@ function New-CellVmf {
         [string]$SourceDirectory,
         [string]$TemplateDirectory,
         [string]$BaseTemplatePath,
-        [object[]]$CubemapAnchors
+        [object[]]$CubemapAnchors,
+        [object[]]$BorderPlacements
     )
 
-    $expectedTileCount = $TileGridSize * $TileGridSize
     $placements = @($Recipe.tilePlacements)
-    if ($placements.Count -ne $expectedTileCount) {
-        throw "$($Recipe.cellTemplateFilename) has $($placements.Count) tiles; expected $expectedTileCount."
-    }
+    Test-RecipeTilePlacements $Recipe $TileGridSize
 
     $baseVmf = Get-Content -Raw $BaseTemplatePath
     $baseVmf = Remove-TemplateCubemaps $baseVmf
@@ -260,7 +526,25 @@ function New-CellVmf {
     $entityId = (@($templateIds | Measure-Object -Maximum).Maximum) + 1
     $center = [int][Math]::Floor($TileGridSize / 2)
     $lines = [System.Collections.Generic.List[string]]::new()
-    foreach ($placement in ($placements | Sort-Object tileY, tileX)) {
+    foreach ($placement in ($placements | Where-Object { Test-PlacementEmitsInstance $_ } | Sort-Object tileY, tileX)) {
+        $instancePath = Get-VmfInstancePath $SourceDirectory $TemplateDirectory $placement.template
+        $footprint = Get-PlacementFootprint $placement
+        $originX = [int]((([int]$placement.tileX - $center) + (($footprint.width - 1) / 2.0)) * $TileWidth)
+        $originY = [int]((($center - [int]$placement.tileY) - (($footprint.height - 1) / 2.0)) * $TileWidth)
+        $lines.AddRange([string[]]@(
+            'entity',
+            '{',
+            ('    "id" "{0}"' -f $entityId),
+            '    "classname" "func_instance"',
+            ('    "origin" "{0} {1} {2}"' -f $originX, $originY, $TileVerticalOffset),
+            ('    "angles" "0 {0} 0"' -f [int]$placement.rotationYaw),
+            ('    "file" "{0}"' -f $instancePath),
+            '    "fixup_style" "0"',
+            '}'
+        ))
+        $entityId++
+    }
+    foreach ($placement in $BorderPlacements) {
         $instancePath = Get-VmfInstancePath $SourceDirectory $TemplateDirectory $placement.template
         $originX = ([int]$placement.tileX - $center) * $TileWidth
         $originY = ($center - [int]$placement.tileY) * $TileWidth
@@ -272,6 +556,7 @@ function New-CellVmf {
             ('    "origin" "{0} {1} {2}"' -f $originX, $originY, $TileVerticalOffset),
             ('    "angles" "0 {0} 0"' -f [int]$placement.rotationYaw),
             ('    "file" "{0}"' -f $instancePath),
+            ('    "targetname" "{0}"' -f $placement.targetname),
             '    "fixup_style" "0"',
             '}'
         ))
@@ -345,7 +630,7 @@ if ($PruneStaleGenerated) {
         $pruned++
     }
 }
-if ($RefreshGenerated -or $Force) {
+if ($RefreshGenerated -or $Force -or $PruneStaleGenerated) {
     foreach ($existingDenMap in (Get-ChildItem -Path $CellDirectory -Filter 'zn_den_*' -File)) {
         if ($safeZoneMapNames.ContainsKey([System.IO.Path]::ChangeExtension($existingDenMap.Name, '.vmf').ToLowerInvariant())) {
             continue
@@ -358,22 +643,29 @@ if ($RefreshGenerated -or $Force) {
 }
 foreach ($recipe in $recipes) {
     $outputPath = Join-Path $CellDirectory $recipe.cellTemplateFilename
+    Test-RecipeTilePlacements $recipe $plan.cellTileGridSize
+    $expectedInteriorInstanceCount = Get-RecipeInteriorInstanceCount $recipe
     $cubemapAnchors = Get-CubemapAnchors $recipe $plan.cellTileGridSize $TileSize $TileZOffset
+    $borderPlacements = Get-BorderPlacements $recipe $plan.cellTileGridSize
+    $expectedBorderInstanceCount = $borderPlacements.Count
     $cubemapProbeCount += $cubemapAnchors.Count
     if ($WhatIf) {
         $cubemapProbeReport.Add("Cubemap probes: $($recipe.cellTemplateFilename) = $($cubemapAnchors.Count)")
     }
     if ((Test-Path $outputPath) -and -not $Force) {
-        if (-not $RefreshGenerated -or -not (Test-GeneratedCellVmf $outputPath)) {
+        if (-not $RefreshGenerated -or -not (Test-GeneratedCellVmf $outputPath $expectedInteriorInstanceCount $expectedBorderInstanceCount)) {
             $skipped++
             continue
         }
         $refreshed++
     }
 
-    $vmf = New-CellVmf $recipe $plan.cellTileGridSize $TileSize $TileZOffset $CellDirectory $TileDirectory $BaseCellTemplate $cubemapAnchors
+    $vmf = New-CellVmf $recipe $plan.cellTileGridSize $TileSize $TileZOffset $CellDirectory $TileDirectory $BaseCellTemplate $cubemapAnchors $borderPlacements
     if (-not $WhatIf) {
         [System.IO.File]::WriteAllText($outputPath, $vmf, [System.Text.UTF8Encoding]::new($false))
+        if (-not (Test-GeneratedCellVmf $outputPath $expectedInteriorInstanceCount $expectedBorderInstanceCount)) {
+            throw "Generated VMF failed border structure validation: $outputPath"
+        }
     }
     $created++
 }

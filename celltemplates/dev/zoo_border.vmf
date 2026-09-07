@@ -1,0 +1,232 @@
+versioninfo
+{
+    "editorversion" "400"
+    "editorbuild" "8871"
+    "mapversion" "1"
+    "formatversion" "100"
+    "prefab" "0"
+}
+visgroups
+{
+}
+viewsettings
+{
+    "bSnapToGrid" "1"
+    "bShowGrid" "1"
+    "bShowLogicalGrid" "0"
+    "nGridSpacing" "64"
+}
+world
+{
+    "id" "1"
+    "mapversion" "1"
+    "classname" "worldspawn"
+}
+entity
+{
+    "id" "2"
+    "classname" "func_instance"
+    "origin" "-2560 2560 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_army_wall.vmf"
+    "targetname" "zm_dev_zoo_0"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "3"
+    "classname" "func_instance"
+    "origin" "-1280 2560 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_army_wall_1a.vmf"
+    "targetname" "zm_dev_zoo_1"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "4"
+    "classname" "func_instance"
+    "origin" "0 2560 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_army_wall_1aa.vmf"
+    "targetname" "zm_dev_zoo_2"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "5"
+    "classname" "func_instance"
+    "origin" "1280 2560 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_army_wall_corner.vmf"
+    "targetname" "zm_dev_zoo_3"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "6"
+    "classname" "func_instance"
+    "origin" "2560 2560 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_concrete_none.vmf"
+    "targetname" "zm_dev_zoo_4"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "7"
+    "classname" "func_instance"
+    "origin" "-2560 1280 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_dirt_none.vmf"
+    "targetname" "zm_dev_zoo_5"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "8"
+    "classname" "func_instance"
+    "origin" "-1280 1280 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_grass_none.vmf"
+    "targetname" "zm_dev_zoo_6"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "9"
+    "classname" "func_instance"
+    "origin" "0 1280 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_ra_none.vmf"
+    "targetname" "zm_dev_zoo_7"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "10"
+    "classname" "func_instance"
+    "origin" "1280 1280 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_ra_wall.vmf"
+    "targetname" "zm_dev_zoo_8"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "11"
+    "classname" "func_instance"
+    "origin" "2560 1280 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_ra_wall_corner.vmf"
+    "targetname" "zm_dev_zoo_9"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "12"
+    "classname" "func_instance"
+    "origin" "-2560 0 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_wall.vmf"
+    "targetname" "zm_dev_zoo_10"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "13"
+    "classname" "func_instance"
+    "origin" "-1280 0 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_wall_1a.vmf"
+    "targetname" "zm_dev_zoo_11"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "14"
+    "classname" "func_instance"
+    "origin" "0 0 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_wall_1aa.vmf"
+    "targetname" "zm_dev_zoo_12"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "15"
+    "classname" "func_instance"
+    "origin" "1280 0 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_wall_1aaa.vmf"
+    "targetname" "zm_dev_zoo_13"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "16"
+    "classname" "func_instance"
+    "origin" "2560 0 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_wall_corner.vmf"
+    "targetname" "zm_dev_zoo_14"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "17"
+    "classname" "func_instance"
+    "origin" "-2560 -1280 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_water_deadend.vmf"
+    "targetname" "zm_dev_zoo_15"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "18"
+    "classname" "func_instance"
+    "origin" "-1280 -1280 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_water_none.vmf"
+    "targetname" "zm_dev_zoo_16"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "19"
+    "classname" "func_instance"
+    "origin" "0 -1280 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_water_pier_1.vmf"
+    "targetname" "zm_dev_zoo_17"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "20"
+    "classname" "func_instance"
+    "origin" "1280 -1280 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_water_pier_2.vmf"
+    "targetname" "zm_dev_zoo_18"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "21"
+    "classname" "func_instance"
+    "origin" "2560 -1280 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/border/tile_border_water_pier_corner.vmf"
+    "targetname" "zm_dev_zoo_19"
+    "fixup_style" "0"
+}
+cameras
+{
+    "activecamera" "-1"
+}
+cordons
+{
+    "active" "0"
+}

@@ -1,0 +1,7 @@
+zn_fo_rs-h-d1_n-m2x2-tile-building-1aa-2x-x0-y3-r0-cp.vmf
+zn_fo_rs-h-d2_n-m2x2-tile-building-1aa-2x-x3-y3-r0-cp.vmf
+zn_mi_rs-v-d1_n-m2x2-tile-building-1aa-2x-x0-y3-r90-cp.vmf
+zn_mi_rs-v-d2_n-m2x2-tile-building-1aa-2x-x3-y3-r270-cp.vmf
+zn_ra_rs-v-d3_n-m2x2-tile-building-1aa-2x-x0-y0-r90-cp.vmf
+zn_service-station_rs-h-bre-d3_n-m2x2-tile-building-1aa-2x-x1-y0-r180-cp.vmf
+zn_service-station_rs-h-d3_n-m2x2-tile-building-1aa-2x-x1-y0-r180-cp.vmf

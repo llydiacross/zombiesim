@@ -1,0 +1,42 @@
+versioninfo
+{
+    "editorversion" "400"
+    "editorbuild" "8871"
+    "mapversion" "1"
+    "formatversion" "100"
+    "prefab" "0"
+}
+visgroups
+{
+}
+viewsettings
+{
+    "bSnapToGrid" "1"
+    "bShowGrid" "1"
+    "bShowLogicalGrid" "0"
+    "nGridSpacing" "64"
+}
+world
+{
+    "id" "1"
+    "mapversion" "1"
+    "classname" "worldspawn"
+}
+entity
+{
+    "id" "2"
+    "classname" "func_instance"
+    "origin" "0 0 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_zoo_0"
+    "fixup_style" "0"
+}
+cameras
+{
+    "activecamera" "-1"
+}
+cordons
+{
+    "active" "0"
+}

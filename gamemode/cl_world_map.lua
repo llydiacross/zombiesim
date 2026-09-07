@@ -748,27 +748,31 @@ local function createMapCanvas(parent, onSelect)
     end
 
     function canvas:UpdateLandmarkTooltip(cursorX, cursorY)
-        local tooltipText
+        local tooltipLines = {}
         if cursorX >= 0 and cursorY >= 0 and cursorX < self:GetWide() and cursorY < self:GetTall() then
             local cell = self:GetCellAt(cursorX, cursorY)
             local player = LocalPlayer()
             local playerCell = IsValid(player) and getPlayerMapCell(player) or nil
             if cell and playerCell and cell.id == playerCell.id then
-                tooltipText = player:Nick()
+                table.insert(tooltipLines, player:Nick())
             end
-            if not tooltipText and WorldMap.EnabledLayers.safe_zones then
+            if WorldMap.EnabledLayers.safe_zones then
                 local safeZone = cell and ZM_World:GetSafeZone(cell) or nil
                 if safeZone and safeZone.name then
-                    tooltipText = "Safe Zone: " .. safeZone.name
+                    table.insert(tooltipLines, "Safe Zone: " .. safeZone.name)
                 end
             end
-            if not tooltipText and WorldMap.EnabledLayers.landmarks then
+            if WorldMap.EnabledLayers.landmarks then
                 local landmarks = cell and ZM_World:GetLandmarks(cell) or nil
                 if landmarks and #landmarks > 0 then
-                    tooltipText = table.concat(landmarks, "\n")
+                    for _, landmark in ipairs(landmarks) do
+                        table.insert(tooltipLines, landmark)
+                    end
                 end
             end
         end
+
+        local tooltipText = #tooltipLines > 0 and table.concat(tooltipLines, "\n") or nil
 
         if self.LandmarkTooltipText == tooltipText then
             return

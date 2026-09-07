@@ -48,7 +48,9 @@ if ($WhatIf) {
 }
 
 [System.IO.Directory]::CreateDirectory($DestinationDirectory) | Out-Null
-Get-ChildItem -LiteralPath $DestinationDirectory -Filter '*.png' -File | Remove-Item -Force
+Get-ChildItem -LiteralPath $DestinationDirectory -Filter '*.png' -File |
+    Where-Object { $_.Name -ne 'satellite.png' } |
+    Remove-Item -Force
 $stagedImageNames = [System.Collections.Generic.List[string]]::new()
 foreach ($mapImageFile in $mapImageFiles) {
     $destinationFilename = if ($mapImageFile.Name -eq $compositeFilename) {

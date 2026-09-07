@@ -34,6 +34,7 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
 $profileSettings = $worldGenerationProfile.Config
+if (-not $PSBoundParameters.ContainsKey('CleanStagedCity')) { $CleanStagedCity = $true }
 if ([string]::IsNullOrWhiteSpace($MapData)) {
     $mapFilePattern = "$($profileSettings.filePrefix)_grid_*.json"
     $MapData = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter $mapFilePattern -File |
@@ -77,6 +78,7 @@ if ($plan.schemaVersion -lt 2) { throw 'The template plan must use schema versio
 $cityVmfNames = @($plan.cells | ForEach-Object { [string]$_.cellTemplateFilename } | Sort-Object -Unique)
 $safeZoneVmfNames = @($plan.safeZoneMaps | ForEach-Object { [string]$_.mapFilename } | Sort-Object -Unique)
 $requiredVmfNames = @($cityVmfNames + $safeZoneVmfNames | Sort-Object -Unique)
+$requiredBspNames = @($requiredVmfNames | ForEach-Object { [System.IO.Path]::ChangeExtension($_, '.bsp') })
 if ($cityVmfNames.Count -eq 0) { throw 'The template plan does not select any city recipe VMFs.' }
 foreach ($filename in $requiredVmfNames) {
     if (-not (Test-Path -LiteralPath (Join-Path $SourceDirectory $filename) -PathType Leaf)) {
@@ -89,6 +91,7 @@ if (-not $SkipRecipeRefresh) {
         PlanData = $PlanData
         CellDirectory = $SourceDirectory
         RefreshGenerated = $true
+        PruneStaleGenerated = $true
         WhatIf = $WhatIf
         WorldProfile = $worldGenerationProfile.Name
         SettingsPath = $SettingsPath
@@ -106,7 +109,21 @@ if ($WhatIf) {
     Write-Output "WhatIf: write runtime world data: $RuntimeWorldData"
 }
 
+$prunedBuildArtifacts = 0
 if (-not $SkipCompile) {
+    if (-not $WhatIf -and (Test-Path -LiteralPath $BuildDirectory -PathType Container)) {
+        $requiredBuildMapNames = @{}
+        foreach ($requiredBspName in $requiredBspNames) {
+            $requiredBuildMapNames[[System.IO.Path]::GetFileNameWithoutExtension($requiredBspName).ToLowerInvariant()] = $true
+        }
+        foreach ($artifact in @(Get-ChildItem -LiteralPath $BuildDirectory -File)) {
+            if ($artifact.Extension.ToLowerInvariant() -notin @('.bsp', '.lin', '.log', '.prt')) { continue }
+            $mapName = [System.IO.Path]::GetFileNameWithoutExtension($artifact.Name)
+            if ($mapName -notlike 'zn_*' -or $requiredBuildMapNames.ContainsKey($mapName.ToLowerInvariant())) { continue }
+            Remove-Item -LiteralPath $artifact.FullName -Force
+            $prunedBuildArtifacts++
+        }
+    }
     $compileArguments = @{
         SourceDirectory = $SourceDirectory
         BuildDirectory = $BuildDirectory
@@ -150,7 +167,6 @@ if ($WhatIf) {
     return
 }
 
-$requiredBspNames = @($requiredVmfNames | ForEach-Object { [System.IO.Path]::ChangeExtension($_, '.bsp') })
 foreach ($bspName in $requiredBspNames) {
     $buildBspPath = Join-Path $BuildDirectory $bspName
     if (-not (Test-Path -LiteralPath $buildBspPath -PathType Leaf)) {
@@ -179,4 +195,4 @@ if (-not (Test-Path -LiteralPath $RuntimeWorldData -PathType Leaf)) {
     throw "Runtime-world exporter did not create the expected data file: $RuntimeWorldData"
 }
 
-Write-Output "Release city recipe BSPs: $($cityVmfNames.Count); standalone den BSPs: $($safeZoneVmfNames.Count); staged maps: $ContentMapDirectory; staged world map materials: $ContentMaterialDirectory; runtime world data: $RuntimeWorldData"
+Write-Output "Release city recipe BSPs: $($cityVmfNames.Count); standalone den BSPs: $($safeZoneVmfNames.Count); pruned stale build artifacts: $prunedBuildArtifacts; staged maps: $ContentMapDirectory; staged world map materials: $ContentMaterialDirectory; runtime world data: $RuntimeWorldData"

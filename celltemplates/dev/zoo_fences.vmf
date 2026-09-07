@@ -1,0 +1,72 @@
+versioninfo
+{
+    "editorversion" "400"
+    "editorbuild" "8871"
+    "mapversion" "1"
+    "formatversion" "100"
+    "prefab" "0"
+}
+visgroups
+{
+}
+viewsettings
+{
+    "bSnapToGrid" "1"
+    "bShowGrid" "1"
+    "bShowLogicalGrid" "0"
+    "nGridSpacing" "64"
+}
+world
+{
+    "id" "1"
+    "mapversion" "1"
+    "classname" "worldspawn"
+}
+entity
+{
+    "id" "2"
+    "classname" "func_instance"
+    "origin" "-640 640 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/fences/tile_border_wall.vmf"
+    "targetname" "zm_dev_zoo_0"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "3"
+    "classname" "func_instance"
+    "origin" "640 640 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/fences/tile_border_wall_corner.vmf"
+    "targetname" "zm_dev_zoo_1"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "4"
+    "classname" "func_instance"
+    "origin" "-640 -640 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/fences/tile_border_wall_crossjunction.vmf"
+    "targetname" "zm_dev_zoo_2"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "5"
+    "classname" "func_instance"
+    "origin" "640 -640 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/fences/tile_border_wall_tjunction.vmf"
+    "targetname" "zm_dev_zoo_3"
+    "fixup_style" "0"
+}
+cameras
+{
+    "activecamera" "-1"
+}
+cordons
+{
+    "active" "0"
+}

@@ -30,6 +30,7 @@ $populationSettings = if ($mapSettings.ContainsKey('population')) { $mapSettings
 $radiationSettings = if ($mapSettings.ContainsKey('radiation')) { $mapSettings.radiation } else { @{} }
 $dangerSettings = if ($mapSettings.ContainsKey('danger')) { $mapSettings.danger } else { @{} }
 $airportSettings = if ($mapSettings.ContainsKey('airports')) { $mapSettings.airports } else { @{} }
+$landmarkSettings = if ($mapSettings.ContainsKey('landmarks')) { $mapSettings.landmarks } else { @{} }
 $highwaysEnabled = if ($highwaySettings.ContainsKey('enabled')) { [bool]$highwaySettings.enabled } else { $true }
 $metroEnabled = if ($metroSettings.ContainsKey('enabled')) { [bool]$metroSettings.enabled } else { $true }
 $settlementMinimumDensity = if ($settlementSettings.ContainsKey('minimumDensity')) { [double]$settlementSettings.minimumDensity } else { 0.75 }
@@ -54,6 +55,9 @@ $airportsEnabled = if ($airportSettings.ContainsKey('enabled')) { [bool]$airport
 $additionalAirportEveryGridCells = if ($airportSettings.ContainsKey('additionalAirportEveryGridCells')) { [int]$airportSettings.additionalAirportEveryGridCells } else { 96 }
 $maximumAirports = if ($airportSettings.ContainsKey('maximumAirports')) { [int]$airportSettings.maximumAirports } else { 3 }
 $airportMinimumSeparationCells = if ($airportSettings.ContainsKey('minimumSeparationCells')) { [int]$airportSettings.minimumSeparationCells } else { 48 }
+$maximumLandmarksPerCell = if ($landmarkSettings.ContainsKey('maximumPerCell')) { [int]$landmarkSettings.maximumPerCell } else { 2 }
+$minimumLandmarksPerFeaturedCell = if ($landmarkSettings.ContainsKey('minimumLandmarksPerFeaturedCell')) { [int]$landmarkSettings.minimumLandmarksPerFeaturedCell } else { 0 }
+$minimumFeaturedLandmarkCells = if ($landmarkSettings.ContainsKey('minimumFeaturedCells')) { [int]$landmarkSettings.minimumFeaturedCells } else { 0 }
 $settlementMinimumDensity = [Math]::Max(0, [Math]::Min(1, $settlementMinimumDensity))
 $settlementDistrictCenterDensity = [Math]::Max(0, [Math]::Min(1, $settlementDistrictCenterDensity))
 $settlementPlacementMode = $settlementPlacementMode.Trim().ToLowerInvariant()
@@ -93,6 +97,15 @@ if ($dangerTierCount -lt 2 -or $dangerTierCount -gt 12) {
 if ($additionalAirportEveryGridCells -lt 1 -or $maximumAirports -lt 1 -or $airportMinimumSeparationCells -lt 1) {
     throw 'mapGeneration.airports placement settings must be at least 1.'
 }
+if ($maximumLandmarksPerCell -lt 1 -or $maximumLandmarksPerCell -gt 4) {
+    throw 'mapGeneration.landmarks.maximumPerCell must be from 1 through 4.'
+}
+if ($minimumLandmarksPerFeaturedCell -lt 0 -or $minimumLandmarksPerFeaturedCell -gt $maximumLandmarksPerCell) {
+    throw 'mapGeneration.landmarks.minimumLandmarksPerFeaturedCell must be from 0 through maximumPerCell.'
+}
+if ($minimumFeaturedLandmarkCells -lt 0) {
+    throw 'mapGeneration.landmarks.minimumFeaturedCells cannot be negative.'
+}
 $maximumRoadJunctionDegree = if ($mapSettings.road.ContainsKey('maximumJunctionDegree')) { [int]$mapSettings.road.maximumJunctionDegree } else { 4 }
 if ($maximumRoadJunctionDegree -lt 2 -or $maximumRoadJunctionDegree -gt 4) {
     throw 'mapGeneration.road.maximumJunctionDegree must be between 2 and 4.'
@@ -114,6 +127,10 @@ if ([string]::IsNullOrWhiteSpace($Output)) {
     $Output = Join-Path (Join-Path $projectRoot $generatorSettings.paths.scriptOutputDirectory) ("{0}_grid_{1}x{1}_seed_{2}.png" -f $profileSettings.filePrefix, $GridCells, $Seed)
 }
 
+$outputDirectory = Split-Path -Parent $Output
+$outputBaseName = [System.IO.Path]::GetFileNameWithoutExtension($Output)
+$staleSourceMapCount = 0
+
 $width = $GridCells * $CellSize
 $height = $GridCells * $CellSize
 $worldOriginX = 0
@@ -121,6 +138,7 @@ $worldOriginY = 0
 $originXOffset = -$width / 2
 $originPixelX = [int]($width / 2 + $originXOffset)
 $originPixelY = [int]($height / 2)
+$originCellY = [int]($originPixelY / $CellSize)
 
 $bitmap = New-Object System.Drawing.Bitmap($width, $height)
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
@@ -208,7 +226,6 @@ $highwayRampPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(255
 $highwayRampPen.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Miter
 $diagonalCrossingPen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(255, 110, 110, 118), $roadWidth)
 $diagonalCrossingEdgePen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(255, 205, 205, 215), 2)
-$originCellY = [int]($originPixelY / $CellSize)
 $roadCells = @{}
 $highwayCells = @{}
 $bridgeCells = @{}
@@ -905,7 +922,7 @@ function Connect-MetroRouteThroughStops {
             $entryBrush = New-Object System.Drawing.SolidBrush($entry.Color)
             $entryPenColor = if ($entry.Label -eq "LAB") { [System.Drawing.Color]::FromArgb(255, 185, 90, 220) } elseif ($entry.Label -eq "B") { [System.Drawing.Color]::FromArgb(255, 240, 45, 45) } else { [System.Drawing.Color]::White }
             $entryPen = New-Object System.Drawing.Pen($entryPenColor, 2)
-            $entryDisplayLabel = if ($entry.DisplayLabel) { $entry.DisplayLabel } else { $entry.Label }
+            $entryDisplayLabel = if ($entry['DisplayLabel']) { $entry['DisplayLabel'] } else { $entry.Label }
             if ($entry.Label -eq "METRO") {
                 $metroKeyPen = [System.Drawing.Pen]::new($entry.Color, [single]6)
                 $metroKeyStationPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(255, 24, 24, 28), [single]2)
@@ -1041,12 +1058,12 @@ function Connect-MetroRouteThroughStops {
         )
 
         if (-not $dangerEnabled) {
-            return [ordered]@{ intensity = 0.0; tier = 'safe'; contributors = @() }
+            return [ordered]@{ intensity = 0.0; tier = 'safe'; tierIndex = 0; contributors = @() }
         }
 
         $tags = @(Get-EnvironmentTags $CellX $CellY)
         if ($tags -contains 'safe_zone') {
-            return [ordered]@{ intensity = 0.0; tier = 'safe'; contributors = @('safe_zone') }
+            return [ordered]@{ intensity = 0.0; tier = 'safe'; tierIndex = 0; contributors = @('safe_zone') }
         }
 
         $chevronDistance = $CellX + [Math]::Abs($CellY - $originCellY)
@@ -1139,7 +1156,6 @@ function Connect-MetroRouteThroughStops {
     function Draw-LandmarkLayer {
         param([System.Drawing.Graphics]$TargetGraphics)
 
-        $iconRadius = [Math]::Max(10, [int]($CellSize * 0.22))
         foreach ($key in $landmarkCells.Keys) {
             $coordinates = $key -split ","
             $cellX = [int]$coordinates[0]
@@ -1147,7 +1163,14 @@ function Connect-MetroRouteThroughStops {
             $centerX = $cellX * $CellSize + [int]($CellSize / 2)
             $centerY = $cellY * $CellSize + [int]($CellSize / 2)
             $icons = @($landmarkCells[$key])
-            $iconSpacing = [int]($iconRadius * 1.8)
+            $multiIconCell = $icons.Count -gt 1
+            if ($multiIconCell) {
+                $iconSpacing = [Math]::Max(1, [int]($CellSize * 0.36))
+                $iconRadius = [Math]::Max(4, [Math]::Min([int]($CellSize * 0.15), [int](($iconSpacing - 2) / 2)))
+            } else {
+                $iconRadius = [Math]::Max(10, [int]($CellSize * 0.22))
+                $iconSpacing = [int]($iconRadius * 1.8)
+            }
             $gridColumns = [Math]::Min(2, $icons.Count)
             $gridRows = [Math]::Ceiling($icons.Count / 2.0)
             for ($iconIndex = 0; $iconIndex -lt $icons.Count; $iconIndex++) {
@@ -1459,7 +1482,6 @@ function Connect-MetroRouteThroughStops {
                     "C" { $tags += @("civic", "religious") }
                     "G" { $tags += @("commercial", "service_station") }
                     "$" { $tags += @("commercial", "financial") }
-                    "M" { $tags += "commercial" }
                     "L" { $tags += "recreation" }
                     "K" { $tags += "parkland" }
                 }
@@ -1574,8 +1596,8 @@ function Connect-MetroRouteThroughStops {
             building = if ($buildingCells.ContainsKey($cellKey)) { [ordered]@{ present = $true; color = ConvertTo-MapColor $buildingCells[$cellKey] } } else { [ordered]@{ present = $false } }
             landmarks = $cellLandmarks
             safeZone = $safeZone
-            road = [ordered]@{ present = $roadCells.ContainsKey($cellKey); connections = $roadConnections; degree = $roadConnections.Count; blockades = $blockadeDirections; bridgeRampDirections = @($bridgeRampDirections | Sort-Object -Unique) }
-            highway = [ordered]@{ present = $highwayCells.ContainsKey($cellKey); connections = $highwayConnections; degree = $highwayConnections.Count; bridge = $bridgeCells.ContainsKey($cellKey); bridgeCrossingDirection = $bridgeCrossingDirections[$cellKey]; rampExits = $highwayRampExits; diagonal = $diagonalHighwayCells.ContainsKey($cellKey) }
+            road = [ordered]@{ present = $roadCells.ContainsKey($cellKey); connections = $roadConnections; degree = @($roadConnections).Count; blockades = $blockadeDirections; bridgeRampDirections = @($bridgeRampDirections | Sort-Object -Unique) }
+            highway = [ordered]@{ present = $highwayCells.ContainsKey($cellKey); connections = $highwayConnections; degree = @($highwayConnections).Count; bridge = $bridgeCells.ContainsKey($cellKey); bridgeCrossingDirection = $bridgeCrossingDirections[$cellKey]; rampExits = $highwayRampExits; diagonal = $diagonalHighwayCells.ContainsKey($cellKey) }
             metro = [ordered]@{ lines = $metroLineNames; stop = $metroStop }
             neighbors = $neighbors
         }
@@ -2183,6 +2205,51 @@ foreach ($zone in $zones) {
     $reachableRoadCells = Get-ConnectedRoadCells $originKey
 }
 
+# Epicenters deliberately claim reachable ordinary-road cells; planning handles their road overwrite.
+function Move-RadiationSourcesToReachableRoadCells {
+    $relocatedSources = [System.Collections.Generic.List[object]]::new()
+    $minimumSeparation = [Math]::Max(2, [int]($radiationFalloutRadiusCells * 1.7))
+
+    for ($sourceIndex = 0; $sourceIndex -lt $radiationSources.Count; $sourceIndex++) {
+        $source = $radiationSources[$sourceIndex]
+        $sourceX = [int]$source['x']
+        $sourceY = [int]$source['y']
+        $candidates = [System.Collections.Generic.List[object]]::new()
+        foreach ($candidateKey in @($reachableRoadCells.Keys | Sort-Object)) {
+            if ($candidateKey -eq $originKey -or $highwayCells.ContainsKey($candidateKey) -or $diagonalHighwayCells.ContainsKey($candidateKey)) { continue }
+            $candidateCoordinates = $candidateKey -split ','
+            $candidateX = [int]$candidateCoordinates[0]
+            $candidateY = [int]$candidateCoordinates[1]
+
+            $separated = $true
+            foreach ($relocatedSource in $relocatedSources) {
+                $distance = [Math]::Sqrt([Math]::Pow($candidateX - [int]$relocatedSource.x, 2) + [Math]::Pow($candidateY - [int]$relocatedSource.y, 2))
+                if ($distance -lt $minimumSeparation) {
+                    $separated = $false
+                    break
+                }
+            }
+            if (-not $separated) { continue }
+
+            $distanceSquared = [Math]::Pow($candidateX - $sourceX, 2) + [Math]::Pow($candidateY - $sourceY, 2)
+            $tieBreaker = [Math]::Abs((([int64]$Seed * 73856093) + ([int64]$sourceIndex * 19349663) + ([int64]$candidateX * 83492791) + ([int64]$candidateY * 297121507))) % 2147483647
+            $candidates.Add([pscustomobject]@{ x = $candidateX; y = $candidateY; distanceSquared = $distanceSquared; tieBreaker = $tieBreaker })
+        }
+
+        $selectedCandidate = @($candidates | Sort-Object distanceSquared, tieBreaker, y, x | Select-Object -First 1)[0]
+        if ($null -eq $selectedCandidate) {
+            throw "Radiation source $sourceIndex has no open cell available for an Epicenter crater."
+        }
+        $source['x'] = [int]$selectedCandidate.x
+        $source['y'] = [int]$selectedCandidate.y
+        $source['worldX'] = [int]$selectedCandidate.x
+        $source['worldY'] = [int]$selectedCandidate.y - $originCellY
+        $relocatedSources.Add([pscustomobject]@{ x = [int]$selectedCandidate.x; y = [int]$selectedCandidate.y })
+    }
+}
+
+Move-RadiationSourcesToReachableRoadCells
+
 # Generate irregular district cells behind the roads.
 $biomeOpacity = [Math]::Max(0, [Math]::Min(255, $BiomeOpacity))
 for ($cellY = 0; $cellY -lt $GridCells; $cellY++) {
@@ -2270,10 +2337,9 @@ for ($cellY = 0; $cellY -lt $GridCells; $cellY++) {
     }
 }
 
-# Place up to two landmarks in each eligible city cell.
+# Place the configured number of landmarks in each eligible city cell.
 $commonLandmarks = @(
     @{ Label = "L"; Name = "Leisure"; Color = [System.Drawing.Color]::FromArgb(255, 80, 200, 125) },
-    @{ Label = "M"; Name = "Market"; Color = [System.Drawing.Color]::FromArgb(255, 235, 180, 70) },
     @{ Label = "K"; Name = "Park"; Color = [System.Drawing.Color]::FromArgb(255, 105, 170, 80) }
 )
 $policeLandmark = @{ Label = "P"; Name = "Police"; Color = [System.Drawing.Color]::FromArgb(255, 70, 130, 230) }
@@ -2317,6 +2383,68 @@ function Test-LandmarkSpacing {
     }
 
     return $true
+}
+
+function Add-UniqueLandmark {
+    param(
+        [object[]]$Landmarks,
+        [object[]]$Candidates
+    )
+
+    $existingNames = @($Landmarks | ForEach-Object { [string]$_.Name })
+    $availableCandidates = @($Candidates | Where-Object { $existingNames -notcontains [string]$_.Name })
+    if ($availableCandidates.Count -eq 0) {
+        return @($Landmarks)
+    }
+
+    return @($Landmarks) + $availableCandidates[$random.Next(0, $availableCandidates.Count)]
+}
+
+function Get-FeaturedLandmarkSortKey {
+    param([string]$CellKey)
+
+    [int64]$hash = 17
+    foreach ($character in "$Seed|$CellKey".ToCharArray()) {
+        $hash = (($hash * 31) + [int][char]$character) % 2147483647
+    }
+    return $hash
+}
+
+function Ensure-FeaturedLandmarkCoverage {
+    if ($minimumFeaturedLandmarkCells -eq 0 -or $minimumLandmarksPerFeaturedCell -eq 0) { return }
+
+    $epicenterKeys = @{}
+    foreach ($source in @($radiationSources)) {
+        $epicenterKeys["$($source.x),$($source.y)"] = $true
+    }
+    $coveragePool = @($commonLandmarks) + @($bankLandmark)
+    $featuredCellCount = 0
+    $rankedCandidates = @($eligibleLandmarkCandidates |
+        Where-Object { -not $epicenterKeys.ContainsKey($_) } |
+        Sort-Object { Get-FeaturedLandmarkSortKey $_ }, { $_ })
+    foreach ($key in $rankedCandidates) {
+        $landmarks = [System.Collections.Generic.List[object]]::new()
+        if ($landmarkCells.ContainsKey($key)) {
+            foreach ($existingLandmark in @($landmarkCells[$key])) {
+                $landmarks.Add($existingLandmark)
+            }
+        }
+        $existingNames = @($landmarks | ForEach-Object { [string]$_.Name })
+        $poolOffset = (Get-FeaturedLandmarkSortKey $key) % $coveragePool.Count
+        for ($poolIndex = 0; $poolIndex -lt $coveragePool.Count -and $landmarks.Count -lt $minimumLandmarksPerFeaturedCell; $poolIndex++) {
+            $candidate = $coveragePool[($poolOffset + $poolIndex) % $coveragePool.Count]
+            if ($existingNames -contains [string]$candidate.Name) { continue }
+            $landmarks.Add($candidate)
+            $existingNames += [string]$candidate.Name
+        }
+        if ($landmarks.Count -lt $minimumLandmarksPerFeaturedCell) { continue }
+        $landmarkCells[$key] = @($landmarks)
+        $featuredCellCount++
+        if ($featuredCellCount -ge $minimumFeaturedLandmarkCells) { break }
+    }
+    if ($featuredCellCount -lt $minimumFeaturedLandmarkCells) {
+        throw "Only $featuredCellCount featured landmark cell(s) could be populated; expected $minimumFeaturedLandmarkCells."
+    }
 }
 
 function Get-DistrictDenName {
@@ -2388,41 +2516,43 @@ foreach ($key in $eligibleLandmarkCandidates) {
     $centerDistance = [Math]::Sqrt([Math]::Pow($cellX - $centerX, 2) + [Math]::Pow($cellY - $centerY, 2))
     $centrality = [Math]::Max(0, 1 - ($centerDistance / ($GridCells / 2)))
 
-    if ($isDeepCity -and $random.NextDouble() -lt 0.05 -and $landmarks.Count -lt 2) {
-        $landmarks += $rareLandmarks[$random.Next(0, $rareLandmarks.Count)]
+    if ($isDeepCity -and $random.NextDouble() -lt 0.05 -and @($landmarks).Count -lt $maximumLandmarksPerCell) {
+        $landmarks = @(Add-UniqueLandmark -Landmarks $landmarks -Candidates $rareLandmarks)
     }
-    if ($isBottomCity -and $random.NextDouble() -lt 0.08 -and $landmarks.Count -lt 2) {
-        $landmarks += $rareLandmarks[$random.Next(1, 3)]
+    if ($isBottomCity -and $random.NextDouble() -lt 0.08 -and @($landmarks).Count -lt $maximumLandmarksPerCell) {
+        $landmarks = @(Add-UniqueLandmark -Landmarks $landmarks -Candidates @($rareLandmarks[1], $rareLandmarks[2]))
     }
-    if ($random.NextDouble() -lt (0.08 + 0.22 * $centrality) -and $landmarks.Count -lt 2) {
-        $landmarks += $commonLandmarks[$random.Next(0, $commonLandmarks.Count)]
+    if ($random.NextDouble() -lt (0.08 + 0.22 * $centrality) -and @($landmarks).Count -lt $maximumLandmarksPerCell) {
+        $landmarks = @(Add-UniqueLandmark -Landmarks $landmarks -Candidates $commonLandmarks)
     }
-    if ($random.NextDouble() -lt (0.02 + 0.08 * $centrality) -and $landmarks.Count -lt 2) {
-        $landmarks += $commonLandmarks[$random.Next(0, $commonLandmarks.Count)]
+    if ($random.NextDouble() -lt (0.02 + 0.08 * $centrality) -and @($landmarks).Count -lt $maximumLandmarksPerCell) {
+        $landmarks = @(Add-UniqueLandmark -Landmarks $landmarks -Candidates $commonLandmarks)
     }
-    if ($random.NextDouble() -lt (0.015 + 0.035 * $centrality) -and $landmarks.Count -lt 2 -and (Test-LandmarkSpacing "F" $cellX $cellY)) {
-        $landmarks += $fireLandmark
+    if ($random.NextDouble() -lt (0.015 + 0.035 * $centrality) -and @($landmarks).Count -lt $maximumLandmarksPerCell -and (Test-LandmarkSpacing "F" $cellX $cellY)) {
+        $landmarks = @(Add-UniqueLandmark -Landmarks $landmarks -Candidates @($fireLandmark))
     }
-    if ($random.NextDouble() -lt (0.015 + 0.035 * $centrality) -and $landmarks.Count -lt 2 -and (Test-LandmarkSpacing "P" $cellX $cellY)) {
-        $landmarks += $policeLandmark
+    if ($random.NextDouble() -lt (0.015 + 0.035 * $centrality) -and @($landmarks).Count -lt $maximumLandmarksPerCell -and (Test-LandmarkSpacing "P" $cellX $cellY)) {
+        $landmarks = @(Add-UniqueLandmark -Landmarks $landmarks -Candidates @($policeLandmark))
     }
-    if ($random.NextDouble() -lt (0.008 + 0.02 * $centrality) -and $landmarks.Count -lt 2 -and (Test-LandmarkSpacing "H" $cellX $cellY)) {
-        $landmarks += $hospitalLandmark
+    if ($random.NextDouble() -lt (0.008 + 0.02 * $centrality) -and @($landmarks).Count -lt $maximumLandmarksPerCell -and (Test-LandmarkSpacing "H" $cellX $cellY)) {
+        $landmarks = @(Add-UniqueLandmark -Landmarks $landmarks -Candidates @($hospitalLandmark))
     }
-    if ($random.NextDouble() -lt (0.008 + 0.02 * $centrality) -and $landmarks.Count -lt 2 -and (Test-LandmarkSpacing "C" $cellX $cellY)) {
-        $landmarks += $churchLandmark
+    if ($random.NextDouble() -lt (0.008 + 0.02 * $centrality) -and @($landmarks).Count -lt $maximumLandmarksPerCell -and (Test-LandmarkSpacing "C" $cellX $cellY)) {
+        $landmarks = @(Add-UniqueLandmark -Landmarks $landmarks -Candidates @($churchLandmark))
     }
-    if ($random.NextDouble() -lt (0.018 + 0.03 * $centrality) -and $landmarks.Count -lt 2 -and (Test-LandmarkSpacing "G" $cellX $cellY)) {
-        $landmarks += $petrolStationLandmark
+    if ($random.NextDouble() -lt (0.018 + 0.03 * $centrality) -and @($landmarks).Count -lt $maximumLandmarksPerCell -and (Test-LandmarkSpacing "G" $cellX $cellY)) {
+        $landmarks = @(Add-UniqueLandmark -Landmarks $landmarks -Candidates @($petrolStationLandmark))
     }
-    if ($random.NextDouble() -lt (0.012 + 0.025 * $centrality) -and $landmarks.Count -lt 2 -and (Test-LandmarkSpacing '$' $cellX $cellY)) {
-        $landmarks += $bankLandmark
+    if ($random.NextDouble() -lt (0.012 + 0.025 * $centrality) -and @($landmarks).Count -lt $maximumLandmarksPerCell -and (Test-LandmarkSpacing '$' $cellX $cellY)) {
+        $landmarks = @(Add-UniqueLandmark -Landmarks $landmarks -Candidates @($bankLandmark))
     }
 
-    if ($landmarks.Count -gt 0) {
+    if (@($landmarks).Count -gt 0) {
         $landmarkCells[$key] = $landmarks
     }
 }
+
+Ensure-FeaturedLandmarkCoverage
 
 # Airports occupy empty reachable road cells outside fallout. Extra airports require both a larger world and a wide separation.
 $airportKeys = @()
@@ -2458,8 +2588,7 @@ for ($airportIndex = 0; $airportIndex -lt $airportCount; $airportIndex++) {
 # Every detonation source is a landmark, even if it is not beside a road.
 foreach ($source in $radiationSources) {
     $sourceKey = "$($source.x),$($source.y)"
-    $existingLandmarks = if ($landmarkCells.ContainsKey($sourceKey)) { @($landmarkCells[$sourceKey]) } else { @() }
-    $landmarkCells[$sourceKey] = @($existingLandmarks) + @($epicenterLandmark)
+    $landmarkCells[$sourceKey] = @($epicenterLandmark)
 }
 
 # The world origin and every district receive a named safe-zone den on a reachable local road.
@@ -2475,6 +2604,7 @@ for ($districtIndex = 0; $districtIndex -lt $zones.Count; $districtIndex++) {
         [Math]::Sqrt([Math]::Pow([int]$coordinates[0] - $zone.X, 2) + [Math]::Pow([int]$coordinates[1] - $zone.Y, 2)) -le $zone.Radius
     })
     $landmarkSafeRoomCandidates = @($districtCandidates | Where-Object {
+        if (-not $landmarkCells.ContainsKey($_)) { return $false }
         $landmarkNames = @($landmarkCells[$_] | ForEach-Object { $_.Name })
         @($landmarkNames | Where-Object { $_ -in $safeRoomLandmarkPriority }).Count -gt 0
     } | Sort-Object {
@@ -2786,7 +2916,6 @@ $keyEntries = @(
     @{ Label = "H"; Name = "Hospital"; Color = [System.Drawing.Color]::FromArgb(255, 230, 75, 85) },
     @{ Label = "C"; Name = "Church"; Color = [System.Drawing.Color]::FromArgb(255, 145, 105, 190) },
     @{ Label = "L"; Name = "Leisure"; Color = [System.Drawing.Color]::FromArgb(255, 80, 200, 125) },
-    @{ Label = "M"; Name = "Market"; Color = [System.Drawing.Color]::FromArgb(255, 235, 180, 70) },
     @{ Label = "K"; Name = "Park"; Color = [System.Drawing.Color]::FromArgb(255, 105, 170, 80) },
     @{ Label = "F"; Name = "Fire station"; Color = [System.Drawing.Color]::FromArgb(255, 235, 110, 55) },
     @{ Label = "G"; Name = "Petrol station"; Color = [System.Drawing.Color]::FromArgb(255, 60, 185, 115) },
@@ -2816,7 +2945,7 @@ for ($entryIndex = 0; $entryIndex -lt $keyEntries.Count; $entryIndex++) {
     $entryBrush = New-Object System.Drawing.SolidBrush($entry.Color)
     $entryPenColor = if ($entry.Label -eq "LAB") { [System.Drawing.Color]::FromArgb(255, 185, 90, 220) } elseif ($entry.Label -eq "B") { [System.Drawing.Color]::FromArgb(255, 240, 45, 45) } else { [System.Drawing.Color]::White }
     $entryPen = New-Object System.Drawing.Pen($entryPenColor, 2)
-    $entryDisplayLabel = if ($entry.DisplayLabel) { $entry.DisplayLabel } else { $entry.Label }
+    $entryDisplayLabel = if ($entry['DisplayLabel']) { $entry['DisplayLabel'] } else { $entry.Label }
     if ($entry.Label -eq "METRO") {
         $metroKeyPen = [System.Drawing.Pen]::new($entry.Color, [single]6)
         $metroKeyStationPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(255, 24, 24, 28), [single]2)
@@ -2914,9 +3043,16 @@ for ($transportIndex = 0; $transportIndex -lt $transportDirectory.Count; $transp
 
 Draw-LabelLayer $graphics
 
-$directory = Split-Path -Parent $Output
-if ($directory -and -not (Test-Path $directory)) {
-    New-Item -ItemType Directory -Path $directory | Out-Null
+if ($outputDirectory -and -not (Test-Path $outputDirectory)) {
+    New-Item -ItemType Directory -Path $outputDirectory | Out-Null
+}
+if ($outputDirectory) {
+    $profileMapPattern = '^{0}_grid_\d+x\d+_seed_\d+(?:_(?:terrain|radiation|danger|buildings|roads|highways|landmarks|safe_zones|metro|districts|grid|labels|keys))?\.(?:png|json)$' -f [regex]::Escape([string]$profileSettings.filePrefix)
+    foreach ($existingOutput in @(Get-ChildItem -LiteralPath $outputDirectory -File | Where-Object { $_.Name -match $profileMapPattern })) {
+        if ($existingOutput.BaseName -eq $outputBaseName) { continue }
+        Remove-Item -LiteralPath $existingOutput.FullName -Force
+        $staleSourceMapCount++
+    }
 }
 
 $bitmap.Save($Output, [System.Drawing.Imaging.ImageFormat]::Png)
@@ -2977,7 +3113,7 @@ $graphics.Dispose()
 $bitmap.Dispose()
 
 if ($ExportLayers) {
-    Write-Output "Generated $Output ($width x $height); map data: $mapDataOutput; exported layers: $($layerOutputs -join ', ')."
+    Write-Output "Generated $Output ($width x $height); map data: $mapDataOutput; pruned stale source maps/layers: $staleSourceMapCount; exported layers: $($layerOutputs -join ', ')."
 } else {
-    Write-Output "Generated $Output ($width x $height); map data: $mapDataOutput; The Evac Zone is at world origin (0, 0); Metro network has $($metroLines.Count) lines and $($metroStations.Count) stations."
+    Write-Output "Generated $Output ($width x $height); map data: $mapDataOutput; pruned stale source maps/layers: $staleSourceMapCount; The Evac Zone is at world origin (0, 0); Metro network has $($metroLines.Count) lines and $($metroStations.Count) stations."
 }

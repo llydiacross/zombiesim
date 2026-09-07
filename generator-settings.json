@@ -230,6 +230,11 @@
       "maximumAirports": 3,
       "minimumSeparationCells": 48
     },
+    "landmarks": {
+      "maximumPerCell": 4,
+      "minimumLandmarksPerFeaturedCell": 4,
+      "minimumFeaturedCells": 1
+    },
     "cityNaming": {
       "prefixes": ["Ash", "Black", "Cinder", "Dun", "East", "Grey", "Iron", "New", "North", "Raven", "Red", "West"],
       "suffixes": ["bridge", "cross", "fall", "gate", "haven", "mere", "point", "reach", "ridge", "vale", "watch", "wick"]
@@ -260,13 +265,13 @@
   "cellPlanning": {
     "cellTileGridSize": 5,
     "templatePatterns": {
-      "genericBuildings": "^buildings/tile_(building|construction)_[0-9]+[a-z]+\\.vmf$",
+      "genericBuildings": "^buildings/tile_(building|construction)_[0-9]+[a-z]+(?:_(?:2x|2x2|3x|3x3))?\\.vmf$",
       "destroyedBuildings": "^buildings/tile_destroyed.*\\.vmf$",
       "warehouses": "^buildings/tile_warehouse_.*\\.vmf$",
-      "commercial": "^buildings/tile_commercial_[0-9]+[a-z]+\\.vmf$",
+      "commercial": "^buildings/tile_commercial_.*\\.vmf$",
       "industry": "^buildings/tile_industry_[0-9]+[a-z]+\\.vmf$",
       "decorations": "^decorations/.*\\.vmf$",
-      "carparks": "^carparks/tile_carpark_[a-e]\\.vmf$"
+      "carparks": "^carparks/tile_carpark_(?:entrance[A-Za-z0-9_-]*|straight_[12]|deadend_(?:east|west))\\.vmf$"
     },
     "safeZones": {
       "biomePriority": ["radioactive", "fortified", "military", "medical", "emergency_services", "religious", "service_station", "financial", "commercial", "recreation", "parkland"],
@@ -300,31 +305,31 @@
       "default": "terrain/tile_dirt.vmf"
     },
     "topologyTemplates": {
-      "road-straight": "tile_road.vmf",
-      "road-corner": "tile_road_corner.vmf",
-      "road-tjunction": "tile_road_tjunction.vmf",
-      "road-crossjunction": "tile_road_crossjunction.vmf",
-      "road-deadend": "tile_road_deadend.vmf",
-      "motorway-straight": "tile_motorway.vmf",
-      "motorway-corner": "tile_motorway_corner.vmf",
-      "motorway-tjunction": "tile_motorway_tjunction.vmf",
-      "motorway-crossjunction": "tile_motorway_crossroads.vmf",
-      "motorway-deadend": "tile_motorway_deadend.vmf"
+      "road-straight": "roads/tile_road.vmf",
+      "road-corner": "roads/tile_road_corner.vmf",
+      "road-tjunction": "roads/tile_road_tjunction.vmf",
+      "road-crossjunction": "roads/tile_road_crossjunction.vmf",
+      "road-deadend": "roads/tile_road_deadend.vmf",
+      "motorway-straight": "roads/tile_motorway.vmf",
+      "motorway-corner": "roads/tile_motorway_corner.vmf",
+      "motorway-tjunction": "roads/tile_motorway_tjunction.vmf",
+      "motorway-crossjunction": "roads/tile_motorway_crossroads.vmf",
+      "motorway-deadend": "roads/tile_motorway_deadend.vmf"
     },
     "transportTemplates": {
-      "bridge-ramp": "tile_road_ramp.vmf",
-      "bridge": "tile_motorway_road_bridge.vmf",
-      "onramp": "tile_motorway_onramp.vmf",
-      "onramp-dual": "tile_motorway_onramp_dual.vmf",
-      "bridgeRoad": "tile_road_bridge.vmf",
-      "roadDeadEnd": "tile_road_deadend.vmf"
+      "bridge-ramp": "roads/tile_road_ramp.vmf",
+      "bridge": "roads/tile_motorway_road_bridge.vmf",
+      "onramp": "roads/tile_motorway_onramp.vmf",
+      "onramp-dual": "roads/tile_motorway_onramp_dual.vmf",
+      "bridgeRoad": "roads/tile_road_bridge.vmf",
+      "roadDeadEnd": "roads/tile_road_deadend.vmf"
     },
     "rotations": {
       "layout": {
         "road-deadend": { "south": 0, "east": 90, "north": 180, "west": 270 },
         "motorway-deadend": { "south": 0, "east": 90, "north": 180, "west": 270 },
         "straight": { "vertical": 0, "horizontal": 90 },
-        "corner": { "north-east": 0, "east-south": 90, "south-west": 180, "north-west": 270 },
+        "corner": { "north-east": 90, "east-south": 0, "south-west": 270, "north-west": 180 },
         "tjunction": { "missing-south": 0, "missing-east": 90, "missing-north": 180, "missing-west": 270 }
       },
       "transport": {
@@ -360,6 +365,8 @@
       "baseWeight": 7,
       "heightDistanceWeight": 3,
       "commercialProfiles": ["commercial"],
+      "commercialSpreadChancePercent": 55,
+      "commercialSpreadProfiles": ["grassland", "sandy", "dirt", "settlement", "commercial", "financial", "recreation", "parkland", "radioactive"],
       "industryTerrains": ["dirt"],
       "industryProfiles": ["radioactive"]
     },
@@ -369,12 +376,41 @@
       "preferredChancePercent": 65,
       "standardChancePercent": 20
     },
+    "multiTileFeatures": {
+      "enabled": true,
+      "maximumFootprint": 3,
+      "buildingChancePercent": 50,
+      "fixtureTemplateProperty": "multiTileTemplate",
+      "specialLandmarks": {
+        "The Epicenter": {
+          "overwriteRoads": true,
+          "capApproachRoads": true,
+          "placement": "center"
+        }
+      },
+      "epicenter": {
+        "landmark": "The Epicenter",
+        "placement": "center",
+        "exclusive": true
+      }
+    },
     "carparks": {
-      "roadStraightChancePercent": 35
+      "roadStraightChancePercent": 0,
+      "coverageCellSpan": 3,
+      "coverageCarparksPerRegion": 3,
+      "minimumCellSeparation": 2,
+      "minimumLaneTiles": 2,
+      "maximumLaneTiles": 2,
+      "templates": {
+        "straightEast": "carparks/tile_carpark_straight_1.vmf",
+        "straightWest": "carparks/tile_carpark_straight_2.vmf",
+        "deadendEast": "carparks/tile_carpark_deadend_east.vmf",
+        "deadendWest": "carparks/tile_carpark_deadend_west.vmf"
+      }
     },
     "variants": {
       "usageThreshold": 15,
-      "maximumPerRecipe": 5,
+      "maximumPerRecipe": 3,
       "suffix": "v"
     },
     "landmarkTemplatePatterns": {
@@ -388,7 +424,8 @@
       "Laboratory": "*/tile_laboratory*.vmf",
       "Bunker": "*/tile_bunker*.vmf",
       "Market": "*/tile_market*.vmf",
-      "Airport": "*/tile_airport*.vmf"
+      "Airport": "*/tile_airport*.vmf",
+      "The Epicenter": "buildings/tile_epicenter_*_3x.vmf"
     },
     "filenameAbbreviations": {
       "format": "zn_<environment>_<topology>-<orientation>[-<transport>]-d<density>_<landmarks>.vmf",
@@ -446,6 +483,38 @@
   },
   "vmfBuild": {
     "tileSize": 640,
-    "tileZOffset": 0
+    "tileZOffset": 0,
+    "border": {
+      "enabled": true,
+      "wallTemplatesByDensity": [
+        "border/tile_border_wall.vmf",
+        "border/tile_border_wall_1a.vmf",
+        "border/tile_border_wall_1aa.vmf",
+        "border/tile_border_wall_1aaa.vmf"
+      ],
+      "cornerTemplate": "border/tile_border_wall_corner.vmf",
+      "profileTemplates": {
+        "radioactive": {
+          "wallTemplatesByDensity": ["border/tile_border_ra_wall.vmf"],
+          "cornerTemplate": "border/tile_border_ra_wall_corner.vmf"
+        },
+        "military": {
+          "wallTemplatesByDensity": [
+            "border/tile_border_army_wall.vmf",
+            "border/tile_border_army_wall_1a.vmf",
+            "border/tile_border_army_wall_1aa.vmf"
+          ],
+          "cornerTemplate": "border/tile_border_army_wall_corner.vmf"
+        },
+        "fortified": {
+          "wallTemplatesByDensity": [
+            "border/tile_border_army_wall.vmf",
+            "border/tile_border_army_wall_1a.vmf",
+            "border/tile_border_army_wall_1aa.vmf"
+          ],
+          "cornerTemplate": "border/tile_border_army_wall_corner.vmf"
+        }
+      }
+    }
   }
 }

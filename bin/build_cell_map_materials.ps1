@@ -157,11 +157,58 @@ function Get-LandmarkLabel {
     return $compactName.Substring(0, [Math]::Min(3, $compactName.Length)).ToUpperInvariant()
 }
 
+function Get-LandmarkMarkerColor {
+    param(
+        [object]$Recipe,
+        [string]$Landmark
+    )
+
+    $markerProperty = $Recipe.PSObject.Properties['landmarkMarkers']
+    if ($null -ne $markerProperty) {
+        $marker = @($markerProperty.Value | Where-Object { [string]$_.name -eq $Landmark } | Select-Object -First 1)[0]
+        $colorProperty = if ($null -eq $marker) { $null } else { $marker.PSObject.Properties['color'] }
+        if ($null -ne $colorProperty -and $null -ne $colorProperty.Value) {
+            $color = $colorProperty.Value
+            return [System.Drawing.Color]::FromArgb([int]$color.alpha, [int]$color.red, [int]$color.green, [int]$color.blue)
+        }
+    }
+    return [System.Drawing.Color]::FromArgb(206, 151, 54)
+}
+
+function Get-PlacementFootprint {
+    param([object]$Placement)
+
+    $widthProperty = $Placement.PSObject.Properties['footprintWidth']
+    $heightProperty = $Placement.PSObject.Properties['footprintHeight']
+    return [pscustomobject]@{
+        width = if ($null -eq $widthProperty) { 1 } else { [int]$widthProperty.Value }
+        height = if ($null -eq $heightProperty) { 1 } else { [int]$heightProperty.Value }
+    }
+}
+
+function Test-PlacementEmitsInstance {
+    param([object]$Placement)
+
+    $property = $Placement.PSObject.Properties['emitsInstance']
+    return $null -eq $property -or [bool]$property.Value
+}
+
+function Test-LandmarkAnchor {
+    param([object]$Placement)
+
+    $role = [string]$Placement.role
+    return (Test-PlacementEmitsInstance $Placement) -and
+        ($role -eq 'landmark' -or ($role -like 'landmark_*' -and $role -notlike 'landmark_carpark*'))
+}
+
 Add-Type -AssemblyName System.Drawing
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
 $profileSettings = $worldGenerationProfile.Config
+$generatorSettings = $worldGenerationProfile.Settings
+$commercialTemplatePattern = [string]$generatorSettings.cellPlanning.templatePatterns.commercial
+if ([string]::IsNullOrWhiteSpace($commercialTemplatePattern)) { throw 'cellPlanning.templatePatterns.commercial is required for local map markers.' }
 if ([string]::IsNullOrWhiteSpace($PlanData)) {
     $planFilePattern = "$($profileSettings.filePrefix)_grid_*_template_plan.json"
     $PlanData = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter $planFilePattern -File |
@@ -198,17 +245,19 @@ Get-ChildItem -LiteralPath $DestinationDirectory -Filter '*.png' -File | Remove-
 
 $tileSize = 48
 $padding = 0
-$roadRoles = @('road', 'road_center', 'bridge_road', 'onramp_road', 'bridge_ramp_deadend')
+$roadRoles = @('road', 'road_center', 'bridge_road', 'onramp_road', 'bridge_ramp_deadend', 'special_landmark_road_cap')
 $buildingBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(78, 76, 72))
 $decorationBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(101, 128, 87))
-$carparkBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(111, 115, 116))
-$roadBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(89, 96, 102))
+$carparkBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(135, 146, 153))
+$roadBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(52, 59, 64))
+$pathBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(165, 170, 162))
 $motorwayBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(235, 35, 90, 190))
 $landmarkBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(206, 151, 54))
 $gridPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(115, 17, 20, 22), 1)
-$roadPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(89, 96, 102), [single]30)
-$roadLanePen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(238, 225, 183, 70), [single]2)
+$roadPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(52, 59, 64), [single]30)
+$roadLanePen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(255, 239, 189, 55), [single]3)
 $roadLanePen.DashStyle = [System.Drawing.Drawing2D.DashStyle]::Dot
+$carparkSpacePen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(230, 243, 245, 242), 1)
 $motorwayPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(235, 35, 90, 190), [single]34)
 $motorwayLanePen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(255, 245, 245, 245), [single]3)
 $motorwayLanePen.DashStyle = [System.Drawing.Drawing2D.DashStyle]::Dot
@@ -233,6 +282,7 @@ try {
         try {
             $graphics.Clear($backgroundColor)
             $isMotorway = [string]$recipe.topology -like 'motorway-*'
+            $showLocationMarkers = -not $isMotorway -or [string]$recipe.transportFeature -like 'bridge-*' -or [string]$recipe.transportFeature -like 'onramp-*'
             foreach ($placement in @($recipe.tilePlacements)) {
                 $tileLeft = $padding + ([int]$placement.tileX * $tileSize)
                 $tileTop = $padding + ([int]$placement.tileY * $tileSize)
@@ -241,10 +291,11 @@ try {
                     $motorwayBrush
                 } elseif ($role -in $roadRoles -or $role -like 'bridge-*' -or $role -like 'onramp-*') {
                     if ($isMotorway -and $role -in @('road', 'road_center')) { $motorwayBrush } else { $roadBrush }
-                } elseif ($role -eq 'building') { $buildingBrush
+                } elseif ($role -eq 'building' -or $role -eq 'building_occupied') { $buildingBrush
                 } elseif ($role -eq 'decoration') { $decorationBrush
-                } elseif ($role -eq 'carpark') { $carparkBrush
-                } elseif ($role -eq 'landmark') { $landmarkBrush
+                } elseif ($role -eq 'path') { $pathBrush
+                } elseif ($role -like '*carpark*') { $carparkBrush
+                } elseif ($role -eq 'landmark' -or ($role -like 'landmark_*' -and $role -notlike 'landmark_carpark*')) { $landmarkBrush
                 } else { $backgroundBrush }
                 $graphics.FillRectangle($tileBrush, $tileLeft, $tileTop, $tileSize, $tileSize)
             }
@@ -307,17 +358,50 @@ try {
                 $graphics.DrawLine($gridPen, $padding, $gridCoordinate, $imageSize - $padding, $gridCoordinate)
             }
 
-            $namedLandmarks = @($recipe.landmarks | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) -and $_ -ne 'none' })
-            $landmarkPlacements = @($recipe.tilePlacements | Where-Object { $_.role -eq 'landmark' } | Sort-Object tileY, tileX)
+            $carparkLanePlacements = @($recipe.tilePlacements | Where-Object {
+                [string]$_.role -match '(?:^|_)carpark_lane(?:_endcap)?_(?:east|west)$'
+            })
+            foreach ($placement in $carparkLanePlacements) {
+                $tileLeft = $padding + ([int]$placement.tileX * $tileSize)
+                $tileTop = $padding + ([int]$placement.tileY * $tileSize)
+                $spaceWidth = [int](($tileSize - 12) / 3)
+                for ($spaceIndex = 0; $spaceIndex -lt 3; $spaceIndex++) {
+                    $spaceLeft = $tileLeft + 6 + ($spaceIndex * $spaceWidth)
+                    $graphics.DrawRectangle($carparkSpacePen, $spaceLeft, $tileTop + 8, $spaceWidth - 3, $tileSize - 16)
+                }
+            }
+
+            $namedLandmarks = @(if ($showLocationMarkers) {
+                @($recipe.landmarks | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) -and $_ -ne 'none' })
+            } else { @() })
+            $landmarkPlacements = @($recipe.tilePlacements | Where-Object { Test-LandmarkAnchor $_ } | Sort-Object tileY, tileX)
             for ($landmarkIndex = 0; $landmarkIndex -lt $namedLandmarks.Count; $landmarkIndex++) {
                 if ($landmarkPlacements.Count -eq 0) { break }
                 $placement = $landmarkPlacements[$landmarkIndex % $landmarkPlacements.Count]
+                $footprint = Get-PlacementFootprint $placement
                 $tileLeft = $padding + ([int]$placement.tileX * $tileSize)
                 $tileTop = $padding + ([int]$placement.tileY * $tileSize)
-                $markerBounds = [System.Drawing.RectangleF]::new($tileLeft + 4, $tileTop + 4, $tileSize - 8, $tileSize - 8)
-                $graphics.FillRectangle($landmarkBrush, $markerBounds)
-                $graphics.DrawRectangle($landmarkOutlinePen, $tileLeft + 4, $tileTop + 4, $tileSize - 9, $tileSize - 9)
+                $markerBounds = [System.Drawing.RectangleF]::new($tileLeft + 4, $tileTop + 4, ($footprint.width * $tileSize) - 8, ($footprint.height * $tileSize) - 8)
+                $markerBrush = [System.Drawing.SolidBrush]::new((Get-LandmarkMarkerColor $recipe ([string]$namedLandmarks[$landmarkIndex])))
+                $graphics.FillRectangle($markerBrush, $markerBounds)
+                $graphics.DrawRectangle($landmarkOutlinePen, $tileLeft + 4, $tileTop + 4, ($footprint.width * $tileSize) - 9, ($footprint.height * $tileSize) - 9)
                 $graphics.DrawString((Get-LandmarkLabel ([string]$namedLandmarks[$landmarkIndex])), $landmarkFont, [System.Drawing.Brushes]::White, $markerBounds, $landmarkFormat)
+                $markerBrush.Dispose()
+            }
+
+            $commercialPlacements = @(if ($showLocationMarkers) {
+                @($recipe.tilePlacements | Where-Object {
+                    $_.role -eq 'building' -and (Test-PlacementEmitsInstance $_) -and [string]$_.template -match $commercialTemplatePattern
+                } | Sort-Object tileY, tileX)
+            } else { @() })
+            foreach ($placement in $commercialPlacements) {
+                $footprint = Get-PlacementFootprint $placement
+                $tileLeft = $padding + ([int]$placement.tileX * $tileSize)
+                $tileTop = $padding + ([int]$placement.tileY * $tileSize)
+                $markerBounds = [System.Drawing.RectangleF]::new($tileLeft + 4, $tileTop + 4, ($footprint.width * $tileSize) - 8, ($footprint.height * $tileSize) - 8)
+                $graphics.FillRectangle($landmarkBrush, $markerBounds)
+                $graphics.DrawRectangle($landmarkOutlinePen, $tileLeft + 4, $tileTop + 4, ($footprint.width * $tileSize) - 9, ($footprint.height * $tileSize) - 9)
+                $graphics.DrawString('COM', $landmarkFont, [System.Drawing.Brushes]::White, $markerBounds, $landmarkFormat)
             }
 
             $outputFilename = [System.IO.Path]::ChangeExtension([string]$recipe.cellTemplateFilename, '.png')
@@ -329,8 +413,8 @@ try {
         }
     }
 } finally {
-    $buildingBrush, $decorationBrush, $carparkBrush, $roadBrush, $motorwayBrush, $landmarkBrush | ForEach-Object Dispose
-    $gridPen, $roadPen, $roadLanePen, $motorwayPen, $motorwayLanePen, $fadedMotorwayPen, $fadedMotorwayLanePen, $blockadePen, $landmarkOutlinePen | ForEach-Object Dispose
+    $buildingBrush, $decorationBrush, $carparkBrush, $roadBrush, $pathBrush, $motorwayBrush, $landmarkBrush | ForEach-Object Dispose
+    $gridPen, $roadPen, $roadLanePen, $carparkSpacePen, $motorwayPen, $motorwayLanePen, $fadedMotorwayPen, $fadedMotorwayLanePen, $blockadePen, $landmarkOutlinePen | ForEach-Object Dispose
     $landmarkFont.Dispose()
     $landmarkFormat.Dispose()
 }
