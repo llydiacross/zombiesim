@@ -17,6 +17,10 @@ Settings use JSON. Text must be inside double quotes, items in a list need comma
 
 `worldGeneration.profiles` in [generator-settings.json](generator-settings.json) defines every generated world. A profile owns its grid size, generated file prefix, layer-image setting, source VMF folder, compiler build folder, staged map folder, runtime-world JSON, and optional launcher thumbnail. The included `city` and `preview` entries are normal profiles; add another entry such as `coast` to build a separate custom city without adding another set of special-case settings.
 
+`build_city.ps1` also stages generated in-game map materials in `content/materials/worlds/<profile>`. The composite world image and its exported layers are placed in `map_layers` with stable names: `world.png` for the composite and `<layer>.png` for every individual layer. One local schematic for each reusable city recipe is rendered in `cells` using the matching BSP name with a `.png` extension. Each local map reflects its planned 5-by-5 tile layout, road or motorway topology, blocked exits, building squares, and labelled landmark squares. Both subfolders are replaced with the selected plan's images, so in-game map code cannot retain images from an earlier seed. Set `exportLayers` to `true` for any profile that needs the individual world layer images; the release build stops with an actionable error when they have not been generated.
+
+The native client map opens with `M` or the `zombiesim_map` console command. It supports layer toggles, pan and deep zoom, selected-cell inspection, selected-cell right-click waypoints, and dynamic player and road-blockade overlays. A waypoint draws a route from the player that avoids blocked roads when a valid path exists. The title and map key remain fixed in the upper-left and upper-right corners while the world map is moved. It uses Derma and the staged material PNGs directly, so no HTML, CSS, or JavaScript needs to be packaged.
+
 Use `-WorldProfile <name>` with every generator script. Without it, the scripts use `worldGeneration.defaultProfile`, currently `city`. `-Preview` remains a compatibility alias for `-WorldProfile preview` on scripts that already supported it.
 
 ```json
@@ -55,7 +59,7 @@ The profile name should match the `world_profile` key on its launcher map. After
 Run these commands from the project root. This uses the small preview city and leaves production cell VMFs alone.
 
 ```powershell
-.\bin\generate_map_grid.ps1 -WorldProfile preview -Seed 1337
+.\bin\generate_world_cells.ps1 -WorldProfile preview -Seed 1337
 .\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json
 .\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json -RefreshGenerated -PruneStaleGenerated
 .\bin\expand_cell_filenames.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json
@@ -73,10 +77,34 @@ Every generator script also accepts `-SettingsPath <file>`. This lets you keep n
 Before committing to the long VVIS and VRAD production compile, run the fast structural check below. It runs VBSP against every preview recipe, so it validates VMF syntax, referenced instances, skybox materials, brushes, props, and BSP generation. It does not calculate visibility or lightmaps.
 
 ```powershell
-.\bin\build_city_release.ps1 -WorldProfile preview -VBSPOnly -OnlyRequiredMaps -CleanStagedCity
+.\bin\build_city.ps1 -WorldProfile preview -VBSPOnly -OnlyRequiredMaps -CleanStagedCity
 ```
 
 This uses the preview profile's `cellDirectory`, `buildDirectory`, `releaseMapDirectory`, and `runtimeWorldData`. It leaves the city profile's maps and runtime data untouched. Omit `-VBSPOnly` only when you want the slower preview VVIS and VRAD pass.
+
+When the current source VMFs, BSPs, and `.prt` files have already passed the VBSP portal preflight, reuse them for a playable VVIS/VRAD-only preview release:
+
+```powershell
+.\bin\build_city.ps1 -WorldProfile preview -OnlyRequiredMaps -SkipRecipeRefresh -SkipVBSP -CleanStagedCity
+```
+
+`-SkipVBSP` requires an existing `.bsp` and `.prt` for every required recipe, then runs VVIS and VRAD only. Keep `-SkipRecipeRefresh` with it so the release uses the exact VMFs that produced those portal files. Completed VVIS and VRAD stages are reused when their compiler logs are newer than their `.prt` or VVIS-log input; add `-Force` to run every requested stage again.
+
+Add `-PrioritizePortalCost` to that reuse build to run the maps with the most portals first. The queue uses portal count, then portal-cluster count, from each `.prt` header. It requires `-SkipVBSP`, since a normal VBSP pass has not yet generated portal data when its queue is ordered:
+
+```powershell
+.\bin\build_city.ps1 -WorldProfile preview -OnlyRequiredMaps -SkipRecipeRefresh -SkipVBSP -PrioritizePortalCost -CleanStagedCity
+```
+
+## Visibility Budget Check
+
+Use the visibility-budget check after changing structural tile geometry. With `-RefreshPortalData`, it first runs VBSP only for every required recipe, then reads each generated `.prt` file to report its portal-cluster and portal counts without running VVIS or VRAD:
+
+```powershell
+.\bin\check_vis_budgets.ps1 -WorldProfile preview -RefreshPortalData
+```
+
+The initial budgets are `250` portal clusters and `900` portals. They are configured under `compilation.visibilityBudget` in [generator-settings.json](generator-settings.json), can be overridden for one run with `-MaxPortalClusters` and `-MaxPortals`, and write `vis-budget-report.json` beside the preview BSPs. For every over-budget recipe, the report also ranks its instanced tiles by their aggregate non-`func_detail` brush-solid count and shows each tile's detail-solid, entity, and prop counts. This is a diagnostic lead rather than a portal attribution: open sightlines between tiles can also create high VVIS cost. The command exits nonzero for over-budget, missing, or invalid portal files.
 
 ## Selecting City Data In Hammer
 
@@ -119,13 +147,13 @@ The script writes the result as `content/maps/thumb/<map>.png`, so this example 
 
 Safe-room entrance cells remain normal logical city cells. They are not replaced by safe-room maps and safe-room maps are not added to the city grid or its graph. The city recipe for the entrance coordinate continues to compile as normal and should contain a `tile_saferoom` entrance plus its level-changing entity. Planning separately assigns that entrance to a reusable standalone safe-room map such as `zn_den_ra` or `zn_den_md_hospital`.
 
-`build_cell_vmfs.ps1 -RefreshGenerated` copies the selected den VMF and its optional VMX sidecar unchanged into the active source directory. `build_city_release.ps1` compiles and stages those den BSPs alongside city recipe BSPs. The runtime index exposes the selected standalone map as `safeZone.map`; future entrance entities can use `ZM_World:GetSafeZoneMap(cell)` to obtain its `city/<den-map>` transition name. The city-cell APIs continue to return the safe-zone entrance cell, never the den itself.
+`build_cell_vmfs.ps1 -RefreshGenerated` copies the selected den VMF and its optional VMX sidecar unchanged into the active source directory. `build_city.ps1` compiles and stages those den BSPs alongside city recipe BSPs. The runtime index exposes the selected standalone map as `safeZone.map`; future entrance entities can use `ZM_World:GetSafeZoneMap(cell)` to obtain its `city/<den-map>` transition name. The city-cell APIs continue to return the safe-zone entrance cell, never the den itself.
 
 Safe-room templates are selected by semantic biome/profile tags, never by `environment.terrain`. `settlement` is deliberately excluded because it describes the city entrance context rather than the destination. `radioactive` therefore selects `cell_ra_safezone.vmf` even when its city entrance cell happens to use grassland, sandy, or dirt terrain. `gr` means the `grasslands` default den style. The active destination codes are `gr`, `co`, `fi`, `ra`, `fo`, `mi`, `md`, `es`, `rl`, `ss`, `rc`, and `pk`. The existing `st`, `sa`, and `di` placeholder pairs are retained for future semantic profiles, but are not selected from entrance context or terrain labels.
 
 District safe-room placement first prefers an available `Hospital`, `Army Base`, or `Bunker` landmark cell; when none is available, it selects the usual generic safe-room entrance. A supported landmark at the entrance takes precedence over the generic biome map, choosing `cell_<biome>_safezone_hospital.vmf`, `cell_<biome>_safezone_army_base.vmf`, or `cell_<biome>_safezone_bunker.vmf`. All current biome and landmark templates are copies of `cell_gr_safezone.vmf` plus its VMX sidecar, ready for independent Hammer editing. When multiple supported landmarks occur, `Hospital`, then `Army Base`, then `Bunker` is the configured precedence order.
 
-All entrances selecting the same biome and landmark variant point to one compiled destination BSP. `build_cell_vmfs.ps1 -RefreshGenerated` refreshes each selected reusable map from its template and removes obsolete `zn_den_*` source maps from the active source folder. Edit the templates in `celltemplates/safezones`, not the copied `generated/src*` build inputs; normal `build_city_release.ps1` runs this refresh before compiling.
+All entrances selecting the same biome and landmark variant point to one compiled destination BSP. `build_cell_vmfs.ps1 -RefreshGenerated` refreshes each selected reusable map from its template and removes obsolete `zn_den_*` source maps from the active source folder. Edit the templates in `celltemplates/safezones`, not the copied `generated/src*` build inputs; normal `build_city.ps1` runs this refresh before compiling.
 
 ## Compile Monitoring and Profiles
 
@@ -137,7 +165,7 @@ The default `compilation.activeProfile` is `stock-gmod`. Its VBSP, VVIS, and VRA
 .\bin\compile_cell_vmfs.ps1 -Preview -VBSPOnly -VbspTimeoutSeconds 120 -DeferredGraceSeconds 180
 ```
 
-When a stage reaches its timeout it is deferred, not killed, and the next map starts. After all normal work has started, the runner waits for `deferredGraceSeconds`, then records the remaining deferred work in the report. By default it returns an error while any map is failed or unfinished. Pass `-FinalizeWithIncomplete` to finish after writing the report without waiting further. That option does not stage an incomplete release through `build_city_release.ps1`; it stops before copying BSPs or writing runtime data.
+When a stage reaches its timeout it is deferred, not killed, and the next map starts. After all normal work has started, the runner waits for `deferredGraceSeconds`, then records the remaining deferred work in the report. By default it returns an error while any map is failed or unfinished. Pass `-FinalizeWithIncomplete` to finish after writing the report without waiting further. That option does not stage an incomplete release through `build_city.ps1`; it stops before copying BSPs or writing runtime data.
 
 To use another compiler suite, add a complete profile under `compilation.profiles`, then select it with `compilation.activeProfile` or `-CompilerProfile`. `toolDirectory` may be absolute or project-relative. Argument templates are JSON arrays and may use `{gameDirectory}`, `{mapVmf}`, and `{mapBsp}`:
 
@@ -161,10 +189,10 @@ After reviewing the preview, regenerate production recipes so they inherit the c
 
 ```powershell
 .\bin\build_cell_vmfs.ps1 -PlanData .\bin\map_grid_64x64_seed_1337_template_plan.json -RefreshGenerated
-.\bin\build_city_release.ps1 -MapData .\bin\map_grid_64x64_seed_1337.json -PlanData .\bin\map_grid_64x64_seed_1337_template_plan.json -CleanStagedCity
+.\bin\build_city.ps1 -MapData .\bin\map_grid_64x64_seed_1337.json -PlanData .\bin\map_grid_64x64_seed_1337_template_plan.json -CleanStagedCity
 ```
 
-`build_city_release.ps1` runs the sequential VBSP, VVIS, and VRAD compiler pass for every VMF in the selected profile's `cellDirectory`, using that profile's `buildDirectory` as an intermediate folder. It copies only the recipe BSPs selected by the plan to the profile's `releaseMapDirectory` and writes the compact gameplay world index to its `runtimeWorldData` path.
+`build_city.ps1` runs the sequential VBSP, VVIS, and VRAD compiler pass for every VMF in the selected profile's `cellDirectory`, using that profile's `buildDirectory` as an intermediate folder. It copies only the recipe BSPs selected by the plan to the profile's `releaseMapDirectory` and writes the compact gameplay world index to its `runtimeWorldData` path.
 
 The release script refreshes generated recipe VMFs first, so changes to the base cell template are included in the compile. Pass `-SkipRecipeRefresh` only when the selected source recipes have already been deliberately refreshed.
 
@@ -199,7 +227,7 @@ Advanced settings control how prefabs connect or rotate. Change those only after
 The default values come from [generator-settings.json](generator-settings.json). A command-line value takes priority for that one command. For example:
 
 ```powershell
-.\bin\generate_map_grid.ps1 -WorldProfile preview -Seed 9001 -RoadDepth 5
+.\bin\generate_world_cells.ps1 -WorldProfile preview -Seed 9001 -RoadDepth 5
 ```
 
 uses seed `9001` and road depth `5` once, even if the JSON file says something else. The next run returns to the JSON defaults.
@@ -673,11 +701,11 @@ Each named baked-lighting profile supplies the values written into a generated r
 
 This table maps each planned recipe environment profile to a named item in `lightingProfiles`; `default` handles every environment not explicitly listed. The default mappings give commercial/financial recipes `overcast_day`, sandy/dirt recipes `dusty_day`, and radioactive/destroyed recipes `dead_zone` lighting. Every mapped value must be a key in `lightingProfiles`.
 
-After changing a baked-lighting value or mapping, regenerate the active source VMFs and compile the affected release. `build_city_release.ps1` performs the refresh automatically unless `-SkipRecipeRefresh` is supplied.
+After changing a baked-lighting value or mapping, regenerate the active source VMFs and compile the affected release. `build_city.ps1` performs the refresh automatically unless `-SkipRecipeRefresh` is supplied.
 
 ```powershell
 .\bin\build_cell_vmfs.ps1 -RefreshGenerated
-.\bin\build_city_release.ps1 -CleanStagedCity
+.\bin\build_city.ps1 -CleanStagedCity
 ```
 
 Generated recipes receive one to three deterministic `env_cubemap` entities. After a light, sky, fog, or geometry change is compiled, launch representative maps and run `buildcubemaps`; that in-game capture step is separate from VBSP, VVIS, and VRAD.
@@ -696,7 +724,7 @@ Generated recipes receive one to three deterministic `env_cubemap` entities. Aft
 Run commands from the project root, or supply an explicit path:
 
 ```powershell
-.\bin\generate_map_grid.ps1 -Preview -SettingsPath .\generator-settings.json
+.\bin\generate_world_cells.ps1 -Preview -SettingsPath .\generator-settings.json
 ```
 
 ### The JSON will not load

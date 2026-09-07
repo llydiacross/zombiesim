@@ -35,7 +35,8 @@ function Atmosphere:ApplyPlayerProfile()
         return false
     end
 
-    local cell = ZM_World:GetCell(player:GetNWInt("CellX"), player:GetNWInt("CellY"))
+    local gridX, gridY = ZM_World:GetGridCoordinates(player:GetNWInt("CellX", 0), player:GetNWInt("CellY", 0))
+    local cell = gridX and ZM_World:GetCell(gridX, gridY) or nil
     return cell and self:ApplyProfile(cell.atmosphereProfile) or false
 end
 

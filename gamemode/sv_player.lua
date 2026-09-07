@@ -53,12 +53,14 @@ function ply:SendPlayerData()
     net.Send(self)
 end
 
-// Persists every player record. Health and stamina are sampled immediately before the write.
+// Persists every player record. Health and survival values are sampled immediately before the write.
 function ply:Save()
     ZM_SetPlayerAttributes(self:SteamID(), self.Attributes)
     self.SavedHealth = math.max(self:Health(), 0)
     self.Stamina = math.Clamp(self.Stamina or 100, 0, self:GetMaxStamina())
-    ZM_SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, CurrentSafeZoneId = self.CurrentSafeZoneId, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina})
+    self.Hunger = math.Clamp(self.Hunger or 100, 0, 100)
+    self.Thirst = math.Clamp(self.Thirst or 100, 0, 100)
+    ZM_SetPlayerData(self:SteamID(), ZM_World.ActiveProfile, {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, CurrentSafeZoneId = self.CurrentSafeZoneId, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina, Hunger = self.Hunger, Thirst = self.Thirst})
 end
 
 // Saves only the attributes table when an attribute changes.
@@ -68,7 +70,7 @@ end
 
 // Saves only the core player-data row when progression, cell, or survival values change.
 function ply:UpdatePlayerData()
-    ZM_SetPlayerData(self:SteamID(), {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, CurrentSafeZoneId = self.CurrentSafeZoneId, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina})
+    ZM_SetPlayerData(self:SteamID(), ZM_World.ActiveProfile, {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, CurrentSafeZoneId = self.CurrentSafeZoneId, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina, Hunger = self.Hunger, Thirst = self.Thirst})
 end
 
 // Records the standalone safe room the player is currently in without changing their city cell.
@@ -93,21 +95,24 @@ function ply:SetCurrentSafeZone(safeZoneId)
     return true
 end
 
-// Changes a player's logical city position and updates the atmosphere before the next map transition.
-function ply:SetWorldCell(x, y)
-    x = tonumber(x)
-    y = tonumber(y)
-    if not x or not y then
+// Changes a player's logical world position and updates the atmosphere before the next map transition.
+function ply:SetWorldCell(worldX, worldY)
+    worldX = tonumber(worldX)
+    worldY = tonumber(worldY)
+    if not worldX or not worldY then
         return false, "World cell coordinates must be numeric"
     end
 
-    local cell = ZM_World:GetCell(math.floor(x), math.floor(y))
+    worldX = math.floor(worldX)
+    worldY = math.floor(worldY)
+    local gridX, gridY = ZM_World:GetGridCoordinates(worldX, worldY)
+    local cell = gridX and ZM_World:GetCell(gridX, gridY) or nil
     if not cell then
         return false, "World cell is outside the loaded world"
     end
 
-    self.CellX = cell.x
-    self.CellY = cell.y
+    self.CellX = worldX
+    self.CellY = worldY
     self.CurrentSafeZoneId = nil
     self:UpdatePlayerData()
     self:SetNetworkPlayerData()
@@ -117,10 +122,63 @@ function ply:SetWorldCell(x, y)
     return true
 end
 
-// Loads core progression and logical city position, defaulting a first-time player to cell 0,0.
+// Restores fresh-character state at the active world's origin safe-zone entrance.
+function ply:ResetForWorldOrigin()
+    local originSafeZone = ZM_World:GetOriginSafeZone()
+    local originCell = originSafeZone and ZM_World:GetCellById(originSafeZone.cell) or nil
+    local destination = ZM_SafeZones:GetOriginMap()
+    if not originSafeZone or not originCell or not destination then
+        return false, "The active world origin safe zone is unavailable"
+    end
+
+    self.Attributes = {
+        Strength = 0,
+        Agility = 0,
+        Intelligence = 0,
+        Endurance = 0,
+        MachineGuns = 0,
+        Shotguns = 0,
+        Snipers = 0,
+        WeaponCrafting = 0,
+        ArmorCrafting = 0,
+        Medicine = 0,
+        Farming = 0,
+        WeaponRepairing = 0,
+        Mechanics = 0
+    }
+    self.XP = 0
+    self.Level = 1
+    self.MaxLevel = 300
+    self.Difficulty = 1
+    self.CellX, self.CellY = ZM_World:GetWorldCoordinates(originCell)
+    self.CurrentSafeZoneId = originSafeZone.id
+    self.SkillPoints = 10
+    self.SavedHealth = 100
+    self.Stamina = self:GetMaxStamina()
+    self.Hunger = 100
+    self.Thirst = 100
+    self:SetHealth(self.SavedHealth)
+    self:UpdateAttributes()
+    self:UpdatePlayerData()
+    self:SetNetworkAttributes()
+    self:SetNetworkPlayerData()
+    self:SendPlayerAttributes()
+    self:SendPlayerData()
+    if GAMEMODE and GAMEMODE.SendPlayerAtmosphereProfile then
+        GAMEMODE:SendPlayerAtmosphereProfile(self)
+    end
+
+    return true, destination
+end
+
+// Loads core progression and logical world position, defaulting a first-time player to the world origin.
 function ply:FetchPlayerData()
 
-    local data = ZM_GetPlayerData(self:SteamID())
+    local data = ZM_GetPlayerData(self:SteamID(), ZM_World.ActiveProfile)
+    local worldData = ZM_World:GetData() or {}
+    local worldOrigin = worldData.world and worldData.world.origin or {}
+    local originX = tonumber(worldOrigin[1]) or 0
+    local originY = tonumber(worldOrigin[2]) or 0
 
     if ( data == nil ) then
         data = {
@@ -128,26 +186,38 @@ function ply:FetchPlayerData()
             Level = 1,
             MaxLevel = 300,
             Difficulty = 1, -- 1 = Easy, 2 = Normal, 3 = Hard, 4 = Insane
-            CellX = 0,
-            CellY = 0,
+            CellX = originX,
+            CellY = originY,
             CurrentSafeZoneId = nil,
             SkillPoints = 0,
             Health = 100,
-            Stamina = 100
+            Stamina = 100,
+            Hunger = 100,
+            Thirst = 100
         }
+    end
+
+    local originSafeZone = ZM_World:GetOriginSafeZone()
+    local originCell = originSafeZone and ZM_World:GetCellById(originSafeZone.cell) or nil
+    if originSafeZone and originCell and data.CurrentSafeZoneId == originSafeZone.id
+        and tonumber(data.CellX) == originCell.x and tonumber(data.CellY) == originCell.y then
+        data.CellX = originX
+        data.CellY = originY
     end
 
     self.XP = data.XP or 0
     self.Level = data.Level or 1
     self.MaxLevel = data.MaxLevel or 300
     self.Difficulty = data.Difficulty or 1 -- 1 = Easy, 2 = Normal, 3 = Hard, 4 = Insane
-    self.CellX = data.CellX or 0
-    self.CellY = data.CellY or 0
+    self.CellX = tonumber(data.CellX) or originX
+    self.CellY = tonumber(data.CellY) or originY
     self.CurrentSafeZoneId = data.CurrentSafeZoneId or nil
     self.SkillPoints = data.SkillPoints or 0
     self.SavedHealth = tonumber(data.Health) or 100
     self.Stamina = tonumber(data.Stamina) or 100
     self.Stamina = math.Clamp(self.Stamina, 0, self:GetMaxStamina())
+    self.Hunger = math.Clamp(tonumber(data.Hunger) or 100, 0, 100)
+    self.Thirst = math.Clamp(tonumber(data.Thirst) or 100, 0, 100)
 end
 
 // Copies server attribute fields to replicated NWInts for the owning client and HUD.
@@ -168,7 +238,7 @@ function ply:SetNetworkAttributes()
     self:SetNWInt("Mechanics", self.Attributes.Mechanics)
 end
 
-// Copies progression, logical cell, health, and stamina to replicated NW values.
+// Copies progression, logical world cell, health, and stamina to replicated NW values.
 function ply:SetNetworkPlayerData()
     self:SetNWInt("XP", self.XP)
     self:SetNWInt("Level", self.Level)
@@ -181,6 +251,8 @@ function ply:SetNetworkPlayerData()
     self:SetNWInt("Health", self.SavedHealth)
     self:SetNWFloat("Stamina", self.Stamina)
     self:SetNWFloat("MaxStamina", self:GetMaxStamina())
+    self:SetNWFloat("Hunger", self.Hunger)
+    self:SetNWFloat("Thirst", self.Thirst)
 end
 
 // Prevents sprint input from moving an exhausted living player faster than walking speed.
@@ -221,6 +293,28 @@ hook.Add("Think", "ZM.Stamina", function()
 
             ply:SetNWFloat("Stamina", ply.Stamina)
             ply:SetNWFloat("MaxStamina", maxStamina)
+        end
+    end
+end)
+
+// Continuously drains survival reserves. Values are persisted with normal player saves.
+local nextSurvivalUpdateAt = 0
+hook.Add("Think", "ZM.Survival", function()
+    if CurTime() < nextSurvivalUpdateAt then return end
+    nextSurvivalUpdateAt = CurTime() + 1
+
+    for _, ply in ipairs(player.GetAll()) do
+        if not IsValid(ply) or not ply:Alive() then continue end
+
+        ply.Hunger = math.Clamp((tonumber(ply.Hunger) or 100) - (1 / 600), 0, 100)
+        ply.Thirst = math.Clamp((tonumber(ply.Thirst) or 100) - (1 / 400), 0, 100)
+        ply:SetNWFloat("Hunger", ply.Hunger)
+        ply:SetNWFloat("Thirst", ply.Thirst)
+
+        local starvationDamage = ply.Hunger <= 0 and 1 or 0
+        local dehydrationDamage = ply.Thirst <= 0 and 2 or 0
+        if starvationDamage + dehydrationDamage > 0 then
+            ply:TakeDamage(starvationDamage + dehydrationDamage, game.GetWorld(), game.GetWorld())
         end
     end
 end)

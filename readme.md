@@ -31,6 +31,75 @@ Based upon Dead Frontier In Gmod.
 
    Recipe BSPs use the generated VMF basename, for example `zn_grassland_open_none.bsp`.
 
+ # Powershell Commands
+
+Run these from the project root. The preview profile is isolated from production and stages its playable maps in `content/maps/preview`.
+
+Generate the deterministic preview world image, manifest, and map layers:
+
+```powershell
+.\bin\generate_world_cells.ps1 -WorldProfile preview -Seed 1337
+```
+
+Plan its recipes and write the required-map list:
+
+```powershell
+.\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json
+```
+
+Refresh the generated recipe VMFs, prune obsolete generated files, and verify every required recipe exists:
+
+```powershell
+.\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json -RefreshGenerated -PruneStaleGenerated
+.\bin\expand_cell_filenames.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json
+.\bin\check_required_cells.ps1 -WorldProfile preview
+```
+
+Create or refresh portal files only, then report portal and cluster budget violations, must be ran first to use PrioritizePortalCost flag:
+
+```powershell
+.\bin\check_vis_budgets.ps1 -WorldProfile preview -RefreshPortalData
+```
+
+Render and stage a finished preview from existing validated BSPs. It runs the largest portal workloads first and skips VVIS/VRAD stages that already completed; add `-Force` for a clean rerun of both stages:
+
+```powershell
+.\bin\build_city.ps1 -WorldProfile preview -OnlyRequiredMaps -SkipRecipeRefresh -SkipVBSP -PrioritizePortalCost -CleanStagedCity -VvisTimeoutSeconds 1800 -VradTimeoutSeconds 3600
+```
+
+Run a complete clean preview build, including fresh BSPs, visibility, lighting, and staging:
+
+```powershell
+.\bin\build_city.ps1 -WorldProfile preview -OnlyRequiredMaps -Force  -CleanStagedCity -VvisTimeoutSeconds 1800 -VradTimeoutSeconds 3600
+```
+
+Build cubemaps for every unique recipe and safe-zone map in the loaded world profile. Run this from the in-game server console or as an admin; it changes level to the first map and prints the native command to run:
+
+```
+zombiesim_build_cubemaps
+```
+
+Generate navmeshes for the same map queue:
+
+```
+zombiesim_generate_navmeshes
+```
+
+For each cubemap map, run `buildcubemaps` in your console. After its level reload, run `zombiesim_map_batch_next` to load the next map. For each navmesh map, run `nav_generate`, then `nav_save`; after both finish, run `zombiesim_map_batch_complete`. Use `zombiesim_map_batch_status` to view progress or `zombiesim_map_batch_cancel` to stop.
+
+# In-Game Commands
+
+Run this from an in-game admin console to reset your attributes, progression, health, stamina, and location, then return to the active world's origin den:
+
+```
+zombiesim_reset_player
+```
+
+Run this from an in-game admin console to print your saved raw grid cell, logical world coordinate, safe-zone id, and map resolution:
+
+```
+zombiesim_player_status
+```
  # Runtime World Data
 
  `ZM_World` loads `data_static/zombiesim_world.json` from the `GAME` mount during gamemode initialization. It returns `nil` or `false, error` when the index is unavailable, so gameplay code can fail safely while a release is being assembled.

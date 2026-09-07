@@ -17,11 +17,9 @@ World.LauncherMapProfiles = {
 	zn_preview = "preview"
 }
 World.CustomProfileDataPrefix = "data_static/zombiesim_world_"
-World.DataPath = World.DataProfiles.city
-World.ActiveProfile = "city"
-World.Data = nil
-World.Indexes = nil
-World.LastError = nil
+// Re-including this module during a Lua refresh must not discard a live world index.
+World.DataPath = World.DataPath or World.DataProfiles.city
+World.ActiveProfile = World.ActiveProfile or "city"
 
 // Direction metadata also defines the only accepted values for graph traversal.
 local directions = {
@@ -431,6 +429,48 @@ function World:GetCell(x, y)
 	return self.Indexes.cellsById[id]
 end
 
+// Returns the zero-based grid cell occupied by the logical world origin.
+// Older exported worlds derive it from their origin safe-zone record.
+function World:GetGridOrigin()
+	if not self:IsLoaded() then
+		return nil
+	end
+
+	local gridOrigin = self.Data.world.gridOrigin
+	local x = tonumber(type(gridOrigin) == "table" and gridOrigin[1] or nil)
+	local y = tonumber(type(gridOrigin) == "table" and gridOrigin[2] or nil)
+	if x and y then
+		return math.floor(x), math.floor(y)
+	end
+
+	local safeZone = self:GetOriginSafeZone()
+	local cell = safeZone and self:GetCellById(safeZone.cell) or nil
+	return cell and cell.x or 0, cell and cell.y or 0
+end
+
+// Converts a raw grid cell into the displayed logical world coordinate system.
+function World:GetWorldCoordinates(reference, y)
+	local cell = self:ResolveCell(reference, y)
+	if not cell then
+		return nil
+	end
+
+	local gridOriginX, gridOriginY = self:GetGridOrigin()
+	local worldOrigin = self.Data.world.origin or {}
+	return cell.x - gridOriginX + (tonumber(worldOrigin[1]) or 0), cell.y - gridOriginY + (tonumber(worldOrigin[2]) or 0)
+end
+
+// Converts a displayed logical world coordinate back into a raw grid cell.
+function World:GetGridCoordinates(worldX, worldY)
+	if not self:IsLoaded() or type(worldX) ~= "number" or type(worldY) ~= "number" then
+		return nil
+	end
+
+	local gridOriginX, gridOriginY = self:GetGridOrigin()
+	local worldOrigin = self.Data.world.origin or {}
+	return math.floor(worldX - (tonumber(worldOrigin[1]) or 0) + gridOriginX), math.floor(worldY - (tonumber(worldOrigin[2]) or 0) + gridOriginY)
+end
+
 // Accepts a cell id, a loaded cell table, { x = ..., y = ... }, or x/y arguments.
 // It keeps higher-level APIs convenient without allowing arbitrary map-name guesses.
 function World:ResolveCell(reference, y)
@@ -600,7 +640,7 @@ function World:GetOriginSafeZoneMap()
 	return self.Data.world.mapDirectory .. "/" .. safeZone.map
 end
 
-// Returns the current safe-zone record for a player using its persisted CellX/CellY.
+// Returns the safe-zone record at a player's persisted logical CellX/CellY.
 // It returns nil when the player has no valid city position or is outside a safe-zone entrance.
 function World:GetPlayerSafeZone(player)
 	if player == nil then
@@ -613,7 +653,8 @@ function World:GetPlayerSafeZone(player)
 		return nil
 	end
 
-	return self:GetSafeZone(math.floor(x), math.floor(y))
+	local gridX, gridY = self:GetGridCoordinates(math.floor(x), math.floor(y))
+	return gridX and self:GetSafeZone(gridX, gridY) or nil
 end
 
 // Returns the reusable safe-room transition map for a player's current city cell.
@@ -878,6 +919,7 @@ function World:FindNearestCell(reference, criteria)
 end
 
 // Runs A* over valid exits. Options: mode, allowBlocked, maximumVisited, canEnter, and stepCost.
+// Road and motorway travel can change mode only at a cell with an explicit motorway ramp.
 // Returns { cells, directions, modes, cost, visited } or nil plus a failure reason.
 function World:FindPath(startReference, goalReference, options)
 	local start = self:ResolveCell(startReference)
@@ -890,25 +932,26 @@ function World:FindPath(startReference, goalReference, options)
 	end
 
 	options = options or {}
-	local maximumVisited = options.maximumVisited or #self.Data.cells
+	local maximumVisited = options.maximumVisited or #self.Data.cells * 2
 	local modeName = options.mode or "any"
 	local open = {}
-	local costs = { [start.id] = 0 }
+	local startState = tostring(start.id) .. ":start"
+	local costs = { [startState] = 0 }
 	local cameFrom = {}
 	local visited = 0
 
-	heapPush(open, { id = start.id, cost = 0, priority = math.abs(start.x - goal.x) + math.abs(start.y - goal.y) })
+	heapPush(open, { id = start.id, mode = nil, state = startState, cost = 0, priority = math.abs(start.x - goal.x) + math.abs(start.y - goal.y) })
 	while #open > 0 and visited < maximumVisited do
 		local current = heapPop(open)
-		if current.cost == costs[current.id] then
+		if current.cost == costs[current.state] then
 			visited = visited + 1
 			if current.id == goal.id then
 				local reverseSteps = {}
-				local id = goal.id
-				while id ~= start.id do
-					local step = cameFrom[id]
+				local state = current.state
+				while state ~= startState do
+					local step = cameFrom[state]
 					table.insert(reverseSteps, step)
-					id = step.from
+					state = step.from
 				end
 
 				local result = { cells = { start }, directions = {}, modes = {}, cost = current.cost, visited = visited }
@@ -922,18 +965,25 @@ function World:FindPath(startReference, goalReference, options)
 			end
 
 			local cell = self:GetCellById(current.id)
+			local transport = cell.transport or {}
+			local canChangeMode = current.mode == nil or #(transport.rampExits or {}) > 0
 			for _, exit in ipairs(cell.exits or {}) do
-				local mode = self:GetTravelMode(exit, modeName, options.allowBlocked)
 				local target = self:GetCellById(exit.cell)
-				if mode and target and (not options.canEnter or options.canEnter(target, cell, exit, mode)) then
-					local stepCost = options.stepCost and options.stepCost(target, cell, exit, mode) or 1
-					if type(stepCost) == "number" and stepCost > 0 then
-						local nextCost = current.cost + stepCost
-						if costs[target.id] == nil or nextCost < costs[target.id] then
-							costs[target.id] = nextCost
-							cameFrom[target.id] = { from = cell.id, to = target.id, direction = exit.direction, mode = mode.type }
-							local heuristic = math.abs(target.x - goal.x) + math.abs(target.y - goal.y)
-							heapPush(open, { id = target.id, cost = nextCost, priority = nextCost + heuristic })
+				for _, mode in ipairs(exit.modes or {}) do
+					local isRequestedMode = modeName == "any" or mode.type == modeName
+					local isAvailable = options.allowBlocked or not mode.blocked
+					local canUseMode = canChangeMode or current.mode == mode.type
+					if target and isRequestedMode and isAvailable and canUseMode and (not options.canEnter or options.canEnter(target, cell, exit, mode)) then
+						local stepCost = options.stepCost and options.stepCost(target, cell, exit, mode) or 1
+						if type(stepCost) == "number" and stepCost > 0 then
+							local nextCost = current.cost + stepCost
+							local nextState = tostring(target.id) .. ":" .. mode.type
+							if costs[nextState] == nil or nextCost < costs[nextState] then
+								costs[nextState] = nextCost
+								cameFrom[nextState] = { from = current.state, to = target.id, direction = exit.direction, mode = mode.type }
+								local heuristic = math.abs(target.x - goal.x) + math.abs(target.y - goal.y)
+								heapPush(open, { id = target.id, mode = mode.type, state = nextState, cost = nextCost, priority = nextCost + heuristic })
+							end
 						end
 					end
 				end

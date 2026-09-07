@@ -1008,7 +1008,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1017,7 +1017,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1161,7 +1161,7 @@ entity
     "classname" "func_instance"
     "origin" "0 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1170,7 +1170,7 @@ entity
     "classname" "func_instance"
     "origin" "640 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1179,7 +1179,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1197,7 +1197,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1206,7 +1206,7 @@ entity
     "classname" "func_instance"
     "origin" "0 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1215,7 +1215,7 @@ entity
     "classname" "func_instance"
     "origin" "640 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1224,20 +1224,20 @@ entity
     "classname" "func_instance"
     "origin" "1280 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
     "fixup_style" "0"
 }
 entity
 {
     "id" "668"
     "classname" "env_cubemap"
-    "origin" "1280 0 96"
+    "origin" "-640 -1280 96"
 }
 entity
 {
     "id" "669"
     "classname" "env_cubemap"
-    "origin" "640 0 96"
+    "origin" "1280 -640 96"
 }
 cameras
 {

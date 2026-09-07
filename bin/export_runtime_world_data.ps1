@@ -48,6 +48,26 @@ function Get-OptionalProperty {
     return $null
 }
 
+function Get-BridgeDeckDirections {
+    param([object]$MapCell)
+
+    $highway = Get-OptionalProperty $MapCell 'highway'
+    if (-not [bool](Get-OptionalProperty $highway 'bridge')) {
+        return @()
+    }
+
+    $bridgeDirection = [string](Get-OptionalProperty $highway 'bridgeCrossingDirection')
+    if ($bridgeDirection -notin @('N', 'E', 'S', 'W')) {
+        $highwayConnections = @((Get-OptionalProperty $highway 'connections'))
+        $bridgeDirection = if ($highwayConnections -contains 'N' -and $highwayConnections -contains 'S') { 'E' } else { 'N' }
+    }
+
+    if ($bridgeDirection -in @('N', 'S')) {
+        return @('N', 'S')
+    }
+    return @('E', 'W')
+}
+
 function Get-AtmosphereProfiles {
     param([hashtable]$Settings)
 
@@ -331,6 +351,7 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
     }
     $landmarkIds = @($mapCell.landmarks | ForEach-Object { $landmarkIndexByName[(Get-RecordName $_ "Map cell $key landmark")] } | Sort-Object -Unique)
     $exits = [System.Collections.Generic.List[object]]::new()
+    $bridgeDeckDirections = @(Get-BridgeDeckDirections $mapCell)
     foreach ($neighbor in @($mapCell.neighbors)) {
         $hasRoad = [bool]$neighbor.roadConnected
         $hasHighway = [bool]$neighbor.highwayConnected
@@ -346,6 +367,10 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
         if ($null -eq $targetNeighbor -or -not ([bool]$targetNeighbor.roadConnected -or [bool]$targetNeighbor.highwayConnected)) {
             throw "Map connection $key $direction is not reciprocated by $targetKey."
         }
+        $targetBridgeDeckDirections = @(Get-BridgeDeckDirections $targetCell)
+        $hasRoad = $hasRoad -and [bool]$targetNeighbor.roadConnected -and ($bridgeDeckDirections.Count -eq 0 -or $bridgeDeckDirections -contains $direction) -and ($targetBridgeDeckDirections.Count -eq 0 -or $targetBridgeDeckDirections -contains $oppositeDirections[$direction])
+        $hasHighway = $hasHighway -and [bool]$targetNeighbor.highwayConnected -and ($bridgeDeckDirections.Count -eq 0 -or $bridgeDeckDirections -notcontains $direction) -and ($targetBridgeDeckDirections.Count -eq 0 -or $targetBridgeDeckDirections -notcontains $oppositeDirections[$direction])
+        if (-not $hasRoad -and -not $hasHighway) { continue }
         $roadBlocked = $hasRoad -and ((@($mapCell.road.blockades) -contains $direction) -or (@($targetCell.road.blockades) -contains $oppositeDirections[$direction]))
         $modes = [System.Collections.Generic.List[object]]::new()
         if ($hasRoad) { $modes.Add([ordered]@{ type = 'road'; blocked = [bool]$roadBlocked }) }
@@ -358,10 +383,10 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
     if ($null -ne $mapCell.metro.stop) { $metroStopId = $metroStopIndexByName[(Get-RecordName $mapCell.metro.stop "Map cell $key metro stop")] }
     $cellRadiation = Get-OptionalProperty $mapCell 'radiation'
     $radiationIntensity = if ($null -ne $cellRadiation -and $null -ne (Get-OptionalProperty $cellRadiation 'intensity')) { [double]$cellRadiation.intensity } else { 0.0 }
-    $radiationIntensity = [Math]::Max(0, [Math]::Min(1, $radiationIntensity))
+    $radiationIntensity = [Math]::Max(0.0, [Math]::Min(1.0, $radiationIntensity))
     $cellDanger = Get-OptionalProperty $mapCell 'danger'
     $dangerIntensity = if ($null -ne $cellDanger -and $null -ne (Get-OptionalProperty $cellDanger 'intensity')) { [double]$cellDanger.intensity } else { 0.0 }
-    $dangerIntensity = [Math]::Max(0, [Math]::Min(1, $dangerIntensity))
+    $dangerIntensity = [Math]::Max(0.0, [Math]::Min(1.0, $dangerIntensity))
     $cellBuilding = Get-OptionalProperty $mapCell 'building'
     $runtimeCells.Add([ordered]@{
         id = $cellId
@@ -378,7 +403,7 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
         danger = $dangerIntensity
         topology = [string]$planCell.topology
         entrances = @($planCell.activeEntrances)
-        transport = [ordered]@{ bridge = [bool]$mapCell.highway.bridge; rampExits = @($mapCell.highway.rampExits); diagonal = [bool]$mapCell.highway.diagonal }
+        transport = [ordered]@{ bridge = [bool]$mapCell.highway.bridge; rampExits = if ([bool]$mapCell.highway.bridge) { @() } else { @($mapCell.highway.rampExits) }; diagonal = [bool]$mapCell.highway.diagonal }
         exits = @($exits)
         metro = [ordered]@{ lines = $metroLineIds; stop = $metroStopId }
     })
@@ -425,6 +450,7 @@ $runtimeWorld = [ordered]@{
         seed = $map.map.seed
         grid = @($width, $height)
         origin = @([int]$map.map.origin.worldX, [int]$map.map.origin.worldY)
+        gridOrigin = @([int]$map.map.origin.cellX, [int]$map.map.origin.cellY)
         mapDirectory = $mapDirectory
         originSafeZoneId = $originSafeZoneId
         mapManifestSha256 = $mapHash

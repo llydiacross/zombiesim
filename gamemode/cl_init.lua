@@ -1,10 +1,13 @@
 // Client entry point: shared state first, then player, camera, and HUD presentation systems.
 include( "shared.lua" )
+include( "cl_skin.lua" )
 include( "cl_player.lua" )
 include( "cl_thirdpersoncamera.lua" )
 include( "cl_hud.lua" )
 include( "cl_crosshair.lua" )
 include( "cl_atmosphere.lua" )
+include( "cl_world_map.lua" )
+include( "cl_map_batch.lua" )
 
 // The server has updated NWInts; mirror them into the local Player extension table.
 net.Receive("RefreshPlayerAttributes", function(len, ply)

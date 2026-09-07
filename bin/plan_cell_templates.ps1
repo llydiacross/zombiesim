@@ -93,10 +93,7 @@ $safeZoneTemplateDirectory = (Resolve-Path -LiteralPath $safeZoneTemplateDirecto
 function Get-CellConnections {
     param([object]$Cell)
 
-    $bridgeRampDirections = @(Get-BridgeRampDirections $Cell)
-    $connections = if ($bridgeRampDirections.Count -gt 0) {
-        $bridgeRampDirections
-    } elseif ($Cell.highway.present) {
+    $connections = if ($Cell.highway.present) {
         @($Cell.highway.connections)
     } elseif ($Cell.road.present) {
         @($Cell.road.connections)
@@ -125,9 +122,7 @@ function Get-TransportFeature {
     param([object]$Cell)
 
     $bridgeRampDirections = @(Get-BridgeRampDirections $Cell)
-    if ($bridgeRampDirections.Count -gt 0) { return "bridge-ramp-$($bridgeRampDirections[0].ToLowerInvariant())" }
-    if (-not $Cell.highway.present) { return 'none' }
-    if ($Cell.highway.bridge) {
+    if ($Cell.highway.present -and $Cell.highway.bridge) {
         $bridgeDirection = $Cell.highway.bridgeCrossingDirection
         if ($bridgeDirection -in @('E', 'W')) { return 'bridge-horizontal' }
         if ($bridgeDirection -in @('N', 'S')) { return 'bridge-vertical' }
@@ -136,11 +131,16 @@ function Get-TransportFeature {
         return 'bridge-vertical'
     }
 
-    $rampExits = @(Get-HighwayRampExits $Cell)
-    if ($rampExits.Count -eq 0) { return 'none' }
-    if ($rampExits.Count -eq 1) { return "onramp-$($rampExits[0].ToLowerInvariant())" }
-    $rampLabel = (@($rampExits | ForEach-Object { $_.ToLowerInvariant() }) -join '')
-    return "onramp-dual-$rampLabel"
+    if ($Cell.highway.present) {
+        $rampExits = @(Get-HighwayRampExits $Cell)
+        if ($rampExits.Count -eq 0) { return 'none' }
+        if ($rampExits.Count -eq 1) { return "onramp-$($rampExits[0].ToLowerInvariant())" }
+        $rampLabel = (@($rampExits | ForEach-Object { $_.ToLowerInvariant() }) -join '')
+        return "onramp-dual-$rampLabel"
+    }
+
+    if ($bridgeRampDirections.Count -gt 0) { return "bridge-ramp-$($bridgeRampDirections[0].ToLowerInvariant())" }
+    return 'none'
 }
 
 function Get-TransportFeatureTemplate {
@@ -186,9 +186,6 @@ function Get-ActiveEntrances {
 function Get-CellTopology {
     param([object]$Cell)
 
-    if (@(Get-BridgeRampDirections $Cell).Count -gt 0) {
-        return 'road-deadend'
-    }
     if ($Cell.highway.present) {
         $prefix = 'motorway'
     } elseif ($Cell.road.present) {
@@ -539,18 +536,6 @@ function Get-CellTilePlacements {
                     rotationYaw = $rotationYaw
                     role = 'bridge_road'
                 }
-            }
-
-            $groundDirection = Get-OppositeDirection $bridgeDirection
-            $deadEndCoordinate = Get-DirectionalAdjacentCoordinate $groundDirection $center
-            $deadEndOrientation = @{ N = 'north'; E = 'east'; S = 'south'; W = 'west' }[$bridgeDirection]
-            $deadEndTemplate = Resolve-Template @($plannerSettings.transportTemplates.roadDeadEnd, $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
-            $placements["$($deadEndCoordinate.tileX),$($deadEndCoordinate.tileY)"] = [pscustomobject]@{
-                tileX = $deadEndCoordinate.tileX
-                tileY = $deadEndCoordinate.tileY
-                template = $deadEndTemplate
-                rotationYaw = Get-LayoutRotation 'road-deadend' $deadEndOrientation
-                role = 'bridge_ramp_deadend'
             }
         }
     }

@@ -19,7 +19,7 @@ ply.Attributes = {
     Mechanics = 0
 }
 
-// Default persistent player state. CellX/CellY are zero-based logical city coordinates.
+// Default persistent player state. CellX/CellY are zero-based logical world coordinates.
 ply.XP = 0
 ply.Level = 1
 ply.MaxLevel = 300
@@ -30,13 +30,15 @@ ply.CurrentSafeZoneId = nil
 ply.SkillPoints = 0
 ply.SavedHealth = 100
 ply.Stamina = 100
+ply.Hunger = 100
+ply.Thirst = 100
 
 // Game-specific runtime values that are not individual database columns.
 ply.ExperiencePerLevel = 1000 // equals a level
 ply.PreviouslyConnected = false
 ply.SkillPointsPerLevel = 1 // how many skill points the player gets per level up
 
-// Returns the player's saved logical x/y coordinates, or nil if the stored values are invalid.
+// Returns the player's saved logical world x/y coordinates, or nil if the stored values are invalid.
 function ply:GetWorldCellCoordinates()
     local x = tonumber(self.CellX)
     local y = tonumber(self.CellY)
@@ -47,14 +49,15 @@ function ply:GetWorldCellCoordinates()
     return math.floor(x), math.floor(y)
 end
 
-// Returns the runtime-world cell for the player, or nil plus a reason when data is unavailable.
+// Returns the runtime-world cell for the player, converting from logical to raw grid coordinates.
 function ply:GetWorldCell()
-    local x, y = self:GetWorldCellCoordinates()
-    if not x then
+    local worldX, worldY = self:GetWorldCellCoordinates()
+    if not worldX then
         return nil, "Player has no valid world-cell coordinates"
     end
 
-    local cell = ZM_World:GetCell(x, y)
+    local gridX, gridY = ZM_World:GetGridCoordinates(worldX, worldY)
+    local cell = gridX and ZM_World:GetCell(gridX, gridY) or nil
     if not cell then
         return nil, ZM_World:GetLoadError() or "Player world cell is outside the loaded world"
     end

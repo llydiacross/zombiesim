@@ -12,7 +12,7 @@
       "city": {
         "filePrefix": "map",
         "gridCells": 64,
-        "exportLayers": false,
+        "exportLayers": true,
         "cellDirectory": "generated/src",
         "buildDirectory": "generated/build",
         "releaseMapDirectory": "content/maps/city",
@@ -115,6 +115,10 @@
   "compilation": {
     "activeProfile": "stock-gmod",
     "progressRefreshMilliseconds": 1000,
+    "visibilityBudget": {
+      "maxPortalClusters": 250,
+      "maxPortals": 900
+    },
     "stageTimeoutSeconds": {
       "vbsp": 300,
       "vvis": 900,
