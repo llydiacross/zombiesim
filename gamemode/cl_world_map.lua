@@ -37,8 +37,13 @@ WorldMap.WaypointProfile = WorldMap.WaypointProfile or nil
 WorldMap.WaypointPath = WorldMap.WaypointPath or nil
 WorldMap.Viewport = WorldMap.Viewport or { zoom = 1, panX = 0, panY = 0 }
 WorldMap.LocalViewport = WorldMap.LocalViewport or { zoom = localMapDefaultZoom, panX = 0, panY = 0 }
-WorldMap.RenderModes = { default = true, satellite = true, map = true }
+WorldMap.RenderModes = { default = true, satellite = true, walker = true, map = true }
 WorldMap.RenderMode = WorldMap.RenderModes[WorldMap.RenderMode] and WorldMap.RenderMode or "default"
+WorldMap.WalkerSnapshot = WorldMap.WalkerSnapshot or nil
+WorldMap.WalkerDotX = WorldMap.WalkerDotX or {}
+WorldMap.WalkerDotY = WorldMap.WalkerDotY or {}
+WorldMap.WalkerDotCount = WorldMap.WalkerDotCount or 0
+WorldMap.WalkerDotRevision = WorldMap.WalkerDotRevision or nil
 WorldMap.DefaultLayerOrder = {
     "terrain",
     "buildings",
@@ -164,6 +169,9 @@ function WorldMap:LoadPersistentState()
     self.WaypointProfile = self.WaypointCell and profile or nil
     self.WaypointPath = nil
     local renderMode = cookie.GetString(getMapStateKey("render_mode"), "default")
+    if renderMode == "walker" and profile ~= "preview" then
+        renderMode = "default"
+    end
     self.RenderMode = self.RenderModes[renderMode] and renderMode or "default"
 end
 
@@ -219,11 +227,45 @@ local function getMaterial(layerId)
 end
 
 local function getRenderModeMaterial(renderMode)
-    if renderMode == "satellite" then
+    if renderMode == "satellite" or renderMode == "walker" then
         return getMaterial("satellite")
     end
     return nil
 end
+
+function WorldMap:HasWalkerSnapshot()
+    local snapshot = self.WalkerSnapshot
+    return ZM_Preview and ZM_Preview:IsActive() and type(snapshot) == "table" and
+        snapshot.profile == "preview" and type(snapshot.hordes) == "table"
+end
+
+net.Receive("ZM.WalkerSnapshot", function()
+    local profile = net.ReadString()
+    local graphRevisionHash = net.ReadString()
+    local tick = net.ReadString()
+    local totalPopulation = net.ReadUInt(32)
+    local hordeCount = net.ReadUInt(13)
+    local hordes = {}
+    for index = 1, hordeCount do
+        hordes[index] = {
+            hordeIdLow = net.ReadUInt(32),
+            hordeIdHigh = net.ReadUInt(32),
+            cellId = net.ReadUInt(16),
+            nextCellId = net.ReadUInt(16),
+            count = net.ReadUInt(16),
+            progressPermille = net.ReadUInt(10)
+        }
+    end
+
+    WorldMap.WalkerSnapshot = {
+        profile = profile,
+        graphRevisionHash = graphRevisionHash,
+        tick = tick,
+        totalPopulation = totalPopulation,
+        hordes = hordes
+    }
+    WorldMap.WalkerDotRevision = nil
+end)
 
 local function getLocalMapKey()
     local profile = ZM_World and ZM_World.ActiveProfile or "city"
@@ -392,6 +434,97 @@ local function getCellGridCoordinates(cell)
     end
 
     return ZM_World:GetGridCoordinates(worldX, worldY)
+end
+
+local function toUnsigned32(value)
+    value = bit.tobit(value)
+    return value < 0 and value + 4294967296 or value
+end
+
+local function nextWalkerRandom(seed)
+    if seed == 0 then
+        seed = 1831565813
+    end
+    seed = bit.bxor(seed, bit.lshift(seed, 13))
+    seed = bit.bxor(seed, bit.rshift(seed, 17))
+    seed = bit.bxor(seed, bit.lshift(seed, 5))
+    return seed, toUnsigned32(seed) / 4294967296
+end
+
+function WorldMap:RebuildWalkerDots()
+    if not self:HasWalkerSnapshot() then
+        self.WalkerDotCount = 0
+        self.WalkerDotRevision = nil
+        return
+    end
+
+    local snapshot = self.WalkerSnapshot
+    local revision = snapshot.graphRevisionHash .. ":" .. snapshot.tick
+    if self.WalkerDotRevision == revision then
+        return
+    end
+
+    local dotX = self.WalkerDotX
+    local dotY = self.WalkerDotY
+    local dotCount = 0
+    for _, horde in ipairs(snapshot.hordes) do
+        local cell = ZM_World:GetCellById(horde.cellId)
+        local cellX, cellY
+        if cell then
+            cellX, cellY = getCellGridCoordinates(cell)
+        end
+        if cellX and cellY then
+            local centerX = cellX + 0.5
+            local centerY = cellY + 0.5
+            local nextCell = horde.nextCellId ~= 65535 and ZM_World:GetCellById(horde.nextCellId) or nil
+            local nextX, nextY
+            if nextCell then
+                nextX, nextY = getCellGridCoordinates(nextCell)
+            end
+            if nextX and nextY then
+                local progress = math.Clamp((tonumber(horde.progressPermille) or 0) / 1000, 0, 1)
+                centerX = Lerp(progress, centerX, nextX + 0.5)
+                centerY = Lerp(progress, centerY, nextY + 0.5)
+            end
+
+            local seed = bit.bxor(horde.hordeIdLow or 0, horde.hordeIdHigh or 0, horde.cellId or 0)
+            for memberIndex = 1, horde.count do
+                local randomX, randomY
+                seed = bit.bxor(seed, memberIndex)
+                seed, randomX = nextWalkerRandom(seed)
+                seed, randomY = nextWalkerRandom(seed)
+                dotCount = dotCount + 1
+                dotX[dotCount] = centerX + (randomX - 0.5) * 0.68
+                dotY[dotCount] = centerY + (randomY - 0.5) * 0.68
+            end
+        end
+    end
+    for index = dotCount + 1, #dotX do
+        dotX[index] = nil
+        dotY[index] = nil
+    end
+    self.WalkerDotCount = dotCount
+    self.WalkerDotRevision = revision
+end
+
+function WorldMap:DrawWalkerDots(mapX, mapY, cellWidth, cellHeight)
+    self:RebuildWalkerDots()
+    if self.WalkerDotCount == 0 then
+        return
+    end
+
+    local worldData = ZM_World:GetData()
+    local mapRight = mapX + cellWidth * (tonumber(worldData.world.grid[1]) or 0)
+    local mapBottom = mapY + cellHeight * (tonumber(worldData.world.grid[2]) or 0)
+    local dotSize = math.Clamp(math.floor(math.min(cellWidth, cellHeight) * 0.04), 1, 2)
+    surface.SetDrawColor(232, 69, 57, 178)
+    for index = 1, self.WalkerDotCount do
+        local x = mapX + self.WalkerDotX[index] * cellWidth
+        local y = mapY + self.WalkerDotY[index] * cellHeight
+        if x >= mapX and y >= mapY and x < mapRight and y < mapBottom then
+            surface.DrawRect(math.floor(x), math.floor(y), dotSize, dotSize)
+        end
+    end
 end
 
 local function getPlayerMapCell(player)
@@ -925,8 +1058,21 @@ local function createMapCanvas(parent, onSelect)
         local cellWidth = mapSize / gridWidth
         local cellHeight = mapSize / gridHeight
 
-        if renderMode == "satellite" then
+        if renderMode == "satellite" or renderMode == "walker" then
             drawSatelliteBlockades(worldData, mapX, mapY, cellWidth, cellHeight)
+        end
+        if renderMode == "walker" then
+            WorldMap:DrawWalkerDots(mapX, mapY, cellWidth, cellHeight)
+            local snapshot = WorldMap.WalkerSnapshot
+            draw.SimpleText(
+                "WALKERS " .. string.Comma(snapshot.totalPopulation or 0),
+                "DermaDefaultBold",
+                mapX + 8,
+                mapY + 8,
+                Color(246, 214, 80),
+                TEXT_ALIGN_LEFT,
+                TEXT_ALIGN_TOP
+            )
         end
 
         local player = LocalPlayer()
@@ -958,7 +1104,7 @@ local function createMapCanvas(parent, onSelect)
             end
         end
 
-        if renderMode == "default" or renderMode == "satellite" then
+        if renderMode == "default" or renderMode == "satellite" or renderMode == "walker" then
             drawFixedMapOverlays(worldData, width, height)
         end
         local cursorX, cursorY = self:CursorPos()
@@ -1676,7 +1822,7 @@ function WorldMap:Open()
     end
 
     local renderModeControls = vgui.Create("DPanel", canvas)
-    renderModeControls:SetSize(220, 26)
+    renderModeControls:SetSize(292, 26)
     renderModeControls.Paint = function(_, width, height)
         surface.SetDrawColor(MapColors.black.r, MapColors.black.g, MapColors.black.b, 235)
         surface.DrawRect(0, 0, width, height)
@@ -1804,6 +1950,7 @@ function WorldMap:Open()
                 rebuildLayerControls()
             end
         end
+        return button
     end
 
     local satelliteMaterial = getRenderModeMaterial("satellite")
@@ -1811,8 +1958,16 @@ function WorldMap:Open()
     if WorldMap.RenderMode == "satellite" and not satelliteAvailable then
         WorldMap:SetRenderMode("default")
     end
+    local walkerAvailable = satelliteAvailable and WorldMap:HasWalkerSnapshot()
+    if WorldMap.RenderMode == "walker" and not walkerAvailable then
+        WorldMap:SetRenderMode(satelliteAvailable and "satellite" or "default")
+    end
     addRenderModeButton("default", "ATLAS", 68, true, "Map View")
     addRenderModeButton("satellite", "SATELLITE", 84, satelliteAvailable, "Satellite View")
+    local walkerButton = addRenderModeButton("walker", "WALKERS", 70, walkerAvailable, "Preview walker simulation")
+    walkerButton.Think = function(panel)
+        panel:SetEnabled(satelliteAvailable and WorldMap:HasWalkerSnapshot())
+    end
     addRenderModeButton("map", "MAP", 66, true, "Level View")
 
     rebuildLayerControls()

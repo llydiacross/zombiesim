@@ -1,0 +1,11 @@
+{
+  "graphRevisionHash": 2037426583311689903,
+  "states": [
+    {"tick": 0, "stateHash": 14975827198073583346, "totalPopulation": 81000, "hordeCount": 1520, "ticketCount": 0},
+    {"tick": 1, "stateHash": 8114661798885994464, "totalPopulation": 81000, "hordeCount": 1520, "ticketCount": 0},
+    {"tick": 2, "stateHash": 11658240848744891138, "totalPopulation": 81000, "hordeCount": 1520, "ticketCount": 2},
+    {"tick": 4, "stateHash": 5717500051356841223, "totalPopulation": 80999, "hordeCount": 1520, "ticketCount": 2},
+    {"tick": 8, "stateHash": 17456956568135658527, "totalPopulation": 80999, "hordeCount": 1520, "ticketCount": 2},
+    {"tick": 16, "stateHash": 10824372001557665663, "totalPopulation": 80999, "hordeCount": 1520, "ticketCount": 2}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "coreApiVersion": 1,
+  "configVersion": 1,
+  "profileId": "preview",
+  "worldSeed": 1337,
+  "mapManifestSha256": "46131b60467053b45f02bbbec7840b5e62fc0636f35343053d4e2ee4c44942f7",
+  "templatePlanSha256": "25534f491f464edecb92f591d95e28acc6bcb3f5434b6454a22bd9949d9d1de2",
+  "worldJsonSha256": "8d006cabbca65f128534e46da641600f93c756f6b59f0f878bf028851fffec51",
+  "configSha256": "e5d3534f306940a8f7faaae63c23d9949531afc865ed59df5d97ee59ddcfcedc",
+  "commandLogSha256": "393dec69cf1990a1551a0f16953a43c7bd00607d00514c182f6442d590b8a5bd"
+}

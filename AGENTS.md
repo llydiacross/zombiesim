@@ -4,11 +4,12 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Read First
 
-- [readme.md](readme.md) contains the supported build, staging, and in-game command sequences.
+- [readme.md](readme.md) contains the supported build, staging, in-game, and Walker simulator command sequences.
 - [docs.md](docs.md) is the generator reference, including profile behavior, authored tile orientation, Hammer checks, and compile diagnostics.
-- [gdd.md](gdd.md) describes intended gameplay behavior. Consult it before changing player progression or survival systems.
+- [docs/gdd.md](docs/gdd.md) describes intended gameplay behavior. Consult it before changing player progression or survival systems.
 - [generator-settings.json](generator-settings.json) is the authoritative configuration schema. Do not infer settings or output paths from filenames.
-- [two_by_two_tile_templates_plan.md](two_by_two_tile_templates_plan.md) describes multi-tile template work.
+- [docs/two_by_two_tile_templates_plan.md](docs/two_by_two_tile_templates_plan.md) describes multi-tile template work.
+- `bin/walker-simulator` is the portable C++ walker project; it stays isolated from Lua and generated assets, and its behavior and commands are documented in the root README.
 
 ## Runtime Architecture
 

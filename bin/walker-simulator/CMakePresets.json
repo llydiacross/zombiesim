@@ -1,0 +1,95 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "vs2022-debug",
+      "displayName": "Visual Studio 2022 x64 Debug",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build/vs2022-debug",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "BUILD_TESTING": "ON",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ZMWALKER_BUILD_OBSERVER": "ON"
+      }
+    },
+    {
+      "name": "vs2022-release",
+      "displayName": "Visual Studio 2022 x64 Release",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build/vs2022-release",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "BUILD_TESTING": "ON",
+        "CMAKE_BUILD_TYPE": "Release",
+        "ZMWALKER_BUILD_OBSERVER": "ON"
+      }
+    },
+    {
+      "name": "mingw-debug",
+      "displayName": "MinGW x64 Debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/mingw-debug",
+      "environment": {
+        "PATH": "$env{USERPROFILE}/scoop/apps/mingw/current/bin;$penv{PATH}"
+      },
+      "cacheVariables": {
+        "BUILD_TESTING": "ON",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ZMWALKER_BUILD_OBSERVER": "ON"
+      }
+    },
+    {
+      "name": "mingw-gmod-module-debug",
+      "displayName": "MinGW x64 GMod Module Debug",
+      "inherits": "mingw-debug",
+      "binaryDir": "${sourceDir}/build/mingw-gmod-module-debug",
+      "cacheVariables": {
+        "ZMWALKER_BUILD_GMOD_MODULE": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "build-debug",
+      "configurePreset": "vs2022-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "build-release",
+      "configurePreset": "vs2022-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "build-mingw-debug",
+      "configurePreset": "mingw-debug"
+    },
+    {
+      "name": "build-mingw-gmod-module-debug",
+      "configurePreset": "mingw-gmod-module-debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "test-debug",
+      "configurePreset": "vs2022-debug",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "test-mingw-debug",
+      "configurePreset": "mingw-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

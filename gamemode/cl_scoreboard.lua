@@ -45,7 +45,9 @@ local scoreboardIcons = {
     map = Material("icon16/map.png", "smooth"),
     pencil = Material("icon16/pencil.png", "smooth"),
     skills = Material("icon16/gun.png", "smooth"),
-    world = Material("icon16/world.png", "smooth")
+    world = Material("icon16/world.png", "smooth"),
+    headerBackground = Material("scoreboard/info_header_background.png", "smooth"),
+    headerDetail = Material("scoreboard/info_header_detail.png", "smooth")
 }
 
 local function drawScoreboardIcon(icon, x, y, size, color)
@@ -129,14 +131,29 @@ local function drawScoreboardMetric(x, y, width, label, value, color, icon)
     surface.DrawRect(x, y + 38, width, 1)
 end
 
-local function drawAttributeCell(x, y, width, label, value, color)
+local function getScoreboardValueColor(value)
+    local numericValue = math.max(0, tonumber(value) or 0)
+    local palette = ZM_DermaSkin.Palette
+    if numericValue == 0 then
+        return palette.muted
+    end
+
+    local progress = math.Clamp((numericValue - 1) / 9, 0, 1)
+    return Color(
+        math.floor(Lerp(progress, palette.redBright.r, scoreboardColors.teal.r) + 0.5),
+        math.floor(Lerp(progress, palette.redBright.g, scoreboardColors.teal.g) + 0.5),
+        math.floor(Lerp(progress, palette.redBright.b, scoreboardColors.teal.b) + 0.5)
+    )
+end
+
+local function drawAttributeCell(x, y, width, label, value)
     local palette = ZM_DermaSkin.Palette
     surface.SetDrawColor(palette.black)
     surface.DrawRect(x, y, width, 38)
     surface.SetDrawColor(scoreboardColors.slate)
     surface.DrawOutlinedRect(x, y, width, 38, 1)
     draw.SimpleText(label, "ZM_ScoreboardLabel", x + 8, y + 5, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-    draw.SimpleText(tostring(value), "ZM_ScoreboardValue", x + width - 8, y + 16, color or palette.text, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+    draw.SimpleText(tostring(value), "ZM_ScoreboardValue", x + width - 8, y + 16, getScoreboardValueColor(value), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
 end
 
 local function getBioPreview(bio)
@@ -148,6 +165,19 @@ local function getBioPreview(bio)
         return string.sub(bio, 1, 61) .. "..."
     end
     return bio
+end
+
+local function getCurrentSafeZoneName(playerEntity)
+    local safeZoneId = playerEntity:GetNWString("CurrentSafeZoneId", "")
+    if safeZoneId == "" then
+        return "NOT IN A SAFE ZONE", ZM_DermaSkin.Palette.muted
+    end
+
+    local safeZone = ZM_World and ZM_World:GetSafeZoneById(safeZoneId) or nil
+    if safeZone and type(safeZone.name) == "string" and safeZone.name ~= "" then
+        return safeZone.name, scoreboardColors.teal
+    end
+    return "SAFE ZONE UNRESOLVED", ZM_DermaSkin.Palette.redBright
 end
 
 function Scoreboard:Open()
@@ -179,10 +209,10 @@ function Scoreboard:Open()
         surface.DrawRect(0, 0, width, height)
         surface.SetDrawColor(palette.red)
         surface.DrawRect(0, height - 3, width, 3)
-        draw.SimpleText("SURVIVOR DIRECTORY", "ZM_ScoreboardHeading", 18, 13, palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-        draw.SimpleText("LIVE FIELD ROSTER", "ZM_ScoreboardLabel", 20, 45, palette.redBright, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        draw.SimpleText("SCOREBOARD", "ZM_ScoreboardHeading", 18, 13, palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        draw.SimpleText("Z-Nation", "ZM_ScoreboardLabel", 20, 45, palette.redBright, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
         draw.SimpleText(string.format("%02d CONNECTED", #player.GetAll()), "ZM_ScoreboardValue", width - 60, 20, scoreboardColors.teal, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
-        draw.SimpleText("LOCAL RELATIONSHIP MARKERS", "ZM_ScoreboardLabel", width - 60, 46, palette.muted, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+        draw.SimpleText(LocalPlayer():GetName(), "ZM_ScoreboardLabel", width - 60, 46, palette.muted, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
     end
 
     local close = vgui.Create("DButton", header)
@@ -219,7 +249,7 @@ function Scoreboard:Open()
     rosterTitle:Dock(TOP)
     rosterTitle:SetTall(42)
     rosterTitle.Paint = function(_, width, height)
-        draw.SimpleText("ROSTER", "ZM_ScoreboardValue", 14, 10, ZM_DermaSkin.Palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        draw.SimpleText("PLAYERS", "ZM_ScoreboardValue", 14, 10, ZM_DermaSkin.Palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
         draw.SimpleText("SELECT A SURVIVOR", "ZM_ScoreboardLabel", width - 14, 14, ZM_DermaSkin.Palette.muted, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
         surface.SetDrawColor(scoreboardColors.slate)
         surface.DrawRect(12, height - 1, width - 24, 1)
@@ -252,59 +282,93 @@ function Scoreboard:Open()
         local cellY = playerEntity:GetNWInt("CellY", 0)
         local relation = Scoreboard:GetRelationship(playerEntity)
 
+        local headerX = 14
+        local headerY = 14
+        local headerWidth = width - 28
+        local headerHeight = 125
+        local xpX = 140
+        local modelLeft = width - 124
+        local xpWidth = math.max(80, modelLeft - xpX - 18)
+        local experiencePerLevel = math.max(1, tonumber(playerEntity.ExperiencePerLevel) or 1000)
+        local experience = math.Clamp(playerEntity:GetNWInt("XP", 0), 0, experiencePerLevel)
+        local experienceProgress = experience / experiencePerLevel
+
         surface.SetDrawColor(palette.raised)
-        surface.DrawRect(14, 14, width - 28, 116)
+        surface.DrawRect(headerX, headerY, headerWidth, headerHeight)
+        surface.SetMaterial(scoreboardIcons.headerBackground)
+        surface.SetDrawColor(255, 255, 255, 70)
+        surface.DrawTexturedRect(headerX, headerY, headerWidth, headerHeight)
+        surface.SetMaterial(scoreboardIcons.headerDetail)
+        surface.SetDrawColor(255, 255, 255, 225)
+        surface.DrawTexturedRect(headerX, headerY, headerWidth, headerHeight)
         surface.SetDrawColor(statusColor)
-        surface.DrawRect(14, 14, 5, 116)
+        surface.DrawRect(headerX, headerY, 5, headerHeight)
+        surface.SetDrawColor(palette.border)
+        surface.DrawOutlinedRect(headerX, headerY, headerWidth, headerHeight, 1)
+        surface.SetDrawColor(palette.black)
+        surface.DrawRect(20, 20, 108, 108)
+        surface.SetDrawColor(statusColor)
+        surface.DrawOutlinedRect(20, 20, 108, 108, 1)
         draw.SimpleText(playerEntity:Nick(), "ZM_ScoreboardHeading", 140, 26, palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
         draw.SimpleText(status, "ZM_ScoreboardLabel", 142, 55, statusColor, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
         draw.SimpleText(string.format("LEVEL %03d / %03d  //  %s", playerEntity:GetNWInt("Level", 1), playerEntity:GetNWInt("MaxLevel", 1), playerEntity:IsBot() and "AUTOMATED CONTACT" or "SURVIVOR"), "ZM_ScoreboardValue", 140, 73, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        surface.SetDrawColor(palette.black)
+        surface.DrawRect(xpX, 88, xpWidth, 8)
+        surface.SetDrawColor(scoreboardColors.slate)
+        surface.DrawOutlinedRect(xpX, 88, xpWidth, 8, 1)
+        surface.SetDrawColor(scoreboardColors.teal)
+        surface.DrawRect(xpX + 1, 89, math.floor((xpWidth - 2) * experienceProgress), 6)
         draw.SimpleText(string.format("PING %d MS", math.max(0, playerEntity:Ping())), "ZM_ScoreboardLabel", 142, 99, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
         if relation ~= "" then
             local relationColor = relation == "ally" and scoreboardColors.teal or palette.redBright
             draw.SimpleText(string.upper(relation) .. " MARKED", "ZM_ScoreboardLabel", width - 142, 34, relationColor, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
         end
 
-        drawScoreboardMetric(28, 144, (width - 84) * 0.5, "HEALTH", string.format("%d / %d", health, maximumHealth), health > maximumHealth * 0.3 and scoreboardColors.teal or palette.redBright, scoreboardIcons.heart)
-        drawScoreboardMetric(width * 0.5 + 14, 144, (width - 84) * 0.5, "STAMINA", string.format("%d%%", stamina), scoreboardColors.amber, scoreboardIcons.lightning)
-        drawScoreboardMetric(28, 194, (width - 84) * 0.5, "WORLD CELL", string.format("%d, %d", cellX, cellY), palette.text, scoreboardIcons.world)
-        drawScoreboardMetric(width * 0.5 + 14, 194, (width - 84) * 0.5, "SAFE-ZONE STATE", playerEntity:GetNWString("CurrentSafeZoneId", "") ~= "" and "SHELTERED" or "IN THE FIELD", palette.text, scoreboardIcons.map)
+        drawScoreboardMetric(28, 153, (width - 84) * 0.5, "HEALTH", string.format("%d / %d", health, maximumHealth), health > maximumHealth * 0.3 and scoreboardColors.teal or palette.redBright, scoreboardIcons.heart)
+        drawScoreboardMetric(width * 0.5 + 14, 153, (width - 84) * 0.5, "STAMINA", string.format("%d%%", stamina), scoreboardColors.amber, scoreboardIcons.lightning)
+        drawScoreboardMetric(28, 203, (width - 84) * 0.5, "WORLD CELL", string.format("%d, %d", cellX, cellY), palette.text, scoreboardIcons.world)
+        local safeZoneName, safeZoneColor = getCurrentSafeZoneName(playerEntity)
+        drawScoreboardMetric(width * 0.5 + 14, 203, (width - 84) * 0.5, "CURRENT SAFE ZONE", safeZoneName, safeZoneColor, scoreboardIcons.map)
 
-        drawScoreboardIcon(scoreboardIcons.chart, 28, 246, 12, palette.muted)
-        draw.SimpleText("CORE ATTRIBUTES", "ZM_ScoreboardLabel", 44, 246, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        drawScoreboardIcon(scoreboardIcons.chart, 28, 255, 12, palette.muted)
+        draw.SimpleText("CORE ATTRIBUTES", "ZM_ScoreboardLabel", 44, 255, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
         local attributeWidth = math.floor((width - 70) * 0.25)
         local attributeX = { 28, 38 + attributeWidth, 48 + attributeWidth * 2, 58 + attributeWidth * 3 }
-        drawAttributeCell(attributeX[1], 262, attributeWidth, "STRENGTH", playerEntity:GetNWInt("Strength", 0), scoreboardColors.teal)
-        drawAttributeCell(attributeX[2], 262, attributeWidth, "AGILITY", playerEntity:GetNWInt("Agility", 0), scoreboardColors.amber)
-        drawAttributeCell(attributeX[3], 262, attributeWidth, "INTELLIGENCE", playerEntity:GetNWInt("Intelligence", 0), scoreboardColors.teal)
-        drawAttributeCell(attributeX[4], 262, attributeWidth, "ENDURANCE", playerEntity:GetNWInt("Endurance", 0), scoreboardColors.amber)
+        drawAttributeCell(attributeX[1], 271, attributeWidth, "STRENGTH", playerEntity:GetNWInt("Strength", 0))
+        drawAttributeCell(attributeX[2], 271, attributeWidth, "AGILITY", playerEntity:GetNWInt("Agility", 0))
+        drawAttributeCell(attributeX[3], 271, attributeWidth, "INTELLIGENCE", playerEntity:GetNWInt("Intelligence", 0))
+        drawAttributeCell(attributeX[4], 271, attributeWidth, "ENDURANCE", playerEntity:GetNWInt("Endurance", 0))
 
-        drawScoreboardIcon(scoreboardIcons.skills, 28, 316, 12, palette.muted)
-        draw.SimpleText("SPECIALIST SKILLS", "ZM_ScoreboardLabel", 44, 316, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        drawScoreboardIcon(scoreboardIcons.skills, 28, 325, 12, palette.muted)
+        draw.SimpleText("SPECIALIST SKILLS", "ZM_ScoreboardLabel", 44, 325, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
         local skillWidth = math.floor((width - 76) / 5)
         local skillX = { 28, 40 + skillWidth, 52 + skillWidth * 2, 64 + skillWidth * 3, 76 + skillWidth * 4 }
-        drawAttributeCell(skillX[1], 332, skillWidth, "MACHINE GUNS", playerEntity:GetNWInt("MachineGuns", 0), scoreboardColors.teal)
-        drawAttributeCell(skillX[2], 332, skillWidth, "SHOTGUNS", playerEntity:GetNWInt("Shotguns", 0), scoreboardColors.amber)
-        drawAttributeCell(skillX[3], 332, skillWidth, "SNIPERS", playerEntity:GetNWInt("Snipers", 0), scoreboardColors.teal)
-        drawAttributeCell(skillX[4], 332, skillWidth, "WEAPON CRAFT", playerEntity:GetNWInt("WeaponCrafting", 0), scoreboardColors.amber)
-        drawAttributeCell(skillX[5], 332, skillWidth, "ARMOR CRAFT", playerEntity:GetNWInt("ArmorCrafting", 0), scoreboardColors.teal)
-        drawAttributeCell(skillX[1], 376, skillWidth, "MEDICINE", playerEntity:GetNWInt("Medicine", 0), scoreboardColors.amber)
-        drawAttributeCell(skillX[2], 376, skillWidth, "FARMING", playerEntity:GetNWInt("Farming", 0), scoreboardColors.teal)
-        drawAttributeCell(skillX[3], 376, skillWidth, "WEAPON REPAIR", playerEntity:GetNWInt("WeaponRepairing", 0), scoreboardColors.amber)
-        drawAttributeCell(skillX[4], 376, skillWidth, "ARMOR REPAIR", playerEntity:GetNWInt("ArmorRepairing", 0), scoreboardColors.teal)
-        drawAttributeCell(skillX[5], 376, skillWidth, "MECHANICS", playerEntity:GetNWInt("Mechanics", 0), scoreboardColors.amber)
+        drawAttributeCell(skillX[1], 341, skillWidth, "MACHINE GUNS", playerEntity:GetNWInt("MachineGuns", 0))
+        drawAttributeCell(skillX[2], 341, skillWidth, "SHOTGUNS", playerEntity:GetNWInt("Shotguns", 0))
+        drawAttributeCell(skillX[3], 341, skillWidth, "SNIPERS", playerEntity:GetNWInt("Snipers", 0))
+        drawAttributeCell(skillX[4], 341, skillWidth, "WEAPON CRAFT", playerEntity:GetNWInt("WeaponCrafting", 0))
+        drawAttributeCell(skillX[5], 341, skillWidth, "ARMOR CRAFT", playerEntity:GetNWInt("ArmorCrafting", 0))
+        drawAttributeCell(skillX[1], 385, skillWidth, "MEDICINE", playerEntity:GetNWInt("Medicine", 0))
+        drawAttributeCell(skillX[2], 385, skillWidth, "FARMING", playerEntity:GetNWInt("Farming", 0))
+        drawAttributeCell(skillX[3], 385, skillWidth, "WEAPON REPAIR", playerEntity:GetNWInt("WeaponRepairing", 0))
+        drawAttributeCell(skillX[4], 385, skillWidth, "ARMOR REPAIR", playerEntity:GetNWInt("ArmorRepairing", 0))
+        drawAttributeCell(skillX[5], 385, skillWidth, "MECHANICS", playerEntity:GetNWInt("Mechanics", 0))
 
         if playerEntity == LocalPlayer() then
-            drawScoreboardIcon(scoreboardIcons.pencil, 28, 420, 12, palette.muted)
-            draw.SimpleText("SURVIVOR BIO", "ZM_ScoreboardLabel", 44, 420, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-            draw.SimpleText(getBioPreview(playerEntity:GetNWString("PlayerBio", "")), "ZM_ScoreboardValue", 28, 442, palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+            drawScoreboardIcon(scoreboardIcons.pencil, 28, 429, 12, palette.muted)
+            draw.SimpleText("SURVIVOR BIO", "ZM_ScoreboardLabel", 44, 429, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+            draw.SimpleText(getBioPreview(playerEntity:GetNWString("PlayerBio", "")), "ZM_ScoreboardValue", 28, 451, palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
         else
             surface.SetDrawColor(scoreboardColors.slate)
-            surface.DrawRect(28, 426, width - 56, 1)
-            draw.SimpleText("RELATIONSHIP", "ZM_ScoreboardLabel", 28, 438, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-            draw.SimpleText("Local marker only", "ZM_ScoreboardValue", 28, 454, palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+            surface.DrawRect(28, 435, width - 56, 1)
+            draw.SimpleText("RELATIONSHIP", "ZM_ScoreboardLabel", 28, 447, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+            draw.SimpleText("Local marker only", "ZM_ScoreboardValue", 28, 463, palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
         end
     end
+
+    local profileAvatar = vgui.Create("AvatarImage", dossier)
+    profileAvatar:SetSize(104, 104)
+    profileAvatar:SetPos(22, 22)
 
     local modelPreview = vgui.Create("DModelPanel", dossier)
     modelPreview:SetSize(96, 110)
@@ -356,9 +420,9 @@ function Scoreboard:Open()
         local palette = ZM_DermaSkin.Palette
         surface.SetDrawColor(palette.black)
         surface.DrawRect(0, 0, width, height)
-        surface.SetDrawColor(currentButton.Hovered and scoreboardColors.teal or scoreboardColors.slate)
+        surface.SetDrawColor(scoreboardColors.slate)
         surface.DrawOutlinedRect(0, 0, width, height, 1)
-        drawScoreboardIcon(scoreboardIcons.pencil, 13, 13, 16, currentButton.Hovered and palette.text or scoreboardColors.teal)
+        drawScoreboardIcon(scoreboardIcons.pencil, 13, 13, 16, palette.muted)
     end
 
     bioButton.DoClick = function()
@@ -420,16 +484,17 @@ function Scoreboard:Open()
         local buttonWidth = math.min(170, math.max(112, math.floor((width - 92) * 0.25)))
         modelPreview:SetPos(width - 124, 17)
         allyButton:SetSize(buttonWidth, 40)
-        allyButton:SetPos(width - buttonWidth * 2 - 40, 432)
+        allyButton:SetPos(width - buttonWidth * 2 - 40, 441)
         blockButton:SetSize(buttonWidth, 40)
-        blockButton:SetPos(width - buttonWidth - 28, 432)
+        blockButton:SetPos(width - buttonWidth - 28, 441)
         bioButton:SetSize(42, 42)
-        bioButton:SetPos(width - 70, 432)
+        bioButton:SetPos(width - 70, 441)
     end
 
     local function selectPlayer(playerEntity)
         if IsValid(playerEntity) then
             frame.SelectedPlayer = playerEntity
+            profileAvatar:SetPlayer(playerEntity, 104)
             modelPreview:SetModel(playerEntity:GetModel())
             if IsValid(modelPreview.Entity) then
                 modelPreview.Entity:SetSkin(playerEntity:GetSkin())

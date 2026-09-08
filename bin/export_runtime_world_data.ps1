@@ -444,6 +444,11 @@ if ($null -ne $radiationEpicenterSources) {
 $radiationFalloutRadiusCells = [int](Get-OptionalProperty $radiationGeneration 'falloutRadiusCells')
 $radiationDestroyedThresholdValue = Get-OptionalProperty $radiationGeneration 'destroyedThreshold'
 $radiationDestroyedThreshold = if ($null -ne $radiationDestroyedThresholdValue) { [double]$radiationDestroyedThresholdValue } else { 1.0 }
+$populationValue = Get-OptionalProperty (Get-OptionalProperty $map 'statistics') 'population'
+if ($null -eq $populationValue -or [double]$populationValue -lt 0 -or [double][long]$populationValue -ne [double]$populationValue) {
+    throw 'Map manifest statistics.population must be a non-negative integer.'
+}
+$population = [long]$populationValue
 $runtimeWorld = [ordered]@{
     schemaVersion = 1
     world = [ordered]@{
@@ -452,6 +457,7 @@ $runtimeWorld = [ordered]@{
         origin = @([int]$map.map.origin.worldX, [int]$map.map.origin.worldY)
         gridOrigin = @([int]$map.map.origin.cellX, [int]$map.map.origin.cellY)
         mapDirectory = $mapDirectory
+        population = $population
         originSafeZoneId = $originSafeZoneId
         mapManifestSha256 = $mapHash
         templatePlanSha256 = $planHash

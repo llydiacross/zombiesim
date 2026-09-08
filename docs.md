@@ -205,6 +205,19 @@ Use `-Profile` to refresh one or more named profiles, or `-AllProfiles` to refre
 .\bin\build_launcher_thumbnails.ps1 -AllProfiles
 ```
 
+Pass `-CellThumbnails` to additionally create the Garry's Mod map-browser thumbnail for every rendered recipe map in the selected profile. These thumbnails reuse the existing local cell-material images and are written below `content/maps/thumb/<profile>/<map>.png`, matching the staged map path such as `content/maps/preview/<map>.bsp`.
+
+```powershell
+.\bin\build_cell_map_materials.ps1 -WorldProfile preview
+.\bin\build_launcher_thumbnails.ps1 -Profile preview -CellThumbnails
+```
+
+Use the default profiles to refresh both the `city` and `preview` map-browser thumbnails:
+
+```powershell
+.\bin\build_launcher_thumbnails.ps1 -CellThumbnails
+```
+
 To give a custom city its own launcher thumbnail, add a `thumbnail` object to its profile. `map` is the launcher BSP name without `.bsp`, `source` is an existing project-relative image path, and `title` and `showLogo` control the thumbnail overlay:
 
 ```json

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "minimumGroupSize": 4,
+  "maximumGroupSize": 64,
+  "progressPerTick": 4,
+  "attractionDecayPermille": 920,
+  "safeZonePenalty": 100000,
+  "ticketLifetimeTicks": 20,
+  "maximumTicketsPerRequest": 12
+}

@@ -330,6 +330,14 @@ function World:Load(path)
 		self.LastError = "Runtime world data at " .. path .. " has an invalid grid"
 		return false, self.LastError
 	end
+	local population = tonumber(data.world.population)
+	if not population or population < 0 or population ~= math.floor(population) then
+		self.Data = nil
+		self.Indexes = nil
+		self.LastError = "Runtime world data at " .. path .. " has no valid population"
+		return false, self.LastError
+	end
+	data.world.population = population
 
 	local indexes = {
 		cellsById = {},

@@ -14,6 +14,7 @@ AddCSLuaFile( "cl_world_map.lua" )
 AddCSLuaFile( "cl_scoreboard.lua" )
 AddCSLuaFile( "cl_map_batch.lua" )
 AddCSLuaFile( "cl_preview.lua" )
+AddCSLuaFile( "cl_dependency_prompts.lua" )
 AddCSLuaFile( "cl_quick_menu.lua" )
 AddCSLuaFile( "utils/world.lua" )
 AddCSLuaFile( "utils/safezone.lua" )
@@ -25,6 +26,8 @@ include( "sv_player.lua" )
 include( "sv_map_batch.lua" )
 include( "sv_preview.lua" )
 include( "sv_dev_console.lua" )
+include( "sv_dependency_prompts.lua" )
+include( "sv_walker_sim.lua" )
 
 // Ensure the SQLite schema exists before any PlayerSpawn handler performs a lookup.
 local attributesReady, attributesError = ZM_CreatePlayerAttributesTable()
@@ -273,6 +276,21 @@ function GM:NewPlayer(ply)
     ply.SkillPoints = 10 // give the player 10 skill points to start with
 end
 
+function GM:ContinuePlayerSpawnMapTransition(ply, profile, previouslyConnected)
+    if ZM_MapBatch and ZM_MapBatch:IsActive() then
+        return
+    end
+
+    // Preview always enters its saved city cell; city retains its safe-room start.
+    if profile == "preview" then
+        self:EnsurePlayerWorldMap(ply)
+    elseif not previouslyConnected and isCurrentProfileLauncher(profile) then
+        self:EnterOriginSafeZone(ply)
+    else
+        self:EnsurePlayerWorldMap(ply)
+    end
+end
+
 // Restores persistent state, applies new-player defaults, and synchronizes the spawned player.
 function GM:PlayerSpawn( ply )
 
@@ -330,17 +348,11 @@ function GM:PlayerSpawn( ply )
     ZM_Preview:ApplyCheatState(ply)
     ZM_Preview:SendCheatStatus(ply, true, "")
 
-    // Batch map maintenance owns level changes until its queue is complete.
-    if not (ZM_MapBatch and ZM_MapBatch:IsActive()) then
-        // Preview always enters its saved city cell; city retains its safe-room start.
-        if profile == "preview" then
-            self:EnsurePlayerWorldMap(ply)
-        elseif not previouslyConnected and isCurrentProfileLauncher(profile) then
-            self:EnterOriginSafeZone(ply)
-        else
-            self:EnsurePlayerWorldMap(ply)
-        end
+    if ZM_DependencyPrompts and ZM_DependencyPrompts:HoldLauncherTransition(ply, profile, previouslyConnected) then
+        return
     end
+
+    self:ContinuePlayerSpawnMapTransition(ply, profile, previouslyConnected)
 end
 
 // Persist progress that may have changed since the last explicit update.

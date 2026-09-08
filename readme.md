@@ -186,4 +186,65 @@ The .vmf files for the cells of the city, should match a map file in the content
 
 Generation is controlled from [generator-settings.json](generator-settings.json). Start with the plain-language guide in [docs.md](docs.md); it explains every setting, shows the preview workflow, and marks settings that are safe to experiment with.
 
-For future multi-tile prefab support, see [two_by_two_tile_templates_plan.md](two_by_two_tile_templates_plan.md).
+For future multi-tile prefab support, see [docs/two_by_two_tile_templates_plan.md](docs/two_by_two_tile_templates_plan.md).
+
+# Walker Simulator
+
+The portable C++20 simulator lives in [bin/walker-simulator](bin/walker-simulator). `walker_core` is the only importer and simulation implementation: the optional GMod module and standalone observer are hosts around the same core, world JSON, configuration, and deterministic command stream.
+
+## Current Behavior
+
+- The generator exports one `world.population` budget. The preview world has 81,000 virtual walkers and the city has 310,200; the core allocates that exact total across non-safe cells.
+- The GMod module runs one optional worker at 4 Hz. Horde progress is 4 permille per tick, so an unimpeded horde crosses one logical cell in 62.5 seconds.
+- The preview-only `WALKER` world-map mode receives native horde summaries every 0.5 seconds and renders them. It does not simulate a second client-side world.
+- No NPC materialization, spawn anchors, spawn tickets in GMod gameplay, or loot integration exists yet. The worker is currently an abstract population simulation plus diagnostics.
+
+## State And Persistence
+
+`walker_core` can export and import validated, checksummed checkpoints, and its test suite covers that format. The active GMod adapter does **not** currently expose checkpoint save or restore, however: it builds a new simulation from the selected runtime JSON at level initialization and discards it during `ShutDown`.
+
+Consequently, Walker state is not yet preserved across a `changelevel`, server restart, or a fresh server after everyone reconnects. Player persistence is separate and does not preserve virtual walkers. A later persistence implementation must save one per-profile native checkpoint to GMod's `DATA/zombiesim` mount at a completed worker tick, validate its graph/config hashes on load, and start fresh only when the checkpoint is absent or invalid.
+
+A desktop viewer must remain read-only or attach to one authoritative state owner. Running an independent `.exe` against the same JSON creates a separate deterministic replay; it must not write a checkpoint that GMod also writes. To let time advance while GMod is closed, make the viewer the deliberate offline owner of a per-profile checkpoint, then have GMod import that checkpoint on its next startup. Simultaneous GMod and viewer control requires an explicit IPC service and is not implemented.
+
+## Build And Test
+
+Run these commands from [bin/walker-simulator](bin/walker-simulator). The workspace's supported toolchain is CMake, Ninja, and MinGW:
+
+```powershell
+cmake --preset mingw-debug
+cmake --build --preset build-mingw-debug
+ctest --preset test-mingw-debug
+```
+
+The command-line observer replays an exported world/config/command log through `walker_core`; it is not a persistent live-world editor.
+
+```powershell
+.\build\mingw-debug\zombiesim-walker-observer.exe `
+   --world .\tests\fixtures\preview-world.json `
+   --profile preview `
+   --config .\tests\fixtures\walker-config-v1.json `
+   --command-log .\tests\fixtures\command-log-basic.jsonl `
+   --ticks 16
+```
+
+To build the optional Windows x64 server module and run its ABI diagnostic:
+
+```powershell
+cmake --preset mingw-gmod-module-debug
+cmake --build --preset build-mingw-gmod-module-debug
+.\scripts\install-local-win64.ps1 -GarrysModRoot "C:\Program Files (x86)\Steam\steamapps\common\GarrysMod"
+```
+
+`zombiesim_walker_smoke` remains useful after the prior Win64 ABI failure, but it verifies only module loading, the Lua ABI, and the core self-test. It does not load a world, start the worker, persist state, or prove gameplay integration. Use `zombiesim_walker_status` and `zombiesim_walker_noise <strength> <radius> [durationTicks]` to diagnose the live worker. The external loader and DLL can be removed with `scripts/uninstall-local-win64.ps1`.
+
+The module must use the vendored Facepunch `gmod-module-base` `development` revision; its Win64 `ILuaBase` offset assertion protects against the legacy `master` layout that crashes during module load.
+
+Garry's Mod Workshop uploads made with `gmad` cannot distribute the Walker DLL. Publish the built binary as a GitHub Release asset and install it manually under `garrysmod/lua/bin` using the installer above. 
+
+```powershell
+.\scripts\install-local-win64.ps1 -GarrysModRoot "C:\Program Files (x86)\Steam\steamapps\common\GarrysMod"
+```
+
+
+When a launcher map reports that the server module is absent, Z-Nation shows a `MISSING DLL` prompt with a link to the releases page. Separately, the first client startup without Volt VPhysics shows an optional link to its GMod build page; its client process checks Volt's `vjolt_substeps` console variable and never changes gameplay behavior.
