@@ -1,167 +1,122 @@
 Template plan: preview_grid_24x24_seed_1337_template_plan.json
-Recipes: 171
+Recipes: 164
 
-zn_ra_rx-a-d1_n-v1.vmf
-  Variant: v1 of 5 from zn_ra_rx-a-d1_n.vmf
+zn_ra_rx-a-d1_n-m22-c2aa-p0-0-q1-v1.vmf
+  Variant: v1 of 2 from zn_ra_rx-a-d1_n-m22-c2aa-p0-0-q1.vmf
   Environment: radioactive
   Layout: road-crossjunction, all
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 20 cell(s): (12,8), (8,9), (21,9), (11,10), (15,10), (19,10), (22,10), (8,11), (12,12), (20,12), (21,12), (10,13), (18,15), (19,16), (2,18), (4,18), (8,19), (11,19), (9,20), (13,20)
+  Used by 26 cell(s): (22,1), (21,2), (20,3), (19,9), (8,10), (10,10), (11,10), (15,10), (20,10), (8,13), (19,13), (22,13), (3,14), (20,14), (21,14), (18,15), (1,18), (11,18), (4,19), (9,19), (10,19), (13,19), (11,20), (18,20), (8,22), (17,22)
 
-zn_ra_rx-a-d1_n-v2.vmf
-  Variant: v2 of 5 from zn_ra_rx-a-d1_n.vmf
+zn_ra_rx-a-d1_n-m22-c2aa-p0-0-q1-v2.vmf
+  Variant: v2 of 2 from zn_ra_rx-a-d1_n-m22-c2aa-p0-0-q1.vmf
   Environment: radioactive
   Layout: road-crossjunction, all
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 20 cell(s): (9,9), (13,9), (9,10), (15,11), (19,11), (22,11), (8,12), (11,12), (20,13), (21,13), (10,14), (18,16), (2,19), (3,19), (12,19), (4,20), (11,20), (19,20), (9,21), (13,21)
+  Used by 26 cell(s): (22,2), (21,4), (20,5), (13,9), (18,10), (8,11), (19,11), (20,12), (10,13), (11,13), (9,14), (22,14), (18,16), (19,16), (20,16), (21,16), (4,18), (5,18), (8,18), (11,19), (9,20), (12,20), (17,20), (2,21), (10,22), (13,22)
 
-zn_ra_rx-a-d1_n-v3.vmf
-  Variant: v3 of 5 from zn_ra_rx-a-d1_n.vmf
+zn_ra_rx-a-d1_n-m22-b1aa-p0-3-q0-v1.vmf
+  Variant: v1 of 2 from zn_ra_rx-a-d1_n-m22-b1aa-p0-3-q0.vmf
   Environment: radioactive
   Layout: road-crossjunction, all
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 20 cell(s): (14,9), (10,10), (19,12), (22,12), (8,13), (11,13), (9,14), (20,14), (21,14), (17,16), (10,18), (1,19), (2,20), (3,20), (18,20), (4,21), (11,21), (12,21), (19,21), (13,22)
+  Used by 20 cell(s): (20,4), (15,9), (13,10), (22,10), (19,12), (22,12), (8,14), (10,14), (17,16), (2,18), (1,19), (3,19), (20,20), (8,21), (10,21), (19,21), (1,22), (2,22), (11,22), (18,22)
 
-zn_ra_rx-a-d1_n-v4.vmf
-  Variant: v4 of 5 from zn_ra_rx-a-d1_n.vmf
+zn_ra_rx-a-d1_n-m22-b1aa-p0-3-q0-v2.vmf
+  Variant: v2 of 2 from zn_ra_rx-a-d1_n-m22-b1aa-p0-3-q0.vmf
   Environment: radioactive
   Layout: road-crossjunction, all
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 20 cell(s): (10,9), (15,9), (14,10), (20,10), (10,11), (19,13), (22,13), (8,14), (11,14), (21,15), (20,16), (9,18), (10,19), (17,20), (2,21), (3,21), (18,21), (4,22), (11,22), (12,22)
-
-zn_ra_rx-a-d1_n-v5.vmf
-  Variant: v5 of 5 from zn_ra_rx-a-d1_n.vmf
-  Environment: radioactive
-  Layout: road-crossjunction, all
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 20 cell(s): (11,9), (19,9), (20,9), (8,10), (18,10), (12,11), (14,11), (20,11), (10,12), (19,14), (22,14), (21,16), (8,18), (11,18), (9,19), (13,19), (10,20), (20,20), (3,22), (18,22)
-
-zn_ra_rt-ms-d1_n.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-tjunction, missing-south
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 15 cell(s): (11,6), (13,6), (14,6), (15,6), (21,10), (8,15), (9,15), (10,15), (11,15), (22,16), (17,17), (18,17), (19,17), (20,17), (21,17)
-
-zn_st_rt-ms-d2_n.vmf
-  Variant: base layout
-  Environment: settlement
-  Layout: road-tjunction, missing-south
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 15 cell(s): (19,3), (2,6), (3,6), (4,6), (9,6), (19,6), (20,6), (22,6), (1,15), (3,15), (4,15), (2,23), (7,23), (9,23), (11,23)
-
-zn_st_rt-me-d2_n.vmf
-  Variant: base layout
-  Environment: settlement
-  Layout: road-tjunction, missing-east
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 14 cell(s): (1,1), (5,2), (23,4), (21,5), (5,9), (5,10), (23,11), (5,12), (23,12), (5,13), (23,13), (5,14), (23,14), (23,16)
-
-zn_st_rt-mn-d2_n.vmf
-  Variant: base layout
-  Environment: settlement
-  Layout: road-tjunction, missing-north
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 13 cell(s): (1,0), (3,0), (20,0), (13,1), (14,2), (15,3), (19,4), (2,8), (3,8), (4,8), (21,8), (22,8), (1,17)
+  Used by 19 cell(s): (20,2), (11,9), (21,9), (19,10), (15,11), (22,11), (8,12), (21,12), (20,13), (2,15), (10,18), (2,19), (8,20), (19,20), (1,21), (9,21), (11,21), (12,21), (18,21)
 
 zn_st_rx-a-d2_n-v1.vmf
-  Variant: v1 of 5 from zn_st_rx-a-d2_n.vmf
+  Variant: v1 of 2 from zn_st_rx-a-d2_n.vmf
   Environment: settlement
   Layout: road-crossjunction, all
   Transport: none
   Building density tier: d2
   Landmarks: none
-  Used by 11 cell(s): (5,3), (18,4), (22,4), (12,5), (20,5), (1,10), (4,10), (2,14), (22,19), (1,20), (8,21)
+  Used by 16 cell(s): (19,2), (11,3), (16,4), (9,5), (4,9), (1,10), (2,10), (4,10), (1,12), (2,12), (3,12), (4,12), (4,14), (22,19), (1,20), (19,22)
 
 zn_st_rx-a-d2_n-v2.vmf
-  Variant: v2 of 5 from zn_st_rx-a-d2_n.vmf
+  Variant: v2 of 2 from zn_st_rx-a-d2_n.vmf
   Environment: settlement
   Layout: road-crossjunction, all
   Transport: none
   Building density tier: d2
   Landmarks: none
-  Used by 11 cell(s): (8,3), (13,3), (21,4), (19,5), (22,9), (1,11), (4,11), (2,15), (22,20), (1,22), (8,22)
+  Used by 15 cell(s): (8,3), (10,3), (13,4), (18,4), (19,5), (3,9), (22,9), (1,11), (2,11), (4,11), (1,13), (3,13), (4,13), (20,21), (9,22)
 
-zn_st_rx-a-d2_n-v3.vmf
-  Variant: v3 of 5 from zn_st_rx-a-d2_n.vmf
-  Environment: settlement
-  Layout: road-crossjunction, all
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 11 cell(s): (22,1), (20,2), (10,3), (3,4), (8,4), (13,4), (3,10), (2,11), (1,12), (4,12), (9,22)
-
-zn_st_rx-a-d2_n-v4.vmf
-  Variant: v4 of 5 from zn_st_rx-a-d2_n.vmf
-  Environment: settlement
-  Layout: road-crossjunction, all
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 11 cell(s): (22,2), (11,3), (20,3), (14,4), (8,5), (3,9), (3,11), (2,12), (1,13), (4,13), (19,22)
-
-zn_st_rx-a-d2_n-v5.vmf
-  Variant: v5 of 5 from zn_st_rx-a-d2_n.vmf
-  Environment: settlement
-  Layout: road-crossjunction, all
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 11 cell(s): (22,3), (11,4), (16,4), (20,4), (9,5), (4,9), (2,13), (1,14), (3,14), (4,14), (20,21)
-
-zn_gr_ms-h-d1_n.vmf
-  Variant: base layout
-  Environment: grassland
+zn_ra_ms-h-d1_n-v1.vmf
+  Variant: v1 of 2 from zn_ra_ms-h-d1_n.vmf
+  Environment: radioactive
   Layout: motorway-straight, horizontal
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 10 cell(s): (3,7), (4,7), (5,7), (7,7), (8,7), (20,7), (21,7), (22,7), (1,16), (3,16)
+  Used by 14 cell(s): (9,7), (11,7), (14,7), (16,7), (19,7), (1,16), (3,16), (5,16), (8,16), (10,16), (12,16), (16,18), (18,18), (20,18)
 
-zn_ra_rt-me-d1_n.vmf
+zn_st_rt-mw-d2_n.vmf
   Variant: base layout
+  Environment: settlement
+  Layout: road-tjunction, missing-west
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 14 cell(s): (0,1), (4,1), (8,1), (11,1), (1,2), (7,2), (13,2), (7,3), (2,4), (11,5), (18,5), (0,13), (0,18), (7,22)
+
+zn_ra_ms-h-d1_n-v2.vmf
+  Variant: v2 of 2 from zn_ra_ms-h-d1_n.vmf
   Environment: radioactive
-  Layout: road-tjunction, missing-east
+  Layout: motorway-straight, horizontal
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 10 cell(s): (16,9), (16,11), (19,15), (22,15), (12,18), (5,19), (14,20), (5,21), (14,21), (5,22)
+  Used by 13 cell(s): (10,7), (13,7), (15,7), (18,7), (22,7), (4,16), (7,16), (9,16), (11,16), (14,18), (17,18), (19,18), (21,18)
 
-zn_st_rc-sw-d2_n.vmf
+zn_ra_rt-ms-d1_n-m22-c2a-p3-0-q1.vmf
   Variant: base layout
-  Environment: settlement
-  Layout: road-corner, south-west
+  Environment: radioactive
+  Layout: road-tjunction, missing-south
   Transport: none
-  Building density tier: d2
+  Building density tier: d1
   Landmarks: none
-  Used by 9 cell(s): (8,0), (21,0), (23,1), (2,2), (16,3), (23,3), (5,8), (23,8), (23,10)
+  Used by 13 cell(s): (12,6), (13,6), (15,6), (20,6), (21,6), (1,15), (3,15), (4,15), (10,15), (11,15), (17,17), (21,17), (3,23)
 
-zn_st_rs-h-d2_n.vmf
+zn_ra_rt-mn-d1_n-m22-b1aa-p0-3-q0.vmf
   Variant: base layout
-  Environment: settlement
-  Layout: road-straight, horizontal
+  Environment: radioactive
+  Layout: road-tjunction, missing-north
   Transport: none
-  Building density tier: d2
+  Building density tier: d1
   Landmarks: none
-  Used by 9 cell(s): (2,0), (12,0), (13,0), (14,0), (12,1), (14,1), (15,1), (15,2), (21,21)
+  Used by 12 cell(s): (8,8), (10,8), (13,8), (14,8), (15,8), (19,8), (20,8), (2,17), (8,17), (10,17), (18,19), (20,19)
+
+zn_ra_rx-a-d1_le.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-crossjunction, all
+  Transport: none
+  Building density tier: d1
+  Landmarks: Leisure
+  Used by 11 cell(s): (22,3), (12,8), (12,9), (14,10), (12,11), (13,11), (14,11), (9,12), (10,12), (11,12), (9,13)
+
+zn_ra_rx-a-d1_n-m22-b1aa-p3-3-q3-cp.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-crossjunction, all
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 11 cell(s): (21,3), (14,9), (20,9), (12,10), (19,14), (9,18), (3,20), (10,20), (13,20), (17,21), (12,22)
 
 zn_gr_ms-v-d1_n.vmf
   Variant: base layout
@@ -170,7 +125,61 @@ zn_gr_ms-v-d1_n.vmf
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 8 cell(s): (6,1), (6,2), (6,4), (6,5), (17,5), (6,6), (6,8), (6,9)
+  Used by 10 cell(s): (6,1), (17,1), (6,2), (17,3), (6,4), (6,5), (17,5), (6,6), (6,8), (6,9)
+
+zn_ra_ms-v-d1_n-m22-b1aa-p0-3-q1.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: motorway-straight, vertical
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 10 cell(s): (17,8), (17,9), (6,10), (6,12), (6,13), (6,15), (6,17), (13,17), (15,19), (15,21)
+
+zn_ra_ms-v-d1_n-m22-c2aa-p3-3-q3.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: motorway-straight, vertical
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 10 cell(s): (17,6), (17,11), (17,12), (17,13), (6,14), (6,19), (6,20), (15,20), (6,21), (15,22)
+
+zn_ra_rt-mn-d1_n-m22-b1aa-p3-0-q2-cp.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-tjunction, missing-north
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 10 cell(s): (19,4), (9,8), (11,8), (21,11), (17,15), (1,17), (4,17), (11,17), (17,19), (19,19)
+
+zn_ra_rt-mw-d1_n.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-tjunction, missing-west
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 10 cell(s): (18,11), (18,13), (7,14), (18,14), (16,16), (7,19), (7,20), (16,20), (0,22), (16,22)
+
+zn_st_rt-me-d2_n.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-tjunction, missing-east
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 9 cell(s): (1,1), (5,2), (8,2), (5,4), (5,9), (23,12), (5,13), (23,13), (23,16)
+
+zn_gr_ms-h-d1_n.vmf
+  Variant: base layout
+  Environment: grassland
+  Layout: motorway-straight, horizontal
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 8 cell(s): (2,7), (3,7), (4,7), (5,7), (7,7), (8,7), (20,7), (21,7)
 
 zn_gr_rx-a-d1_n.vmf
   Variant: base layout
@@ -179,61 +188,124 @@ zn_gr_rx-a-d1_n.vmf
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 8 cell(s): (9,1), (10,4), (15,4), (13,5), (14,5), (15,5), (1,9), (2,9)
+  Used by 8 cell(s): (10,4), (15,4), (13,5), (14,5), (15,5), (1,9), (2,9), (2,20)
 
-zn_di_rt-ms-d1_n.vmf
+zn_st_rs-v-d2_n-cp.vmf
   Variant: base layout
-  Environment: dirt
+  Environment: settlement
+  Layout: road-straight, vertical
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 8 cell(s): (7,1), (19,1), (0,2), (3,2), (0,5), (2,5), (4,5), (23,21)
+
+zn_st_rt-mn-d2_n.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-tjunction, missing-north
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 8 cell(s): (1,0), (3,0), (20,0), (13,1), (15,3), (9,4), (3,8), (21,8)
+
+zn_ra_rt-mw-d1_n-cp.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-tjunction, missing-west
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 7 cell(s): (7,9), (18,9), (18,12), (7,13), (7,18), (0,21), (7,21)
+
+zn_st_rs-v-d2_n.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-straight, vertical
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 7 cell(s): (18,1), (0,3), (1,3), (2,3), (3,3), (0,4), (5,5)
+
+zn_st_rt-me-d2_n-cp.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-tjunction, missing-east
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 7 cell(s): (5,1), (5,10), (23,11), (5,12), (5,14), (23,14), (20,22)
+
+zn_st_rt-ms-d2_n.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-tjunction, missing-south
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 7 cell(s): (19,3), (2,6), (3,6), (4,6), (9,6), (9,23), (11,23)
+
+zn_ra_rt-ms-d1_n-m22-b1aa-p1-3-q0.vmf
+  Variant: base layout
+  Environment: radioactive
   Layout: road-tjunction, missing-south
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 6 cell(s): (1,23), (3,23), (4,23), (10,23), (18,23), (20,23)
+  Used by 6 cell(s): (22,6), (21,10), (9,15), (22,16), (19,17), (2,23)
 
-zn_st_rc-nw-d2_n.vmf
+zn_ra_rx-a-d1_pk.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-crossjunction, all
+  Transport: none
+  Building density tier: d1
+  Landmarks: Park
+  Used by 6 cell(s): (8,9), (9,10), (10,11), (20,11), (21,15), (13,21)
+
+zn_st_rc-sw-d2_n-m22-c2a-p3-3-q1.vmf
   Variant: base layout
   Environment: settlement
-  Layout: road-corner, north-west
+  Layout: road-corner, south-west
   Transport: none
   Building density tier: d2
   Landmarks: none
-  Used by 6 cell(s): (23,2), (5,6), (23,6), (23,9), (23,17), (22,21)
+  Used by 6 cell(s): (4,0), (8,0), (23,1), (23,8), (23,10), (23,20)
 
-zn_ra_ms-h-d1_n-v1.vmf
-  Variant: v1 of 5 from zn_ra_ms-h-d1_n.vmf
-  Environment: radioactive
-  Layout: motorway-straight, horizontal
+zn_di_rx-a-d1_n.vmf
+  Variant: base layout
+  Environment: dirt
+  Layout: road-crossjunction, all
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 5 cell(s): (10,7), (16,7), (7,16), (12,16), (19,18)
+  Used by 5 cell(s): (4,20), (3,21), (4,21), (3,22), (4,22)
 
-zn_ra_ms-h-d1_n-v2.vmf
-  Variant: v2 of 5 from zn_ra_ms-h-d1_n.vmf
-  Environment: radioactive
-  Layout: motorway-straight, horizontal
+zn_dx_rx-a-d1_n.vmf
+  Variant: base layout
+  Environment: destroyed
+  Layout: road-crossjunction, all
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 5 cell(s): (11,7), (18,7), (8,16), (14,18), (20,18)
+  Used by 5 cell(s): (13,12), (12,13), (13,13), (14,13), (12,14)
 
-zn_ra_ms-h-d1_n-v3.vmf
-  Variant: v3 of 5 from zn_ra_ms-h-d1_n.vmf
+zn_pk_rx-a-d1_pk.vmf
+  Variant: base layout
+  Environment: parkland
+  Layout: road-crossjunction, all
+  Transport: none
+  Building density tier: d1
+  Landmarks: Park
+  Used by 5 cell(s): (14,3), (3,4), (8,4), (8,5), (1,14)
+
+zn_ra_rt-ms-d1_n-m22-c2a-p0-0-q3-cp.vmf
+  Variant: base layout
   Environment: radioactive
-  Layout: motorway-straight, horizontal
+  Layout: road-tjunction, missing-south
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 5 cell(s): (13,7), (19,7), (9,16), (16,18), (21,18)
-
-zn_ra_ms-h-d1_n-v4.vmf
-  Variant: v4 of 5 from zn_ra_ms-h-d1_n.vmf
-  Environment: radioactive
-  Layout: motorway-straight, horizontal
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 5 cell(s): (9,7), (14,7), (4,16), (10,16), (17,18)
+  Used by 5 cell(s): (14,6), (8,15), (18,17), (20,17), (1,23)
 
 zn_st_o-n-d2_n.vmf
   Variant: base layout
@@ -244,321 +316,6 @@ zn_st_o-n-d2_n.vmf
   Landmarks: none
   Used by 5 cell(s): (23,0), (2,1), (12,2), (21,22), (22,22)
 
-zn_st_rs-v-d2_n-v1.vmf
-  Variant: v1 of 5 from zn_st_rs-v-d2_n.vmf
-  Environment: settlement
-  Layout: road-straight, vertical
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 5 cell(s): (3,1), (7,1), (11,2), (0,5), (23,5)
-
-zn_dx_rx-a-d1_n.vmf
-  Variant: base layout
-  Environment: destroyed
-  Layout: road-crossjunction, all
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 4 cell(s): (14,12), (12,13), (14,13), (12,14)
-
-zn_gr_rt-me-d1_n.vmf
-  Variant: base layout
-  Environment: grassland
-  Layout: road-tjunction, missing-east
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 4 cell(s): (10,1), (10,2), (10,5), (16,5)
-
-zn_ra_ms-h-d1_n-v5.vmf
-  Variant: v5 of 5 from zn_ra_ms-h-d1_n.vmf
-  Environment: radioactive
-  Layout: motorway-straight, horizontal
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 4 cell(s): (15,7), (5,16), (11,16), (18,18)
-
-zn_ra_ms-v-d1_n-v1.vmf
-  Variant: v1 of 5 from zn_ra_ms-v-d1_n.vmf
-  Environment: radioactive
-  Layout: motorway-straight, vertical
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 4 cell(s): (17,12), (6,13), (13,17), (6,20)
-
-zn_ra_ms-v-d1_n-v2.vmf
-  Variant: v2 of 5 from zn_ra_ms-v-d1_n.vmf
-  Environment: radioactive
-  Layout: motorway-straight, vertical
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 4 cell(s): (17,13), (6,14), (15,19), (6,21)
-
-zn_ra_ms-v-d1_n-v3.vmf
-  Variant: v3 of 5 from zn_ra_ms-v-d1_n.vmf
-  Environment: radioactive
-  Layout: motorway-straight, vertical
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 4 cell(s): (17,6), (6,15), (15,20), (6,22)
-
-zn_ra_rc-nw-d1_n.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-corner, north-west
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 4 cell(s): (16,6), (5,15), (14,22), (5,23)
-
-zn_ra_rt-mn-d1_n-v1.vmf
-  Variant: v1 of 5 from zn_ra_rt-mn-d1_n.vmf
-  Environment: radioactive
-  Layout: road-tjunction, missing-north
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 4 cell(s): (13,8), (20,8), (21,11), (17,15)
-
-zn_ra_rt-mn-d1_n-v2.vmf
-  Variant: v2 of 5 from zn_ra_rt-mn-d1_n.vmf
-  Environment: radioactive
-  Layout: road-tjunction, missing-north
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 4 cell(s): (8,8), (14,8), (8,17), (17,19)
-
-zn_ra_rt-mn-d1_n-v3.vmf
-  Variant: v3 of 5 from zn_ra_rt-mn-d1_n.vmf
-  Environment: radioactive
-  Layout: road-tjunction, missing-north
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 4 cell(s): (9,8), (15,8), (9,17), (18,19)
-
-zn_ra_rt-mw-d1_n-v1.vmf
-  Variant: v1 of 5 from zn_ra_rt-mw-d1_n.vmf
-  Environment: radioactive
-  Layout: road-tjunction, missing-west
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 4 cell(s): (18,9), (18,12), (16,16), (7,21)
-
-zn_ra_rt-mw-d1_n-v2.vmf
-  Variant: v2 of 5 from zn_ra_rt-mw-d1_n.vmf
-  Environment: radioactive
-  Layout: road-tjunction, missing-west
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 4 cell(s): (7,13), (18,13), (16,20), (7,22)
-
-zn_ra_rx-a-d1_bu.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-crossjunction, all
-  Transport: none
-  Building density tier: d1
-  Landmarks: Bunker
-  Used by 4 cell(s): (3,18), (5,18), (12,20), (17,22)
-
-zn_ra_rx-a-d1_le.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-crossjunction, all
-  Transport: none
-  Building density tier: d1
-  Landmarks: Leisure
-  Used by 4 cell(s): (12,10), (13,10), (9,11), (13,11)
-
-zn_ra_rx-a-d1_pk.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-crossjunction, all
-  Transport: none
-  Building density tier: d1
-  Landmarks: Park
-  Used by 4 cell(s): (12,9), (8,20), (10,21), (17,21)
-
-zn_st_rs-v-d2_n-v2.vmf
-  Variant: v2 of 5 from zn_st_rs-v-d2_n.vmf
-  Environment: settlement
-  Layout: road-straight, vertical
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 4 cell(s): (18,1), (3,2), (1,3), (23,22)
-
-zn_st_rs-v-d2_n-v3.vmf
-  Variant: v3 of 5 from zn_st_rs-v-d2_n.vmf
-  Environment: settlement
-  Layout: road-straight, vertical
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 4 cell(s): (19,1), (0,2), (1,4), (3,5)
-
-zn_st_rs-v-d2_n-v4.vmf
-  Variant: v4 of 5 from zn_st_rs-v-d2_n.vmf
-  Environment: settlement
-  Layout: road-straight, vertical
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 4 cell(s): (20,1), (0,3), (1,5), (4,5)
-
-zn_st_rs-v-d2_n-v5.vmf
-  Variant: v5 of 5 from zn_st_rs-v-d2_n.vmf
-  Environment: settlement
-  Layout: road-straight, vertical
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 4 cell(s): (2,3), (0,4), (5,5), (22,5)
-
-zn_st_rt-mw-d2_n-v1.vmf
-  Variant: v1 of 5 from zn_st_rt-mw-d2_n.vmf
-  Environment: settlement
-  Layout: road-tjunction, missing-west
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 4 cell(s): (0,1), (18,3), (7,4), (0,14)
-
-zn_st_rt-mw-d2_n-v2.vmf
-  Variant: v2 of 5 from zn_st_rt-mw-d2_n.vmf
-  Environment: settlement
-  Layout: road-tjunction, missing-west
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 4 cell(s): (8,1), (2,4), (18,5), (0,18)
-
-zn_st_rt-mw-d2_n-v3.vmf
-  Variant: v3 of 5 from zn_st_rt-mw-d2_n.vmf
-  Environment: settlement
-  Layout: road-tjunction, missing-west
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 4 cell(s): (4,1), (11,1), (21,1), (0,10)
-
-zn_co_rc-es-d3_ma.vmf
-  Variant: base layout
-  Environment: commercial
-  Layout: road-corner, east-south
-  Transport: none
-  Building density tier: d3
-  Landmarks: Market
-  Used by 3 cell(s): (7,0), (9,0), (0,17)
-
-zn_dx_rt-ms-d1_n.vmf
-  Variant: base layout
-  Environment: destroyed
-  Layout: road-tjunction, missing-south
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 3 cell(s): (15,13), (12,15), (13,15)
-
-zn_ra_ms-v-d1_n-v4.vmf
-  Variant: v4 of 5 from zn_ra_ms-v-d1_n.vmf
-  Environment: radioactive
-  Layout: motorway-straight, vertical
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 3 cell(s): (17,8), (6,17), (15,21)
-
-zn_ra_ms-v-d1_n-v5.vmf
-  Variant: v5 of 5 from zn_ra_ms-v-d1_n.vmf
-  Environment: radioactive
-  Layout: motorway-straight, vertical
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 3 cell(s): (17,9), (17,11), (6,19)
-
-zn_ra_rc-sw-d1_n.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-corner, south-west
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 3 cell(s): (16,8), (12,17), (14,19)
-
-zn_ra_rt-mn-d1_n-v4.vmf
-  Variant: v4 of 5 from zn_ra_rt-mn-d1_n.vmf
-  Environment: radioactive
-  Layout: road-tjunction, missing-north
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 3 cell(s): (19,8), (10,17), (19,19)
-
-zn_ra_rt-mn-d1_n-v5.vmf
-  Variant: v5 of 5 from zn_ra_rt-mn-d1_n.vmf
-  Environment: radioactive
-  Layout: road-tjunction, missing-north
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 3 cell(s): (2,17), (11,17), (20,19)
-
-zn_ra_rt-mn-d1_pk.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-tjunction, missing-north
-  Transport: none
-  Building density tier: d1
-  Landmarks: Park
-  Used by 3 cell(s): (10,8), (11,8), (4,17)
-
-zn_ra_rt-mw-d1_n-v3.vmf
-  Variant: v3 of 5 from zn_ra_rt-mw-d1_n.vmf
-  Environment: radioactive
-  Layout: road-tjunction, missing-west
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 3 cell(s): (18,14), (7,18), (16,21)
-
-zn_ra_rt-mw-d1_n-v4.vmf
-  Variant: v4 of 5 from zn_ra_rt-mw-d1_n.vmf
-  Environment: radioactive
-  Layout: road-tjunction, missing-west
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 3 cell(s): (20,15), (7,19), (16,22)
-
-zn_ra_rt-mw-d1_n-v5.vmf
-  Variant: v5 of 5 from zn_ra_rt-mw-d1_n.vmf
-  Environment: radioactive
-  Layout: road-tjunction, missing-west
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 3 cell(s): (7,9), (18,11), (7,20)
-
-zn_ra_rx-a-d1_ma.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-crossjunction, all
-  Transport: none
-  Building density tier: d1
-  Landmarks: Market
-  Used by 3 cell(s): (11,11), (9,12), (9,13)
-
 zn_st_rc-es-d2_n.vmf
   Variant: base layout
   Environment: settlement
@@ -566,7 +323,70 @@ zn_st_rc-es-d2_n.vmf
   Transport: none
   Building density tier: d2
   Landmarks: none
-  Used by 3 cell(s): (0,0), (19,0), (0,8)
+  Used by 5 cell(s): (0,0), (7,0), (19,0), (4,3), (0,8)
+
+zn_st_rs-h-d2_n-m22-b1aa-p0-0-q2.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-straight, horizontal
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 5 cell(s): (13,0), (15,0), (14,1), (15,1), (21,21)
+
+zn_st_rt-mw-d2_n-cp.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-tjunction, missing-west
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 5 cell(s): (21,1), (7,4), (0,11), (0,14), (0,19)
+
+zn_st_rx-a-d2_n-cp.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-crossjunction, all
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 5 cell(s): (5,3), (14,4), (12,5), (3,11), (2,14)
+
+zn_ra_rc-sw-d1_n-m22-c2aa-p1-0-q2.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-corner, south-west
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 4 cell(s): (23,3), (16,8), (5,17), (14,19)
+
+zn_ra_rt-me-d1_pk.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-tjunction, missing-east
+  Transport: none
+  Building density tier: d1
+  Landmarks: Park
+  Used by 4 cell(s): (23,4), (16,12), (14,20), (14,21)
+
+zn_ra_rt-mw-d1_pk.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-tjunction, missing-west
+  Transport: none
+  Building density tier: d1
+  Landmarks: Park
+  Used by 4 cell(s): (7,10), (7,12), (20,15), (16,21)
+
+zn_ra_rx-a-d1_n-m22-c2aa-p0-3-q1-cp.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-crossjunction, all
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 4 cell(s): (9,11), (12,12), (21,13), (11,14)
 
 zn_st_rc-ne-d2_n.vmf
   Variant: base layout
@@ -575,70 +395,142 @@ zn_st_rc-ne-d2_n.vmf
   Transport: none
   Building density tier: d2
   Landmarks: none
-  Used by 3 cell(s): (4,2), (0,15), (13,23)
+  Used by 4 cell(s): (4,2), (0,6), (0,15), (13,23)
 
-zn_st_rd-e-bre-d2_n.vmf
+zn_st_rc-sw-d2_n-m22-b1aa-p3-3-q3.vmf
   Variant: base layout
   Environment: settlement
-  Layout: road-deadend, east
-  Transport: bridge-ramp-e
-  Building density tier: d2
-  Landmarks: none
-  Used by 3 cell(s): (16,0), (16,2), (5,11)
-
-zn_st_rt-mw-d2_n-v4.vmf
-  Variant: v4 of 5 from zn_st_rt-mw-d2_n.vmf
-  Environment: settlement
-  Layout: road-tjunction, missing-west
+  Layout: road-corner, south-west
   Transport: none
   Building density tier: d2
   Landmarks: none
-  Used by 3 cell(s): (7,2), (11,5), (0,11)
+  Used by 4 cell(s): (21,0), (2,2), (16,3), (5,8)
 
-zn_st_rt-mw-d2_n-v5.vmf
-  Variant: v5 of 5 from zn_st_rt-mw-d2_n.vmf
-  Environment: settlement
-  Layout: road-tjunction, missing-west
-  Transport: none
-  Building density tier: d2
-  Landmarks: none
-  Used by 3 cell(s): (13,2), (7,3), (0,13)
-
-zn_di_rt-mw-d1_n.vmf
+zn_di_rt-ms-d1_n-cp.vmf
   Variant: base layout
   Environment: dirt
-  Layout: road-tjunction, missing-west
+  Layout: road-tjunction, missing-south
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 2 cell(s): (0,21), (0,22)
+  Used by 3 cell(s): (4,23), (10,23), (17,23)
 
-zn_di_rx-a-d1_n.vmf
-  Variant: base layout
-  Environment: dirt
-  Layout: road-crossjunction, all
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 2 cell(s): (1,21), (2,22)
-
-zn_dx_rx-a-d1_le.vmf
+zn_dx_rt-ms-d1_n-m22-b1aa-p3-0-q3.vmf
   Variant: base layout
   Environment: destroyed
+  Layout: road-tjunction, missing-south
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 3 cell(s): (15,13), (12,15), (13,15)
+
+zn_pk_rs-v-d1_pk.vmf
+  Variant: base layout
+  Environment: parkland
+  Layout: road-straight, vertical
+  Transport: none
+  Building density tier: d1
+  Landmarks: Park
+  Used by 3 cell(s): (3,1), (11,2), (3,5)
+
+zn_ra_rc-nw-d1_n-m22-c2a-p0-0-q0.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-corner, north-west
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 3 cell(s): (23,6), (5,15), (14,22)
+
+zn_ra_rt-me-d1_n-m22-c2aa-p3-3-q3-cp.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-tjunction, missing-east
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 3 cell(s): (21,5), (16,9), (16,11)
+
+zn_ra_rx-a-d1_la.vmf
+  Variant: base layout
+  Environment: radioactive
   Layout: road-crossjunction, all
   Transport: none
   Building density tier: d1
+  Landmarks: Laboratory
+  Used by 3 cell(s): (22,4), (8,19), (12,19)
+
+zn_rc_rs-v-d2_le.vmf
+  Variant: base layout
+  Environment: recreation
+  Layout: road-straight, vertical
+  Transport: none
+  Building density tier: d2
   Landmarks: Leisure
-  Used by 2 cell(s): (15,12), (13,13)
+  Used by 3 cell(s): (20,1), (1,5), (23,15)
 
-zn_dx_rx-a-d1_ma.vmf
+zn_rc_rx-a-d2_le.vmf
   Variant: base layout
-  Environment: destroyed
+  Environment: recreation
   Layout: road-crossjunction, all
   Transport: none
+  Building density tier: d2
+  Landmarks: Leisure
+  Used by 3 cell(s): (11,4), (3,10), (2,13)
+
+zn_st_rs-h-d2_n-m22-b1aa-p3-0-q2-cp.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-straight, horizontal
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 3 cell(s): (2,0), (14,0), (15,2)
+
+zn_st_rt-mn-d2_n-cp.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-tjunction, missing-north
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 3 cell(s): (2,8), (4,8), (22,8)
+
+zn_di_rt-ms-d1_n.vmf
+  Variant: base layout
+  Environment: dirt
+  Layout: road-tjunction, missing-south
+  Transport: none
   Building density tier: d1
-  Landmarks: Market
-  Used by 2 cell(s): (13,12), (13,14)
+  Landmarks: none
+  Used by 2 cell(s): (18,23), (20,23)
+
+zn_dx_ms-v-d1_n.vmf
+  Variant: base layout
+  Environment: destroyed
+  Layout: motorway-straight, vertical
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 2 cell(s): (15,15), (15,16)
+
+zn_gr_md-e-d1_n.vmf
+  Variant: base layout
+  Environment: grassland
+  Layout: motorway-deadend, east
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 2 cell(s): (0,7), (0,16)
+
+zn_gr_rc-es-d1_n.vmf
+  Variant: base layout
+  Environment: grassland
+  Layout: road-corner, east-south
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 2 cell(s): (9,0), (7,8)
 
 zn_gr_rc-ne-d1_n.vmf
   Variant: base layout
@@ -649,50 +541,32 @@ zn_gr_rc-ne-d1_n.vmf
   Landmarks: none
   Used by 2 cell(s): (9,2), (7,6)
 
-zn_gr_rd-n-brn-d1_n.vmf
+zn_gr_rt-me-d1_n.vmf
   Variant: base layout
   Environment: grassland
-  Layout: road-deadend, north
-  Transport: bridge-ramp-n
-  Building density tier: d1
-  Landmarks: none
-  Used by 2 cell(s): (17,1), (17,3)
-
-zn_gr_rt-mn-d1_n.vmf
-  Variant: base layout
-  Environment: grassland
-  Layout: road-tjunction, missing-north
+  Layout: road-tjunction, missing-east
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 2 cell(s): (10,0), (11,0)
+  Used by 2 cell(s): (10,1), (10,2)
 
-zn_gr_rt-mw-d1_n.vmf
+zn_gr_rt-me-d1_n-cp.vmf
   Variant: base layout
   Environment: grassland
-  Layout: road-tjunction, missing-west
+  Layout: road-tjunction, missing-east
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 2 cell(s): (7,5), (0,20)
+  Used by 2 cell(s): (10,5), (16,5)
 
-zn_pk_rt-ms-d1_pk.vmf
+zn_pk_rt-me-d1_pk.vmf
   Variant: base layout
   Environment: parkland
-  Layout: road-tjunction, missing-south
+  Layout: road-tjunction, missing-east
   Transport: none
   Building density tier: d1
   Landmarks: Park
-  Used by 2 cell(s): (21,20), (19,23)
-
-zn_pk_rx-a-d1_pk.vmf
-  Variant: base layout
-  Environment: parkland
-  Layout: road-crossjunction, all
-  Transport: none
-  Building density tier: d1
-  Landmarks: Park
-  Used by 2 cell(s): (21,3), (3,13)
+  Used by 2 cell(s): (5,20), (5,22)
 
 zn_ra_ms-h-os-d1_n.vmf
   Variant: base layout
@@ -703,25 +577,16 @@ zn_ra_ms-h-os-d1_n.vmf
   Landmarks: none
   Used by 2 cell(s): (12,7), (22,18)
 
-zn_ra_ms-v-bh-d1_n.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: motorway-straight, vertical
-  Transport: bridge-horizontal
-  Building density tier: d1
-  Landmarks: none
-  Used by 2 cell(s): (6,11), (15,17)
-
-zn_ra_mx-a-d1_n.vmf
+zn_ra_mx-a-d1_n-m22-b1aa-p0-0-q2.vmf
   Variant: base layout
   Environment: radioactive
   Layout: motorway-crossjunction, all
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 2 cell(s): (17,7), (6,16)
+  Used by 2 cell(s): (17,7), (15,18)
 
-zn_ra_rc-es-d1_n.vmf
+zn_ra_rc-es-d1_n-m22-c2a-p3-3-q1.vmf
   Variant: base layout
   Environment: radioactive
   Layout: road-corner, east-south
@@ -730,77 +595,68 @@ zn_ra_rc-es-d1_n.vmf
   Landmarks: none
   Used by 2 cell(s): (18,8), (16,19)
 
-zn_ra_rd-n-brn-d1_n.vmf
+zn_ra_rc-ne-d1_n.vmf
   Variant: base layout
   Environment: radioactive
-  Layout: road-deadend, north
-  Transport: bridge-ramp-n
-  Building density tier: d1
-  Landmarks: none
-  Used by 2 cell(s): (6,12), (15,18)
-
-zn_ra_rd-s-brs-d1_n.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-deadend, south
-  Transport: bridge-ramp-s
-  Building density tier: d1
-  Landmarks: none
-  Used by 2 cell(s): (6,10), (15,22)
-
-zn_ra_rd-w-brw-d1_n.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-deadend, west
-  Transport: bridge-ramp-w
-  Building density tier: d1
-  Landmarks: none
-  Used by 2 cell(s): (7,11), (16,17)
-
-zn_ra_rt-mw-d1_ma.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-tjunction, missing-west
+  Layout: road-corner, north-east
   Transport: none
   Building density tier: d1
-  Landmarks: Market
-  Used by 2 cell(s): (7,12), (7,14)
+  Landmarks: none
+  Used by 2 cell(s): (18,6), (7,15)
 
-zn_rc_rs-v-d2_le.vmf
+zn_ra_rc-nw-d1_n-m22-b1aa-p0-0-q1.vmf
   Variant: base layout
-  Environment: recreation
-  Layout: road-straight, vertical
+  Environment: radioactive
+  Layout: road-corner, north-west
   Transport: none
-  Building density tier: d2
-  Landmarks: Leisure
-  Used by 2 cell(s): (3,3), (23,21)
+  Building density tier: d1
+  Landmarks: none
+  Used by 2 cell(s): (23,2), (16,6)
 
-zn_rc_rt-me-d2_le.vmf
+zn_ra_rt-me-d1_le.vmf
   Variant: base layout
-  Environment: recreation
+  Environment: radioactive
   Layout: road-tjunction, missing-east
   Transport: none
-  Building density tier: d2
+  Building density tier: d1
   Landmarks: Leisure
-  Used by 2 cell(s): (5,1), (8,2)
+  Used by 2 cell(s): (16,10), (5,19)
 
-zn_rc_rx-a-d2_le.vmf
+zn_ra_rt-me-d1_n-m22-b1aa-p3-0-q3.vmf
   Variant: base layout
-  Environment: recreation
-  Layout: road-crossjunction, all
+  Environment: radioactive
+  Layout: road-tjunction, missing-east
   Transport: none
-  Building density tier: d2
-  Landmarks: Leisure
-  Used by 2 cell(s): (2,10), (3,12)
+  Building density tier: d1
+  Landmarks: none
+  Used by 2 cell(s): (19,15), (12,18)
 
-zn_safe-zone_rx-a-d1_n.vmf
+zn_safe-zone_rx-a-d1_n-m22-b1aa-p0-3-q1.vmf
   Variant: base layout
   Environment: safe_zone
   Layout: road-crossjunction, all
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 2 cell(s): (14,3), (4,4)
+  Used by 2 cell(s): (13,3), (4,4)
+
+zn_st_rc-nw-d2_n-m22-b1aa-p3-0-q3.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-corner, north-west
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 2 cell(s): (23,9), (12,23)
+
+zn_st_rc-nw-d2_n-m22-c2aa-p0-0-q1.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-corner, north-west
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 2 cell(s): (22,21), (5,23)
 
 zn_st_rd-s-d2_n.vmf
   Variant: base layout
@@ -811,59 +667,23 @@ zn_st_rd-s-d2_n.vmf
   Landmarks: none
   Used by 2 cell(s): (5,0), (22,0)
 
-zn_st_rd-w-brw-d2_n.vmf
+zn_st_rs-h-d2_n-m22-c2a-p1-0-q0.vmf
   Variant: base layout
   Environment: settlement
-  Layout: road-deadend, west
-  Transport: bridge-ramp-w
-  Building density tier: d2
-  Landmarks: none
-  Used by 2 cell(s): (18,0), (18,2)
-
-zn_st_rd-w-d2_n.vmf
-  Variant: base layout
-  Environment: settlement
-  Layout: road-deadend, west
+  Layout: road-straight, horizontal
   Transport: none
   Building density tier: d2
   Landmarks: none
-  Used by 2 cell(s): (16,1), (23,19)
+  Used by 2 cell(s): (12,0), (12,1)
 
-zn_co_rc-nw-d3_ma.vmf
+zn_st_rt-ms-d2_n-cp.vmf
   Variant: base layout
-  Environment: commercial
-  Layout: road-corner, north-west
+  Environment: settlement
+  Layout: road-tjunction, missing-south
   Transport: none
-  Building density tier: d3
-  Landmarks: Market
-  Used by 1 cell(s): (12,23)
-
-zn_co_rs-v-d3_ma.vmf
-  Variant: base layout
-  Environment: commercial
-  Layout: road-straight, vertical
-  Transport: none
-  Building density tier: d3
-  Landmarks: Market
-  Used by 1 cell(s): (2,5)
-
-zn_co_rt-mw-d3_ma.vmf
-  Variant: base layout
-  Environment: commercial
-  Layout: road-tjunction, missing-west
-  Transport: none
-  Building density tier: d3
-  Landmarks: Market
-  Used by 1 cell(s): (1,2)
-
-zn_co_rx-a-d3_ma.vmf
-  Variant: base layout
-  Environment: commercial
-  Layout: road-crossjunction, all
-  Transport: none
-  Building density tier: d3
-  Landmarks: Market
-  Used by 1 cell(s): (19,2)
+  Building density tier: d2
+  Landmarks: none
+  Used by 2 cell(s): (19,6), (21,20)
 
 zn_di_md-n-bh-d1_n.vmf
   Variant: base layout
@@ -883,7 +703,7 @@ zn_di_md-n-oe-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (6,23)
 
-zn_di_md-w-d1_n.vmf
+zn_di_md-w-d1_n-m22-c2aa-p3-2-q3.vmf
   Variant: base layout
   Environment: dirt
   Layout: motorway-deadend, west
@@ -892,16 +712,16 @@ zn_di_md-w-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (23,18)
 
-zn_di_rc-ne-d1_n.vmf
+zn_di_ms-v-d1_n.vmf
   Variant: base layout
   Environment: dirt
-  Layout: road-corner, north-east
+  Layout: motorway-straight, vertical
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 1 cell(s): (0,23)
+  Used by 1 cell(s): (6,22)
 
-zn_di_rc-nw-d1_n.vmf
+zn_di_rc-nw-d1_n-m22-b1aa-p0-3-q0.vmf
   Variant: base layout
   Environment: dirt
   Layout: road-corner, north-west
@@ -910,16 +730,7 @@ zn_di_rc-nw-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (23,23)
 
-zn_di_rd-w-brw-d1_n.vmf
-  Variant: base layout
-  Environment: dirt
-  Layout: road-deadend, west
-  Transport: bridge-ramp-w
-  Building density tier: d1
-  Landmarks: none
-  Used by 1 cell(s): (16,23)
-
-zn_di_rs-h-d1_n.vmf
+zn_di_rs-h-d1_n-m22-c2a-p0-3-q2-cp.vmf
   Variant: base layout
   Environment: dirt
   Layout: road-straight, horizontal
@@ -928,14 +739,23 @@ zn_di_rs-h-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (22,23)
 
-zn_di_rs-v-d1_n.vmf
+zn_di_rt-me-d1_n-m22-c2aa-p0-0-q1-cp.vmf
   Variant: base layout
   Environment: dirt
-  Layout: road-straight, vertical
+  Layout: road-tjunction, missing-east
   Transport: none
   Building density tier: d1
   Landmarks: none
-  Used by 1 cell(s): (23,15)
+  Used by 1 cell(s): (5,21)
+
+zn_di_rt-ms-brw-d1_n.vmf
+  Variant: base layout
+  Environment: dirt
+  Layout: road-tjunction, missing-south
+  Transport: bridge-ramp-w
+  Building density tier: d1
+  Landmarks: none
+  Used by 1 cell(s): (16,23)
 
 zn_dx_mc-es-d1_n.vmf
   Variant: base layout
@@ -946,7 +766,7 @@ zn_dx_mc-es-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (15,14)
 
-zn_dx_mc-sw-d1_n.vmf
+zn_dx_mc-sw-d1_n-m22-b1aa-p0-3-q1.vmf
   Variant: base layout
   Environment: destroyed
   Layout: motorway-corner, south-west
@@ -955,7 +775,7 @@ zn_dx_mc-sw-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (13,16)
 
-zn_dx_ms-h-d1_n.vmf
+zn_dx_ms-h-d1_n-m22-b1aa-p3-3-q0.vmf
   Variant: base layout
   Environment: destroyed
   Layout: motorway-straight, horizontal
@@ -964,41 +784,23 @@ zn_dx_ms-h-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (16,14)
 
-zn_dx_ms-v-d1_n.vmf
-  Variant: base layout
-  Environment: destroyed
-  Layout: motorway-straight, vertical
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 1 cell(s): (15,15)
-
-zn_dx_rc-es-d1_le.vmf
+zn_dx_rc-es-d1_n-m22-b1aa-p0-3-q1.vmf
   Variant: base layout
   Environment: destroyed
   Layout: road-corner, east-south
   Transport: none
   Building density tier: d1
-  Landmarks: Leisure
+  Landmarks: none
   Used by 1 cell(s): (16,15)
 
-zn_dx_rc-nw-d1_pk.vmf
+zn_dx_rc-nw-d1_n.vmf
   Variant: base layout
   Environment: destroyed
   Layout: road-corner, north-west
   Transport: none
   Building density tier: d1
-  Landmarks: Park
-  Used by 1 cell(s): (16,13)
-
-zn_dx_rd-s-brs-d1_n.vmf
-  Variant: base layout
-  Environment: destroyed
-  Layout: road-deadend, south
-  Transport: bridge-ramp-s
-  Building density tier: d1
   Landmarks: none
-  Used by 1 cell(s): (15,16)
+  Used by 1 cell(s): (16,13)
 
 zn_dx_rs-v-d1_le.vmf
   Variant: base layout
@@ -1009,7 +811,7 @@ zn_dx_rs-v-d1_le.vmf
   Landmarks: Leisure
   Used by 1 cell(s): (14,16)
 
-zn_dx_rt-me-d1_ep.vmf
+zn_dx_rt-me-d1_ep-m33-e1a-p1-1-q0.vmf
   Variant: base layout
   Environment: destroyed
   Layout: road-tjunction, missing-east
@@ -1018,7 +820,7 @@ zn_dx_rt-me-d1_ep.vmf
   Landmarks: The Epicenter
   Used by 1 cell(s): (14,14)
 
-zn_dx_rt-me-d1_n.vmf
+zn_dx_rt-me-d1_n-cp.vmf
   Variant: base layout
   Environment: destroyed
   Layout: road-tjunction, missing-east
@@ -1027,41 +829,68 @@ zn_dx_rt-me-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (14,15)
 
-zn_emergency-services_rx-a-d1_fi.vmf
+zn_dx_rx-a-d1_le+pk.vmf
   Variant: base layout
-  Environment: emergency_services
+  Environment: destroyed
   Layout: road-crossjunction, all
   Transport: none
   Building density tier: d1
-  Landmarks: Fire
-  Used by 1 cell(s): (21,2)
+  Landmarks: Leisure, Park
+  Used by 1 cell(s): (15,12)
 
-zn_fi_rt-ms-d3_ba.vmf
+zn_dx_rx-a-d1_n-cp.vmf
+  Variant: base layout
+  Environment: destroyed
+  Layout: road-crossjunction, all
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 1 cell(s): (14,12)
+
+zn_dx_rx-a-d1_pk.vmf
+  Variant: base layout
+  Environment: destroyed
+  Layout: road-crossjunction, all
+  Transport: none
+  Building density tier: d1
+  Landmarks: Park
+  Used by 1 cell(s): (13,14)
+
+zn_fi_rs-v-d3_ba.vmf
   Variant: base layout
   Environment: financial
-  Layout: road-tjunction, missing-south
+  Layout: road-straight, vertical
   Transport: none
   Building density tier: d3
   Landmarks: Bank
-  Used by 1 cell(s): (8,23)
+  Used by 1 cell(s): (1,4)
 
-zn_fo_rd-e-bre-d1_bu.vmf
+zn_fo_rc-nw-d1_bu+le.vmf
   Variant: base layout
   Environment: fortified
-  Layout: road-deadend, east
+  Layout: road-corner, north-west
+  Transport: none
+  Building density tier: d1
+  Landmarks: Bunker, Leisure
+  Used by 1 cell(s): (23,17)
+
+zn_fo_rs-h-bre-d1_bu.vmf
+  Variant: base layout
+  Environment: fortified
+  Layout: road-straight, horizontal
   Transport: bridge-ramp-e
   Building density tier: d1
   Landmarks: Bunker
   Used by 1 cell(s): (14,23)
 
-zn_fo_rt-ms-d1_bu.vmf
+zn_fo_rs-v-d1_bu.vmf
   Variant: base layout
   Environment: fortified
-  Layout: road-tjunction, missing-south
+  Layout: road-straight, vertical
   Transport: none
   Building density tier: d1
   Landmarks: Bunker
-  Used by 1 cell(s): (17,23)
+  Used by 1 cell(s): (23,22)
 
 zn_fo_rx-a-d1_bu.vmf
   Variant: base layout
@@ -1070,16 +899,7 @@ zn_fo_rx-a-d1_bu.vmf
   Transport: none
   Building density tier: d1
   Landmarks: Bunker
-  Used by 1 cell(s): (1,18)
-
-zn_gr_md-e-d1_n.vmf
-  Variant: base layout
-  Environment: grassland
-  Layout: motorway-deadend, east
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 1 cell(s): (0,16)
+  Used by 1 cell(s): (22,20)
 
 zn_gr_md-s-bh-d1_n.vmf
   Variant: base layout
@@ -1117,15 +937,6 @@ zn_gr_ms-h-bv-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (1,7)
 
-zn_gr_ms-h-on-d1_n.vmf
-  Variant: base layout
-  Environment: grassland
-  Layout: motorway-straight, horizontal
-  Transport: onramp-n
-  Building density tier: d1
-  Landmarks: none
-  Used by 1 cell(s): (2,16)
-
 zn_gr_ms-v-bh-d1_n.vmf
   Variant: base layout
   Environment: grassland
@@ -1153,7 +964,7 @@ zn_gr_ms-v-ow-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (6,3)
 
-zn_gr_mx-a-d1_n.vmf
+zn_gr_mx-a-d1_n-m22-c2aa-p3-0-q3.vmf
   Variant: base layout
   Environment: grassland
   Layout: motorway-crossjunction, all
@@ -1162,34 +973,7 @@ zn_gr_mx-a-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (6,7)
 
-zn_gr_rc-es-d1_n.vmf
-  Variant: base layout
-  Environment: grassland
-  Layout: road-corner, east-south
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 1 cell(s): (7,8)
-
-zn_gr_rd-e-bre-d1_n.vmf
-  Variant: base layout
-  Environment: grassland
-  Layout: road-deadend, east
-  Transport: bridge-ramp-e
-  Building density tier: d1
-  Landmarks: none
-  Used by 1 cell(s): (0,7)
-
-zn_gr_rd-w-brw-d1_n.vmf
-  Variant: base layout
-  Environment: grassland
-  Layout: road-deadend, west
-  Transport: bridge-ramp-w
-  Building density tier: d1
-  Landmarks: none
-  Used by 1 cell(s): (2,7)
-
-zn_gr_rs-h-d1_n.vmf
+zn_gr_rs-h-d1_n-cp.vmf
   Variant: base layout
   Environment: grassland
   Layout: road-straight, horizontal
@@ -1198,7 +982,25 @@ zn_gr_rs-h-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (9,3)
 
-zn_gr_rt-ms-d1_n.vmf
+zn_gr_rt-mn-d1_n-m22-b1aa-p3-3-q0.vmf
+  Variant: base layout
+  Environment: grassland
+  Layout: road-tjunction, missing-north
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 1 cell(s): (10,0)
+
+zn_gr_rt-mn-d1_n-m22-b1aa-p3-3-q3-cp.vmf
+  Variant: base layout
+  Environment: grassland
+  Layout: road-tjunction, missing-north
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 1 cell(s): (11,0)
+
+zn_gr_rt-ms-d1_n-cp.vmf
   Variant: base layout
   Environment: grassland
   Layout: road-tjunction, missing-south
@@ -1207,61 +1009,61 @@ zn_gr_rt-ms-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (8,6)
 
-zn_pk_rc-ne-d1_pk.vmf
+zn_gr_rt-mw-d1_n.vmf
   Variant: base layout
-  Environment: parkland
-  Layout: road-corner, north-east
-  Transport: none
-  Building density tier: d1
-  Landmarks: Park
-  Used by 1 cell(s): (0,6)
-
-zn_pk_rc-sw-d1_pk.vmf
-  Variant: base layout
-  Environment: parkland
-  Layout: road-corner, south-west
-  Transport: none
-  Building density tier: d1
-  Landmarks: Park
-  Used by 1 cell(s): (23,20)
-
-zn_pk_rs-h-d1_pk.vmf
-  Variant: base layout
-  Environment: parkland
-  Layout: road-straight, horizontal
-  Transport: none
-  Building density tier: d1
-  Landmarks: Park
-  Used by 1 cell(s): (15,0)
-
-zn_pk_rt-me-d1_pk.vmf
-  Variant: base layout
-  Environment: parkland
-  Layout: road-tjunction, missing-east
-  Transport: none
-  Building density tier: d1
-  Landmarks: Park
-  Used by 1 cell(s): (5,4)
-
-zn_pk_rt-mn-d1_pk.vmf
-  Variant: base layout
-  Environment: parkland
-  Layout: road-tjunction, missing-north
-  Transport: none
-  Building density tier: d1
-  Landmarks: Park
-  Used by 1 cell(s): (9,4)
-
-zn_pk_rt-mw-d1_pk.vmf
-  Variant: base layout
-  Environment: parkland
+  Environment: grassland
   Layout: road-tjunction, missing-west
   Transport: none
   Building density tier: d1
-  Landmarks: Park
-  Used by 1 cell(s): (0,19)
+  Landmarks: none
+  Used by 1 cell(s): (7,5)
 
-zn_ra_mc-ne-os-d1_n.vmf
+zn_gr_rt-mw-d1_n-cp.vmf
+  Variant: base layout
+  Environment: grassland
+  Layout: road-tjunction, missing-west
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 1 cell(s): (0,9)
+
+zn_gr_rx-a-d1_n-cp.vmf
+  Variant: base layout
+  Environment: grassland
+  Layout: road-crossjunction, all
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 1 cell(s): (9,1)
+
+zn_mi_rd-w-d1_ab.vmf
+  Variant: base layout
+  Environment: military
+  Layout: road-deadend, west
+  Transport: none
+  Building density tier: d1
+  Landmarks: Army Base
+  Used by 1 cell(s): (23,19)
+
+zn_pk_rt-ms-d1_pk.vmf
+  Variant: base layout
+  Environment: parkland
+  Layout: road-tjunction, missing-south
+  Transport: none
+  Building density tier: d1
+  Landmarks: Park
+  Used by 1 cell(s): (19,23)
+
+zn_pk_rx-a-bre-d1_pk.vmf
+  Variant: base layout
+  Environment: parkland
+  Layout: road-crossjunction, all
+  Transport: bridge-ramp-e
+  Building density tier: d1
+  Landmarks: Park
+  Used by 1 cell(s): (5,11)
+
+zn_ra_mc-ne-os-d1_n-m22-b1aa-p3-3-q0.vmf
   Variant: base layout
   Environment: radioactive
   Layout: motorway-corner, north-east
@@ -1270,7 +1072,7 @@ zn_ra_mc-ne-os-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (13,18)
 
-zn_ra_mc-nw-d1_n.vmf
+zn_ra_mc-nw-d1_n-m22-c2aa-p3-1-q3.vmf
   Variant: base layout
   Environment: radioactive
   Layout: motorway-corner, north-west
@@ -1279,7 +1081,34 @@ zn_ra_mc-nw-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (17,14)
 
-zn_ra_ms-v-oe-d1_n.vmf
+zn_ra_ms-h-on-d1_n.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: motorway-straight, horizontal
+  Transport: onramp-n
+  Building density tier: d1
+  Landmarks: none
+  Used by 1 cell(s): (2,16)
+
+zn_ra_ms-v-bh-d1_n-m22-b1aa-p3-3-q0.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: motorway-straight, vertical
+  Transport: bridge-horizontal
+  Building density tier: d1
+  Landmarks: none
+  Used by 1 cell(s): (6,11)
+
+zn_ra_ms-v-bh-d1_n-m22-c2aa-p3-3-q3.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: motorway-straight, vertical
+  Transport: bridge-horizontal
+  Building density tier: d1
+  Landmarks: none
+  Used by 1 cell(s): (15,17)
+
+zn_ra_ms-v-oe-d1_n-m22-b1aa-p3-3-q0.vmf
   Variant: base layout
   Environment: radioactive
   Layout: motorway-straight, vertical
@@ -1288,7 +1117,7 @@ zn_ra_ms-v-oe-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (17,10)
 
-zn_ra_ms-v-ow-d1_n.vmf
+zn_ra_ms-v-ow-d1_n-m22-c2aa-p3-3-q3.vmf
   Variant: base layout
   Environment: radioactive
   Layout: motorway-straight, vertical
@@ -1296,6 +1125,24 @@ zn_ra_ms-v-ow-d1_n.vmf
   Building density tier: d1
   Landmarks: none
   Used by 1 cell(s): (6,18)
+
+zn_ra_mx-a-d1_n-m22-c2aa-p0-3-q1.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: motorway-crossjunction, all
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 1 cell(s): (6,16)
+
+zn_ra_rc-es-d1_fi.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-corner, east-south
+  Transport: none
+  Building density tier: d1
+  Landmarks: Fire
+  Used by 1 cell(s): (0,17)
 
 zn_ra_rc-es-d1_la.vmf
   Variant: base layout
@@ -1306,43 +1153,34 @@ zn_ra_rc-es-d1_la.vmf
   Landmarks: Laboratory
   Used by 1 cell(s): (7,17)
 
-zn_ra_rc-ne-d1_ma.vmf
+zn_ra_rc-ne-bre-d1_n.vmf
   Variant: base layout
   Environment: radioactive
   Layout: road-corner, north-east
-  Transport: none
-  Building density tier: d1
-  Landmarks: Market
-  Used by 1 cell(s): (7,15)
-
-zn_ra_rc-ne-d1_n.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-corner, north-east
-  Transport: none
-  Building density tier: d1
-  Landmarks: none
-  Used by 1 cell(s): (18,6)
-
-zn_ra_rc-sw-d1_le.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-corner, south-west
-  Transport: none
-  Building density tier: d1
-  Landmarks: Leisure
-  Used by 1 cell(s): (5,17)
-
-zn_ra_rd-e-bre-d1_n.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-deadend, east
   Transport: bridge-ramp-e
   Building density tier: d1
   Landmarks: none
   Used by 1 cell(s): (14,17)
 
-zn_ra_rs-h-d1_n.vmf
+zn_ra_rc-ne-d1_la.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-corner, north-east
+  Transport: none
+  Building density tier: d1
+  Landmarks: Laboratory
+  Used by 1 cell(s): (0,23)
+
+zn_ra_rc-sw-d1_bu+pk.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-corner, south-west
+  Transport: none
+  Building density tier: d1
+  Landmarks: Bunker, Park
+  Used by 1 cell(s): (12,17)
+
+zn_ra_rs-h-d1_n-m22-c2a-p3-0-q0-cp.vmf
   Variant: base layout
   Environment: radioactive
   Layout: road-straight, horizontal
@@ -1351,58 +1189,76 @@ zn_ra_rs-h-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (22,17)
 
-zn_ra_rt-me-d1_la.vmf
+zn_ra_rs-v-d1_n.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-straight, vertical
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 1 cell(s): (22,5)
+
+zn_ra_rs-v-d1_n-cp.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-straight, vertical
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 1 cell(s): (23,5)
+
+zn_ra_rt-me-d1_n-m22-c2aa-p0-0-q2.vmf
   Variant: base layout
   Environment: radioactive
   Layout: road-tjunction, missing-east
+  Transport: none
+  Building density tier: d1
+  Landmarks: none
+  Used by 1 cell(s): (22,15)
+
+zn_ra_rt-mn-d1_ba+pk.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-tjunction, missing-north
+  Transport: none
+  Building density tier: d1
+  Landmarks: Bank, Park
+  Used by 1 cell(s): (21,19)
+
+zn_ra_rt-mn-d1_bu+le.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-tjunction, missing-north
+  Transport: none
+  Building density tier: d1
+  Landmarks: Bunker, Leisure
+  Used by 1 cell(s): (9,17)
+
+zn_ra_rt-mn-d1_la.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-tjunction, missing-north
   Transport: none
   Building density tier: d1
   Landmarks: Laboratory
-  Used by 1 cell(s): (5,20)
-
-zn_ra_rt-me-d1_ma.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-tjunction, missing-east
-  Transport: none
-  Building density tier: d1
-  Landmarks: Market
-  Used by 1 cell(s): (16,10)
-
-zn_ra_rt-me-d1_pk.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-tjunction, missing-east
-  Transport: none
-  Building density tier: d1
-  Landmarks: Park
-  Used by 1 cell(s): (16,12)
-
-zn_ra_rt-mn-d1_ho.vmf
-  Variant: base layout
-  Environment: radioactive
-  Layout: road-tjunction, missing-north
-  Transport: none
-  Building density tier: d1
-  Landmarks: Hospital
   Used by 1 cell(s): (3,17)
 
-zn_ra_rt-mn-d1_ma.vmf
+zn_ra_rt-ms-brw-d1_n-m22-b1aa-p0-0-q1-cp.vmf
   Variant: base layout
   Environment: radioactive
-  Layout: road-tjunction, missing-north
-  Transport: none
+  Layout: road-tjunction, missing-south
+  Transport: bridge-ramp-w
   Building density tier: d1
-  Landmarks: Market
-  Used by 1 cell(s): (21,19)
+  Landmarks: none
+  Used by 1 cell(s): (16,17)
 
-zn_ra_rt-ms-d1_ma.vmf
+zn_ra_rt-ms-d1_le.vmf
   Variant: base layout
   Environment: radioactive
   Layout: road-tjunction, missing-south
   Transport: none
   Building density tier: d1
-  Landmarks: Market
+  Landmarks: Leisure
   Used by 1 cell(s): (10,6)
 
 zn_ra_rt-ms-d1_pk.vmf
@@ -1412,70 +1268,97 @@ zn_ra_rt-ms-d1_pk.vmf
   Transport: none
   Building density tier: d1
   Landmarks: Park
-  Used by 1 cell(s): (12,6)
+  Used by 1 cell(s): (11,6)
 
-zn_ra_rt-mw-d1_ch.vmf
+zn_ra_rt-mw-d1_ho-m22-h1a-p0-1-q1.vmf
   Variant: base layout
   Environment: radioactive
   Layout: road-tjunction, missing-west
   Transport: none
   Building density tier: d1
-  Landmarks: Church
-  Used by 1 cell(s): (7,10)
+  Landmarks: Hospital
+  Used by 1 cell(s): (0,20)
 
-zn_ra_rx-a-d1_fi.vmf
+zn_ra_rx-a-brw-d1_n-m22-c2aa-p0-3-q1-cp.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-crossjunction, all
+  Transport: bridge-ramp-w
+  Building density tier: d1
+  Landmarks: none
+  Used by 1 cell(s): (7,11)
+
+zn_ra_rx-a-d1_ba+ch+le+pk.vmf
   Variant: base layout
   Environment: radioactive
   Layout: road-crossjunction, all
   Transport: none
   Building density tier: d1
-  Landmarks: Fire
-  Used by 1 cell(s): (10,22)
+  Landmarks: Bank, Church, Leisure, Park
+  Used by 1 cell(s): (11,11)
 
-zn_ra_rx-a-d1_la.vmf
+zn_ra_rx-a-d1_bu.vmf
   Variant: base layout
   Environment: radioactive
   Layout: road-crossjunction, all
-  Transport: none
-  Building density tier: d1
-  Landmarks: Laboratory
-  Used by 1 cell(s): (4,19)
-
-zn_rc_rc-es-d2_le.vmf
-  Variant: base layout
-  Environment: recreation
-  Layout: road-corner, east-south
-  Transport: none
-  Building density tier: d2
-  Landmarks: Leisure
-  Used by 1 cell(s): (4,3)
-
-zn_rc_rs-h-d2_le.vmf
-  Variant: base layout
-  Environment: recreation
-  Layout: road-straight, horizontal
-  Transport: none
-  Building density tier: d2
-  Landmarks: Leisure
-  Used by 1 cell(s): (12,3)
-
-zn_safe-zone_rt-me-d1_bu.vmf
-  Variant: base layout
-  Environment: safe_zone
-  Layout: road-tjunction, missing-east
   Transport: none
   Building density tier: d1
   Landmarks: Bunker
-  Used by 1 cell(s): (20,22)
+  Used by 1 cell(s): (3,18)
 
-zn_safe-zone_rt-ms-d1_ab.vmf
+zn_ra_rx-a-d1_le+pk.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-crossjunction, all
+  Transport: none
+  Building density tier: d1
+  Landmarks: Leisure, Park
+  Used by 1 cell(s): (9,9)
+
+zn_ra_rx-a-d1_ps.vmf
+  Variant: base layout
+  Environment: radioactive
+  Layout: road-crossjunction, all
+  Transport: none
+  Building density tier: d1
+  Landmarks: Petrol Station
+  Used by 1 cell(s): (10,9)
+
+zn_rc_rt-mn-d2_le.vmf
+  Variant: base layout
+  Environment: recreation
+  Layout: road-tjunction, missing-north
+  Transport: none
+  Building density tier: d2
+  Landmarks: Leisure
+  Used by 1 cell(s): (14,2)
+
+zn_rc_rt-mw-d2_le.vmf
+  Variant: base layout
+  Environment: recreation
+  Layout: road-tjunction, missing-west
+  Transport: none
+  Building density tier: d2
+  Landmarks: Leisure
+  Used by 1 cell(s): (0,10)
+
+zn_safe-zone_rs-h-d1_ho+le-m22-h1a-p1-0-q2.vmf
+  Variant: base layout
+  Environment: safe_zone
+  Layout: road-straight, horizontal
+  Transport: none
+  Building density tier: d1
+  Landmarks: Hospital, Leisure
+  Used by 1 cell(s): (21,23)
+
+zn_safe-zone_rt-ms-d1_bu.vmf
   Variant: base layout
   Environment: safe_zone
   Layout: road-tjunction, missing-south
   Transport: none
   Building density tier: d1
-  Landmarks: Army Base
-  Used by 1 cell(s): (21,6)
+  Landmarks: Bunker
+  Used by 1 cell(s): (7,23)
 
 zn_safe-zone_rt-mw-d1_n.vmf
   Variant: base layout
@@ -1486,50 +1369,59 @@ zn_safe-zone_rt-mw-d1_n.vmf
   Landmarks: none
   Used by 1 cell(s): (0,12)
 
-zn_service-station_rs-h-d1_ps.vmf
+zn_st_rc-nw-d2_n-m22-c2aa-p0-0-q2.vmf
   Variant: base layout
-  Environment: service_station
-  Layout: road-straight, horizontal
+  Environment: settlement
+  Layout: road-corner, north-west
   Transport: none
-  Building density tier: d1
-  Landmarks: Petrol Station
-  Used by 1 cell(s): (21,23)
+  Building density tier: d2
+  Landmarks: none
+  Used by 1 cell(s): (5,6)
 
-zn_service-station_rt-mw-d1_ps.vmf
-  Variant: base layout
-  Environment: service_station
-  Layout: road-tjunction, missing-west
-  Transport: none
-  Building density tier: d1
-  Landmarks: Petrol Station
-  Used by 1 cell(s): (0,9)
-
-zn_st_rc-sw-d2_po.vmf
+zn_st_rc-sw-brw-d2_n-m22-c2a-p3-3-q1.vmf
   Variant: base layout
   Environment: settlement
   Layout: road-corner, south-west
+  Transport: bridge-ramp-w
+  Building density tier: d2
+  Landmarks: none
+  Used by 1 cell(s): (18,0)
+
+zn_st_rd-w-d2_n.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-deadend, west
   Transport: none
   Building density tier: d2
-  Landmarks: Police
-  Used by 1 cell(s): (4,0)
+  Landmarks: none
+  Used by 1 cell(s): (16,1)
 
-zn_st_rd-n-brn-d2_n.vmf
+zn_st_rs-h-bre-d2_n-m22-b1aa-p0-0-q2.vmf
   Variant: base layout
   Environment: settlement
-  Layout: road-deadend, north
-  Transport: bridge-ramp-n
+  Layout: road-straight, horizontal
+  Transport: bridge-ramp-e
   Building density tier: d2
   Landmarks: none
-  Used by 1 cell(s): (1,8)
+  Used by 1 cell(s): (16,2)
 
-zn_st_rd-s-brs-d2_n.vmf
+zn_st_rs-h-bre-d2_n-m22-c2a-p0-0-q0-cp.vmf
   Variant: base layout
   Environment: settlement
-  Layout: road-deadend, south
-  Transport: bridge-ramp-s
+  Layout: road-straight, horizontal
+  Transport: bridge-ramp-e
   Building density tier: d2
   Landmarks: none
-  Used by 1 cell(s): (1,6)
+  Used by 1 cell(s): (16,0)
+
+zn_st_rs-h-d2_n-m22-c2a-p0-0-q0-cp.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-straight, horizontal
+  Transport: none
+  Building density tier: d2
+  Landmarks: none
+  Used by 1 cell(s): (12,3)
 
 zn_st_rt-mn-d2_ap.vmf
   Variant: base layout
@@ -1539,4 +1431,49 @@ zn_st_rt-mn-d2_ap.vmf
   Building density tier: d2
   Landmarks: Airport
   Used by 1 cell(s): (12,4)
+
+zn_st_rt-ms-d2_po.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-tjunction, missing-south
+  Transport: none
+  Building density tier: d2
+  Landmarks: Police
+  Used by 1 cell(s): (8,23)
+
+zn_st_rt-mw-d2_po.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-tjunction, missing-west
+  Transport: none
+  Building density tier: d2
+  Landmarks: Police
+  Used by 1 cell(s): (18,3)
+
+zn_st_rx-a-brn-d2_n.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-crossjunction, all
+  Transport: bridge-ramp-n
+  Building density tier: d2
+  Landmarks: none
+  Used by 1 cell(s): (1,8)
+
+zn_st_rx-a-brs-d2_n.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-crossjunction, all
+  Transport: bridge-ramp-s
+  Building density tier: d2
+  Landmarks: none
+  Used by 1 cell(s): (1,6)
+
+zn_st_rx-a-brw-d2_n.vmf
+  Variant: base layout
+  Environment: settlement
+  Layout: road-crossjunction, all
+  Transport: bridge-ramp-w
+  Building density tier: d2
+  Landmarks: none
+  Used by 1 cell(s): (18,2)
 
