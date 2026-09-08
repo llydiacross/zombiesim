@@ -1795,6 +1795,30 @@ function Get-LandmarkTemplate {
     return $null
 }
 
+function Get-CompactMacroTemplateCode {
+    param([string]$Template)
+
+    $templateCode = ConvertTo-FilenamePart ([System.IO.Path]::GetFileNameWithoutExtension($Template))
+    $templateCode = $templateCode -replace '^tile-', ''
+    $templateCode = $templateCode -replace '-(?:2x|2x2|3x|3x3)$', ''
+    switch -Regex ($templateCode) {
+        '^building-' { return 'b' + $templateCode.Substring('building-'.Length) }
+        '^commercial-' { return 'c' + $templateCode.Substring('commercial-'.Length) }
+        '^construction-' { return 'cn' + $templateCode.Substring('construction-'.Length) }
+        '^hospital-' { return 'h' + $templateCode.Substring('hospital-'.Length) }
+        '^epicenter-' { return 'e' + $templateCode.Substring('epicenter-'.Length) }
+        default { return $templateCode }
+    }
+}
+
+function Get-CompactMacroRotationCode {
+    param([int]$RotationYaw)
+
+    $normalizedYaw = (($RotationYaw % 360) + 360) % 360
+    if (($normalizedYaw % 90) -eq 0) { return 'q{0}' -f [int]($normalizedYaw / 90) }
+    return 'r{0}' -f $normalizedYaw
+}
+
 function Get-MacroLayoutFilenameCode {
     param([object[]]$TilePlacements)
 
@@ -1808,8 +1832,9 @@ function Get-MacroLayoutFilenameCode {
         $footprintHeight = if ($null -eq $heightProperty) { 1 } else { [int]$heightProperty.Value }
         if (-not $emitsInstance -or ($footprintWidth -eq 1 -and $footprintHeight -eq 1)) { continue }
 
-        $templateCode = ConvertTo-FilenamePart ([System.IO.Path]::GetFileNameWithoutExtension([string]$placement.template))
-        $macroCodes.Add(('m{0}x{1}-{2}-x{3}-y{4}-r{5}' -f $footprintWidth, $footprintHeight, $templateCode, [int]$placement.tileX, [int]$placement.tileY, [int]$placement.rotationYaw))
+        $templateCode = Get-CompactMacroTemplateCode ([string]$placement.template)
+        $rotationCode = Get-CompactMacroRotationCode ([int]$placement.rotationYaw)
+        $macroCodes.Add(('m{0}{1}-{2}-p{3}-{4}-{5}' -f $footprintWidth, $footprintHeight, $templateCode, [int]$placement.tileX, [int]$placement.tileY, $rotationCode))
     }
     return [string]($macroCodes -join '+')
 }

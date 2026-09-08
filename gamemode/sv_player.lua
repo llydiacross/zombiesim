@@ -1,10 +1,32 @@
 // Server-only Player persistence, network synchronization, stamina, and XP behavior.
 local ply = FindMetaTable("Player")
 
-// Loads all attribute values, falling back to a zeroed record for a new player.
-function ply:FetchAttributes() 
+local function getDefaultPlayerData()
+    local worldData = ZM_World:GetData() or {}
+    local worldOrigin = worldData.world and worldData.world.origin or {}
+    return {
+        XP = 0,
+        Level = 1,
+        MaxLevel = 300,
+        Difficulty = 1,
+        CellX = tonumber(worldOrigin[1]) or 0,
+        CellY = tonumber(worldOrigin[2]) or 0,
+        CurrentSafeZoneId = nil,
+        SkillPoints = 0,
+        Health = 100,
+        Stamina = 100,
+        Hunger = 100,
+        Thirst = 100
+    }
+end
 
-    local attr = ZM_GetPlayerAttributes(self:SteamID())
+// Loads all attribute values, falling back to a zeroed record for a new player.
+function ply:FetchAttributes()
+
+    local attr, attributeError = ZM_GetPlayerAttributes(self:SteamID(), ZM_World.ActiveProfile)
+    if attributeError then
+        return false, attributeError
+    end
 
     if( attr == nil ) then
         attr = {
@@ -25,20 +47,22 @@ function ply:FetchAttributes()
         }
     end
 
-    self.Attributes.Strength = attr.Strength or 0
-    self.Attributes.Agility = attr.Agility or 0
-    self.Attributes.Intelligence = attr.Intelligence or 0
-    self.Attributes.Endurance = attr.Endurance or 0 
-    self.Attributes.MachineGuns = attr.MachineGuns or 0
-    self.Attributes.Shotguns = attr.Shotguns or 0
-    self.Attributes.Snipers = attr.Snipers or 0
-    self.Attributes.WeaponCrafting = attr.WeaponCrafting or 0
-    self.Attributes.ArmorCrafting = attr.ArmorCrafting or 0
-    self.Attributes.Medicine = attr.Medicine or 0
-    self.Attributes.Farming = attr.Farming or 0
-    self.Attributes.WeaponRepairing = attr.WeaponRepairing or 0
-    self.Attributes.ArmorRepairing = attr.ArmorRepairing or 0
-    self.Attributes.Mechanics = attr.Mechanics or 0
+    self.Attributes = {}
+    self.Attributes.Strength = tonumber(attr.Strength) or 0
+    self.Attributes.Agility = tonumber(attr.Agility) or 0
+    self.Attributes.Intelligence = tonumber(attr.Intelligence) or 0
+    self.Attributes.Endurance = tonumber(attr.Endurance) or 0
+    self.Attributes.MachineGuns = tonumber(attr.MachineGuns) or 0
+    self.Attributes.Shotguns = tonumber(attr.Shotguns) or 0
+    self.Attributes.Snipers = tonumber(attr.Snipers) or 0
+    self.Attributes.WeaponCrafting = tonumber(attr.WeaponCrafting) or 0
+    self.Attributes.ArmorCrafting = tonumber(attr.ArmorCrafting) or 0
+    self.Attributes.Medicine = tonumber(attr.Medicine) or 0
+    self.Attributes.Farming = tonumber(attr.Farming) or 0
+    self.Attributes.WeaponRepairing = tonumber(attr.WeaponRepairing) or 0
+    self.Attributes.ArmorRepairing = tonumber(attr.ArmorRepairing) or 0
+    self.Attributes.Mechanics = tonumber(attr.Mechanics) or 0
+    return true
 end
 
 // Signals the owning client to copy its replicated attribute values into local fields.
@@ -49,33 +73,61 @@ end
 
 // Signals the owning client to copy its replicated core data into local fields.
 function ply:SendPlayerData()
+    local snapshot = {
+        XP = tonumber(self.XP) or 0,
+        Level = tonumber(self.Level) or 1,
+        MaxLevel = tonumber(self.MaxLevel) or 300,
+        Difficulty = tonumber(self.Difficulty) or 1,
+        CellX = tonumber(self.CellX) or 0,
+        CellY = tonumber(self.CellY) or 0,
+        CurrentSafeZoneId = self.CurrentSafeZoneId or "",
+        SkillPoints = tonumber(self.SkillPoints) or 0,
+        Health = tonumber(self.SavedHealth) or 100,
+        Stamina = tonumber(self.Stamina) or 100,
+        Hunger = tonumber(self.Hunger) or 100,
+        Thirst = tonumber(self.Thirst) or 100
+    }
     net.Start("ZM.RefreshPlayerData")
+        net.WriteString(util.TableToJSON(snapshot, false) or "{}")
     net.Send(self)
 end
 
 // Persists every player record. Health and survival values are sampled immediately before the write.
-function ply:Save()
-    ZM_SetPlayerAttributes(self:SteamID(), self.Attributes)
+function ply:Save(source)
+    if self.ZM_PersistentStateLoaded ~= true then
+        return false, "Player persistent state has not been loaded"
+    end
+
+    local attributesSaved, attributesError = ZM_SetPlayerAttributes(self:SteamID(), ZM_World.ActiveProfile, self.Attributes)
     self.SavedHealth = math.max(self:Health(), 0)
     self.Stamina = math.Clamp(self.Stamina or 100, 0, self:GetMaxStamina())
     self.Hunger = math.Clamp(self.Hunger or 100, 0, 100)
     self.Thirst = math.Clamp(self.Thirst or 100, 0, 100)
-    ZM_SetPlayerData(self:SteamID(), ZM_World.ActiveProfile, {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, CurrentSafeZoneId = self.CurrentSafeZoneId, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina, Hunger = self.Hunger, Thirst = self.Thirst})
+    local playerDataSaved, playerDataError = self:UpdatePlayerData(source or "player save")
+    if not attributesSaved then
+        return false, attributesError
+    end
+    return playerDataSaved, playerDataError
 end
 
 // Saves only the attributes table when an attribute changes.
 function ply:UpdateAttributes()
-    ZM_SetPlayerAttributes(self:SteamID(), self.Attributes)
+    return ZM_SetPlayerAttributes(self:SteamID(), ZM_World.ActiveProfile, self.Attributes)
 end
 
 // Saves only the core player-data row when progression, cell, or survival values change.
-function ply:UpdatePlayerData()
-    ZM_SetPlayerData(self:SteamID(), ZM_World.ActiveProfile, {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, CurrentSafeZoneId = self.CurrentSafeZoneId, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina, Hunger = self.Hunger, Thirst = self.Thirst})
+function ply:UpdatePlayerData(source)
+    if self.ZM_PersistentStateLoaded ~= true then
+        return false, "Player persistent state has not been loaded"
+    end
+
+    return ZM_SetPlayerData(self:SteamID(), ZM_World.ActiveProfile, {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, CurrentSafeZoneId = self.CurrentSafeZoneId, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina, Hunger = self.Hunger, Thirst = self.Thirst}, source or "runtime update")
 end
 
 // Records the standalone safe room the player is currently in without changing their city cell.
 // Pass nil to record that the player has returned to the city.
 function ply:SetCurrentSafeZone(safeZoneId)
+    local previousSafeZoneId = self.CurrentSafeZoneId
     if safeZoneId == nil or safeZoneId == "" then
         self.CurrentSafeZoneId = nil
     else
@@ -87,7 +139,11 @@ function ply:SetCurrentSafeZone(safeZoneId)
         self.CurrentSafeZoneId = safeZone.id
     end
 
-    self:UpdatePlayerData()
+    local updated, updateError = self:UpdatePlayerData("safe-zone update")
+    if not updated then
+        self.CurrentSafeZoneId = previousSafeZoneId
+        return false, updateError or "Could not persist current safe zone"
+    end
     self:SetNetworkPlayerData()
     if GAMEMODE and GAMEMODE.SendPlayerAtmosphereProfile then
         GAMEMODE:SendPlayerAtmosphereProfile(self)
@@ -111,10 +167,18 @@ function ply:SetWorldCell(worldX, worldY)
         return false, "World cell is outside the loaded world"
     end
 
+    local previousX, previousY = self.CellX, self.CellY
+    local previousSafeZoneId = self.CurrentSafeZoneId
     self.CellX = worldX
     self.CellY = worldY
     self.CurrentSafeZoneId = nil
-    self:UpdatePlayerData()
+    local updated, updateError = self:UpdatePlayerData("world-cell update")
+    if not updated then
+        self.CellX = previousX
+        self.CellY = previousY
+        self.CurrentSafeZoneId = previousSafeZoneId
+        return false, updateError or "Could not persist player world cell"
+    end
     self:SetNetworkPlayerData()
     if GAMEMODE and GAMEMODE.SendPlayerAtmosphereProfile then
         GAMEMODE:SendPlayerAtmosphereProfile(self)
@@ -159,7 +223,7 @@ function ply:ResetForWorldOrigin()
     self.Thirst = 100
     self:SetHealth(self.SavedHealth)
     self:UpdateAttributes()
-    self:UpdatePlayerData()
+    self:UpdatePlayerData("player reset")
     self:SetNetworkAttributes()
     self:SetNetworkPlayerData()
     self:SendPlayerAttributes()
@@ -174,28 +238,37 @@ end
 // Loads core progression and logical world position, defaulting a first-time player to the world origin.
 function ply:FetchPlayerData()
 
-    local data = ZM_GetPlayerData(self:SteamID(), ZM_World.ActiveProfile)
-    local worldData = ZM_World:GetData() or {}
-    local worldOrigin = worldData.world and worldData.world.origin or {}
-    local originX = tonumber(worldOrigin[1]) or 0
-    local originY = tonumber(worldOrigin[2]) or 0
+    local data, playerDataError = ZM_GetPlayerData(self:SteamID(), ZM_World.ActiveProfile)
+    if playerDataError then
+        return nil, playerDataError
+    end
+    local previouslyConnected = data ~= nil
+
+    if ZM_World.ActiveProfile == "preview" then
+        local recordDescription = "no record"
+        if data then
+            recordDescription = string.format(
+                "cell %s,%s; skill points %s; safe zone %s",
+                tostring(data.CellX),
+                tostring(data.CellY),
+                tostring(data.SkillPoints),
+                tostring(data.CurrentSafeZoneId or "none")
+            )
+        end
+        print(string.format(
+            "[ZombieSim] Preview data load: %s on %s -> %s",
+            self:SteamID(),
+            game.GetMap(),
+            recordDescription
+        ))
+    end
 
     if ( data == nil ) then
-        data = {
-            XP = 0,
-            Level = 1,
-            MaxLevel = 300,
-            Difficulty = 1, -- 1 = Easy, 2 = Normal, 3 = Hard, 4 = Insane
-            CellX = originX,
-            CellY = originY,
-            CurrentSafeZoneId = nil,
-            SkillPoints = 0,
-            Health = 100,
-            Stamina = 100,
-            Hunger = 100,
-            Thirst = 100
-        }
+        data = getDefaultPlayerData()
     end
+
+    local originX = tonumber((ZM_World:GetData().world.origin or {})[1]) or 0
+    local originY = tonumber((ZM_World:GetData().world.origin or {})[2]) or 0
 
     local originSafeZone = ZM_World:GetOriginSafeZone()
     local originCell = originSafeZone and ZM_World:GetCellById(originSafeZone.cell) or nil
@@ -205,19 +278,35 @@ function ply:FetchPlayerData()
         data.CellY = originY
     end
 
-    self.XP = data.XP or 0
-    self.Level = data.Level or 1
-    self.MaxLevel = data.MaxLevel or 300
-    self.Difficulty = data.Difficulty or 1 -- 1 = Easy, 2 = Normal, 3 = Hard, 4 = Insane
+    self.XP = tonumber(data.XP) or 0
+    self.Level = tonumber(data.Level) or 1
+    self.MaxLevel = tonumber(data.MaxLevel) or 300
+    self.Difficulty = tonumber(data.Difficulty) or 1 -- 1 = Easy, 2 = Normal, 3 = Hard, 4 = Insane
     self.CellX = tonumber(data.CellX) or originX
     self.CellY = tonumber(data.CellY) or originY
     self.CurrentSafeZoneId = data.CurrentSafeZoneId or nil
-    self.SkillPoints = data.SkillPoints or 0
+    self.SkillPoints = tonumber(data.SkillPoints) or 0
     self.SavedHealth = tonumber(data.Health) or 100
     self.Stamina = tonumber(data.Stamina) or 100
     self.Stamina = math.Clamp(self.Stamina, 0, self:GetMaxStamina())
     self.Hunger = math.Clamp(tonumber(data.Hunger) or 100, 0, 100)
     self.Thirst = math.Clamp(tonumber(data.Thirst) or 100, 0, 100)
+    if ZM_World.ActiveProfile == "preview" and ZM_DevConsole and ZM_DevConsole.WritePlayerHydration then
+        ZM_DevConsole:WritePlayerHydration({
+            steamId = self:SteamID(),
+            map = game.GetMap(),
+            recordFound = previouslyConnected,
+            cellX = self.CellX,
+            cellY = self.CellY,
+            currentSafeZoneId = self.CurrentSafeZoneId,
+            skillPoints = self.SkillPoints,
+            health = self.SavedHealth,
+            stamina = self.Stamina,
+            hunger = self.Hunger,
+            thirst = self.Thirst
+        })
+    end
+    return previouslyConnected
 end
 
 // Copies server attribute fields to replicated NWInts for the owning client and HUD.

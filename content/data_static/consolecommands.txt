@@ -1,0 +1,8 @@
+# ZombieSim development console bridge
+# Make each request identifier unique. One uncommented command runs per line.
+#
+# Example request header: request: preview-persistence-001
+# Example command: zombiesim_dev_persistence_report STEAM_0:1:31630
+
+# Example request header: request: preview-persistence-001
+# Example command: zombiesim_dev_persistence_report STEAM_0:1:31630

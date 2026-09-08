@@ -410,7 +410,7 @@
     },
     "variants": {
       "usageThreshold": 15,
-      "maximumPerRecipe": 3,
+      "maximumPerRecipe": 2,
       "suffix": "v"
     },
     "landmarkTemplatePatterns": {

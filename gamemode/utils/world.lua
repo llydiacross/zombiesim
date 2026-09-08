@@ -16,6 +16,10 @@ World.LauncherMapProfiles = {
 	zn_start = "city",
 	zn_preview = "preview"
 }
+World.MapDirectoryProfiles = {
+	city = "city",
+	preview = "preview"
+}
 World.CustomProfileDataPrefix = "data_static/zombiesim_world_"
 // Re-including this module during a Lua refresh must not discard a live world index.
 World.DataPath = World.DataPath or World.DataProfiles.city
@@ -32,6 +36,11 @@ local directions = {
 // Internal keys keep coordinate lookups O(1) after the index is loaded.
 local function coordinateKey(x, y)
 	return tostring(x) .. "," .. tostring(y)
+end
+
+local function mapBasename(mapPath)
+	local mapName = string.lower(string.match(tostring(mapPath or ""), "([^/\\]+)$") or mapPath or "")
+	return string.gsub(mapName, "%.bsp$", "")
 end
 
 // JSON references are zero-based ids, while Lua arrays begin at one.
@@ -166,6 +175,42 @@ function World:GetMapProfileMarker()
 	return selectedMarker
 end
 
+// Returns a profile only when a generated map basename belongs to exactly one profile.
+function World:GetUniqueProfileForMap(mapName)
+	mapName = mapBasename(mapName)
+	if mapName == "" then
+		return nil
+	end
+
+	self.MapProfileLookup = self.MapProfileLookup or {}
+	if self.MapProfileLookup[mapName] == nil then
+		local profiles = {}
+		for profile, path in pairs(self.DataProfiles) do
+			local data = util.JSONToTable(file.Read(path, "GAME") or "")
+			for _, cell in ipairs(data and data.cells or {}) do
+				if mapBasename(cell.map) == mapName then
+					profiles[profile] = true
+				end
+			end
+			for _, safeZone in ipairs(data and data.safeZones or {}) do
+				if mapBasename(safeZone.map) == mapName then
+					profiles[profile] = true
+				end
+			end
+		end
+		self.MapProfileLookup[mapName] = profiles
+	end
+
+	local selectedProfile
+	for profile in pairs(self.MapProfileLookup[mapName]) do
+		if selectedProfile then
+			return nil
+		end
+		selectedProfile = profile
+	end
+	return selectedProfile
+end
+
 // Returns the profile selected by the dedicated zn_world_profile map entity.
 function World:GetMapDataProfile()
 	local marker, markerError = self:GetMapProfileMarker()
@@ -180,8 +225,14 @@ function World:GetMapDataProfile()
 		return nil
 	end
 
-	local mapName = string.lower(string.match(game.GetMap(), "([^/\\]+)$") or game.GetMap())
-	return self.LauncherMapProfiles[mapName]
+	local mapPath = string.lower(game.GetMap())
+	local mapDirectory = string.match(mapPath, "^([^/\\]+)[/\\]")
+	if mapDirectory and self.MapDirectoryProfiles[mapDirectory] then
+		return self.MapDirectoryProfiles[mapDirectory]
+	end
+
+	local mapName = mapBasename(mapPath)
+	return self.LauncherMapProfiles[mapName] or self:GetUniqueProfileForMap(mapName)
 end
 
 // Returns the current map marker's non-negative opening delay in seconds.

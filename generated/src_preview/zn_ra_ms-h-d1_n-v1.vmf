@@ -1624,7 +1624,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/roads/tile_concrete_path.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1633,7 +1633,7 @@ entity
     "classname" "func_instance"
     "origin" "0 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1642,7 +1642,7 @@ entity
     "classname" "func_instance"
     "origin" "640 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1669,7 +1669,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1678,7 +1678,7 @@ entity
     "classname" "func_instance"
     "origin" "0 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "fixup_style" "0"
 }
 entity
@@ -1943,13 +1943,13 @@ entity
 {
     "id" "716"
     "classname" "env_cubemap"
-    "origin" "1280 0 96"
+    "origin" "640 0 96"
 }
 entity
 {
     "id" "717"
     "classname" "env_cubemap"
-    "origin" "640 0 96"
+    "origin" "0 0 96"
 }
 cameras
 {

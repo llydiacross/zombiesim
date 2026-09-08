@@ -13,15 +13,15 @@ local minimapZoomOutDown = false
 local minimapViewModes = {}
 local minimapModeDown = false
 local compassCellSize = 3200
-local compassIcons = {
-    waypoint = "W",
-    landmark = "*",
-    objective = "!",
-    safezone = "S",
-    trader = "$",
-    medical = "+",
-    loot = "+",
-    warning = "!"
+local compassMarkerLabels = {
+    waypoint = "Waypoint",
+    landmark = "Landmark",
+    objective = "Objective",
+    safezone = "Safe Zone",
+    trader = "Trader",
+    medical = "Medical",
+    loot = "Loot",
+    warning = "Warning"
 }
 local minimapColors = {
     black = Color(7, 8, 10),
@@ -76,13 +76,22 @@ local function getHudPlayerCell(player)
     return gridX and ZM_World:GetCell(gridX, gridY) or nil
 end
 
+local function hasCurrentSafeZone(player)
+    local safeZoneId = player:GetNWString("CurrentSafeZoneId", "")
+    return safeZoneId ~= "" and safeZoneId ~= "NULL"
+end
+
 local function normalizeCompassAngle(angle)
     return (angle + 180) % 360 - 180
 end
 
-local function getCompassIcon(icon)
-    icon = string.lower(tostring(icon or "objective"))
-    return compassIcons[icon] or string.sub(icon, 1, 2)
+local function getCompassMarkerLabel(markerType, label)
+    label = string.Trim(tostring(label or ""))
+    if label ~= "" then
+        return label
+    end
+    markerType = string.lower(tostring(markerType or "objective"))
+    return compassMarkerLabels[markerType] or "Marker"
 end
 
 local function getCellCompassYaw(player, targetCell)
@@ -156,7 +165,7 @@ local function drawPlayerCompass()
     local y = 18
     local heading = player:EyeAngles().y
     local playerCell = getHudPlayerCell(player)
-    local isInDen = player:GetNWString("CurrentSafeZoneId", "") ~= ""
+    local isInDen = hasCurrentSafeZone(player)
 
     surface.SetDrawColor(7, 8, 10, 235)
     surface.DrawRect(x, y, width, height)
@@ -182,11 +191,11 @@ local function drawPlayerCompass()
     end
 
     if not isInDen and playerCell and ZM_WorldMap and ZM_WorldMap.WaypointCell and ZM_WorldMap.WaypointProfile == ZM_World.ActiveProfile then
-        drawCompassMarker(x, y, width, heading, getCellCompassYaw(player, ZM_WorldMap.WaypointCell), getCompassIcon("waypoint"), Color(246, 210, 48))
+        drawCompassMarker(x, y, width, heading, getCellCompassYaw(player, ZM_WorldMap.WaypointCell), getCompassMarkerLabel("waypoint"), Color(246, 210, 48))
     end
     if not isInDen and playerCell then
         for _, target in ipairs(getNearbyLandmarkCompassTargets(playerCell)) do
-            drawCompassMarker(x, y, width, heading, getCellCompassYaw(player, target.cell), getCompassIcon("landmark"), Color(52, 220, 176))
+            drawCompassMarker(x, y, width, heading, getCellCompassYaw(player, target.cell), getCompassMarkerLabel("landmark"), Color(52, 220, 176))
         end
     end
     for _, entity in ipairs(ents.GetAll()) do
@@ -194,7 +203,7 @@ local function drawPlayerCompass()
         if marker then
             local offset = entity:WorldSpaceCenter() - player:EyePos()
             if offset:LengthSqr() > 2500 then
-                drawCompassMarker(x, y, width, heading, offset:Angle().y, getCompassIcon(marker.icon), Color(239, 57, 72))
+                drawCompassMarker(x, y, width, heading, offset:Angle().y, getCompassMarkerLabel(marker.icon, marker.label), Color(239, 57, 72))
             end
         end
     end
@@ -215,16 +224,10 @@ local function getMinimapCellMaterial(cell)
     return minimapMaterials[key]
 end
 
-local function getMinimapSatelliteMaterial()
-    if not ZM_World then
-        return nil
-    end
-
-    local profile = ZM_World.ActiveProfile or "city"
-    if not minimapSatelliteMaterials[profile] then
-        minimapSatelliteMaterials[profile] = Material("worlds/" .. profile .. "/map_layers/satellite.png", "smooth")
-    end
-    return minimapSatelliteMaterials[profile]
+local function getCellTextureCoordinates(position)
+    local cellSpan = minimapCellHalfExtent * 2
+    return math.Clamp((position.x + minimapCellHalfExtent) / cellSpan, 0, 1),
+        math.Clamp((minimapCellHalfExtent - position.y) / cellSpan, 0, 1)
 end
 
 local function getMinimapViewMode(isInSafeZone)
@@ -232,12 +235,12 @@ local function getMinimapViewMode(isInSafeZone)
     local context = isInSafeZone and "safezone" or "world"
     local key = profile .. "/" .. context
     if not minimapViewModes[key] then
-        local defaultMode = isInSafeZone and "map" or "satellite"
+        local defaultMode = isInSafeZone and "map" or "cell"
         local savedMode = cookie.GetString("zombiesim_minimap_" .. profile .. "_" .. context .. "_mode", defaultMode)
         if isInSafeZone then
             minimapViewModes[key] = savedMode == "blank" and "blank" or "map"
         else
-            minimapViewModes[key] = savedMode == "map" and "map" or "satellite"
+            minimapViewModes[key] = savedMode == "map" and "map" or "cell"
         end
     end
     return minimapViewModes[key]
@@ -250,42 +253,34 @@ local function setMinimapViewMode(isInSafeZone, mode)
     cookie.Set("zombiesim_minimap_" .. profile .. "_" .. context .. "_mode", mode)
 end
 
-local function drawSatelliteMinimap(x, y, width, height, player, zoom)
-    local worldData = ZM_World and ZM_World:GetData() or nil
-    local material = getMinimapSatelliteMaterial()
-    if not worldData or not material or material:IsError() then
+local function drawCellTextureMinimap(x, y, width, height, cell, position, zoom)
+    local material = getMinimapCellMaterial(cell)
+    if not material or material:IsError() then
         return false
     end
 
-    local gridWidth = tonumber(worldData.world and worldData.world.grid and worldData.world.grid[1]) or 0
-    local gridHeight = tonumber(worldData.world and worldData.world.grid and worldData.world.grid[2]) or 0
-    local gridX, gridY = ZM_World:GetGridCoordinates(player:GetNWInt("CellX", 0), player:GetNWInt("CellY", 0))
-    if gridWidth < 1 or gridHeight < 1 or not gridX or not gridY then
-        return false
-    end
-
-    local position = player:GetPos()
-    local cellOffsetU = math.Clamp((position.x + minimapCellHalfExtent) / (minimapCellHalfExtent * 2), 0, 1)
-    local cellOffsetV = math.Clamp((minimapCellHalfExtent - position.y) / (minimapCellHalfExtent * 2), 0, 1)
+    local cellOffsetU, cellOffsetV = getCellTextureCoordinates(position)
     local viewCellHeight = 0.46 / zoom
     local viewCellWidth = viewCellHeight * width / height
-    local viewU = math.min(1, viewCellWidth / gridWidth)
-    local viewV = math.min(1, viewCellHeight / gridHeight)
-    local centerU = (gridX + cellOffsetU) / gridWidth
-    local centerV = (gridY + cellOffsetV) / gridHeight
-    local startU = math.Clamp(centerU - viewU * 0.5, 0, 1 - viewU)
-    local startV = math.Clamp(centerV - viewV * 0.5, 0, 1 - viewV)
+    local viewU = math.min(0.88, viewCellWidth)
+    local viewV = math.min(1, viewCellHeight)
+    local startU = math.Clamp(cellOffsetU - viewU * 0.5, 0, 1 - viewU)
+    local startV = math.Clamp(cellOffsetV - viewV * 0.5, 0, 1 - viewV)
     surface.SetMaterial(material)
     surface.SetDrawColor(255, 255, 255, 255)
     surface.DrawTexturedRectUV(x, y, width, height, startU, startV, startU + viewU, startV + viewV)
     return true, {
-        gridWidth = gridWidth,
-        gridHeight = gridHeight,
         startU = startU,
         startV = startV,
         viewU = viewU,
         viewV = viewV
     }
+end
+
+local function projectCellTexturePosition(x, y, width, height, position, transform)
+    local cellOffsetU, cellOffsetV = getCellTextureCoordinates(position)
+    return x + (cellOffsetU - transform.startU) / transform.viewU * width,
+        y + (cellOffsetV - transform.startV) / transform.viewV * height
 end
 
 local function getMinimapZoom()
@@ -352,21 +347,6 @@ local function drawOtherPlayerMinimapMarker(mapX, mapY, mapWidth, mapHeight, mar
     )
 end
 
-local function getSatelliteMinimapPlayerPosition(mapX, mapY, mapWidth, mapHeight, otherPlayer, transform)
-    local gridX, gridY = ZM_World:GetGridCoordinates(otherPlayer:GetNWInt("CellX", 0), otherPlayer:GetNWInt("CellY", 0))
-    if not gridX or not gridY then
-        return nil
-    end
-
-    local position = otherPlayer:GetPos()
-    local cellU = math.Clamp((position.x + minimapCellHalfExtent) / (minimapCellHalfExtent * 2), 0, 1)
-    local cellV = math.Clamp((minimapCellHalfExtent - position.y) / (minimapCellHalfExtent * 2), 0, 1)
-    local mapU = (gridX + cellU) / transform.gridWidth
-    local mapV = (gridY + cellV) / transform.gridHeight
-    return mapX + (mapU - transform.startU) / transform.viewU * mapWidth,
-        mapY + (mapV - transform.startV) / transform.viewV * mapHeight
-end
-
 local function drawPlayerMinimap()
     local player = LocalPlayer()
     if not IsValid(player) then return end
@@ -390,13 +370,13 @@ local function drawPlayerMinimap()
     surface.SetDrawColor(0, 0, 0, 180)
     surface.DrawRect(mapX, mapY, mapWidth, mapHeight)
 
-    local isInDen = player:GetNWString("CurrentSafeZoneId", "") ~= ""
+    local isInDen = hasCurrentSafeZone(player)
     local cell = not isInDen and getHudPlayerCell(player) or nil
     local position = player:GetPos()
     local zoom = getMinimapZoom()
     local minimapViewMode = getMinimapViewMode(isInDen)
     local drewMap = false
-    local satelliteTransform
+    local cellTextureTransform
     local localMapViewHeight = minimapCellHalfExtent * 2 * 0.46 / zoom
     if minimapViewMode == "map" and ZM_WorldMap and ZM_WorldMap.EnsureLocalMapCapture and ZM_WorldMap.DrawLocalMap then
         if ZM_WorldMap:EnsureLocalMapCapture() then
@@ -410,31 +390,20 @@ local function drawPlayerMinimap()
             )
         end
     end
-    if not drewMap and minimapViewMode == "satellite" then
-        drewMap, satelliteTransform = drawSatelliteMinimap(mapX, mapY, mapWidth, mapHeight, player, zoom)
-    end
     if not drewMap and not isInDen then
-        local material = getMinimapCellMaterial(cell)
-        if material and not material:IsError() then
-            local viewV = 0.46 / zoom
-            local viewU = math.min(0.88, viewV * mapWidth / mapHeight)
-            local centerU = math.Clamp((position.x + minimapCellHalfExtent) / (minimapCellHalfExtent * 2), 0, 1)
-            local centerV = math.Clamp((minimapCellHalfExtent - position.y) / (minimapCellHalfExtent * 2), 0, 1)
-            local startU = math.Clamp(centerU - viewU * 0.5, 0, 1 - viewU)
-            local startV = math.Clamp(centerV - viewV * 0.5, 0, 1 - viewV)
-            surface.SetMaterial(material)
-            surface.SetDrawColor(255, 255, 255, 255)
-            surface.DrawTexturedRectUV(mapX, mapY, mapWidth, mapHeight, startU, startV, startU + viewU, startV + viewV)
-            drewMap = true
-        end
+        drewMap, cellTextureTransform = drawCellTextureMinimap(mapX, mapY, mapWidth, mapHeight, cell, position, zoom)
     end
     if drewMap then
+        local playerMarkerX, playerMarkerY = mapX + mapWidth * 0.5, mapY + mapHeight * 0.5
+        if cellTextureTransform then
+            playerMarkerX, playerMarkerY = projectCellTexturePosition(mapX, mapY, mapWidth, mapHeight, position, cellTextureTransform)
+        end
         surface.SetDrawColor(7, 8, 10, 255)
-        surface.DrawRect(mapX + mapWidth * 0.5 - 6, mapY + mapHeight * 0.5 - 6, 12, 12)
+        surface.DrawRect(playerMarkerX - 6, playerMarkerY - 6, 12, 12)
         surface.SetDrawColor(244, 244, 246, 255)
-        surface.DrawOutlinedRect(mapX + mapWidth * 0.5 - 4, mapY + mapHeight * 0.5 - 4, 8, 8, 1)
+        surface.DrawOutlinedRect(playerMarkerX - 4, playerMarkerY - 4, 8, 8, 1)
         surface.SetDrawColor(minimapColors.health.r, minimapColors.health.g, minimapColors.health.b, 255)
-        surface.DrawRect(mapX + mapWidth * 0.5 - 2, mapY + mapHeight * 0.5 - 2, 4, 4)
+        surface.DrawRect(playerMarkerX - 2, playerMarkerY - 2, 4, 4)
 
         for _, otherPlayer in ipairs(getAllPlayers()) do
             if otherPlayer ~= player and IsValid(otherPlayer) and otherPlayer:Alive() then
@@ -449,8 +418,8 @@ local function drawPlayerMinimap()
                         localMapViewHeight,
                         otherPlayer:GetPos()
                     )
-                elseif satelliteTransform then
-                    otherX, otherY = getSatelliteMinimapPlayerPosition(mapX, mapY, mapWidth, mapHeight, otherPlayer, satelliteTransform)
+                elseif cellTextureTransform then
+                    otherX, otherY = projectCellTexturePosition(mapX, mapY, mapWidth, mapHeight, otherPlayer:GetPos(), cellTextureTransform)
                 end
                 if otherX and otherY then
                     drawOtherPlayerMinimapMarker(mapX, mapY, mapWidth, mapHeight, otherX, otherY, otherPlayer)
@@ -499,13 +468,13 @@ hook.Add("Think", "ZM.PlayerMinimap.Mode", function()
     if isDown and not minimapModeDown and not isMapOpen and not gui.IsGameUIVisible() and not IsValid(vgui.GetKeyboardFocus()) then
         local player = LocalPlayer()
         if IsValid(player) then
-            local isInSafeZone = player:GetNWString("CurrentSafeZoneId", "") ~= ""
+            local isInSafeZone = hasCurrentSafeZone(player)
             local currentMode = getMinimapViewMode(isInSafeZone)
             local targetMode
             if isInSafeZone then
                 targetMode = currentMode == "map" and "blank" or "map"
             else
-                targetMode = currentMode == "map" and "satellite" or "map"
+                targetMode = currentMode == "map" and "cell" or "map"
             end
             if targetMode ~= "map" or ZM_WorldMap and ZM_WorldMap:EnsureLocalMapCapture() then
                 setMinimapViewMode(isInSafeZone, targetMode)

@@ -1,5 +1,6 @@
 param(
     [string]$RequiredCellList = '',
+    [string]$PlanData = '',
     [Alias('MapDirectory')]
     [string]$CellDirectory = '',
     [string]$BuildDirectory = '',
@@ -7,6 +8,7 @@ param(
     [int]$MaxPortals = 0,
     [string]$ReportPath = '',
     [switch]$RefreshPortalData,
+    [switch]$ForcePortalData,
     [switch]$ListOnly,
     [string]$WorldProfile = '',
     [switch]$Preview,
@@ -27,6 +29,20 @@ function Get-BudgetValue {
         return [int]$Settings.compilation.visibilityBudget[$Name]
     }
     return $Fallback
+}
+
+function Get-PortalMetrics {
+    param([string]$PortalPath)
+
+    if (-not (Test-Path -LiteralPath $PortalPath -PathType Leaf)) { return $null }
+    $header = @(Get-Content -LiteralPath $PortalPath -TotalCount 3)
+    if ($header.Count -lt 3 -or $header[0].Trim() -ne 'PRT1' -or $header[1].Trim() -notmatch '^\d+$' -or $header[2].Trim() -notmatch '^\d+$') {
+        return $null
+    }
+    return [pscustomobject]@{
+        portalClusters = [int]$header[1].Trim()
+        portals = [int]$header[2].Trim()
+    }
 }
 
 function Get-TileMetrics {
@@ -144,6 +160,15 @@ if ([string]::IsNullOrWhiteSpace($RequiredCellList)) {
 if ([string]::IsNullOrWhiteSpace($RequiredCellList) -or -not (Test-Path -LiteralPath $RequiredCellList -PathType Leaf)) {
     throw 'A required-cell list is required. Pass -RequiredCellList with a *_required_cell_vmfs.txt path.'
 }
+if ([string]::IsNullOrWhiteSpace($PlanData)) {
+    $planFilePattern = "$($profileSettings.filePrefix)_grid_*_template_plan.json"
+    $PlanData = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter $planFilePattern -File |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1)[0].FullName
+}
+if ([string]::IsNullOrWhiteSpace($PlanData) -or -not (Test-Path -LiteralPath $PlanData -PathType Leaf)) {
+    throw 'A template plan is required. Pass -PlanData with a <profile>_grid_*_template_plan.json path.'
+}
 if ([string]::IsNullOrWhiteSpace($BuildDirectory)) {
     $BuildDirectory = Join-Path $projectRoot $profileSettings.buildDirectory
 }
@@ -162,25 +187,55 @@ if ($MaxPortals -lt 1) {
 if ($MaxPortalClusters -lt 1 -or $MaxPortals -lt 1) {
     throw 'Visibility budgets must be greater than zero.'
 }
+if ($ForcePortalData -and -not $RefreshPortalData) {
+    throw 'ForcePortalData requires RefreshPortalData.'
+}
 
-$requiredVmfFiles = @(Get-Content -LiteralPath $RequiredCellList |
+$cityVmfFiles = @(Get-Content -LiteralPath $RequiredCellList |
     ForEach-Object { $_.Trim() } |
     Where-Object { $_ -and $_ -match '\.vmf$' } |
     Sort-Object -Unique)
+$plan = Get-Content -Raw -LiteralPath $PlanData | ConvertFrom-Json
+if ($plan.schemaVersion -lt 2) {
+    throw 'The template plan must use schema version 2 or later so standalone safe-zone maps are available.'
+}
+$safeZoneVmfFiles = @($plan.safeZoneMaps | ForEach-Object { [string]$_.mapFilename } |
+    Where-Object { $_ -and $_ -match '\.vmf$' } |
+    Sort-Object -Unique)
+$requiredVmfFiles = @($cityVmfFiles + $safeZoneVmfFiles | Sort-Object -Unique)
 if ($requiredVmfFiles.Count -eq 0) {
     throw "No .vmf filenames were found in $RequiredCellList"
 }
 
 if ($RefreshPortalData) {
-    $compileArguments = @{
-        BuildDirectory = $BuildDirectory
-        MapFilename = $requiredVmfFiles
-        WorldProfile = $worldGenerationProfile.Name
-        VBSPOnly = $true
-        Force = $true
-        SettingsPath = $SettingsPath
+    $portalRefreshVmfFiles = [System.Collections.Generic.List[string]]::new()
+    foreach ($vmfFilename in $requiredVmfFiles) {
+        $mapName = [System.IO.Path]::GetFileNameWithoutExtension($vmfFilename)
+        $sourcePath = Join-Path $CellDirectory $vmfFilename
+        $buildBspPath = Join-Path $BuildDirectory "$mapName.bsp"
+        $portalPath = Join-Path $BuildDirectory "$mapName.prt"
+        $portalMetrics = Get-PortalMetrics $portalPath
+        $needsRefresh = $ForcePortalData -or $null -eq $portalMetrics -or -not (Test-Path -LiteralPath $buildBspPath -PathType Leaf)
+        if (-not $needsRefresh -and (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+            $sourceWriteTime = (Get-Item -LiteralPath $sourcePath).LastWriteTimeUtc
+            $needsRefresh = $sourceWriteTime -gt (Get-Item -LiteralPath $portalPath).LastWriteTimeUtc -or $sourceWriteTime -gt (Get-Item -LiteralPath $buildBspPath).LastWriteTimeUtc
+        }
+        if ($needsRefresh) { $portalRefreshVmfFiles.Add($vmfFilename) }
     }
-    & (Join-Path $PSScriptRoot 'compile_cell_vmfs.ps1') @compileArguments
+    if ($portalRefreshVmfFiles.Count -gt 0) {
+        Write-Output "Refreshing portal data for $($portalRefreshVmfFiles.Count) of $($requiredVmfFiles.Count) required maps."
+        $compileArguments = @{
+            BuildDirectory = $BuildDirectory
+            MapFilename = @($portalRefreshVmfFiles)
+            WorldProfile = $worldGenerationProfile.Name
+            VBSPOnly = $true
+            Force = $true
+            SettingsPath = $SettingsPath
+        }
+        & (Join-Path $PSScriptRoot 'compile_cell_vmfs.ps1') @compileArguments
+    } else {
+        Write-Output "Portal data is current for all $($requiredVmfFiles.Count) required maps; VBSP skipped."
+    }
 }
 
 $results = [System.Collections.Generic.List[object]]::new()
@@ -188,31 +243,20 @@ $tileMetricsCache = @{}
 foreach ($vmfFilename in $requiredVmfFiles) {
     $mapName = [System.IO.Path]::GetFileNameWithoutExtension($vmfFilename)
     $portalPath = Join-Path $BuildDirectory "$mapName.prt"
-    if (-not (Test-Path -LiteralPath $portalPath -PathType Leaf)) {
+    $portalMetrics = Get-PortalMetrics $portalPath
+    if ($null -eq $portalMetrics) {
         $results.Add([pscustomobject]@{
             map = $vmfFilename
             portalClusters = $null
             portals = $null
-            status = 'missing-portal-file'
+            status = if (Test-Path -LiteralPath $portalPath -PathType Leaf) { 'invalid-portal-file' } else { 'missing-portal-file' }
             tileDiagnostics = @()
         })
         continue
     }
 
-    $header = @(Get-Content -LiteralPath $portalPath -TotalCount 3)
-    if ($header.Count -lt 3 -or $header[0].Trim() -ne 'PRT1' -or $header[1].Trim() -notmatch '^\d+$' -or $header[2].Trim() -notmatch '^\d+$') {
-        $results.Add([pscustomobject]@{
-            map = $vmfFilename
-            portalClusters = $null
-            portals = $null
-            status = 'invalid-portal-file'
-            tileDiagnostics = @()
-        })
-        continue
-    }
-
-    $portalClusters = [int]$header[1].Trim()
-    $portals = [int]$header[2].Trim()
+    $portalClusters = $portalMetrics.portalClusters
+    $portals = $portalMetrics.portals
     $overClusterBudget = $portalClusters -gt $MaxPortalClusters
     $overPortalBudget = $portals -gt $MaxPortals
     $tileDiagnostics = if ($overClusterBudget -or $overPortalBudget) {
@@ -237,7 +281,10 @@ $report = [ordered]@{
     generatedUtc = [DateTime]::UtcNow.ToString('o')
     worldProfile = $worldGenerationProfile.Name
     requiredCellList = $RequiredCellList
+    planData = $PlanData
     buildDirectory = $BuildDirectory
+    cityRecipeCount = $cityVmfFiles.Count
+    safeZoneMapCount = $safeZoneVmfFiles.Count
     maxPortalClusters = $MaxPortalClusters
     maxPortals = $MaxPortals
     checkedCount = $orderedResults.Count
@@ -253,7 +300,7 @@ if ($reportDirectory) {
 [System.IO.File]::WriteAllText($ReportPath, ($report | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
 
 if (-not $ListOnly) {
-    Write-Output "Checked recipes: $($orderedResults.Count); portal-cluster budget: $MaxPortalClusters; portal budget: $MaxPortals; over budget: $($overBudgetResults.Count); invalid or missing .prt files: $($invalidResults.Count); report: $ReportPath"
+    Write-Output "Checked maps: $($orderedResults.Count) ($($cityVmfFiles.Count) city recipes, $($safeZoneVmfFiles.Count) standalone dens); portal-cluster budget: $MaxPortalClusters; portal budget: $MaxPortals; over budget: $($overBudgetResults.Count); invalid or missing .prt files: $($invalidResults.Count); report: $ReportPath"
 }
 foreach ($result in @($overBudgetResults + $invalidResults)) {
     $clusterCount = if ($null -eq $result.portalClusters) { '-' } else { $result.portalClusters }

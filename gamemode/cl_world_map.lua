@@ -1404,6 +1404,15 @@ function WorldMap:Open()
     placesContent:SetVisible(false)
     placesContent.Paint = function() end
 
+    local previewContent
+    local showPreviewTools = ZM_Preview and ZM_Preview:IsActive()
+    if showPreviewTools then
+        previewContent = vgui.Create("DPanel", sidebarContent)
+        previewContent:Dock(FILL)
+        previewContent:SetVisible(false)
+        previewContent.Paint = function() end
+    end
+
     local layerCheckboxes = {}
     local selectAllButton = vgui.Create("DButton", layersContent)
     selectAllButton:Dock(TOP)
@@ -1475,9 +1484,16 @@ function WorldMap:Open()
 
     local layersTabButton = createSidebarTab(sidebarTabs, "layers", "LAYERS")
     layersTabButton:Dock(LEFT)
-    layersTabButton:SetWide(math.floor((sidebar:GetWide() - 16) * 0.5))
+    layersTabButton:SetWide(math.floor((sidebar:GetWide() - 16) / (showPreviewTools and 3 or 2)))
     local placesTabButton = createSidebarTab(sidebarTabs, "places", "PLACES")
-    placesTabButton:Dock(FILL)
+    if showPreviewTools then
+        placesTabButton:Dock(LEFT)
+        placesTabButton:SetWide(math.floor((sidebar:GetWide() - 16) / 3))
+        local previewTabButton = createSidebarTab(sidebarTabs, "preview", "TOOLS")
+        previewTabButton:Dock(FILL)
+    else
+        placesTabButton:Dock(FILL)
+    end
 
     local function createDirectoryTab(mode, label)
         local button = vgui.Create("DButton", directoryModeTabs)
@@ -1591,6 +1607,9 @@ function WorldMap:Open()
         sidebarView = view
         layersContent:SetVisible(view == "layers")
         placesContent:SetVisible(view == "places")
+        if previewContent then
+            previewContent:SetVisible(view == "preview")
+        end
         sidebarContent:InvalidateLayout(true)
     end
 
@@ -1792,13 +1811,21 @@ function WorldMap:Open()
     if WorldMap.RenderMode == "satellite" and not satelliteAvailable then
         WorldMap:SetRenderMode("default")
     end
-    addRenderModeButton("default", "DEFAULT", 68, true, "Map View")
+    addRenderModeButton("default", "ATLAS", 68, true, "Map View")
     addRenderModeButton("satellite", "SATELLITE", 84, satelliteAvailable, "Satellite View")
     addRenderModeButton("map", "MAP", 66, true, "Level View")
 
     rebuildLayerControls()
     rebuildDirectory()
     setSidebarView("layers")
+
+    if previewContent and ZM_Preview and ZM_Preview.CreateMapPane then
+        ZM_Preview:CreateMapPane(previewContent, {
+            getSelectedCell = function() return WorldMap.SelectedCell end,
+            selectCell = selectCell,
+            focusCell = function(cell) canvas:FocusCell(cell) end
+        })
+    end
 
     selectCell(self.SelectedCell)
 end

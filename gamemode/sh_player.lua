@@ -1,41 +1,8 @@
 // Shared Player extensions. Server-owned values are mirrored through NW vars for client UI.
 local ply = FindMetaTable("Player")
 
-// Default persistent attributes for a newly created player.
-ply.Attributes = {
-    Strength = 0,
-    Agility = 0,
-    Intelligence = 0,
-    Endurance = 0,
-    MachineGuns = 0,
-    Shotguns = 0,
-    Snipers = 0,
-    WeaponCrafting = 0,
-    ArmorCrafting = 0,
-    Medicine = 0,
-    Farming = 0,
-    WeaponRepairing = 0,
-    ArmorRepairing = 0,
-    Mechanics = 0
-}
-
-// Default persistent player state. CellX/CellY are zero-based logical world coordinates.
-ply.XP = 0
-ply.Level = 1
-ply.MaxLevel = 300
-ply.Difficulty = 1 -- 1 = Easy, 2 = Normal, 3 = Hard, 4 = Insane
-ply.CellX = 0
-ply.CellY = 0
-ply.CurrentSafeZoneId = nil
-ply.SkillPoints = 0
-ply.SavedHealth = 100
-ply.Stamina = 100
-ply.Hunger = 100
-ply.Thirst = 100
-
-// Game-specific runtime values that are not individual database columns.
+// Game-wide progression constants. Mutable state belongs on each Player instance.
 ply.ExperiencePerLevel = 1000 // equals a level
-ply.PreviouslyConnected = false
 ply.SkillPointsPerLevel = 1 // how many skill points the player gets per level up
 
 // Returns the player's saved logical world x/y coordinates, or nil if the stored values are invalid.

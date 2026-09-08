@@ -3,6 +3,7 @@ local ply = FindMetaTable("Player")
 
 // Copies all replicated attribute NWInts into fields used by local HUD/gameplay code.
 function ply:SetPlayerAttributes()
+    self.Attributes = {}
     self.Attributes.Strength = self:GetNWInt("Strength")
     self.Attributes.Agility = self:GetNWInt("Agility")
     self.Attributes.Intelligence = self:GetNWInt("Intelligence")
@@ -19,12 +20,26 @@ function ply:SetPlayerAttributes()
     self.Attributes.Mechanics = self:GetNWInt("Mechanics")
 end
 
-// Copies the replicated core progression NWInts into local fields.
-// Cell position remains available directly as NWInts until client code needs it.
-function ply:SetPlayerData()
-    self.XP = self:GetNWInt("XP")
-    self.Level = self:GetNWInt("Level")
-    self.MaxLevel = self:GetNWInt("MaxLevel")
-    self.Difficulty = self:GetNWInt("Difficulty")
-    self.CurrentSafeZoneId = self:GetNWString("CurrentSafeZoneId", "")
+// Copies a server snapshot into fields used by local UI and gameplay code.
+function ply:SetPlayerData(snapshot)
+    snapshot = type(snapshot) == "table" and snapshot or {}
+    local function integer(key, fallback)
+        return math.floor(tonumber(snapshot[key]) or fallback)
+    end
+    local function number(key, fallback)
+        return tonumber(snapshot[key]) or fallback
+    end
+
+    self.XP = integer("XP", self:GetNWInt("XP"))
+    self.Level = integer("Level", self:GetNWInt("Level", 1))
+    self.MaxLevel = integer("MaxLevel", self:GetNWInt("MaxLevel", 300))
+    self.Difficulty = integer("Difficulty", self:GetNWInt("Difficulty", 1))
+    self.CellX = integer("CellX", self:GetNWInt("CellX"))
+    self.CellY = integer("CellY", self:GetNWInt("CellY"))
+    self.CurrentSafeZoneId = tostring(snapshot.CurrentSafeZoneId or self:GetNWString("CurrentSafeZoneId", ""))
+    self.SkillPoints = integer("SkillPoints", self:GetNWInt("SkillPoints"))
+    self.SavedHealth = integer("Health", self:GetNWInt("Health", 100))
+    self.Stamina = number("Stamina", self:GetNWFloat("Stamina", 100))
+    self.Hunger = number("Hunger", self:GetNWFloat("Hunger", 100))
+    self.Thirst = number("Thirst", self:GetNWFloat("Thirst", 100))
 end

@@ -167,7 +167,7 @@ Add `-PrioritizePortalCost` to that reuse build to run the maps with the most po
 
 ## Visibility Budget Check
 
-Use the visibility-budget check after changing structural tile geometry. With `-RefreshPortalData`, it first runs VBSP only for every required recipe, then reads each generated `.prt` file to report its portal-cluster and portal counts without running VVIS or VRAD:
+Use the visibility-budget check after changing structural tile geometry. With `-RefreshPortalData`, it runs VBSP only for city recipes and standalone den maps whose portal data is missing, invalid, or older than the source VMF, then reads each generated `.prt` file to report its portal-cluster and portal counts without running VVIS or VRAD. Add `-ForcePortalData` when a full clean portal rebuild is required:
 
 ```powershell
 .\bin\check_vis_budgets.ps1 -WorldProfile preview -RefreshPortalData
@@ -646,8 +646,8 @@ Variants prevent a highly repeated recipe from making every intersection look id
 | Setting | What it controls |
 | --- | --- |
 | `usageThreshold` | A base recipe gets variants only when it is used more than this number of times. `15` means 16 or more uses. |
-| `maximumPerRecipe` | Maximum number of layouts made for one repeated base recipe. The generator distributes uses as evenly as possible among them. The current limit is `3`. |
-| `suffix` | Letter before the variation number in filenames. The current limit produces `-v1` through `-v3`. Keep `x` free for the future `_2x` prefab-footprint convention. |
+| `maximumPerRecipe` | Maximum number of layouts made for one repeated base recipe. The generator distributes uses as evenly as possible among them. The current limit is `2`. |
+| `suffix` | Letter before the variation number in filenames. The current limit produces `-v1` and `-v2`. Keep `x` free for the future `_2x` prefab-footprint convention. |
 
 Variants preserve road topology and transport pieces. They vary non-transport placement choices such as buildings and decorations. They are deterministic: the same city seed and settings produce the same variant assignments.
 
@@ -669,7 +669,7 @@ These tables shorten recipe filenames so they remain readable and practical in G
 | `transportFeatures` | A bridge or on-ramp receives a compact transport segment. |
 | `landmarks` | `petrol-station` becomes `ps`. |
 
-`format` is the literal filename pattern: `zn_<environment>_<topology>-<orientation>[-<transport>]-d<density>_<landmarks>.vmf`. The bracketed transport segment is removed when a cell has no bridge or ramp feature. Keep every code short, lowercase, and unique within its group. Changing this pattern or its abbreviations changes VMF names; rebuild and update any compile or map-loading references afterwards.
+`format` is the literal filename pattern: `zn_<environment>_<topology>-<orientation>[-<transport>]-d<density>_<landmarks>.vmf`. The bracketed transport segment is removed when a cell has no bridge or ramp feature. Macro layouts append `-m<width><height>-<template>-p<x>-<y>-q<quarter-turn>`; for example, `m22-c2a-p0-3-q0` means the `commercial_2a` 2x2 prefab anchored at `(0,3)` with zero rotation. Keep every code short, lowercase, and unique within its group. Changing this pattern or its abbreviations changes VMF names; rebuild and update any compile or map-loading references afterwards.
 
 ### Complete Filename Reference
 

@@ -2,6 +2,7 @@
 AddCSLuaFile( "shared.lua" )
 AddCSLuaFile( "sh_player.lua" )
 AddCSLuaFile( "sh_compass.lua" )
+AddCSLuaFile( "sh_preview.lua" )
 AddCSLuaFile( "cl_init.lua" )
 AddCSLuaFile( "cl_skin.lua" )
 AddCSLuaFile( "cl_player.lua" )
@@ -11,6 +12,8 @@ AddCSLuaFile( "cl_crosshair.lua" )
 AddCSLuaFile( "cl_atmosphere.lua" )
 AddCSLuaFile( "cl_world_map.lua" )
 AddCSLuaFile( "cl_map_batch.lua" )
+AddCSLuaFile( "cl_preview.lua" )
+AddCSLuaFile( "cl_quick_menu.lua" )
 AddCSLuaFile( "utils/world.lua" )
 AddCSLuaFile( "utils/safezone.lua" )
 
@@ -19,10 +22,18 @@ include( "utils/sql.lua" )
 include( "shared.lua" )
 include( "sv_player.lua" )
 include( "sv_map_batch.lua" )
+include( "sv_preview.lua" )
+include( "sv_dev_console.lua" )
 
 // Ensure the SQLite schema exists before any PlayerSpawn handler performs a lookup.
-ZM_CreatePlayerAttributesTable()
-ZM_CreatePlayerDataTable()
+local attributesReady, attributesError = ZM_CreatePlayerAttributesTable()
+local playerDataReady, playerDataError = ZM_CreatePlayerDataTable()
+if not attributesReady then
+    ErrorNoHalt("[ZombieSim] Could not prepare player attributes: " .. tostring(attributesError) .. "\n")
+end
+if not playerDataReady then
+    ErrorNoHalt("[ZombieSim] Could not prepare player data: " .. tostring(playerDataError) .. "\n")
+end
 
 // Clients use these lightweight signals to refresh their local Player extension fields.
 util.AddNetworkString("ZM.RefreshPlayerAttributes")
@@ -56,7 +67,7 @@ concommand.Add("zombiesim_player_status", function(ply)
 
     local reconciled = GAMEMODE:ReconcilePlayerOriginCell(ply)
     if reconciled then
-        ply:UpdatePlayerData()
+        ply:UpdatePlayerData("status reconciliation")
         ply:SetNetworkPlayerData()
         ply:SendPlayerData()
         GAMEMODE:SendPlayerAtmosphereProfile(ply)
@@ -243,12 +254,26 @@ function GM:EnsurePlayerWorldMap(ply)
     return true
 end
 
+local function isCurrentProfileLauncher(profile)
+    local mapName = string.lower(string.match(game.GetMap(), "([^/]+)$") or game.GetMap())
+    return ZM_World.LauncherMapProfiles[mapName] == profile
+end
+
 function GM:NewPlayer(ply)
     ply.SkillPoints = 10 // give the player 10 skill points to start with
 end
 
 // Restores persistent state, applies new-player defaults, and synchronizes the spawned player.
 function GM:PlayerSpawn( ply )
+
+    ply.ZM_PersistentStateLoaded = false
+
+    // PlayerSpawn can run before InitPostEntity after a level change.
+    local loaded, loadError = ZM_World:LoadMapProfile()
+    if not loaded then
+        ErrorNoHalt("[ZombieSim] Could not load map profile before player spawn: " .. tostring(loadError) .. "\n")
+        return
+    end
 
     // A first-time player receives the starting skills and origin safe-room transition.
     local profile = ZM_World.ActiveProfile
@@ -257,25 +282,32 @@ function GM:PlayerSpawn( ply )
         ErrorNoHalt("[ZombieSim] Could not prepare player data for profile '" .. tostring(profile) .. "': " .. tostring(profileError) .. "\n")
         return
     end
-    ply.PreviouslyConnected = ZM_PlayerPreviouslyExists(ply:SteamID(), profile)
-
     // fetch the player attributes and data from the database
-    ply:FetchAttributes()
-    ply:FetchPlayerData()
+    local attributesLoaded, attributesError = ply:FetchAttributes()
+    if not attributesLoaded then
+        ErrorNoHalt("[ZombieSim] Could not load player attributes: " .. tostring(attributesError) .. "\n")
+        return
+    end
+    local previouslyConnected, playerDataError = ply:FetchPlayerData()
+    if previouslyConnected == nil then
+        ErrorNoHalt("[ZombieSim] Could not load player data: " .. tostring(playerDataError) .. "\n")
+        return
+    end
+    ply.PreviouslyConnected = previouslyConnected
+    ply.ZM_PersistentStateLoaded = true
     self:ReconcilePlayerOriginCell(ply)
     ply:SetHealth(math.max(ply.SavedHealth, 1))
     ply.Stamina = math.Clamp(tonumber(ply.Stamina) or ply:GetMaxStamina(), 0, ply:GetMaxStamina())
 
-    if not ply.PreviouslyConnected then
+    if not previouslyConnected then
         self:NewPlayer(ply)
+        local saved, saveError = ply:Save("new-player spawn")
+        if not saved then
+            ErrorNoHalt("[ZombieSim] Could not save new player state: " .. tostring(saveError) .. "\n")
+        end
     end
-    
-    // save the player attributes and data to the database
-    ply:Save()
 
     // network the player attributes and data to the client
-    ply:UpdateAttributes()
-    ply:UpdatePlayerData()
     ply:SetNetworkAttributes()
     ply:SetNetworkPlayerData()
 
@@ -283,11 +315,14 @@ function GM:PlayerSpawn( ply )
     ply:SendPlayerAttributes()
     ply:SendPlayerData()
     self:SendPlayerAtmosphereProfile(ply)
+    ZM_Preview:SendCapabilities(ply)
 
     // Batch map maintenance owns level changes until its queue is complete.
     if not (ZM_MapBatch and ZM_MapBatch:IsActive()) then
-        // A first-time single-player session begins at the safe room attached to the world origin.
-        if( !ply.PreviouslyConnected ) then
+        // Preview always enters its saved city cell; city retains its safe-room start.
+        if profile == "preview" then
+            self:EnsurePlayerWorldMap(ply)
+        elseif not previouslyConnected and isCurrentProfileLauncher(profile) then
             self:EnterOriginSafeZone(ply)
         else
             self:EnsurePlayerWorldMap(ply)
@@ -297,15 +332,18 @@ end
 
 // Persist progress that may have changed since the last explicit update.
 function GM:PlayerDisconnected( ply )
-    // save the player attributes and data to the database
-    ply:Save()
+    // Preview editor and teleport writes are immediate; disconnect teardown can expose cleared fields.
+    if ZM_World.ActiveProfile ~= "preview" then
+        ply:Save("player disconnect")
+    end
+    ply.ZM_PersistentStateLoaded = false
 end
 
-// Save all connected players when the server closes or the gamemode unloads.
+// Map teardown can expose cleared Player fields, so persistence happens through explicit updates and disconnects.
 function GM:ShutDown()
     for _, ply in ipairs(player.GetAll()) do
         if IsValid(ply) then
-            ply:Save()
+            ply.ZM_PersistentStateLoaded = false
         end
     end
 end
