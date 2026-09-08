@@ -336,7 +336,7 @@
         "bridge-vertical": 0,
         "bridge-horizontal": 90,
         "bridgeRampByDirection": { "N": 0, "E": 270, "S": 180, "W": 90 },
-        "onrampByDirection": { "N": 0, "E": 90, "S": 180, "W": 270 }
+        "onrampByDirection": { "N": 0, "E": 270, "S": 180, "W": 90 }
       }
     },
     "environment": {

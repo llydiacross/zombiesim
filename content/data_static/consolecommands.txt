@@ -4,5 +4,8 @@
 # Example request header: request: preview-persistence-001
 # Example command: zombiesim_dev_persistence_report STEAM_0:1:31630
 
+# request: preview-cheats-reload-20260908-1
+changelevel zn_preview
+
 # Example request header: request: preview-persistence-001
 # Example command: zombiesim_dev_persistence_report STEAM_0:1:31630

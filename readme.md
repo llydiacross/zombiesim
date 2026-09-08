@@ -155,6 +155,14 @@ zombiesim_dev_persistence_report STEAM_0:1:31630
 
 That report includes the raw `city` and `preview` player/attribute rows, active map and profile, and current live player fields.
 
+Validate every loaded gamemode and utility Lua file with Garry's Mod's native GLua parser without executing the files:
+
+```
+zombiesim_validate_scripts
+```
+
+When invoked through the bridge, `consolecommands.result.json` includes `reports.scriptValidation` with the checked, passed, and failed counts plus one result for each source file. Syntax failures are also printed in the server console with their mounted `GAME` path.
+
 # Runtime World Data
 
 `ZM_World` loads `data_static/zombiesim_world.json` from the `GAME` mount during gamemode initialization. It returns `nil` or `false, error` when the index is unavailable, so gameplay code can fail safely while a release is being assembled.

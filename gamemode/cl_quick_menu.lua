@@ -1,12 +1,32 @@
 // Player-facing Tab radial menu. It is intentionally independent of preview tools.
 ZM_QuickMenu = ZM_QuickMenu or {}
 local QuickMenu = ZM_QuickMenu
+local tabHoldSeconds = 0.12
+local tabReleaseGraceSeconds = 0.08
 
-local entries = {
-    { id = "inventory", label = "INVENTORY", startAngle = -150, endAngle = -30, centerAngle = -90 },
-    { id = "scoreboard", label = "SCOREBOARD", startAngle = -30, endAngle = 90, centerAngle = 30 },
-    { id = "options", label = "OPTIONS", startAngle = 90, endAngle = 210, centerAngle = 150 }
+local baseEntries = {
+    { id = "inventory", label = "INVENTORY" },
+    { id = "scoreboard", label = "SCOREBOARD" },
+    { id = "options", label = "OPTIONS" }
 }
+
+local function activeEntries()
+    local active = {}
+    for _, entry in ipairs(baseEntries) do
+        table.insert(active, { id = entry.id, label = entry.label })
+    end
+    if ZM_Preview and ZM_Preview:HasClientCapability(ZM_Preview.Capabilities.operator) then
+        table.insert(active, { id = "cheats", label = "CHEATS" })
+    end
+
+    local sliceAngle = 360 / #active
+    for index, entry in ipairs(active) do
+        entry.centerAngle = -90 + (index - 1) * sliceAngle
+        entry.startAngle = entry.centerAngle - sliceAngle * 0.5
+        entry.endAngle = entry.centerAngle + sliceAngle * 0.5
+    end
+    return active
+end
 
 local function normalizeAngle(angle)
     while angle <= -180 do angle = angle + 360 end
@@ -14,7 +34,7 @@ local function normalizeAngle(angle)
     return angle
 end
 
-local function selectedEntry(cursorX, cursorY, width, height)
+local function selectedEntry(cursorX, cursorY, width, height, menuEntries)
     local deltaX = cursorX - width * 0.5
     local deltaY = cursorY - height * 0.5
     local distance = math.sqrt(deltaX * deltaX + deltaY * deltaY)
@@ -24,14 +44,14 @@ local function selectedEntry(cursorX, cursorY, width, height)
     local angle = math.deg(math.atan2(deltaY, deltaX))
     local closestEntry
     local closestDistance = 181
-    for _, entry in ipairs(entries) do
+    for _, entry in ipairs(menuEntries) do
         local angleDistance = math.abs(normalizeAngle(angle - entry.centerAngle))
         if angleDistance < closestDistance then
             closestEntry = entry
             closestDistance = angleDistance
         end
     end
-    return closestDistance <= 60 and closestEntry or nil
+    return closestEntry
 end
 
 local function openFrame(owner, title, width, height)
@@ -47,6 +67,7 @@ local function openFrame(owner, title, width, height)
     frame:MakePopup()
     frame.OnRemove = function()
         if owner.Frame == frame then owner.Frame = nil end
+        if ZM_UI then ZM_UI:UnregisterTransient(frame) end
     end
     owner.Frame = frame
     if ZM_UI then ZM_UI:OpenExclusive(frame) end
@@ -54,8 +75,18 @@ local function openFrame(owner, title, width, height)
 end
 
 ZM_Inventory = ZM_Inventory or {}
-ZM_Scoreboard = ZM_Scoreboard or {}
 ZM_Options = ZM_Options or {}
+ZM_PreviewCheats = ZM_PreviewCheats or { State = { god = false, noclip = false }, Message = "" }
+
+function ZM_PreviewCheats:Request(action)
+    if not ZM_Preview or not ZM_Preview:HasClientCapability(ZM_Preview.Capabilities.operator) then
+        return
+    end
+
+    net.Start("ZM.RequestPreviewCheat")
+        net.WriteString(action)
+    net.SendToServer()
+end
 
 function ZM_Inventory:Open()
     local frame = openFrame(self, "INVENTORY", 560, 440)
@@ -68,29 +99,6 @@ function ZM_Inventory:Open()
     label:SetTextColor(ZM_DermaSkin.Palette.muted)
     label:SetContentAlignment(5)
     label:SetText("No inventory data is available in this build.")
-end
-
-function ZM_Scoreboard:Open()
-    local frame = openFrame(self, "SCOREBOARD", 720, 500)
-    if frame.ScoreboardList then return end
-    local list = vgui.Create("DListView", frame)
-    list:Dock(FILL)
-    list:DockMargin(10, 34, 10, 10)
-    list:AddColumn("Player")
-    list:AddColumn("Ping")
-    list:AddColumn("Cell")
-    frame.ScoreboardList = list
-    frame.NextRefresh = 0
-    frame.Think = function(currentFrame)
-        if CurTime() < currentFrame.NextRefresh then return end
-        currentFrame.NextRefresh = CurTime() + 1
-        list:Clear()
-        for _, playerEntity in ipairs(player.GetAll()) do
-            if IsValid(playerEntity) then
-                list:AddLine(playerEntity:Nick(), playerEntity:Ping(), string.format("%d, %d", playerEntity:GetNWInt("CellX", 0), playerEntity:GetNWInt("CellY", 0)))
-            end
-        end
-    end
 end
 
 function ZM_Options:Open()
@@ -123,6 +131,92 @@ function ZM_Options:Open()
     end
 end
 
+function ZM_PreviewCheats:Open()
+    local frame = openFrame(self, "CHEATS", 470, 430)
+    if frame.CheatsBuilt then return end
+    frame.CheatsBuilt = true
+
+    local panel = vgui.Create("DPanel", frame)
+    panel:Dock(FILL)
+    panel:DockMargin(12, 36, 12, 12)
+    panel.Paint = function() end
+
+    local status = vgui.Create("DLabel", panel)
+    status:Dock(TOP)
+    status:SetTall(28)
+    status:SetFont("DermaDefaultBold")
+    status:SetTextColor(ZM_DermaSkin.Palette.muted)
+    status:SetContentAlignment(5)
+
+    local god = vgui.Create("DButton", panel)
+    god:Dock(TOP)
+    god:DockMargin(0, 4, 0, 6)
+    god:SetTall(42)
+    god.DoClick = function() self:Request("toggle_god") end
+
+    local noclip = vgui.Create("DButton", panel)
+    noclip:Dock(TOP)
+    noclip:DockMargin(0, 0, 0, 6)
+    noclip:SetTall(42)
+    noclip.DoClick = function() self:Request("toggle_noclip") end
+
+    local refill = vgui.Create("DButton", panel)
+    refill:Dock(TOP)
+    refill:DockMargin(0, 0, 0, 12)
+    refill:SetTall(36)
+    refill:SetText("RESTORE VITALS")
+    refill.DoClick = function() self:Request("refill") end
+
+    local directions = vgui.Create("DPanel", panel)
+    directions:Dock(FILL)
+    directions.Paint = function() end
+    local directionButtons = {}
+    for _, direction in ipairs({
+        { id = "north", label = "NORTH" },
+        { id = "west", label = "WEST" },
+        { id = "east", label = "EAST" },
+        { id = "south", label = "SOUTH" }
+    }) do
+        local button = vgui.Create("DButton", directions)
+        button:SetText(direction.label)
+        button.DoClick = function() self:Request("move_" .. direction.id) end
+        directionButtons[direction.id] = button
+    end
+    directions.PerformLayout = function(currentPanel, width)
+        local buttonWidth = math.min(130, math.max(96, math.floor(width * 0.32)))
+        local buttonHeight = 34
+        local centerX = math.floor((width - buttonWidth) * 0.5)
+        directionButtons.north:SetPos(centerX, 0)
+        directionButtons.north:SetSize(buttonWidth, buttonHeight)
+        directionButtons.west:SetPos(math.max(0, centerX - buttonWidth - 12), buttonHeight + 12)
+        directionButtons.west:SetSize(buttonWidth, buttonHeight)
+        directionButtons.east:SetPos(math.min(width - buttonWidth, centerX + buttonWidth + 12), buttonHeight + 12)
+        directionButtons.east:SetSize(buttonWidth, buttonHeight)
+        directionButtons.south:SetPos(centerX, (buttonHeight + 12) * 2)
+        directionButtons.south:SetSize(buttonWidth, buttonHeight)
+    end
+
+    frame.Think = function()
+        local state = self.State or {}
+        god:SetText(state.god and "GOD MODE: ON" or "GOD MODE: OFF")
+        noclip:SetText(state.noclip and "NOCLIP: ON" or "NOCLIP: OFF")
+        local playerEntity = LocalPlayer()
+        local cellX = IsValid(playerEntity) and playerEntity:GetNWInt("CellX", 0) or 0
+        local cellY = IsValid(playerEntity) and playerEntity:GetNWInt("CellY", 0) or 0
+        status:SetText(string.format("CELL %d, %d%s", cellX, cellY, self.Message ~= "" and "  |  " .. self.Message or ""))
+    end
+end
+
+net.Receive("ZM.PreviewCheatStatus", function()
+    local accepted = net.ReadBool()
+    local message = net.ReadString()
+    ZM_PreviewCheats.State = { god = net.ReadBool(), noclip = net.ReadBool() }
+    ZM_PreviewCheats.Message = message
+    if not accepted and message ~= "" then
+        surface.PlaySound("buttons/button10.wav")
+    end
+end)
+
 function QuickMenu:OpenDestination(entryId)
     if entryId == "inventory" then
         ZM_Inventory:Open()
@@ -130,6 +224,8 @@ function QuickMenu:OpenDestination(entryId)
         ZM_Scoreboard:Open()
     elseif entryId == "options" then
         ZM_Options:Open()
+    elseif entryId == "cheats" then
+        ZM_PreviewCheats:Open()
     end
 end
 
@@ -137,15 +233,17 @@ function QuickMenu:Close(activate)
     local panel = self.Panel
     self.Panel = nil
     self.IsHoldingScoreboard = false
+    self.TabHeldAt = nil
+    self.TabHoldTriggered = false
     self.TabReleasedAt = nil
     gui.EnableScreenClicker(false)
     if not IsValid(panel) then
         return
     end
-    local entry = panel.SelectedEntry
+    local entryId = panel.SelectedEntryId
     panel:Remove()
-    if activate and entry then
-        self:OpenDestination(entry.id)
+    if activate and entryId then
+        self:OpenDestination(entryId)
     end
 end
 
@@ -166,7 +264,8 @@ function QuickMenu:Open(heldByScoreboard)
     panel:SetKeyboardInputEnabled(false)
     panel.Think = function(currentPanel)
         local cursorX, cursorY = gui.MousePos()
-        currentPanel.SelectedEntry = selectedEntry(cursorX, cursorY, currentPanel:GetWide(), currentPanel:GetTall())
+        local entry = selectedEntry(cursorX, cursorY, currentPanel:GetWide(), currentPanel:GetTall(), activeEntries())
+        currentPanel.SelectedEntryId = entry and entry.id or nil
     end
     panel.Paint = function(currentPanel, width, height)
         local palette = ZM_DermaSkin.Palette
@@ -176,8 +275,8 @@ function QuickMenu:Open(heldByScoreboard)
         local innerRadius = outerRadius * 0.36
         surface.SetDrawColor(0, 0, 0, 105)
         surface.DrawRect(0, 0, width, height)
-        for _, entry in ipairs(entries) do
-            local active = currentPanel.SelectedEntry == entry
+        for _, entry in ipairs(activeEntries()) do
+            local active = currentPanel.SelectedEntryId == entry.id
             surface.SetDrawColor(active and palette.red.r or palette.panel.r, active and palette.red.g or palette.panel.g, active and palette.red.b or palette.panel.b, 240)
             local points = {}
             for step = 0, 16 do
@@ -194,7 +293,7 @@ function QuickMenu:Open(heldByScoreboard)
         end
         surface.SetDrawColor(palette.black.r, palette.black.g, palette.black.b, 255)
         surface.DrawCircle(centerX, centerY, innerRadius, palette.black)
-        draw.SimpleText("Z", "ZM_DermaFrameTitle", centerX, centerY, palette.redBright, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+        draw.SimpleText("?", "ZM_DermaFrameTitle", centerX, centerY, palette.redBright, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
     end
     panel.OnMousePressed = function(_, mouseCode)
         if mouseCode == MOUSE_RIGHT then
@@ -206,22 +305,52 @@ function QuickMenu:Open(heldByScoreboard)
     input.SetCursorPos(math.floor(ScrW() * 0.5), math.floor(ScrH() * 0.5))
 end
 
-hook.Add("PlayerBindPress", "ZM.QuickMenu.SuppressNativeScoreboard", function(_, bind)
+function QuickMenu:BeginTabHold()
+    if self.TabWasDown then
+        return
+    end
+    self.TabWasDown = true
+    self.TabHeldAt = RealTime()
+    self.TabHoldTriggered = false
+    self.TabReleasedAt = nil
+end
+
+function QuickMenu:EndTabHold()
+    if not self.TabWasDown then
+        return
+    end
+    self.TabWasDown = false
+    self.TabHoldTriggered = false
+    if self.IsHoldingScoreboard then
+        self.TabReleasedAt = RealTime()
+    else
+        self.TabHeldAt = nil
+    end
+end
+
+hook.Add("PlayerBindPress", "ZM.QuickMenu.ControlScoreboardBind", function(_, bind, pressed)
     local command = string.lower(bind or "")
-    if command == "+showscores" or command == "-showscores" then
+    if command == "+showscores" then
+        if pressed then
+            QuickMenu:BeginTabHold()
+        else
+            QuickMenu:EndTabHold()
+        end
+        return true
+    end
+    if command == "-showscores" then
+        QuickMenu:EndTabHold()
         return true
     end
 end)
 
 hook.Add("Think", "ZM.QuickMenu.TabController", function()
-    local tabDown = input.IsKeyDown(KEY_TAB)
-    if tabDown == QuickMenu.TabWasDown then
-        return
-    end
-    QuickMenu.TabWasDown = tabDown
-    if tabDown then
+    local now = RealTime()
+    if QuickMenu.TabWasDown and not QuickMenu.TabHoldTriggered and now - QuickMenu.TabHeldAt >= tabHoldSeconds then
+        QuickMenu.TabHoldTriggered = true
         QuickMenu:Open(true)
-    elseif QuickMenu.IsHoldingScoreboard then
+    end
+    if QuickMenu.IsHoldingScoreboard and QuickMenu.TabReleasedAt and now - QuickMenu.TabReleasedAt >= tabReleaseGraceSeconds then
         QuickMenu:Close(true)
     end
 end)

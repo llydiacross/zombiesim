@@ -12,12 +12,15 @@ util.AddNetworkString("ZM.PreviewCapabilities")
 util.AddNetworkString("ZM.RequestPreviewCapabilities")
 util.AddNetworkString("ZM.RequestPreviewTeleport")
 util.AddNetworkString("ZM.PreviewTeleportStatus")
+util.AddNetworkString("ZM.RequestPreviewCheat")
+util.AddNetworkString("ZM.PreviewCheatStatus")
 util.AddNetworkString("ZM.RequestPreviewData")
 util.AddNetworkString("ZM.PreviewDataResponse")
 
 Preview.TeleportCooldowns = Preview.TeleportCooldowns or {}
 Preview.TeleportRequestId = Preview.TeleportRequestId or 0
 Preview.TransitionLocked = false
+Preview.CheatStates = Preview.CheatStates or {}
 
 local function toolsAreEnabled()
     local convar = GetConVar("zombiesim_preview_tools_enabled")
@@ -50,6 +53,44 @@ function Preview:SendCapabilities(playerEntity)
         net.WriteUInt(self:GetCapabilitiesFor(playerEntity), 3)
         net.WriteString(self:IsActive() and "preview" or "")
     net.Send(playerEntity)
+end
+
+function Preview:GetCheatState(playerEntity)
+    local steamId = IsValid(playerEntity) and playerEntity:SteamID() or nil
+    if not steamId then
+        return { god = false, noclip = false }
+    end
+
+    self.CheatStates[steamId] = self.CheatStates[steamId] or { god = false, noclip = false }
+    return self.CheatStates[steamId]
+end
+
+function Preview:SendCheatStatus(playerEntity, accepted, message)
+    local state = self:GetCheatState(playerEntity)
+    net.Start("ZM.PreviewCheatStatus")
+        net.WriteBool(accepted == true)
+        net.WriteString(message or "")
+        net.WriteBool(state.god == true)
+        net.WriteBool(state.noclip == true)
+    net.Send(playerEntity)
+end
+
+function Preview:ApplyCheatState(playerEntity)
+    if not IsValid(playerEntity) then
+        return
+    end
+
+    local state = self:GetCheatState(playerEntity)
+    if state.god then
+        playerEntity:GodEnable()
+    else
+        playerEntity:GodDisable()
+    end
+    if state.noclip then
+        playerEntity:SetMoveType(MOVETYPE_NOCLIP)
+    elseif playerEntity:GetMoveType() == MOVETYPE_NOCLIP then
+        playerEntity:SetMoveType(MOVETYPE_WALK)
+    end
 end
 
 net.Receive("ZM.RequestPreviewCapabilities", function(_, playerEntity)
@@ -175,6 +216,87 @@ end)
 
 hook.Add("InitPostEntity", "ZM.Preview.ReleaseTransitionLock", function()
     Preview.TransitionLocked = false
+end)
+
+local cheatDirections = {
+    move_north = "N",
+    move_east = "E",
+    move_south = "S",
+    move_west = "W"
+}
+
+local function refillPlayer(playerEntity)
+    playerEntity.SavedHealth = math.max(playerEntity:GetMaxHealth(), 100)
+    playerEntity.Stamina = playerEntity:GetMaxStamina()
+    playerEntity.Hunger = 100
+    playerEntity.Thirst = 100
+    playerEntity:SetHealth(playerEntity.SavedHealth)
+    local saved, saveError = playerEntity:UpdatePlayerData("preview cheat refill")
+    if not saved then
+        return false, saveError or "Could not save player survival state"
+    end
+    playerEntity:SetNetworkPlayerData()
+    playerEntity:SendPlayerData()
+    return true
+end
+
+local function movePlayerToNeighbour(playerEntity, direction)
+    if getHumanPlayerCount() ~= 1 then
+        return false, "Cell movement requires exactly one human player"
+    end
+    if Preview.TransitionLocked or (ZM_MapBatch and ZM_MapBatch:IsActive()) then
+        return false, "A map transition is already active"
+    end
+
+    local targetCell = playerEntity:GetNeighbouringCell(direction)
+    if not targetCell then
+        return false, "There is no connected cell in that direction"
+    end
+    local worldX, worldY = ZM_World:GetWorldCoordinates(targetCell)
+    local positioned, positionError = playerEntity:SetWorldCell(worldX, worldY)
+    if not positioned then
+        return false, positionError or "Could not set the neighboring cell"
+    end
+
+    Preview.TransitionLocked = true
+    local transitionQueued = GAMEMODE and GAMEMODE.EnsurePlayerWorldMap and GAMEMODE:EnsurePlayerWorldMap(playerEntity)
+    if not transitionQueued then
+        Preview.TransitionLocked = false
+        return false, "Core world transition could not be queued"
+    end
+    return true, "Loading the neighboring cell"
+end
+
+net.Receive("ZM.RequestPreviewCheat", function(_, playerEntity)
+    local action = net.ReadString()
+    if not Preview:HasServerCapability(playerEntity, Preview.Capabilities.operator) then
+        Preview:SendCheatStatus(playerEntity, false, "Preview cheats are unavailable")
+        return
+    end
+
+    local state = Preview:GetCheatState(playerEntity)
+    local accepted, message
+    if action == "toggle_god" then
+        state.god = not state.god
+        Preview:ApplyCheatState(playerEntity)
+        accepted = true
+        message = state.god and "God mode enabled" or "God mode disabled"
+    elseif action == "toggle_noclip" then
+        state.noclip = not state.noclip
+        Preview:ApplyCheatState(playerEntity)
+        accepted = true
+        message = state.noclip and "Noclip enabled" or "Noclip disabled"
+    elseif action == "refill" then
+        accepted, message = refillPlayer(playerEntity)
+        message = message or "Health and survival reserves restored"
+    elseif cheatDirections[action] then
+        accepted, message = movePlayerToNeighbour(playerEntity, cheatDirections[action])
+    else
+        accepted = false
+        message = "Unknown preview cheat action"
+    end
+
+    Preview:SendCheatStatus(playerEntity, accepted, message)
 end)
 
 local attributeFields = {

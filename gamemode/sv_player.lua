@@ -1,5 +1,48 @@
 // Server-only Player persistence, network synchronization, stamina, and XP behavior.
 local ply = FindMetaTable("Player")
+local playerBioDirectory = "zombiesim/player_bios"
+local maxPlayerBioLength = 280
+
+local function getPlayerBioPath(playerEntity)
+    local steamId = playerEntity:SteamID64()
+    if steamId == nil or steamId == "" or steamId == "0" then
+        return nil
+    end
+    return playerBioDirectory .. "/" .. steamId .. ".txt"
+end
+
+local function normalizePlayerBio(bio)
+    bio = string.Trim(tostring(bio or ""))
+    bio = string.gsub(bio, "[%c]+", " ")
+    bio = string.gsub(bio, "%s+", " ")
+    return string.sub(bio, 1, maxPlayerBioLength)
+end
+
+// Loads a survivor bio from the server DATA folder and replicates it for the scoreboard.
+function ply:LoadBio()
+    local bioPath = getPlayerBioPath(self)
+    if not bioPath then
+        self:SetNWString("PlayerBio", "")
+        return false
+    end
+
+    self:SetNWString("PlayerBio", normalizePlayerBio(file.Read(bioPath, "DATA") or ""))
+    return true
+end
+
+// Persists a compact public bio outside profile-scoped progression data.
+function ply:SaveBio(bio)
+    local bioPath = getPlayerBioPath(self)
+    if not bioPath then
+        return false
+    end
+
+    local normalizedBio = normalizePlayerBio(bio)
+    file.CreateDir(playerBioDirectory)
+    file.Write(bioPath, normalizedBio)
+    self:SetNWString("PlayerBio", normalizedBio)
+    return true
+end
 
 local function getDefaultPlayerData()
     local worldData = ZM_World:GetData() or {}

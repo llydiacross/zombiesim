@@ -11,6 +11,7 @@ AddCSLuaFile( "cl_hud.lua" )
 AddCSLuaFile( "cl_crosshair.lua" )
 AddCSLuaFile( "cl_atmosphere.lua" )
 AddCSLuaFile( "cl_world_map.lua" )
+AddCSLuaFile( "cl_scoreboard.lua" )
 AddCSLuaFile( "cl_map_batch.lua" )
 AddCSLuaFile( "cl_preview.lua" )
 AddCSLuaFile( "cl_quick_menu.lua" )
@@ -39,6 +40,15 @@ end
 util.AddNetworkString("ZM.RefreshPlayerAttributes")
 util.AddNetworkString("ZM.RefreshPlayerData")
 util.AddNetworkString("ZM.SetAtmosphereProfile")
+util.AddNetworkString("ZM.UpdatePlayerBio")
+
+net.Receive("ZM.UpdatePlayerBio", function(_, ply)
+    if not IsValid(ply) or not ply:IsPlayer() then
+        return
+    end
+
+    ply:SaveBio(net.ReadString())
+end)
 
 // Persists the selected city or preview data profile while the session moves into safe-room maps.
 CreateConVar("zombiesim_world_profile", "city", FCVAR_ARCHIVE + FCVAR_REPLICATED, "Active ZombieSim world-data profile.")
@@ -308,6 +318,7 @@ function GM:PlayerSpawn( ply )
     end
 
     // network the player attributes and data to the client
+    ply:LoadBio()
     ply:SetNetworkAttributes()
     ply:SetNetworkPlayerData()
 
@@ -316,6 +327,8 @@ function GM:PlayerSpawn( ply )
     ply:SendPlayerData()
     self:SendPlayerAtmosphereProfile(ply)
     ZM_Preview:SendCapabilities(ply)
+    ZM_Preview:ApplyCheatState(ply)
+    ZM_Preview:SendCheatStatus(ply, true, "")
 
     // Batch map maintenance owns level changes until its queue is complete.
     if not (ZM_MapBatch and ZM_MapBatch:IsActive()) then

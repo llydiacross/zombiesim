@@ -160,8 +160,62 @@ local function runPersistenceReport(steamId)
     return true
 end
 
+local scriptValidationDirectories = {
+    "gamemodes/zombiesim/gamemode",
+    "gamemodes/zombiesim/gamemode/utils"
+}
+
+local function collectScriptPaths()
+    local paths = {}
+    for _, directory in ipairs(scriptValidationDirectories) do
+        local files = file.Find(directory .. "/*.lua", "GAME")
+        table.sort(files)
+        for _, filename in ipairs(files) do
+            table.insert(paths, directory .. "/" .. filename)
+        end
+    end
+    return paths
+end
+
+local function runScriptValidation()
+    local report = { checked = 0, passed = 0, failed = 0, files = {} }
+    for _, path in ipairs(collectScriptPaths()) do
+        report.checked = report.checked + 1
+        local source = file.Read(path, "GAME")
+        local compiled = source and CompileString(source, "@" .. path, false) or "Could not read source from the GAME mount"
+        local valid = type(compiled) == "function"
+        if valid then
+            report.passed = report.passed + 1
+        else
+            report.failed = report.failed + 1
+        end
+        table.insert(report.files, {
+            path = path,
+            valid = valid,
+            error = valid and nil or tostring(compiled)
+        })
+    end
+
+    DevConsole:Report("scriptValidation", report)
+    for _, fileResult in ipairs(report.files) do
+        if not fileResult.valid then
+            print("[ZombieSim] GLua syntax error in " .. fileResult.path .. ": " .. fileResult.error)
+        end
+    end
+    print(string.format("[ZombieSim] GLua syntax validation: %d passed, %d failed.", report.passed, report.failed))
+    return report.failed == 0, report.failed > 0 and "GLua syntax validation failed" or nil
+end
+
 concommand.Add("zombiesim_dev_persistence_report", function(_, _, arguments)
     runPersistenceReport(arguments[1])
+end)
+
+concommand.Add("zombiesim_validate_scripts", function(ply)
+    if IsValid(ply) and not ply:IsAdmin() then
+        ply:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] zombiesim_validate_scripts must be run by an in-game admin.\n")
+        return
+    end
+    runScriptValidation()
 end)
 
 local function dispatchCommand(command)
@@ -171,6 +225,10 @@ local function dispatchCommand(command)
             persistenceSteamId = nil
         end
         return runPersistenceReport(persistenceSteamId)
+    end
+
+    if string.match(command, "^zombiesim_validate_scripts%s*$") then
+        return runScriptValidation()
     end
 
     game.ConsoleCommand(command .. "\n")

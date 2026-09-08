@@ -29,6 +29,12 @@ All template rotations are measured from these `$0^\circ$` authored orientations
 | Border wall corner | North to east, at the north-east tile corner |
 | Carpark entrance | Connective tip on the south tile edge; standard variants have local east and west lanes. At `$0^\circ$`, `_deadend_west` closes west and connects east, while `_deadend_east` closes east and connects west. |
 
+The generated border ring sits one tile outside the playable cell. Its corner instances use the Hammer-verified yaws `NW=0`, `NE=270`, `SE=180`, and `SW=90`, placing the authored corner against the level rather than toward the skybox.
+
+### Tile Road Connections
+
+For a multi-tile building that needs a vehicle-road frontage, add one `zn_road_connection` point entity to its source VMF and select its authored-local `direction` (`north`, `east`, `south`, or `west`). The planner rotates the building so that edge meets a compatible straight road and converts that road tile into a T-junction. A marked template is not placed when no compatible road arm is available, so it cannot receive a disconnected frontage. The marker is planning metadata and has no gameplay behavior.
+
 Buildings and landmarks rotate their authored north-edge entrance toward a directly adjacent road or transport tile. At a road corner, only its connected edges are valid frontage: a building or landmark next to the closed corner edge faces away from that edge instead.
 
 ### Carpark Endcap Orientation Contract
@@ -590,7 +596,7 @@ All values are Hammer yaw angles in degrees. The generator rotates the generated
 | `layout.tjunction` | Yaw keyed by the missing direction of a T-junction. |
 | `transport.bridge-vertical` and `transport.bridge-horizontal` | Center yaws for motorway bridge crossings. |
 | `transport.bridgeRampByDirection` | Yaw for road ramps that face the bridge direction. |
-| `transport.onrampByDirection` | Yaw for motorway on-ramps that exit toward each direction. |
+| `transport.onrampByDirection` | Yaw for motorway on-ramps whose authored north-edge road connects toward each direction. |
 
 Use only `0`, `90`, `180`, or `270` for the current square tiles. Test any change in a preview VMF in Hammer. A wrong yaw can make an apparently valid road point into a building or a cell border.
 

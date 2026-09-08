@@ -14,6 +14,17 @@ function UI:RegisterTransient(panel)
     return panel
 end
 
+function UI:UnregisterTransient(panel)
+    self.TransientPanels[panel] = nil
+    for registeredPanel in pairs(self.TransientPanels) do
+        if IsValid(registeredPanel) then
+            return
+        end
+        self.TransientPanels[registeredPanel] = nil
+    end
+    gui.EnableScreenClicker(false)
+end
+
 function UI:CloseTransient(exceptPanel)
     for panel in pairs(self.TransientPanels) do
         if panel ~= exceptPanel and IsValid(panel) then

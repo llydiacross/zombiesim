@@ -450,8 +450,8 @@ function Get-BorderPlacements {
     foreach ($endcap in @(Get-CarparkEndcapPlacements -Recipe $Recipe -TileGridSize $TileGridSize -CarparkTemplates $generatorSettings.cellPlanning.carparks.templates)) {
         $carparkEndcapsByBorderSlot["$($endcap.tileX),$($endcap.tileY)"] = $endcap
     }
-    $wallYawBySide = @{ N = 90; E = 0; S = 270; W = 180 }
-    $cornerYawByPosition = @{ 'N-W' = 270; 'N-E' = 0; 'S-E' = 90; 'S-W' = 180 }
+    $wallYawBySide = @{ N = 270; E = 180; S = 90; W = 0 }
+    $cornerYawByPosition = @{ 'N-W' = 0; 'N-E' = 270; 'S-E' = 180; 'S-W' = 90 }
     $roadYawBySide = @{ N = 0; E = 90; S = 0; W = 90 }
     $placements = [System.Collections.Generic.List[object]]::new()
 

@@ -15,7 +15,6 @@ local minimapModeDown = false
 local compassCellSize = 3200
 local compassMarkerLabels = {
     waypoint = "Waypoint",
-    landmark = "Landmark",
     objective = "Objective",
     safezone = "Safe Zone",
     trader = "Trader",
@@ -23,6 +22,24 @@ local compassMarkerLabels = {
     loot = "Loot",
     warning = "Warning"
 }
+local compassLandmarkStyles = {
+    ["Airport"] = { color = Color(83, 177, 224), priority = 60 },
+    ["Army Base"] = { color = Color(222, 72, 65), priority = 95 },
+    ["Bank"] = { color = Color(232, 190, 61), priority = 50 },
+    ["Bunker"] = { color = Color(151, 161, 171), priority = 90 },
+    ["Church"] = { color = Color(181, 125, 218), priority = 40 },
+    ["Fire"] = { color = Color(239, 112, 48), priority = 75 },
+    ["Hospital"] = { color = Color(60, 212, 183), priority = 85 },
+    ["Laboratory"] = { color = Color(134, 124, 226), priority = 80 },
+    ["Leisure"] = { color = Color(218, 112, 170), priority = 25 },
+    ["Market"] = { color = Color(221, 156, 58), priority = 35 },
+    ["Park"] = { color = Color(95, 195, 104), priority = 20 },
+    ["Petrol Station"] = { color = Color(238, 144, 47), priority = 65 },
+    ["Police"] = { color = Color(84, 144, 224), priority = 70 },
+    ["The Epicenter"] = { color = Color(191, 231, 62), priority = 100 }
+}
+local compassLandmarkFallbackColor = Color(52, 220, 176)
+local compassLandmarkTargetCache = {}
 local minimapColors = {
     black = Color(7, 8, 10),
     panel = Color(15, 17, 20),
@@ -112,6 +129,33 @@ local function getCellCompassYaw(player, targetCell)
     return Vector(offsetX, offsetY, 0):Angle().y
 end
 
+local function getCellCompassLandmark(cell)
+    local cacheKey = (ZM_World.ActiveProfile or "city") .. ":" .. tostring(cell.id)
+    if compassLandmarkTargetCache[cacheKey] then
+        return compassLandmarkTargetCache[cacheKey]
+    end
+
+    local selectedName
+    local selectedStyle
+    for _, landmarkName in ipairs(ZM_World:GetLandmarks(cell) or {}) do
+        local style = compassLandmarkStyles[landmarkName]
+        if not selectedStyle or (style and style.priority > selectedStyle.priority) then
+            selectedName = landmarkName
+            selectedStyle = style or { color = compassLandmarkFallbackColor, priority = 0 }
+        end
+    end
+    if not selectedName then
+        return nil
+    end
+
+    local landmark = {
+        label = selectedName,
+        color = selectedStyle.color
+    }
+    compassLandmarkTargetCache[cacheKey] = landmark
+    return landmark
+end
+
 local function getNearbyLandmarkCompassTargets(playerCell)
     local targets = {}
     local worldData = ZM_World:GetData()
@@ -121,9 +165,12 @@ local function getNearbyLandmarkCompassTargets(playerCell)
 
     for _, cell in ipairs(worldData.cells or {}) do
         if #(cell.landmarks or {}) > 0 then
-            local distance = math.abs(cell.x - playerCell.x) + math.abs(cell.y - playerCell.y)
-            if distance <= 6 then
-                table.insert(targets, { cell = cell, distance = distance })
+            local landmark = getCellCompassLandmark(cell)
+            if landmark then
+                local distance = math.abs(cell.x - playerCell.x) + math.abs(cell.y - playerCell.y)
+                if distance <= 6 then
+                    table.insert(targets, { cell = cell, distance = distance, landmark = landmark })
+                end
             end
         end
     end
@@ -137,20 +184,29 @@ local function getNearbyLandmarkCompassTargets(playerCell)
     return targets
 end
 
-local function drawCompassMarker(x, y, width, heading, targetYaw, icon, color)
+local function drawCompassMarker(x, y, width, heading, targetYaw, icon, color, pulse, showAtEdge)
     if not targetYaw then
         return
     end
 
     local relativeYaw = normalizeCompassAngle(targetYaw - heading)
-    if math.abs(relativeYaw) > 95 then
+    local isVisible = math.abs(relativeYaw) <= 95
+    if not isVisible and not showAtEdge then
         return
     end
 
-    local markerX = x + width * 0.5 + relativeYaw / 95 * (width * 0.5 - 12)
-    surface.SetDrawColor(color.r, color.g, color.b, 255)
-    surface.DrawRect(markerX - 1, y + 4, 3, 19)
-    draw.SimpleText(icon, "ZM_CompassMarker", markerX, y + 25, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+    local markerX = isVisible and (x + width * 0.5 + relativeYaw / 95 * (width * 0.5 - 12))
+        or (relativeYaw > 0 and x + width - 7 or x + 7)
+    local alpha = 255
+    if pulse then
+        alpha = math.floor(110 + 145 * (math.sin(CurTime() * 7) + 1) * 0.5)
+    end
+    local markerColor = Color(color.r, color.g, color.b, alpha)
+    surface.SetDrawColor(markerColor)
+    surface.DrawRect(markerX - (isVisible and 1 or 2), y + 4, isVisible and 3 or 4, 19)
+    if isVisible then
+        draw.SimpleText(icon, "ZM_CompassMarker", markerX, y + 25, markerColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+    end
 end
 
 local function drawPlayerCompass()
@@ -191,11 +247,11 @@ local function drawPlayerCompass()
     end
 
     if not isInDen and playerCell and ZM_WorldMap and ZM_WorldMap.WaypointCell and ZM_WorldMap.WaypointProfile == ZM_World.ActiveProfile then
-        drawCompassMarker(x, y, width, heading, getCellCompassYaw(player, ZM_WorldMap.WaypointCell), getCompassMarkerLabel("waypoint"), Color(246, 210, 48))
+        drawCompassMarker(x, y, width, heading, getCellCompassYaw(player, ZM_WorldMap.WaypointCell), getCompassMarkerLabel("waypoint"), Color(246, 210, 48), true, true)
     end
     if not isInDen and playerCell then
         for _, target in ipairs(getNearbyLandmarkCompassTargets(playerCell)) do
-            drawCompassMarker(x, y, width, heading, getCellCompassYaw(player, target.cell), getCompassMarkerLabel("landmark"), Color(52, 220, 176))
+            drawCompassMarker(x, y, width, heading, getCellCompassYaw(player, target.cell), target.landmark.label, target.landmark.color)
         end
     end
     for _, entity in ipairs(ents.GetAll()) do

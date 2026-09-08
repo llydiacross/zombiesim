@@ -3,3 +3,14 @@
     world_profile(string) : "World data profile" : "city" : "Loads data_static/zombiesim_world.json for city, data_static/zombiesim_world_preview.json for preview, or data_static/zombiesim_world_<profile>.json for a custom profile."
     start_delay(float) : "Opening safe-room delay (seconds)" : "0" : "For a new player only, waits this long before changing to the generated world-origin safe room. Use this time for an opening intro."
 ]
+
+@PointClass base(Targetname) = zn_road_connection : "ZombieSim Road Connection"
+[
+    direction(choices) : "Authored road edge" : "north" : "The authored-local tile edge that must connect to a generated road."
+    [
+        "north" : "North"
+        "east" : "East"
+        "south" : "South"
+        "west" : "West"
+    ]
+]
