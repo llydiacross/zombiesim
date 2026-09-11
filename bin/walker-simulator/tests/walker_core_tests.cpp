@@ -253,11 +253,84 @@ int main() {
             ", got " + std::to_string(expiry.Snapshot().totalPopulation));
     Expect(FindTicket(expiry.Snapshot(), zombiesim::walker::TicketState::Expired) != nullptr, "an unanswered ticket expires");
 
+    auto idempotence = MakeSimulator(*preview.graph, *config.config);
+    Expect(
+        idempotence.Submit({zombiesim::walker::RequestSpawnTicketsCommand{
+            .cellId = 0,
+            .maximumCount = 1,
+            .requestId = 0x100000001ULL}}, &error),
+        "high-half request id is accepted: " + error);
+    static_cast<void>(idempotence.AdvanceOneTick());
+    Expect(
+        idempotence.Submit({zombiesim::walker::RequestSpawnTicketsCommand{
+            .cellId = 0,
+            .maximumCount = 1,
+            .requestId = 1}}, &error),
+        "low-half request id is accepted independently: " + error);
+    const auto exactIdSnapshot = idempotence.AdvanceOneTick();
+    Expect(exactIdSnapshot.tickets.size() == 2, "request ids retain their exact 64-bit values");
+    Expect(
+        idempotence.Submit({zombiesim::walker::RequestSpawnTicketsCommand{
+            .cellId = 0,
+            .maximumCount = 1,
+            .requestId = 0x100000001ULL}}, &error),
+        "duplicate request submission is accepted idempotently: " + error);
+    const auto replayedRequest = idempotence.AdvanceOneTick();
+    Expect(replayedRequest.tickets.size() == 2, "replayed request id does not reserve another ticket");
+    const auto* idempotentTicket = FindTicket(replayedRequest, zombiesim::walker::TicketState::Reserved);
+    Expect(idempotentTicket != nullptr, "idempotence fixture retains a reserved ticket");
+    if (idempotentTicket != nullptr) {
+        Expect(idempotence.Submit({zombiesim::walker::AcknowledgeTicketCommand{.ticketId = idempotentTicket->ticketId}}, &error), "first acknowledgement is accepted: " + error);
+        static_cast<void>(idempotence.AdvanceOneTick());
+        Expect(idempotence.Submit({zombiesim::walker::AcknowledgeTicketCommand{.ticketId = idempotentTicket->ticketId}}, &error), "duplicate acknowledgement is accepted harmlessly: " + error);
+        static_cast<void>(idempotence.AdvanceOneTick());
+        Expect(idempotence.Submit({zombiesim::walker::ResolveTicketCommand{.ticketId = idempotentTicket->ticketId, .killed = false}}, &error), "first resolution is accepted: " + error);
+        const auto resolvedOnce = idempotence.AdvanceOneTick();
+        Expect(idempotence.Submit({zombiesim::walker::ResolveTicketCommand{.ticketId = idempotentTicket->ticketId, .killed = false}}, &error), "duplicate resolution is accepted harmlessly: " + error);
+        const auto resolvedTwice = idempotence.AdvanceOneTick();
+        Expect(resolvedOnce.totalPopulation == resolvedTwice.totalPopulation, "duplicate resolution does not change population twice");
+    }
+
+    auto capacity = MakeSimulator(*preview.graph, *config.config);
+    Expect(
+        !capacity.Submit({zombiesim::walker::RequestSpawnTicketsCommand{
+            .cellId = 0,
+            .maximumCount = static_cast<std::uint16_t>(config.config->maximumTicketsPerRequest + 1),
+            .requestId = 1}}, &error),
+        "ticket request above configured capacity is rejected");
+
+    auto retentionConfig = *config.config;
+    retentionConfig.progressPerTick = 1;
+    retentionConfig.ticketLifetimeTicks = 1000;
+    auto retention = MakeSimulator(*preview.graph, retentionConfig);
+    for (std::uint64_t requestId = 1; requestId <= 22; ++requestId) {
+        Expect(
+            retention.Submit({zombiesim::walker::RequestSpawnTicketsCommand{
+                .cellId = 0,
+                .maximumCount = 12,
+                .requestId = requestId}}, &error),
+            "retention ticket request is accepted: " + error);
+        const auto reservedTickets = retention.AdvanceOneTick();
+        for (const auto& reservedTicket : reservedTickets.tickets) {
+            if (reservedTicket.state == zombiesim::walker::TicketState::Reserved) {
+                Expect(retention.Submit({zombiesim::walker::RejectTicketCommand{.ticketId = reservedTicket.ticketId}}, &error), "retention ticket rejection is accepted: " + error);
+            }
+        }
+        static_cast<void>(retention.AdvanceOneTick());
+    }
+    Expect(retention.Snapshot().tickets.size() <= 256, "terminal ticket history is bounded");
+
     const auto checkpoint = ledger.ExportCheckpoint();
     Expect(!checkpoint.empty(), "checkpoint exports after a completed tick");
     auto restored = MakeSimulator(*preview.graph, *config.config);
     Expect(restored.ImportCheckpoint(checkpoint, &error), "checkpoint imports: " + error);
     Expect(restored.Snapshot().stateHash == ledger.Snapshot().stateHash, "checkpoint round-trip preserves state hash");
+    Expect(
+        restored.Snapshot().totalPopulation + 1 == initialPopulation,
+        "checkpoint preserves a killed ticket's population reduction");
+    Expect(
+        FindTicket(restored.Snapshot(), zombiesim::walker::TicketState::Killed) != nullptr,
+        "checkpoint preserves killed ticket state");
     auto corruptedCheckpoint = checkpoint;
     corruptedCheckpoint.back() ^= std::byte{1};
     Expect(!restored.ImportCheckpoint(corruptedCheckpoint, &error), "corrupt checkpoint is rejected");

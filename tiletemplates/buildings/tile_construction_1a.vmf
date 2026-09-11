@@ -2849,7 +2849,14 @@ entity
 cameras
 {
 	"activecamera" "0"
-	camera
+entity
+{
+	"id" "900001"
+	"classname" "zn_tile_direction"
+	"direction" "south"
+	"origin" "0 -320 32"
+}
+cameras
 	{
 		"position" "[82.8581 -737.383 332.907]"
 		"look" "[38.0799 -265.907 112.056]"

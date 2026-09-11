@@ -103,6 +103,7 @@ private:
     void MoveHordes();
     void MergeAndSplitHordes();
     void ExpireTickets();
+    void PruneTerminalTickets();
     [[nodiscard]] bool HasMaterializedTicket(std::uint64_t hordeId) const;
     [[nodiscard]] std::uint16_t ChooseNextCell(const Horde& horde) const;
     [[nodiscard]] std::uint64_t ComputeStateHash() const;
@@ -120,6 +121,8 @@ private:
     std::vector<WalkerCommand> pendingCommands_;
     std::vector<std::uint64_t> fulfilledRequestIds_;
     OutputSnapshot snapshot_;
+
+    static constexpr std::size_t kMaximumTerminalTickets = 256;
 };
 
 }  // namespace zombiesim::walker

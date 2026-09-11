@@ -17,6 +17,8 @@ local function activeEntries()
     end
     if ZM_Preview and ZM_Preview:HasClientCapability(ZM_Preview.Capabilities.operator) then
         table.insert(active, { id = "cheats", label = "CHEATS" })
+    elseif not ZM_Preview or not ZM_Preview:IsActive() then
+        table.insert(active, { id = "map", label = "MAP" })
     end
 
     local sliceAngle = 360 / #active
@@ -77,6 +79,28 @@ end
 ZM_Inventory = ZM_Inventory or {}
 ZM_Options = ZM_Options or {}
 ZM_PreviewCheats = ZM_PreviewCheats or { State = { god = false, noclip = false }, Message = "" }
+ZM_Options.WalkerSettings = ZM_Options.WalkerSettings or {
+    activeCap = 64,
+    populationPerZombie = 4,
+    canEdit = false,
+    loaded = false
+}
+
+function ZM_Options:RequestWalkerSettings()
+    net.Start("ZM.RequestWalkerMaterializationSettings")
+    net.SendToServer()
+end
+
+function ZM_Options:SetWalkerSettings(activeCap, populationPerZombie)
+    local settings = self.WalkerSettings or {}
+    if not settings.canEdit then
+        return
+    end
+    net.Start("ZM.SetWalkerMaterializationSettings")
+        net.WriteUInt(math.Clamp(math.floor(activeCap), 1, 256), 9)
+        net.WriteUInt(math.Clamp(math.floor(populationPerZombie), 1, 65535), 16)
+    net.SendToServer()
+end
 
 function ZM_PreviewCheats:Request(action)
     if not ZM_Preview or not ZM_Preview:HasClientCapability(ZM_Preview.Capabilities.operator) then
@@ -102,7 +126,7 @@ function ZM_Inventory:Open()
 end
 
 function ZM_Options:Open()
-    local frame = openFrame(self, "OPTIONS", 480, 310)
+    local frame = openFrame(self, "OPTIONS", 480, 430)
     if frame.OptionsBuilt then return end
     frame.OptionsBuilt = true
     local panel = vgui.Create("DPanel", frame)
@@ -118,10 +142,31 @@ function ZM_Options:Open()
     labels.OnChange = function(_, enabled)
         cookie.Set("zombiesim_quick_menu_labels", enabled and "1" or "0")
     end
+    local function setSliderLabel(slider, text)
+        slider:SetText("")
+        slider:SetTall(52)
+        if IsValid(slider.Label) then
+            slider.Label:SetVisible(false)
+        end
+        local label = vgui.Create("DLabel", slider)
+        label:SetFont("DermaDefaultBold")
+        label:SetTextColor(ZM_DermaSkin.Palette.text)
+        label:SetContentAlignment(4)
+        label:SetText(text)
+        slider.PerformLayout = function(currentSlider, width, height)
+            currentSlider.Label:SetVisible(false)
+            label:SetPos(0, 0)
+            label:SetSize(width, 20)
+            currentSlider.Slider:SetPos(0, 24)
+            currentSlider.Slider:SetSize(math.max(1, width - 56), math.max(1, height - 24))
+            currentSlider.TextArea:SetPos(math.max(0, width - 52), 22)
+            currentSlider.TextArea:SetSize(52, math.max(1, height - 22))
+        end
+    end
     local scale = vgui.Create("DNumSlider", panel)
     scale:Dock(TOP)
     scale:DockMargin(4, 0, 4, 4)
-    scale:SetText("Radial menu size")
+    setSliderLabel(scale, "Radial menu size")
     scale:SetMin(0.7)
     scale:SetMax(1.4)
     scale:SetDecimals(1)
@@ -129,6 +174,60 @@ function ZM_Options:Open()
     scale.OnValueChanged = function(_, value)
         cookie.Set("zombiesim_quick_menu_scale", tostring(math.Round(value, 1)))
     end
+
+    local walkerHeading = vgui.Create("DLabel", panel)
+    walkerHeading:Dock(TOP)
+    walkerHeading:DockMargin(4, 14, 4, 4)
+    walkerHeading:SetTall(20)
+    walkerHeading:SetFont("DermaDefaultBold")
+    walkerHeading:SetText("WALKER MATERIALIZATION")
+    walkerHeading:SetTextColor(ZM_DermaSkin.Palette.text)
+
+    local activeCap = vgui.Create("DNumSlider", panel)
+    activeCap:Dock(TOP)
+    activeCap:DockMargin(4, 0, 4, 4)
+    setSliderLabel(activeCap, "Active zombie cap")
+    activeCap:SetMin(1)
+    activeCap:SetMax(256)
+    activeCap:SetDecimals(0)
+
+    local populationPerZombie = vgui.Create("DNumSlider", panel)
+    populationPerZombie:Dock(TOP)
+    populationPerZombie:DockMargin(4, 0, 4, 4)
+    setSliderLabel(populationPerZombie, "Virtual walkers per zombie")
+    populationPerZombie:SetMin(1)
+    populationPerZombie:SetMax(10)
+    populationPerZombie:SetDecimals(0)
+
+    local updatingWalkerSettings = false
+    local function submitWalkerSettings()
+        if updatingWalkerSettings then
+            return
+        end
+        self:SetWalkerSettings(activeCap:GetValue(), populationPerZombie:GetValue())
+    end
+    activeCap.OnValueChanged = submitWalkerSettings
+    populationPerZombie.OnValueChanged = submitWalkerSettings
+
+    local displayedActiveCap
+    local displayedPopulationPerZombie
+    frame.Think = function()
+        local settings = self.WalkerSettings or {}
+        activeCap:SetEnabled(settings.canEdit == true)
+        populationPerZombie:SetEnabled(settings.canEdit == true)
+        if not settings.loaded then
+            return
+        end
+        if displayedActiveCap ~= settings.activeCap or displayedPopulationPerZombie ~= settings.populationPerZombie then
+            updatingWalkerSettings = true
+            activeCap:SetValue(settings.activeCap)
+            populationPerZombie:SetValue(settings.populationPerZombie)
+            updatingWalkerSettings = false
+            displayedActiveCap = settings.activeCap
+            displayedPopulationPerZombie = settings.populationPerZombie
+        end
+    end
+    self:RequestWalkerSettings()
 end
 
 function ZM_PreviewCheats:Open()
@@ -217,6 +316,15 @@ net.Receive("ZM.PreviewCheatStatus", function()
     end
 end)
 
+net.Receive("ZM.WalkerMaterializationSettings", function()
+    ZM_Options.WalkerSettings = {
+        activeCap = net.ReadUInt(9),
+        populationPerZombie = net.ReadUInt(16),
+        canEdit = net.ReadBool(),
+        loaded = true
+    }
+end)
+
 function QuickMenu:OpenDestination(entryId)
     if entryId == "inventory" then
         ZM_Inventory:Open()
@@ -226,6 +334,8 @@ function QuickMenu:OpenDestination(entryId)
         ZM_Options:Open()
     elseif entryId == "cheats" then
         ZM_PreviewCheats:Open()
+    elseif entryId == "map" and ZM_WorldMap then
+        ZM_WorldMap:Open()
     end
 end
 

@@ -198,7 +198,7 @@ entity
     "classname" "func_instance"
     "origin" "0 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/roads/tile_road_ramp.vmf"
+    "file" "../../tiletemplates/roads/tile_road_onramp.vmf"
     "targetname" "zm_dev_zoo_17"
     "fixup_style" "0"
 }
@@ -208,8 +208,48 @@ entity
     "classname" "func_instance"
     "origin" "1280 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/roads/tile_road_tjunction.vmf"
+    "file" "../../tiletemplates/roads/tile_road_ramp.vmf"
     "targetname" "zm_dev_zoo_18"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "21"
+    "classname" "func_instance"
+    "origin" "2560 -1280 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/roads/tile_road_tjunction.vmf"
+    "targetname" "zm_dev_zoo_19"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "22"
+    "classname" "func_instance"
+    "origin" "-2560 -2560 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/roads/tile_road_transitionGate_1.vmf"
+    "targetname" "zm_dev_zoo_20"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "23"
+    "classname" "func_instance"
+    "origin" "-1280 -2560 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/roads/tile_road_transitionGate_2.vmf"
+    "targetname" "zm_dev_zoo_21"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "24"
+    "classname" "func_instance"
+    "origin" "0 -2560 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/roads/tile_road_transitionGate_3.vmf"
+    "targetname" "zm_dev_zoo_22"
     "fixup_style" "0"
 }
 cameras

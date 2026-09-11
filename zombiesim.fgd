@@ -4,13 +4,39 @@
     start_delay(float) : "Opening safe-room delay (seconds)" : "0" : "For a new player only, waits this long before changing to the generated world-origin safe room. Use this time for an opening intro."
 ]
 
-@PointClass base(Targetname) = zn_road_connection : "ZombieSim Road Connection"
+@PointClass base(Targetname) = zn_tile_direction : "ZombieSim Tile Direction"
 [
-    direction(choices) : "Authored road edge" : "north" : "The authored-local tile edge that must connect to a generated road."
+    direction(choices) : "Authored entrance edge" : "south" : "The authored-local tile edge containing this building's entrance." =
     [
         "north" : "North"
         "east" : "East"
         "south" : "South"
         "west" : "West"
+    ]
+]
+
+@PointClass base(Targetname) = zn_road_connection : "ZombieSim Road Connection"
+[
+    connection_type(choices) : "Generated road connection" : "none" : "Whether this marker also requests a road connection at its authored edge." =
+    [
+        "none" : "No connection"
+        "t_junction" : "T-junction"
+    ]
+]
+
+@SolidClass base(Targetname) = trigger_multiple : "ZombieSim Transition Gate"
+[
+    zm_transition_direction(choices) : "World exit direction" : "north" : "The cardinal world edge this gate travels through." =
+    [
+        "north" : "North"
+        "east" : "East"
+        "south" : "South"
+        "west" : "West"
+    ]
+    zm_transition_mode(choices) : "Travel mode" : "any" : "The generated world exit mode required by this gate." =
+    [
+        "any" : "Any permitted mode"
+        "road" : "Road"
+        "highway" : "Motorway"
     ]
 ]

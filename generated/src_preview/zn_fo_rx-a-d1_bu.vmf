@@ -1481,6 +1481,7 @@ entity
     "origin" "-1280 1280 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_tile_decoration_0_0"
     "fixup_style" "0"
 }
 entity
@@ -1490,6 +1491,7 @@ entity
     "origin" "-640 1280 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_tile_decoration_1_0"
     "fixup_style" "0"
 }
 entity
@@ -1499,6 +1501,7 @@ entity
     "origin" "0 1280 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/roads/tile_road.vmf"
+    "targetname" "zm_tile_road_2_0"
     "fixup_style" "0"
 }
 entity
@@ -1508,6 +1511,7 @@ entity
     "origin" "640 1280 0"
     "angles" "0 270 0"
     "file" "../../tiletemplates/buildings/tile_bunker_1a.vmf"
+    "targetname" "zm_tile_landmark_3_0"
     "fixup_style" "0"
 }
 entity
@@ -1517,6 +1521,7 @@ entity
     "origin" "1280 1280 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_tile_terrain_4_0"
     "fixup_style" "0"
 }
 entity
@@ -1526,6 +1531,7 @@ entity
     "origin" "-1280 640 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_tile_decoration_0_1"
     "fixup_style" "0"
 }
 entity
@@ -1535,6 +1541,7 @@ entity
     "origin" "-640 640 0"
     "angles" "0 90 0"
     "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
+    "targetname" "zm_tile_building_1_1"
     "fixup_style" "0"
 }
 entity
@@ -1544,6 +1551,7 @@ entity
     "origin" "0 640 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/roads/tile_road.vmf"
+    "targetname" "zm_tile_road_2_1"
     "fixup_style" "0"
 }
 entity
@@ -1553,6 +1561,7 @@ entity
     "origin" "640 640 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_tile_terrain_3_1"
     "fixup_style" "0"
 }
 entity
@@ -1562,6 +1571,7 @@ entity
     "origin" "1280 640 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_tile_terrain_4_1"
     "fixup_style" "0"
 }
 entity
@@ -1571,6 +1581,7 @@ entity
     "origin" "-1280 0 0"
     "angles" "0 90 0"
     "file" "../../tiletemplates/roads/tile_road.vmf"
+    "targetname" "zm_tile_road_0_2"
     "fixup_style" "0"
 }
 entity
@@ -1580,6 +1591,7 @@ entity
     "origin" "-640 0 0"
     "angles" "0 90 0"
     "file" "../../tiletemplates/roads/tile_road.vmf"
+    "targetname" "zm_tile_road_1_2"
     "fixup_style" "0"
 }
 entity
@@ -1589,6 +1601,7 @@ entity
     "origin" "0 0 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/roads/tile_road_crossjunction.vmf"
+    "targetname" "zm_tile_road_center_2_2"
     "fixup_style" "0"
 }
 entity
@@ -1598,6 +1611,7 @@ entity
     "origin" "640 0 0"
     "angles" "0 90 0"
     "file" "../../tiletemplates/roads/tile_road.vmf"
+    "targetname" "zm_tile_road_3_2"
     "fixup_style" "0"
 }
 entity
@@ -1607,6 +1621,7 @@ entity
     "origin" "1280 0 0"
     "angles" "0 90 0"
     "file" "../../tiletemplates/roads/tile_road.vmf"
+    "targetname" "zm_tile_road_4_2"
     "fixup_style" "0"
 }
 entity
@@ -1616,6 +1631,7 @@ entity
     "origin" "-1280 -640 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_tile_terrain_0_3"
     "fixup_style" "0"
 }
 entity
@@ -1625,6 +1641,7 @@ entity
     "origin" "-640 -640 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_tile_terrain_1_3"
     "fixup_style" "0"
 }
 entity
@@ -1634,6 +1651,7 @@ entity
     "origin" "0 -640 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/roads/tile_road.vmf"
+    "targetname" "zm_tile_road_2_3"
     "fixup_style" "0"
 }
 entity
@@ -1643,6 +1661,7 @@ entity
     "origin" "640 -640 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_tile_decoration_3_3"
     "fixup_style" "0"
 }
 entity
@@ -1652,6 +1671,7 @@ entity
     "origin" "1280 -640 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
+    "targetname" "zm_tile_building_4_3"
     "fixup_style" "0"
 }
 entity
@@ -1661,6 +1681,7 @@ entity
     "origin" "-1280 -1280 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_tile_terrain_0_4"
     "fixup_style" "0"
 }
 entity
@@ -1670,6 +1691,7 @@ entity
     "origin" "-640 -1280 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_tile_decoration_1_4"
     "fixup_style" "0"
 }
 entity
@@ -1679,6 +1701,7 @@ entity
     "origin" "0 -1280 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/roads/tile_road.vmf"
+    "targetname" "zm_tile_road_2_4"
     "fixup_style" "0"
 }
 entity
@@ -1688,6 +1711,7 @@ entity
     "origin" "640 -1280 0"
     "angles" "0 270 0"
     "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
+    "targetname" "zm_tile_building_3_4"
     "fixup_style" "0"
 }
 entity
@@ -1697,6 +1721,7 @@ entity
     "origin" "1280 -1280 0"
     "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
+    "targetname" "zm_tile_building_4_4"
     "fixup_style" "0"
 }
 entity
@@ -1735,8 +1760,8 @@ entity
     "classname" "func_instance"
     "origin" "0 1920 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/roads/tile_road.vmf"
-    "targetname" "zm_border_N_2_-1"
+    "file" "../../tiletemplates/roads/tile_road_transitionGate_1.vmf"
+    "targetname" "zm_transition_road_N"
     "fixup_style" "0"
 }
 entity
@@ -1815,8 +1840,8 @@ entity
     "classname" "func_instance"
     "origin" "-1920 0 0"
     "angles" "0 90 0"
-    "file" "../../tiletemplates/roads/tile_road.vmf"
-    "targetname" "zm_border_W_-1_2"
+    "file" "../../tiletemplates/roads/tile_road_transitionGate_1.vmf"
+    "targetname" "zm_transition_road_W"
     "fixup_style" "0"
 }
 entity
@@ -1825,8 +1850,8 @@ entity
     "classname" "func_instance"
     "origin" "1920 0 0"
     "angles" "0 90 0"
-    "file" "../../tiletemplates/roads/tile_road.vmf"
-    "targetname" "zm_border_E_5_2"
+    "file" "../../tiletemplates/roads/tile_road_transitionGate_2.vmf"
+    "targetname" "zm_transition_road_E"
     "fixup_style" "0"
 }
 entity
@@ -1905,8 +1930,8 @@ entity
     "classname" "func_instance"
     "origin" "0 -1920 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/roads/tile_road.vmf"
-    "targetname" "zm_border_S_2_5"
+    "file" "../../tiletemplates/roads/tile_road_transitionGate_3.vmf"
+    "targetname" "zm_transition_road_S"
     "fixup_style" "0"
 }
 entity
@@ -1942,12 +1967,438 @@ entity
 entity
 {
     "id" "716"
+    "classname" "trigger_multiple"
+    "origin" "1568 0 56"
+    "angles" "0 0 0"
+    "targetname" "zm_transition_gate_E"
+    "zm_transition_gate" "1"
+    "zm_transition_direction" "east"
+    "zm_transition_mode" "any"
+    "wait" "1"
+    "solid"
+    {
+        "id" "717"
+        "side"
+        {
+            "id" "718"
+            "plane" "(1536 -128 112) (1600 128 112) (1600 -128 112)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "719"
+            "plane" "(1536 128 0) (1600 -128 0) (1600 128 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "720"
+            "plane" "(1600 -128 0) (1600 128 112) (1600 128 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "721"
+            "plane" "(1536 128 0) (1536 -128 112) (1536 -128 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "722"
+            "plane" "(1600 128 0) (1536 128 112) (1536 128 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "723"
+            "plane" "(1536 -128 0) (1600 -128 112) (1600 -128 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+    }
+}
+entity
+{
+    "id" "724"
+    "classname" "prop_static"
+    "targetname" "zm_transition_gate_E_barricade_0"
+    "angles" "0 249 0"
+    "fademindist" "-1"
+    "fadescale" "1"
+    "lightmapresolutionx" "32"
+    "lightmapresolutiony" "32"
+    "model" "models/props/de_nuke/car_nuke_red.mdl"
+    "skin" "0"
+    "solid" "6"
+    "origin" "1536 192 44"
+}
+entity
+{
+    "id" "725"
+    "classname" "prop_static"
+    "targetname" "zm_transition_gate_E_barricade_1"
+    "angles" "0 249 0"
+    "fademindist" "-1"
+    "fadescale" "1"
+    "lightmapresolutionx" "32"
+    "lightmapresolutiony" "32"
+    "model" "models/props/de_nuke/car_nuke_glass.mdl"
+    "skin" "0"
+    "solid" "6"
+    "origin" "1537.26 192.499 42.898"
+}
+entity
+{
+    "id" "726"
+    "classname" "prop_static"
+    "targetname" "zm_transition_gate_E_barricade_2"
+    "angles" "0 62 0"
+    "fademindist" "-1"
+    "fadescale" "1"
+    "lightmapresolutionx" "32"
+    "lightmapresolutiony" "32"
+    "model" "models/props/de_nuke/car_nuke_glass.mdl"
+    "skin" "0"
+    "solid" "6"
+    "origin" "1502.69 -192.233 42.898"
+}
+entity
+{
+    "id" "727"
+    "classname" "prop_static"
+    "targetname" "zm_transition_gate_E_barricade_3"
+    "angles" "0 62 0"
+    "fademindist" "-1"
+    "fadescale" "1"
+    "lightmapresolutionx" "32"
+    "lightmapresolutiony" "32"
+    "model" "models/props/de_nuke/car_nuke_red.mdl"
+    "skin" "0"
+    "solid" "6"
+    "origin" "1504 -191.892 44"
+}
+entity
+{
+    "id" "728"
+    "classname" "trigger_multiple"
+    "origin" "0 1568 56"
+    "angles" "0 90 0"
+    "targetname" "zm_transition_gate_N"
+    "zm_transition_gate" "1"
+    "zm_transition_direction" "north"
+    "zm_transition_mode" "any"
+    "wait" "1"
+    "solid"
+    {
+        "id" "729"
+        "side"
+        {
+            "id" "730"
+            "plane" "(-128 1536 112) (128 1600 112) (128 1536 112)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "731"
+            "plane" "(-128 1600 0) (128 1536 0) (128 1600 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "732"
+            "plane" "(128 1536 0) (128 1600 112) (128 1600 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "733"
+            "plane" "(-128 1600 0) (-128 1536 112) (-128 1536 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "734"
+            "plane" "(128 1600 0) (-128 1600 112) (-128 1600 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "735"
+            "plane" "(-128 1536 0) (128 1536 112) (128 1536 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+    }
+}
+entity
+{
+    "id" "736"
+    "classname" "prop_static"
+    "targetname" "zm_transition_gate_N_barricade_0"
+    "angles" "0 339 0"
+    "fademindist" "-1"
+    "fadescale" "1"
+    "lightmapresolutionx" "32"
+    "lightmapresolutiony" "32"
+    "model" "models/props/de_nuke/car_nuke_red.mdl"
+    "skin" "0"
+    "solid" "6"
+    "origin" "-192 1536 44"
+}
+entity
+{
+    "id" "737"
+    "classname" "prop_static"
+    "targetname" "zm_transition_gate_N_barricade_1"
+    "angles" "0 339 0"
+    "fademindist" "-1"
+    "fadescale" "1"
+    "lightmapresolutionx" "32"
+    "lightmapresolutiony" "32"
+    "model" "models/props/de_nuke/car_nuke_glass.mdl"
+    "skin" "0"
+    "solid" "6"
+    "origin" "-192.499 1537.26 42.898"
+}
+entity
+{
+    "id" "738"
+    "classname" "prop_static"
+    "targetname" "zm_transition_gate_N_barricade_2"
+    "angles" "0 152 0"
+    "fademindist" "-1"
+    "fadescale" "1"
+    "lightmapresolutionx" "32"
+    "lightmapresolutiony" "32"
+    "model" "models/props/de_nuke/car_nuke_glass.mdl"
+    "skin" "0"
+    "solid" "6"
+    "origin" "192.233 1502.69 42.898"
+}
+entity
+{
+    "id" "739"
+    "classname" "prop_static"
+    "targetname" "zm_transition_gate_N_barricade_3"
+    "angles" "0 152 0"
+    "fademindist" "-1"
+    "fadescale" "1"
+    "lightmapresolutionx" "32"
+    "lightmapresolutiony" "32"
+    "model" "models/props/de_nuke/car_nuke_red.mdl"
+    "skin" "0"
+    "solid" "6"
+    "origin" "191.892 1504 44"
+}
+entity
+{
+    "id" "740"
+    "classname" "trigger_multiple"
+    "origin" "-1568 0 56"
+    "angles" "0 180 0"
+    "targetname" "zm_transition_gate_W"
+    "zm_transition_gate" "1"
+    "zm_transition_direction" "west"
+    "zm_transition_mode" "any"
+    "wait" "1"
+    "solid"
+    {
+        "id" "741"
+        "side"
+        {
+            "id" "742"
+            "plane" "(-1600 -128 112) (-1536 128 112) (-1536 -128 112)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "743"
+            "plane" "(-1600 128 0) (-1536 -128 0) (-1536 128 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "744"
+            "plane" "(-1536 -128 0) (-1536 128 112) (-1536 128 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "745"
+            "plane" "(-1600 128 0) (-1600 -128 112) (-1600 -128 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "746"
+            "plane" "(-1536 128 0) (-1600 128 112) (-1600 128 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+        "side"
+        {
+            "id" "747"
+            "plane" "(-1600 -128 0) (-1536 -128 112) (-1536 -128 0)"
+            "material" "TOOLS/TOOLSTRIGGER"
+            "uaxis" "[1 0 0 0] 0.25"
+            "vaxis" "[0 -1 0 0] 0.25"
+            "rotation" "0"
+            "lightmapscale" "16"
+            "smoothing_groups" "0"
+        }
+    }
+}
+entity
+{
+    "id" "748"
+    "classname" "prop_static"
+    "targetname" "zm_transition_gate_W_barricade_0"
+    "angles" "0 69 0"
+    "fademindist" "-1"
+    "fadescale" "1"
+    "lightmapresolutionx" "32"
+    "lightmapresolutiony" "32"
+    "model" "models/props/de_nuke/car_nuke_red.mdl"
+    "skin" "0"
+    "solid" "6"
+    "origin" "-1536 -192 44"
+}
+entity
+{
+    "id" "749"
+    "classname" "prop_static"
+    "targetname" "zm_transition_gate_W_barricade_1"
+    "angles" "0 69 0"
+    "fademindist" "-1"
+    "fadescale" "1"
+    "lightmapresolutionx" "32"
+    "lightmapresolutiony" "32"
+    "model" "models/props/de_nuke/car_nuke_glass.mdl"
+    "skin" "0"
+    "solid" "6"
+    "origin" "-1537.26 -192.499 42.898"
+}
+entity
+{
+    "id" "750"
+    "classname" "prop_static"
+    "targetname" "zm_transition_gate_W_barricade_2"
+    "angles" "0 242 0"
+    "fademindist" "-1"
+    "fadescale" "1"
+    "lightmapresolutionx" "32"
+    "lightmapresolutiony" "32"
+    "model" "models/props/de_nuke/car_nuke_glass.mdl"
+    "skin" "0"
+    "solid" "6"
+    "origin" "-1502.69 192.233 42.898"
+}
+entity
+{
+    "id" "751"
+    "classname" "prop_static"
+    "targetname" "zm_transition_gate_W_barricade_3"
+    "angles" "0 242 0"
+    "fademindist" "-1"
+    "fadescale" "1"
+    "lightmapresolutionx" "32"
+    "lightmapresolutiony" "32"
+    "model" "models/props/de_nuke/car_nuke_red.mdl"
+    "skin" "0"
+    "solid" "6"
+    "origin" "-1504 191.892 44"
+}
+entity
+{
+    "id" "752"
     "classname" "env_cubemap"
     "origin" "1280 0 96"
 }
 entity
 {
-    "id" "717"
+    "id" "753"
     "classname" "env_cubemap"
     "origin" "640 0 96"
 }

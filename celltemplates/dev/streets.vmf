@@ -97,7 +97,7 @@ entity
     "id" "9"
     "classname" "func_instance"
     "origin" "-7680 4480 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
     "targetname" "zm_dev_street_0_building_2_1"
     "fixup_style" "0"
@@ -107,7 +107,7 @@ entity
     "id" "10"
     "classname" "func_instance"
     "origin" "-7040 4480 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
     "targetname" "zm_dev_street_0_building_3_1"
     "fixup_style" "0"
@@ -117,7 +117,7 @@ entity
     "id" "11"
     "classname" "func_instance"
     "origin" "-6400 4480 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_0_building_4_1"
     "fixup_style" "0"
@@ -137,7 +137,7 @@ entity
     "id" "13"
     "classname" "func_instance"
     "origin" "-8320 3840 0"
-    "angles" "0 270 0"
+    "angles" "0 90 0"
     "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
     "targetname" "zm_dev_street_0_building_1_2"
     "fixup_style" "0"
@@ -187,7 +187,7 @@ entity
     "id" "18"
     "classname" "func_instance"
     "origin" "-8320 3200 0"
-    "angles" "0 90 0"
+    "angles" "0 270 0"
     "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_0_building_1_3"
     "fixup_style" "0"
@@ -307,7 +307,7 @@ entity
     "id" "30"
     "classname" "func_instance"
     "origin" "-3200 5120 0"
-    "angles" "0 270 0"
+    "angles" "0 90 0"
     "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_1_building_3_0"
     "fixup_style" "0"
@@ -337,7 +337,7 @@ entity
     "id" "33"
     "classname" "func_instance"
     "origin" "-4480 4480 0"
-    "angles" "0 90 0"
+    "angles" "0 270 0"
     "file" "../../tiletemplates/buildings/tile_building_1bbb.vmf"
     "targetname" "zm_dev_street_1_building_1_1"
     "fixup_style" "0"
@@ -448,7 +448,7 @@ entity
     "classname" "func_instance"
     "origin" "-3840 3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/roads/tile_road.vmf"
+    "file" "../../tiletemplates/roads/tile_road_onramp.vmf"
     "targetname" "zm_dev_street_1_onramp_road_2_3"
     "fixup_style" "0"
 }
@@ -456,25 +456,15 @@ entity
 {
     "id" "45"
     "classname" "func_instance"
-    "origin" "-3200 3200 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
-    "targetname" "zm_dev_street_1_decoration_3_3"
+    "origin" "-2880 2880 0"
+    "angles" "0 180 0"
+    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
+    "targetname" "zm_dev_street_1_building_3_3"
     "fixup_style" "0"
 }
 entity
 {
     "id" "46"
-    "classname" "func_instance"
-    "origin" "-2560 3200 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1ddd.vmf"
-    "targetname" "zm_dev_street_1_building_4_3"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "47"
     "classname" "func_instance"
     "origin" "-5120 2560 0"
     "angles" "0 0 0"
@@ -484,7 +474,7 @@ entity
 }
 entity
 {
-    "id" "48"
+    "id" "47"
     "classname" "func_instance"
     "origin" "-4480 2560 0"
     "angles" "0 0 0"
@@ -494,7 +484,7 @@ entity
 }
 entity
 {
-    "id" "49"
+    "id" "48"
     "classname" "func_instance"
     "origin" "-3840 2560 0"
     "angles" "0 0 0"
@@ -504,27 +494,7 @@ entity
 }
 entity
 {
-    "id" "50"
-    "classname" "func_instance"
-    "origin" "-3200 2560 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
-    "targetname" "zm_dev_street_1_building_3_4"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "51"
-    "classname" "func_instance"
-    "origin" "-2560 2560 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
-    "targetname" "zm_dev_street_1_building_4_4"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "52"
+    "id" "49"
     "classname" "func_instance"
     "origin" "-1280 5120 0"
     "angles" "0 0 0"
@@ -534,7 +504,7 @@ entity
 }
 entity
 {
-    "id" "53"
+    "id" "50"
     "classname" "func_instance"
     "origin" "-640 5120 0"
     "angles" "0 0 0"
@@ -544,7 +514,7 @@ entity
 }
 entity
 {
-    "id" "54"
+    "id" "51"
     "classname" "func_instance"
     "origin" "0 5120 0"
     "angles" "0 0 0"
@@ -554,7 +524,7 @@ entity
 }
 entity
 {
-    "id" "55"
+    "id" "52"
     "classname" "func_instance"
     "origin" "640 5120 0"
     "angles" "0 0 0"
@@ -564,7 +534,7 @@ entity
 }
 entity
 {
-    "id" "56"
+    "id" "53"
     "classname" "func_instance"
     "origin" "1280 5120 0"
     "angles" "0 0 0"
@@ -574,7 +544,7 @@ entity
 }
 entity
 {
-    "id" "57"
+    "id" "54"
     "classname" "func_instance"
     "origin" "-1280 4480 0"
     "angles" "0 0 0"
@@ -584,7 +554,7 @@ entity
 }
 entity
 {
-    "id" "58"
+    "id" "55"
     "classname" "func_instance"
     "origin" "-640 4480 0"
     "angles" "0 0 0"
@@ -594,7 +564,7 @@ entity
 }
 entity
 {
-    "id" "59"
+    "id" "56"
     "classname" "func_instance"
     "origin" "0 4480 0"
     "angles" "0 0 0"
@@ -604,7 +574,7 @@ entity
 }
 entity
 {
-    "id" "60"
+    "id" "57"
     "classname" "func_instance"
     "origin" "640 4480 0"
     "angles" "0 0 0"
@@ -614,7 +584,7 @@ entity
 }
 entity
 {
-    "id" "61"
+    "id" "58"
     "classname" "func_instance"
     "origin" "1280 4480 0"
     "angles" "0 0 0"
@@ -624,7 +594,7 @@ entity
 }
 entity
 {
-    "id" "62"
+    "id" "59"
     "classname" "func_instance"
     "origin" "-1280 3840 0"
     "angles" "0 90 0"
@@ -634,7 +604,7 @@ entity
 }
 entity
 {
-    "id" "63"
+    "id" "60"
     "classname" "func_instance"
     "origin" "-640 3840 0"
     "angles" "0 90 0"
@@ -644,7 +614,7 @@ entity
 }
 entity
 {
-    "id" "64"
+    "id" "61"
     "classname" "func_instance"
     "origin" "0 3840 0"
     "angles" "0 180 0"
@@ -654,7 +624,7 @@ entity
 }
 entity
 {
-    "id" "65"
+    "id" "62"
     "classname" "func_instance"
     "origin" "640 3840 0"
     "angles" "0 0 0"
@@ -664,17 +634,17 @@ entity
 }
 entity
 {
-    "id" "66"
+    "id" "63"
     "classname" "func_instance"
     "origin" "1280 3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_2_building_4_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "67"
+    "id" "64"
     "classname" "func_instance"
     "origin" "-1280 3200 0"
     "angles" "0 0 0"
@@ -684,47 +654,37 @@ entity
 }
 entity
 {
-    "id" "68"
+    "id" "65"
     "classname" "func_instance"
-    "origin" "-640 3200 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
-    "targetname" "zm_dev_street_2_decoration_1_3"
+    "origin" "-320 2880 0"
+    "angles" "0 180 0"
+    "file" "../../tiletemplates/buildings/tile_commercial_2aa_2x.vmf"
+    "targetname" "zm_dev_street_2_building_1_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "69"
-    "classname" "func_instance"
-    "origin" "0 3200 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
-    "targetname" "zm_dev_street_2_decoration_2_3"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "70"
+    "id" "66"
     "classname" "func_instance"
     "origin" "640 3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
     "targetname" "zm_dev_street_2_building_3_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "71"
+    "id" "67"
     "classname" "func_instance"
     "origin" "1280 3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
+    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_dev_street_2_building_4_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "72"
+    "id" "68"
     "classname" "func_instance"
     "origin" "-1280 2560 0"
     "angles" "0 0 0"
@@ -734,27 +694,7 @@ entity
 }
 entity
 {
-    "id" "73"
-    "classname" "func_instance"
-    "origin" "-640 2560 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
-    "targetname" "zm_dev_street_2_building_1_4"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "74"
-    "classname" "func_instance"
-    "origin" "0 2560 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
-    "targetname" "zm_dev_street_2_building_2_4"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "75"
+    "id" "69"
     "classname" "func_instance"
     "origin" "640 2560 0"
     "angles" "0 0 0"
@@ -764,7 +704,7 @@ entity
 }
 entity
 {
-    "id" "76"
+    "id" "70"
     "classname" "func_instance"
     "origin" "1280 2560 0"
     "angles" "0 0 0"
@@ -774,7 +714,7 @@ entity
 }
 entity
 {
-    "id" "77"
+    "id" "71"
     "classname" "func_instance"
     "origin" "2560 5120 0"
     "angles" "0 0 0"
@@ -784,7 +724,7 @@ entity
 }
 entity
 {
-    "id" "78"
+    "id" "72"
     "classname" "func_instance"
     "origin" "3200 5120 0"
     "angles" "0 0 0"
@@ -794,7 +734,7 @@ entity
 }
 entity
 {
-    "id" "79"
+    "id" "73"
     "classname" "func_instance"
     "origin" "3840 5120 0"
     "angles" "0 0 0"
@@ -804,7 +744,7 @@ entity
 }
 entity
 {
-    "id" "80"
+    "id" "74"
     "classname" "func_instance"
     "origin" "4480 5120 0"
     "angles" "0 0 0"
@@ -814,7 +754,7 @@ entity
 }
 entity
 {
-    "id" "81"
+    "id" "75"
     "classname" "func_instance"
     "origin" "5120 5120 0"
     "angles" "0 0 0"
@@ -824,17 +764,17 @@ entity
 }
 entity
 {
-    "id" "82"
+    "id" "76"
     "classname" "func_instance"
     "origin" "2560 4480 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
     "targetname" "zm_dev_street_3_building_0_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "83"
+    "id" "77"
     "classname" "func_instance"
     "origin" "3200 4480 0"
     "angles" "0 0 0"
@@ -844,17 +784,17 @@ entity
 }
 entity
 {
-    "id" "84"
+    "id" "78"
     "classname" "func_instance"
     "origin" "3840 4480 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_3_building_2_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "85"
+    "id" "79"
     "classname" "func_instance"
     "origin" "4480 4480 0"
     "angles" "0 0 0"
@@ -864,7 +804,7 @@ entity
 }
 entity
 {
-    "id" "86"
+    "id" "80"
     "classname" "func_instance"
     "origin" "5120 4480 0"
     "angles" "0 0 0"
@@ -874,7 +814,7 @@ entity
 }
 entity
 {
-    "id" "87"
+    "id" "81"
     "classname" "func_instance"
     "origin" "2560 3840 0"
     "angles" "0 90 0"
@@ -884,7 +824,7 @@ entity
 }
 entity
 {
-    "id" "88"
+    "id" "82"
     "classname" "func_instance"
     "origin" "3200 3840 0"
     "angles" "0 90 0"
@@ -894,7 +834,7 @@ entity
 }
 entity
 {
-    "id" "89"
+    "id" "83"
     "classname" "func_instance"
     "origin" "3840 3840 0"
     "angles" "0 270 0"
@@ -904,17 +844,17 @@ entity
 }
 entity
 {
-    "id" "90"
+    "id" "84"
     "classname" "func_instance"
     "origin" "4480 3840 0"
-    "angles" "0 90 0"
+    "angles" "0 270 0"
     "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
     "targetname" "zm_dev_street_3_building_3_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "91"
+    "id" "85"
     "classname" "func_instance"
     "origin" "5120 3840 0"
     "angles" "0 0 0"
@@ -924,27 +864,17 @@ entity
 }
 entity
 {
-    "id" "92"
+    "id" "86"
     "classname" "func_instance"
-    "origin" "2560 3200 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
+    "origin" "2880 2880 0"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
     "targetname" "zm_dev_street_3_building_0_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "93"
-    "classname" "func_instance"
-    "origin" "3200 3200 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
-    "targetname" "zm_dev_street_3_building_1_3"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "94"
+    "id" "87"
     "classname" "func_instance"
     "origin" "3840 3200 0"
     "angles" "0 0 0"
@@ -954,17 +884,17 @@ entity
 }
 entity
 {
-    "id" "95"
+    "id" "88"
     "classname" "func_instance"
     "origin" "4480 3200 0"
-    "angles" "0 270 0"
+    "angles" "0 90 0"
     "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_3_building_3_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "96"
+    "id" "89"
     "classname" "func_instance"
     "origin" "5120 3200 0"
     "angles" "0 0 0"
@@ -974,27 +904,7 @@ entity
 }
 entity
 {
-    "id" "97"
-    "classname" "func_instance"
-    "origin" "2560 2560 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
-    "targetname" "zm_dev_street_3_building_0_4"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "98"
-    "classname" "func_instance"
-    "origin" "3200 2560 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
-    "targetname" "zm_dev_street_3_building_1_4"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "99"
+    "id" "90"
     "classname" "func_instance"
     "origin" "3840 2560 0"
     "angles" "0 0 0"
@@ -1004,7 +914,7 @@ entity
 }
 entity
 {
-    "id" "100"
+    "id" "91"
     "classname" "func_instance"
     "origin" "4480 2560 0"
     "angles" "0 0 0"
@@ -1014,7 +924,7 @@ entity
 }
 entity
 {
-    "id" "101"
+    "id" "92"
     "classname" "func_instance"
     "origin" "5120 2560 0"
     "angles" "0 0 0"
@@ -1024,27 +934,17 @@ entity
 }
 entity
 {
-    "id" "102"
+    "id" "93"
     "classname" "func_instance"
-    "origin" "6400 5120 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_4_terrain_0_0"
+    "origin" "6720 4800 0"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_commercial_2a_2x.vmf"
+    "targetname" "zm_dev_street_4_building_0_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "103"
-    "classname" "func_instance"
-    "origin" "7040 5120 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_4_terrain_1_0"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "104"
+    "id" "94"
     "classname" "func_instance"
     "origin" "7680 5120 0"
     "angles" "0 0 0"
@@ -1054,7 +954,7 @@ entity
 }
 entity
 {
-    "id" "105"
+    "id" "95"
     "classname" "func_instance"
     "origin" "8320 5120 0"
     "angles" "0 0 0"
@@ -1064,7 +964,7 @@ entity
 }
 entity
 {
-    "id" "106"
+    "id" "96"
     "classname" "func_instance"
     "origin" "8960 5120 0"
     "angles" "0 0 0"
@@ -1074,27 +974,7 @@ entity
 }
 entity
 {
-    "id" "107"
-    "classname" "func_instance"
-    "origin" "6400 4480 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_4_terrain_0_1"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "108"
-    "classname" "func_instance"
-    "origin" "7040 4480 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_4_terrain_1_1"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "109"
+    "id" "97"
     "classname" "func_instance"
     "origin" "7680 4480 0"
     "angles" "0 0 0"
@@ -1104,7 +984,7 @@ entity
 }
 entity
 {
-    "id" "110"
+    "id" "98"
     "classname" "func_instance"
     "origin" "8320 4480 0"
     "angles" "0 0 0"
@@ -1114,7 +994,7 @@ entity
 }
 entity
 {
-    "id" "111"
+    "id" "99"
     "classname" "func_instance"
     "origin" "8960 4480 0"
     "angles" "0 0 0"
@@ -1124,7 +1004,7 @@ entity
 }
 entity
 {
-    "id" "112"
+    "id" "100"
     "classname" "func_instance"
     "origin" "6400 3840 0"
     "angles" "0 90 0"
@@ -1134,7 +1014,7 @@ entity
 }
 entity
 {
-    "id" "113"
+    "id" "101"
     "classname" "func_instance"
     "origin" "7040 3840 0"
     "angles" "0 90 0"
@@ -1144,7 +1024,7 @@ entity
 }
 entity
 {
-    "id" "114"
+    "id" "102"
     "classname" "func_instance"
     "origin" "7680 3840 0"
     "angles" "0 0 0"
@@ -1154,7 +1034,7 @@ entity
 }
 entity
 {
-    "id" "115"
+    "id" "103"
     "classname" "func_instance"
     "origin" "8320 3840 0"
     "angles" "0 90 0"
@@ -1164,7 +1044,7 @@ entity
 }
 entity
 {
-    "id" "116"
+    "id" "104"
     "classname" "func_instance"
     "origin" "8960 3840 0"
     "angles" "0 90 0"
@@ -1174,7 +1054,7 @@ entity
 }
 entity
 {
-    "id" "117"
+    "id" "105"
     "classname" "func_instance"
     "origin" "6400 3200 0"
     "angles" "0 0 0"
@@ -1184,7 +1064,7 @@ entity
 }
 entity
 {
-    "id" "118"
+    "id" "106"
     "classname" "func_instance"
     "origin" "7040 3200 0"
     "angles" "0 0 0"
@@ -1194,7 +1074,7 @@ entity
 }
 entity
 {
-    "id" "119"
+    "id" "107"
     "classname" "func_instance"
     "origin" "7680 3200 0"
     "angles" "0 0 0"
@@ -1204,37 +1084,47 @@ entity
 }
 entity
 {
-    "id" "120"
+    "id" "108"
     "classname" "func_instance"
-    "origin" "8640 2880 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
+    "origin" "8320 3200 0"
+    "angles" "0 180 0"
+    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_4_building_3_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "121"
+    "id" "109"
+    "classname" "func_instance"
+    "origin" "8960 3200 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_4_terrain_4_3"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "110"
     "classname" "func_instance"
     "origin" "6400 2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
     "targetname" "zm_dev_street_4_building_0_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "122"
+    "id" "111"
     "classname" "func_instance"
     "origin" "7040 2560 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
     "targetname" "zm_dev_street_4_building_1_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "123"
+    "id" "112"
     "classname" "func_instance"
     "origin" "7680 2560 0"
     "angles" "0 0 0"
@@ -1244,7 +1134,27 @@ entity
 }
 entity
 {
-    "id" "124"
+    "id" "113"
+    "classname" "func_instance"
+    "origin" "8320 2560 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_4_terrain_3_4"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "114"
+    "classname" "func_instance"
+    "origin" "8960 2560 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_4_terrain_4_4"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "115"
     "classname" "func_instance"
     "origin" "-8960 1280 0"
     "angles" "0 0 0"
@@ -1254,7 +1164,7 @@ entity
 }
 entity
 {
-    "id" "125"
+    "id" "116"
     "classname" "func_instance"
     "origin" "-8320 1280 0"
     "angles" "0 0 0"
@@ -1264,7 +1174,7 @@ entity
 }
 entity
 {
-    "id" "126"
+    "id" "117"
     "classname" "func_instance"
     "origin" "-7680 1280 0"
     "angles" "0 0 0"
@@ -1274,7 +1184,7 @@ entity
 }
 entity
 {
-    "id" "127"
+    "id" "118"
     "classname" "func_instance"
     "origin" "-7040 1280 0"
     "angles" "0 0 0"
@@ -1284,7 +1194,7 @@ entity
 }
 entity
 {
-    "id" "128"
+    "id" "119"
     "classname" "func_instance"
     "origin" "-6400 1280 0"
     "angles" "0 0 0"
@@ -1294,7 +1204,7 @@ entity
 }
 entity
 {
-    "id" "129"
+    "id" "120"
     "classname" "func_instance"
     "origin" "-8960 640 0"
     "angles" "0 0 0"
@@ -1304,7 +1214,7 @@ entity
 }
 entity
 {
-    "id" "130"
+    "id" "121"
     "classname" "func_instance"
     "origin" "-8320 640 0"
     "angles" "0 0 0"
@@ -1314,7 +1224,7 @@ entity
 }
 entity
 {
-    "id" "131"
+    "id" "122"
     "classname" "func_instance"
     "origin" "-7680 640 0"
     "angles" "0 0 0"
@@ -1324,7 +1234,7 @@ entity
 }
 entity
 {
-    "id" "132"
+    "id" "123"
     "classname" "func_instance"
     "origin" "-7040 640 0"
     "angles" "0 0 0"
@@ -1334,7 +1244,7 @@ entity
 }
 entity
 {
-    "id" "133"
+    "id" "124"
     "classname" "func_instance"
     "origin" "-6400 640 0"
     "angles" "0 0 0"
@@ -1344,7 +1254,7 @@ entity
 }
 entity
 {
-    "id" "134"
+    "id" "125"
     "classname" "func_instance"
     "origin" "-8960 0 0"
     "angles" "0 0 0"
@@ -1354,7 +1264,7 @@ entity
 }
 entity
 {
-    "id" "135"
+    "id" "126"
     "classname" "func_instance"
     "origin" "-8320 0 0"
     "angles" "0 0 0"
@@ -1364,7 +1274,7 @@ entity
 }
 entity
 {
-    "id" "136"
+    "id" "127"
     "classname" "func_instance"
     "origin" "-7680 0 0"
     "angles" "0 90 0"
@@ -1374,7 +1284,7 @@ entity
 }
 entity
 {
-    "id" "137"
+    "id" "128"
     "classname" "func_instance"
     "origin" "-7040 0 0"
     "angles" "0 90 0"
@@ -1384,7 +1294,7 @@ entity
 }
 entity
 {
-    "id" "138"
+    "id" "129"
     "classname" "func_instance"
     "origin" "-6400 0 0"
     "angles" "0 90 0"
@@ -1394,7 +1304,7 @@ entity
 }
 entity
 {
-    "id" "139"
+    "id" "130"
     "classname" "func_instance"
     "origin" "-8960 -640 0"
     "angles" "0 0 0"
@@ -1404,7 +1314,7 @@ entity
 }
 entity
 {
-    "id" "140"
+    "id" "131"
     "classname" "func_instance"
     "origin" "-8320 -640 0"
     "angles" "0 0 0"
@@ -1414,37 +1324,37 @@ entity
 }
 entity
 {
-    "id" "141"
+    "id" "132"
     "classname" "func_instance"
     "origin" "-7680 -640 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_5_building_2_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "142"
+    "id" "133"
     "classname" "func_instance"
     "origin" "-7040 -640 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_5_building_3_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "143"
+    "id" "134"
     "classname" "func_instance"
     "origin" "-6400 -640 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_dev_street_5_building_4_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "144"
+    "id" "135"
     "classname" "func_instance"
     "origin" "-8960 -1280 0"
     "angles" "0 0 0"
@@ -1454,7 +1364,7 @@ entity
 }
 entity
 {
-    "id" "145"
+    "id" "136"
     "classname" "func_instance"
     "origin" "-8320 -1280 0"
     "angles" "0 0 0"
@@ -1464,7 +1374,7 @@ entity
 }
 entity
 {
-    "id" "146"
+    "id" "137"
     "classname" "func_instance"
     "origin" "-7680 -1280 0"
     "angles" "0 0 0"
@@ -1474,7 +1384,7 @@ entity
 }
 entity
 {
-    "id" "147"
+    "id" "138"
     "classname" "func_instance"
     "origin" "-7040 -1280 0"
     "angles" "0 0 0"
@@ -1484,7 +1394,7 @@ entity
 }
 entity
 {
-    "id" "148"
+    "id" "139"
     "classname" "func_instance"
     "origin" "-6400 -1280 0"
     "angles" "0 0 0"
@@ -1494,7 +1404,7 @@ entity
 }
 entity
 {
-    "id" "149"
+    "id" "140"
     "classname" "func_instance"
     "origin" "-5120 1280 0"
     "angles" "0 0 0"
@@ -1504,7 +1414,7 @@ entity
 }
 entity
 {
-    "id" "150"
+    "id" "141"
     "classname" "func_instance"
     "origin" "-4480 1280 0"
     "angles" "0 0 0"
@@ -1514,7 +1424,7 @@ entity
 }
 entity
 {
-    "id" "151"
+    "id" "142"
     "classname" "func_instance"
     "origin" "-3840 1280 0"
     "angles" "0 0 0"
@@ -1524,7 +1434,7 @@ entity
 }
 entity
 {
-    "id" "152"
+    "id" "143"
     "classname" "func_instance"
     "origin" "-3200 1280 0"
     "angles" "0 0 0"
@@ -1534,7 +1444,7 @@ entity
 }
 entity
 {
-    "id" "153"
+    "id" "144"
     "classname" "func_instance"
     "origin" "-2560 1280 0"
     "angles" "0 0 0"
@@ -1544,7 +1454,7 @@ entity
 }
 entity
 {
-    "id" "154"
+    "id" "145"
     "classname" "func_instance"
     "origin" "-5120 640 0"
     "angles" "0 0 0"
@@ -1554,7 +1464,7 @@ entity
 }
 entity
 {
-    "id" "155"
+    "id" "146"
     "classname" "func_instance"
     "origin" "-4480 640 0"
     "angles" "0 0 0"
@@ -1564,7 +1474,7 @@ entity
 }
 entity
 {
-    "id" "156"
+    "id" "147"
     "classname" "func_instance"
     "origin" "-3840 640 0"
     "angles" "0 0 0"
@@ -1574,7 +1484,7 @@ entity
 }
 entity
 {
-    "id" "157"
+    "id" "148"
     "classname" "func_instance"
     "origin" "-3200 640 0"
     "angles" "0 0 0"
@@ -1584,7 +1494,7 @@ entity
 }
 entity
 {
-    "id" "158"
+    "id" "149"
     "classname" "func_instance"
     "origin" "-2560 640 0"
     "angles" "0 0 0"
@@ -1594,7 +1504,7 @@ entity
 }
 entity
 {
-    "id" "159"
+    "id" "150"
     "classname" "func_instance"
     "origin" "-5120 0 0"
     "angles" "0 90 0"
@@ -1604,7 +1514,7 @@ entity
 }
 entity
 {
-    "id" "160"
+    "id" "151"
     "classname" "func_instance"
     "origin" "-4480 0 0"
     "angles" "0 90 0"
@@ -1614,7 +1524,7 @@ entity
 }
 entity
 {
-    "id" "161"
+    "id" "152"
     "classname" "func_instance"
     "origin" "-3840 0 0"
     "angles" "0 90 0"
@@ -1624,7 +1534,7 @@ entity
 }
 entity
 {
-    "id" "162"
+    "id" "153"
     "classname" "func_instance"
     "origin" "-3200 0 0"
     "angles" "0 90 0"
@@ -1634,7 +1544,7 @@ entity
 }
 entity
 {
-    "id" "163"
+    "id" "154"
     "classname" "func_instance"
     "origin" "-2560 0 0"
     "angles" "0 90 0"
@@ -1644,7 +1554,7 @@ entity
 }
 entity
 {
-    "id" "164"
+    "id" "155"
     "classname" "func_instance"
     "origin" "-5120 -640 0"
     "angles" "0 0 0"
@@ -1654,7 +1564,7 @@ entity
 }
 entity
 {
-    "id" "165"
+    "id" "156"
     "classname" "func_instance"
     "origin" "-4480 -640 0"
     "angles" "0 0 0"
@@ -1664,7 +1574,7 @@ entity
 }
 entity
 {
-    "id" "166"
+    "id" "157"
     "classname" "func_instance"
     "origin" "-3840 -640 0"
     "angles" "0 180 0"
@@ -1674,7 +1584,7 @@ entity
 }
 entity
 {
-    "id" "167"
+    "id" "158"
     "classname" "func_instance"
     "origin" "-3200 -640 0"
     "angles" "0 0 0"
@@ -1684,7 +1594,7 @@ entity
 }
 entity
 {
-    "id" "168"
+    "id" "159"
     "classname" "func_instance"
     "origin" "-2560 -640 0"
     "angles" "0 0 0"
@@ -1694,7 +1604,7 @@ entity
 }
 entity
 {
-    "id" "169"
+    "id" "160"
     "classname" "func_instance"
     "origin" "-5120 -1280 0"
     "angles" "0 0 0"
@@ -1704,7 +1614,7 @@ entity
 }
 entity
 {
-    "id" "170"
+    "id" "161"
     "classname" "func_instance"
     "origin" "-4480 -1280 0"
     "angles" "0 0 0"
@@ -1714,7 +1624,7 @@ entity
 }
 entity
 {
-    "id" "171"
+    "id" "162"
     "classname" "func_instance"
     "origin" "-3840 -1280 0"
     "angles" "0 0 0"
@@ -1724,7 +1634,7 @@ entity
 }
 entity
 {
-    "id" "172"
+    "id" "163"
     "classname" "func_instance"
     "origin" "-3200 -1280 0"
     "angles" "0 0 0"
@@ -1734,7 +1644,7 @@ entity
 }
 entity
 {
-    "id" "173"
+    "id" "164"
     "classname" "func_instance"
     "origin" "-2560 -1280 0"
     "angles" "0 0 0"
@@ -1744,17 +1654,17 @@ entity
 }
 entity
 {
-    "id" "174"
+    "id" "165"
     "classname" "func_instance"
     "origin" "-1280 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_7_building_0_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "175"
+    "id" "166"
     "classname" "func_instance"
     "origin" "-640 1280 0"
     "angles" "0 0 0"
@@ -1764,7 +1674,7 @@ entity
 }
 entity
 {
-    "id" "176"
+    "id" "167"
     "classname" "func_instance"
     "origin" "0 1280 0"
     "angles" "0 0 0"
@@ -1774,7 +1684,7 @@ entity
 }
 entity
 {
-    "id" "177"
+    "id" "168"
     "classname" "func_instance"
     "origin" "640 1280 0"
     "angles" "0 0 0"
@@ -1784,7 +1694,7 @@ entity
 }
 entity
 {
-    "id" "178"
+    "id" "169"
     "classname" "func_instance"
     "origin" "1280 1280 0"
     "angles" "0 0 0"
@@ -1794,7 +1704,7 @@ entity
 }
 entity
 {
-    "id" "179"
+    "id" "170"
     "classname" "func_instance"
     "origin" "-1280 640 0"
     "angles" "0 0 0"
@@ -1804,7 +1714,7 @@ entity
 }
 entity
 {
-    "id" "180"
+    "id" "171"
     "classname" "func_instance"
     "origin" "-640 640 0"
     "angles" "0 0 0"
@@ -1814,7 +1724,7 @@ entity
 }
 entity
 {
-    "id" "181"
+    "id" "172"
     "classname" "func_instance"
     "origin" "0 640 0"
     "angles" "0 0 0"
@@ -1824,7 +1734,7 @@ entity
 }
 entity
 {
-    "id" "182"
+    "id" "173"
     "classname" "func_instance"
     "origin" "640 640 0"
     "angles" "0 0 0"
@@ -1834,7 +1744,7 @@ entity
 }
 entity
 {
-    "id" "183"
+    "id" "174"
     "classname" "func_instance"
     "origin" "1280 640 0"
     "angles" "0 0 0"
@@ -1844,7 +1754,7 @@ entity
 }
 entity
 {
-    "id" "184"
+    "id" "175"
     "classname" "func_instance"
     "origin" "-1280 0 0"
     "angles" "0 90 0"
@@ -1854,7 +1764,7 @@ entity
 }
 entity
 {
-    "id" "185"
+    "id" "176"
     "classname" "func_instance"
     "origin" "-640 0 0"
     "angles" "0 90 0"
@@ -1864,7 +1774,7 @@ entity
 }
 entity
 {
-    "id" "186"
+    "id" "177"
     "classname" "func_instance"
     "origin" "0 0 0"
     "angles" "0 90 0"
@@ -1874,7 +1784,7 @@ entity
 }
 entity
 {
-    "id" "187"
+    "id" "178"
     "classname" "func_instance"
     "origin" "640 0 0"
     "angles" "0 90 0"
@@ -1884,7 +1794,7 @@ entity
 }
 entity
 {
-    "id" "188"
+    "id" "179"
     "classname" "func_instance"
     "origin" "1280 0 0"
     "angles" "0 90 0"
@@ -1894,7 +1804,7 @@ entity
 }
 entity
 {
-    "id" "189"
+    "id" "180"
     "classname" "func_instance"
     "origin" "-1280 -640 0"
     "angles" "0 0 0"
@@ -1904,7 +1814,7 @@ entity
 }
 entity
 {
-    "id" "190"
+    "id" "181"
     "classname" "func_instance"
     "origin" "-640 -640 0"
     "angles" "0 0 0"
@@ -1914,7 +1824,7 @@ entity
 }
 entity
 {
-    "id" "191"
+    "id" "182"
     "classname" "func_instance"
     "origin" "0 -640 0"
     "angles" "0 0 0"
@@ -1924,27 +1834,27 @@ entity
 }
 entity
 {
-    "id" "192"
+    "id" "183"
     "classname" "func_instance"
     "origin" "640 -640 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
+    "angles" "0 180 0"
+    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_dev_street_7_building_3_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "193"
+    "id" "184"
     "classname" "func_instance"
     "origin" "1280 -640 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
+    "angles" "0 180 0"
+    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
     "targetname" "zm_dev_street_7_building_4_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "194"
+    "id" "185"
     "classname" "func_instance"
     "origin" "-1280 -1280 0"
     "angles" "0 0 0"
@@ -1954,17 +1864,17 @@ entity
 }
 entity
 {
-    "id" "195"
+    "id" "186"
     "classname" "func_instance"
     "origin" "-640 -1280 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bbb.vmf"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_dev_street_7_building_1_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "196"
+    "id" "187"
     "classname" "func_instance"
     "origin" "0 -1280 0"
     "angles" "0 0 0"
@@ -1974,7 +1884,7 @@ entity
 }
 entity
 {
-    "id" "197"
+    "id" "188"
     "classname" "func_instance"
     "origin" "640 -1280 0"
     "angles" "0 0 0"
@@ -1984,7 +1894,7 @@ entity
 }
 entity
 {
-    "id" "198"
+    "id" "189"
     "classname" "func_instance"
     "origin" "1280 -1280 0"
     "angles" "0 0 0"
@@ -1994,7 +1904,7 @@ entity
 }
 entity
 {
-    "id" "199"
+    "id" "190"
     "classname" "func_instance"
     "origin" "2560 1280 0"
     "angles" "0 0 0"
@@ -2004,7 +1914,7 @@ entity
 }
 entity
 {
-    "id" "200"
+    "id" "191"
     "classname" "func_instance"
     "origin" "3200 1280 0"
     "angles" "0 0 0"
@@ -2014,7 +1924,7 @@ entity
 }
 entity
 {
-    "id" "201"
+    "id" "192"
     "classname" "func_instance"
     "origin" "3840 1280 0"
     "angles" "0 0 0"
@@ -2024,7 +1934,7 @@ entity
 }
 entity
 {
-    "id" "202"
+    "id" "193"
     "classname" "func_instance"
     "origin" "4480 1280 0"
     "angles" "0 0 0"
@@ -2034,7 +1944,7 @@ entity
 }
 entity
 {
-    "id" "203"
+    "id" "194"
     "classname" "func_instance"
     "origin" "5120 1280 0"
     "angles" "0 0 0"
@@ -2044,7 +1954,7 @@ entity
 }
 entity
 {
-    "id" "204"
+    "id" "195"
     "classname" "func_instance"
     "origin" "2560 640 0"
     "angles" "0 0 0"
@@ -2054,7 +1964,7 @@ entity
 }
 entity
 {
-    "id" "205"
+    "id" "196"
     "classname" "func_instance"
     "origin" "3200 640 0"
     "angles" "0 0 0"
@@ -2064,7 +1974,7 @@ entity
 }
 entity
 {
-    "id" "206"
+    "id" "197"
     "classname" "func_instance"
     "origin" "3840 640 0"
     "angles" "0 0 0"
@@ -2074,7 +1984,7 @@ entity
 }
 entity
 {
-    "id" "207"
+    "id" "198"
     "classname" "func_instance"
     "origin" "4480 640 0"
     "angles" "0 0 0"
@@ -2084,17 +1994,17 @@ entity
 }
 entity
 {
-    "id" "208"
+    "id" "199"
     "classname" "func_instance"
     "origin" "5120 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
     "targetname" "zm_dev_street_8_building_4_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "209"
+    "id" "200"
     "classname" "func_instance"
     "origin" "2560 0 0"
     "angles" "0 90 0"
@@ -2104,7 +2014,7 @@ entity
 }
 entity
 {
-    "id" "210"
+    "id" "201"
     "classname" "func_instance"
     "origin" "3200 0 0"
     "angles" "0 90 0"
@@ -2114,7 +2024,7 @@ entity
 }
 entity
 {
-    "id" "211"
+    "id" "202"
     "classname" "func_instance"
     "origin" "3840 0 0"
     "angles" "0 270 0"
@@ -2124,17 +2034,17 @@ entity
 }
 entity
 {
-    "id" "212"
+    "id" "203"
     "classname" "func_instance"
     "origin" "4480 0 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
+    "angles" "0 90 0"
+    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_8_building_3_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "213"
+    "id" "204"
     "classname" "func_instance"
     "origin" "5120 0 0"
     "angles" "0 0 0"
@@ -2144,27 +2054,27 @@ entity
 }
 entity
 {
-    "id" "214"
+    "id" "205"
     "classname" "func_instance"
-    "origin" "2560 -640 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
-    "targetname" "zm_dev_street_8_decoration_0_3"
+    "origin" "2880 -960 0"
+    "angles" "0 180 0"
+    "file" "../../tiletemplates/buildings/tile_commercial_2a_2x.vmf"
+    "targetname" "zm_dev_street_8_building_0_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "215"
+    "id" "206"
     "classname" "func_instance"
-    "origin" "3520 -960 0"
+    "origin" "3840 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
-    "targetname" "zm_dev_street_8_building_1_3"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_dev_street_8_terrain_2_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "216"
+    "id" "207"
     "classname" "func_instance"
     "origin" "4480 -640 0"
     "angles" "0 0 0"
@@ -2174,7 +2084,7 @@ entity
 }
 entity
 {
-    "id" "217"
+    "id" "208"
     "classname" "func_instance"
     "origin" "5120 -640 0"
     "angles" "0 0 0"
@@ -2184,17 +2094,17 @@ entity
 }
 entity
 {
-    "id" "218"
+    "id" "209"
     "classname" "func_instance"
-    "origin" "2560 -1280 0"
+    "origin" "3840 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
-    "targetname" "zm_dev_street_8_building_0_4"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_dev_street_8_terrain_2_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "219"
+    "id" "210"
     "classname" "func_instance"
     "origin" "4480 -1280 0"
     "angles" "0 0 0"
@@ -2204,7 +2114,7 @@ entity
 }
 entity
 {
-    "id" "220"
+    "id" "211"
     "classname" "func_instance"
     "origin" "5120 -1280 0"
     "angles" "0 0 0"
@@ -2214,7 +2124,7 @@ entity
 }
 entity
 {
-    "id" "221"
+    "id" "212"
     "classname" "func_instance"
     "origin" "6400 1280 0"
     "angles" "0 0 0"
@@ -2224,7 +2134,7 @@ entity
 }
 entity
 {
-    "id" "222"
+    "id" "213"
     "classname" "func_instance"
     "origin" "7040 1280 0"
     "angles" "0 0 0"
@@ -2234,7 +2144,7 @@ entity
 }
 entity
 {
-    "id" "223"
+    "id" "214"
     "classname" "func_instance"
     "origin" "7680 1280 0"
     "angles" "0 0 0"
@@ -2244,7 +2154,7 @@ entity
 }
 entity
 {
-    "id" "224"
+    "id" "215"
     "classname" "func_instance"
     "origin" "8320 1280 0"
     "angles" "0 0 0"
@@ -2254,7 +2164,7 @@ entity
 }
 entity
 {
-    "id" "225"
+    "id" "216"
     "classname" "func_instance"
     "origin" "8960 1280 0"
     "angles" "0 0 0"
@@ -2264,47 +2174,47 @@ entity
 }
 entity
 {
-    "id" "226"
+    "id" "217"
     "classname" "func_instance"
     "origin" "6400 640 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_dev_street_9_building_0_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "227"
+    "id" "218"
     "classname" "func_instance"
     "origin" "7040 640 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
     "targetname" "zm_dev_street_9_building_1_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "228"
+    "id" "219"
     "classname" "func_instance"
     "origin" "7680 640 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
     "targetname" "zm_dev_street_9_building_2_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "229"
+    "id" "220"
     "classname" "func_instance"
     "origin" "8320 640 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_9_building_3_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "230"
+    "id" "221"
     "classname" "func_instance"
     "origin" "8960 640 0"
     "angles" "0 0 0"
@@ -2314,7 +2224,7 @@ entity
 }
 entity
 {
-    "id" "231"
+    "id" "222"
     "classname" "func_instance"
     "origin" "6400 0 0"
     "angles" "0 90 0"
@@ -2324,7 +2234,7 @@ entity
 }
 entity
 {
-    "id" "232"
+    "id" "223"
     "classname" "func_instance"
     "origin" "7040 0 0"
     "angles" "0 90 0"
@@ -2334,7 +2244,7 @@ entity
 }
 entity
 {
-    "id" "233"
+    "id" "224"
     "classname" "func_instance"
     "origin" "7680 0 0"
     "angles" "0 90 0"
@@ -2344,7 +2254,7 @@ entity
 }
 entity
 {
-    "id" "234"
+    "id" "225"
     "classname" "func_instance"
     "origin" "8320 0 0"
     "angles" "0 90 0"
@@ -2354,7 +2264,7 @@ entity
 }
 entity
 {
-    "id" "235"
+    "id" "226"
     "classname" "func_instance"
     "origin" "8960 0 0"
     "angles" "0 90 0"
@@ -2364,27 +2274,27 @@ entity
 }
 entity
 {
-    "id" "236"
+    "id" "227"
     "classname" "func_instance"
     "origin" "6400 -640 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_9_building_0_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "237"
+    "id" "228"
     "classname" "func_instance"
     "origin" "7040 -640 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_9_building_1_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "238"
+    "id" "229"
     "classname" "func_instance"
     "origin" "7680 -640 0"
     "angles" "0 0 0"
@@ -2394,27 +2304,17 @@ entity
 }
 entity
 {
-    "id" "239"
+    "id" "230"
     "classname" "func_instance"
-    "origin" "8320 -640 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_9_terrain_3_3"
+    "origin" "8640 -960 0"
+    "angles" "0 180 0"
+    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
+    "targetname" "zm_dev_street_9_building_3_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "240"
-    "classname" "func_instance"
-    "origin" "8960 -640 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
-    "targetname" "zm_dev_street_9_building_4_3"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "241"
+    "id" "231"
     "classname" "func_instance"
     "origin" "6400 -1280 0"
     "angles" "0 0 0"
@@ -2424,7 +2324,7 @@ entity
 }
 entity
 {
-    "id" "242"
+    "id" "232"
     "classname" "func_instance"
     "origin" "7040 -1280 0"
     "angles" "0 0 0"
@@ -2434,7 +2334,7 @@ entity
 }
 entity
 {
-    "id" "243"
+    "id" "233"
     "classname" "func_instance"
     "origin" "7680 -1280 0"
     "angles" "0 0 0"
@@ -2444,27 +2344,7 @@ entity
 }
 entity
 {
-    "id" "244"
-    "classname" "func_instance"
-    "origin" "8320 -1280 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
-    "targetname" "zm_dev_street_9_building_3_4"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "245"
-    "classname" "func_instance"
-    "origin" "8960 -1280 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bbb.vmf"
-    "targetname" "zm_dev_street_9_building_4_4"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "246"
+    "id" "234"
     "classname" "func_instance"
     "origin" "-8960 -2560 0"
     "angles" "0 0 0"
@@ -2474,7 +2354,7 @@ entity
 }
 entity
 {
-    "id" "247"
+    "id" "235"
     "classname" "func_instance"
     "origin" "-8320 -2560 0"
     "angles" "0 0 0"
@@ -2484,7 +2364,7 @@ entity
 }
 entity
 {
-    "id" "248"
+    "id" "236"
     "classname" "func_instance"
     "origin" "-7680 -2560 0"
     "angles" "0 0 0"
@@ -2494,7 +2374,7 @@ entity
 }
 entity
 {
-    "id" "249"
+    "id" "237"
     "classname" "func_instance"
     "origin" "-7040 -2560 0"
     "angles" "0 0 0"
@@ -2504,7 +2384,7 @@ entity
 }
 entity
 {
-    "id" "250"
+    "id" "238"
     "classname" "func_instance"
     "origin" "-6400 -2560 0"
     "angles" "0 0 0"
@@ -2514,7 +2394,7 @@ entity
 }
 entity
 {
-    "id" "251"
+    "id" "239"
     "classname" "func_instance"
     "origin" "-8960 -3200 0"
     "angles" "0 0 0"
@@ -2524,7 +2404,7 @@ entity
 }
 entity
 {
-    "id" "252"
+    "id" "240"
     "classname" "func_instance"
     "origin" "-8320 -3200 0"
     "angles" "0 0 0"
@@ -2534,7 +2414,7 @@ entity
 }
 entity
 {
-    "id" "253"
+    "id" "241"
     "classname" "func_instance"
     "origin" "-7680 -3200 0"
     "angles" "0 0 0"
@@ -2544,7 +2424,7 @@ entity
 }
 entity
 {
-    "id" "254"
+    "id" "242"
     "classname" "func_instance"
     "origin" "-7040 -3200 0"
     "angles" "0 0 0"
@@ -2554,7 +2434,7 @@ entity
 }
 entity
 {
-    "id" "255"
+    "id" "243"
     "classname" "func_instance"
     "origin" "-6400 -3200 0"
     "angles" "0 0 0"
@@ -2564,7 +2444,7 @@ entity
 }
 entity
 {
-    "id" "256"
+    "id" "244"
     "classname" "func_instance"
     "origin" "-8960 -3840 0"
     "angles" "0 0 0"
@@ -2574,7 +2454,7 @@ entity
 }
 entity
 {
-    "id" "257"
+    "id" "245"
     "classname" "func_instance"
     "origin" "-8320 -3840 0"
     "angles" "0 0 0"
@@ -2584,7 +2464,7 @@ entity
 }
 entity
 {
-    "id" "258"
+    "id" "246"
     "classname" "func_instance"
     "origin" "-7680 -3840 0"
     "angles" "0 0 0"
@@ -2594,7 +2474,7 @@ entity
 }
 entity
 {
-    "id" "259"
+    "id" "247"
     "classname" "func_instance"
     "origin" "-7040 -3840 0"
     "angles" "0 0 0"
@@ -2604,7 +2484,7 @@ entity
 }
 entity
 {
-    "id" "260"
+    "id" "248"
     "classname" "func_instance"
     "origin" "-6400 -3840 0"
     "angles" "0 0 0"
@@ -2614,7 +2494,7 @@ entity
 }
 entity
 {
-    "id" "261"
+    "id" "249"
     "classname" "func_instance"
     "origin" "-8960 -4480 0"
     "angles" "0 0 0"
@@ -2624,7 +2504,7 @@ entity
 }
 entity
 {
-    "id" "262"
+    "id" "250"
     "classname" "func_instance"
     "origin" "-8320 -4480 0"
     "angles" "0 0 0"
@@ -2634,7 +2514,7 @@ entity
 }
 entity
 {
-    "id" "263"
+    "id" "251"
     "classname" "func_instance"
     "origin" "-7680 -4480 0"
     "angles" "0 0 0"
@@ -2644,17 +2524,17 @@ entity
 }
 entity
 {
-    "id" "264"
+    "id" "252"
     "classname" "func_instance"
     "origin" "-7040 -4480 0"
-    "angles" "0 270 0"
+    "angles" "0 90 0"
     "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
     "targetname" "zm_dev_street_10_building_3_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "265"
+    "id" "253"
     "classname" "func_instance"
     "origin" "-6400 -4480 0"
     "angles" "0 0 0"
@@ -2664,7 +2544,7 @@ entity
 }
 entity
 {
-    "id" "266"
+    "id" "254"
     "classname" "func_instance"
     "origin" "-8960 -5120 0"
     "angles" "0 0 0"
@@ -2674,7 +2554,7 @@ entity
 }
 entity
 {
-    "id" "267"
+    "id" "255"
     "classname" "func_instance"
     "origin" "-8320 -5120 0"
     "angles" "0 0 0"
@@ -2684,7 +2564,7 @@ entity
 }
 entity
 {
-    "id" "268"
+    "id" "256"
     "classname" "func_instance"
     "origin" "-7680 -5120 0"
     "angles" "0 0 0"
@@ -2694,17 +2574,17 @@ entity
 }
 entity
 {
-    "id" "269"
+    "id" "257"
     "classname" "func_instance"
     "origin" "-7040 -5120 0"
-    "angles" "0 270 0"
+    "angles" "0 90 0"
     "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_10_building_3_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "270"
+    "id" "258"
     "classname" "func_instance"
     "origin" "-6400 -5120 0"
     "angles" "0 0 0"
@@ -2714,7 +2594,7 @@ entity
 }
 entity
 {
-    "id" "271"
+    "id" "259"
     "classname" "func_instance"
     "origin" "-5120 -2560 0"
     "angles" "0 0 0"
@@ -2724,7 +2604,7 @@ entity
 }
 entity
 {
-    "id" "272"
+    "id" "260"
     "classname" "func_instance"
     "origin" "-4480 -2560 0"
     "angles" "0 0 0"
@@ -2734,7 +2614,7 @@ entity
 }
 entity
 {
-    "id" "273"
+    "id" "261"
     "classname" "func_instance"
     "origin" "-3840 -2560 0"
     "angles" "0 0 0"
@@ -2744,7 +2624,7 @@ entity
 }
 entity
 {
-    "id" "274"
+    "id" "262"
     "classname" "func_instance"
     "origin" "-3200 -2560 0"
     "angles" "0 0 0"
@@ -2754,7 +2634,7 @@ entity
 }
 entity
 {
-    "id" "275"
+    "id" "263"
     "classname" "func_instance"
     "origin" "-2560 -2560 0"
     "angles" "0 0 0"
@@ -2764,7 +2644,7 @@ entity
 }
 entity
 {
-    "id" "276"
+    "id" "264"
     "classname" "func_instance"
     "origin" "-5120 -3200 0"
     "angles" "0 0 0"
@@ -2774,7 +2654,7 @@ entity
 }
 entity
 {
-    "id" "277"
+    "id" "265"
     "classname" "func_instance"
     "origin" "-4480 -3200 0"
     "angles" "0 0 0"
@@ -2784,27 +2664,27 @@ entity
 }
 entity
 {
-    "id" "278"
+    "id" "266"
     "classname" "func_instance"
     "origin" "-3840 -3200 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_11_building_2_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "279"
+    "id" "267"
     "classname" "func_instance"
     "origin" "-3200 -3200 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_dev_street_11_building_3_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "280"
+    "id" "268"
     "classname" "func_instance"
     "origin" "-2560 -3200 0"
     "angles" "0 0 0"
@@ -2814,7 +2694,7 @@ entity
 }
 entity
 {
-    "id" "281"
+    "id" "269"
     "classname" "func_instance"
     "origin" "-5120 -3840 0"
     "angles" "0 0 0"
@@ -2824,17 +2704,17 @@ entity
 }
 entity
 {
-    "id" "282"
+    "id" "270"
     "classname" "func_instance"
     "origin" "-4480 -3840 0"
-    "angles" "0 270 0"
+    "angles" "0 90 0"
     "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_dev_street_11_building_1_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "283"
+    "id" "271"
     "classname" "func_instance"
     "origin" "-3840 -3840 0"
     "angles" "0 0 0"
@@ -2844,7 +2724,7 @@ entity
 }
 entity
 {
-    "id" "284"
+    "id" "272"
     "classname" "func_instance"
     "origin" "-3200 -3840 0"
     "angles" "0 90 0"
@@ -2854,7 +2734,7 @@ entity
 }
 entity
 {
-    "id" "285"
+    "id" "273"
     "classname" "func_instance"
     "origin" "-2560 -3840 0"
     "angles" "0 90 0"
@@ -2864,27 +2744,17 @@ entity
 }
 entity
 {
-    "id" "286"
+    "id" "274"
     "classname" "func_instance"
-    "origin" "-5120 -4480 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
+    "origin" "-4800 -4800 0"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
     "targetname" "zm_dev_street_11_building_0_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "287"
-    "classname" "func_instance"
-    "origin" "-4480 -4480 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
-    "targetname" "zm_dev_street_11_building_1_3"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "288"
+    "id" "275"
     "classname" "func_instance"
     "origin" "-3840 -4480 0"
     "angles" "0 0 0"
@@ -2894,7 +2764,7 @@ entity
 }
 entity
 {
-    "id" "289"
+    "id" "276"
     "classname" "func_instance"
     "origin" "-3200 -4480 0"
     "angles" "0 0 0"
@@ -2904,37 +2774,17 @@ entity
 }
 entity
 {
-    "id" "290"
+    "id" "277"
     "classname" "func_instance"
     "origin" "-2560 -4480 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
     "targetname" "zm_dev_street_11_building_4_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "291"
-    "classname" "func_instance"
-    "origin" "-5120 -5120 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
-    "targetname" "zm_dev_street_11_building_0_4"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "292"
-    "classname" "func_instance"
-    "origin" "-4480 -5120 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_11_terrain_1_4"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "293"
+    "id" "278"
     "classname" "func_instance"
     "origin" "-3840 -5120 0"
     "angles" "0 0 0"
@@ -2944,17 +2794,17 @@ entity
 }
 entity
 {
-    "id" "294"
+    "id" "279"
     "classname" "func_instance"
     "origin" "-3200 -5120 0"
-    "angles" "0 270 0"
+    "angles" "0 90 0"
     "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_dev_street_11_building_3_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "295"
+    "id" "280"
     "classname" "func_instance"
     "origin" "-2560 -5120 0"
     "angles" "0 0 0"
@@ -2964,7 +2814,7 @@ entity
 }
 entity
 {
-    "id" "296"
+    "id" "281"
     "classname" "func_instance"
     "origin" "-1280 -2560 0"
     "angles" "0 0 0"
@@ -2974,7 +2824,7 @@ entity
 }
 entity
 {
-    "id" "297"
+    "id" "282"
     "classname" "func_instance"
     "origin" "-640 -2560 0"
     "angles" "0 0 0"
@@ -2984,7 +2834,7 @@ entity
 }
 entity
 {
-    "id" "298"
+    "id" "283"
     "classname" "func_instance"
     "origin" "0 -2560 0"
     "angles" "0 0 0"
@@ -2994,7 +2844,7 @@ entity
 }
 entity
 {
-    "id" "299"
+    "id" "284"
     "classname" "func_instance"
     "origin" "640 -2560 0"
     "angles" "0 0 0"
@@ -3004,7 +2854,7 @@ entity
 }
 entity
 {
-    "id" "300"
+    "id" "285"
     "classname" "func_instance"
     "origin" "1280 -2560 0"
     "angles" "0 0 0"
@@ -3014,7 +2864,7 @@ entity
 }
 entity
 {
-    "id" "301"
+    "id" "286"
     "classname" "func_instance"
     "origin" "-1280 -3200 0"
     "angles" "0 0 0"
@@ -3024,7 +2874,7 @@ entity
 }
 entity
 {
-    "id" "302"
+    "id" "287"
     "classname" "func_instance"
     "origin" "-640 -3200 0"
     "angles" "0 0 0"
@@ -3034,7 +2884,7 @@ entity
 }
 entity
 {
-    "id" "303"
+    "id" "288"
     "classname" "func_instance"
     "origin" "0 -3200 0"
     "angles" "0 0 0"
@@ -3044,27 +2894,27 @@ entity
 }
 entity
 {
-    "id" "304"
+    "id" "289"
     "classname" "func_instance"
     "origin" "640 -3200 0"
-    "angles" "0 270 0"
+    "angles" "0 90 0"
     "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_12_building_3_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "305"
+    "id" "290"
     "classname" "func_instance"
     "origin" "1280 -3200 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_12_building_4_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "306"
+    "id" "291"
     "classname" "func_instance"
     "origin" "-1280 -3840 0"
     "angles" "0 0 0"
@@ -3074,17 +2924,17 @@ entity
 }
 entity
 {
-    "id" "307"
+    "id" "292"
     "classname" "func_instance"
     "origin" "-640 -3840 0"
-    "angles" "0 270 0"
+    "angles" "0 90 0"
     "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_12_building_1_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "308"
+    "id" "293"
     "classname" "func_instance"
     "origin" "0 -3840 0"
     "angles" "0 90 0"
@@ -3094,7 +2944,7 @@ entity
 }
 entity
 {
-    "id" "309"
+    "id" "294"
     "classname" "func_instance"
     "origin" "640 -3840 0"
     "angles" "0 90 0"
@@ -3104,7 +2954,7 @@ entity
 }
 entity
 {
-    "id" "310"
+    "id" "295"
     "classname" "func_instance"
     "origin" "1280 -3840 0"
     "angles" "0 90 0"
@@ -3114,7 +2964,7 @@ entity
 }
 entity
 {
-    "id" "311"
+    "id" "296"
     "classname" "func_instance"
     "origin" "-1280 -4480 0"
     "angles" "0 0 0"
@@ -3124,7 +2974,7 @@ entity
 }
 entity
 {
-    "id" "312"
+    "id" "297"
     "classname" "func_instance"
     "origin" "-640 -4480 0"
     "angles" "0 0 0"
@@ -3134,7 +2984,7 @@ entity
 }
 entity
 {
-    "id" "313"
+    "id" "298"
     "classname" "func_instance"
     "origin" "0 -4480 0"
     "angles" "0 0 0"
@@ -3144,7 +2994,7 @@ entity
 }
 entity
 {
-    "id" "314"
+    "id" "299"
     "classname" "func_instance"
     "origin" "640 -4480 0"
     "angles" "0 0 0"
@@ -3154,7 +3004,7 @@ entity
 }
 entity
 {
-    "id" "315"
+    "id" "300"
     "classname" "func_instance"
     "origin" "1280 -4480 0"
     "angles" "0 0 0"
@@ -3164,7 +3014,7 @@ entity
 }
 entity
 {
-    "id" "316"
+    "id" "301"
     "classname" "func_instance"
     "origin" "-1280 -5120 0"
     "angles" "0 0 0"
@@ -3174,7 +3024,7 @@ entity
 }
 entity
 {
-    "id" "317"
+    "id" "302"
     "classname" "func_instance"
     "origin" "-640 -5120 0"
     "angles" "0 0 0"
@@ -3184,7 +3034,7 @@ entity
 }
 entity
 {
-    "id" "318"
+    "id" "303"
     "classname" "func_instance"
     "origin" "0 -5120 0"
     "angles" "0 0 0"
@@ -3194,7 +3044,7 @@ entity
 }
 entity
 {
-    "id" "319"
+    "id" "304"
     "classname" "func_instance"
     "origin" "640 -5120 0"
     "angles" "0 0 0"
@@ -3204,7 +3054,7 @@ entity
 }
 entity
 {
-    "id" "320"
+    "id" "305"
     "classname" "func_instance"
     "origin" "1280 -5120 0"
     "angles" "0 0 0"
@@ -3214,7 +3064,7 @@ entity
 }
 entity
 {
-    "id" "321"
+    "id" "306"
     "classname" "func_instance"
     "origin" "2560 -2560 0"
     "angles" "0 0 0"
@@ -3224,7 +3074,7 @@ entity
 }
 entity
 {
-    "id" "322"
+    "id" "307"
     "classname" "func_instance"
     "origin" "3200 -2560 0"
     "angles" "0 0 0"
@@ -3234,7 +3084,7 @@ entity
 }
 entity
 {
-    "id" "323"
+    "id" "308"
     "classname" "func_instance"
     "origin" "3840 -2560 0"
     "angles" "0 0 0"
@@ -3244,7 +3094,7 @@ entity
 }
 entity
 {
-    "id" "324"
+    "id" "309"
     "classname" "func_instance"
     "origin" "4480 -2560 0"
     "angles" "0 0 0"
@@ -3254,7 +3104,7 @@ entity
 }
 entity
 {
-    "id" "325"
+    "id" "310"
     "classname" "func_instance"
     "origin" "5120 -2560 0"
     "angles" "0 0 0"
@@ -3264,7 +3114,7 @@ entity
 }
 entity
 {
-    "id" "326"
+    "id" "311"
     "classname" "func_instance"
     "origin" "2560 -3200 0"
     "angles" "0 0 0"
@@ -3274,7 +3124,7 @@ entity
 }
 entity
 {
-    "id" "327"
+    "id" "312"
     "classname" "func_instance"
     "origin" "3200 -3200 0"
     "angles" "0 0 0"
@@ -3284,7 +3134,7 @@ entity
 }
 entity
 {
-    "id" "328"
+    "id" "313"
     "classname" "func_instance"
     "origin" "3840 -3200 0"
     "angles" "0 0 0"
@@ -3294,17 +3144,17 @@ entity
 }
 entity
 {
-    "id" "329"
+    "id" "314"
     "classname" "func_instance"
     "origin" "4480 -3200 0"
-    "angles" "0 270 0"
+    "angles" "0 90 0"
     "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
     "targetname" "zm_dev_street_13_building_3_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "330"
+    "id" "315"
     "classname" "func_instance"
     "origin" "5120 -3200 0"
     "angles" "0 0 0"
@@ -3314,7 +3164,7 @@ entity
 }
 entity
 {
-    "id" "331"
+    "id" "316"
     "classname" "func_instance"
     "origin" "2560 -3840 0"
     "angles" "0 90 0"
@@ -3324,7 +3174,7 @@ entity
 }
 entity
 {
-    "id" "332"
+    "id" "317"
     "classname" "func_instance"
     "origin" "3200 -3840 0"
     "angles" "0 90 0"
@@ -3334,7 +3184,7 @@ entity
 }
 entity
 {
-    "id" "333"
+    "id" "318"
     "classname" "func_instance"
     "origin" "3840 -3840 0"
     "angles" "0 180 0"
@@ -3344,7 +3194,7 @@ entity
 }
 entity
 {
-    "id" "334"
+    "id" "319"
     "classname" "func_instance"
     "origin" "4480 -3840 0"
     "angles" "0 0 0"
@@ -3354,7 +3204,7 @@ entity
 }
 entity
 {
-    "id" "335"
+    "id" "320"
     "classname" "func_instance"
     "origin" "5120 -3840 0"
     "angles" "0 0 0"
@@ -3364,17 +3214,17 @@ entity
 }
 entity
 {
-    "id" "336"
+    "id" "321"
     "classname" "func_instance"
     "origin" "2880 -4800 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
     "targetname" "zm_dev_street_13_building_0_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "337"
+    "id" "322"
     "classname" "func_instance"
     "origin" "3840 -4480 0"
     "angles" "0 0 0"
@@ -3384,7 +3234,7 @@ entity
 }
 entity
 {
-    "id" "338"
+    "id" "323"
     "classname" "func_instance"
     "origin" "4480 -4480 0"
     "angles" "0 0 0"
@@ -3394,7 +3244,7 @@ entity
 }
 entity
 {
-    "id" "339"
+    "id" "324"
     "classname" "func_instance"
     "origin" "5120 -4480 0"
     "angles" "0 0 0"
@@ -3404,7 +3254,7 @@ entity
 }
 entity
 {
-    "id" "340"
+    "id" "325"
     "classname" "func_instance"
     "origin" "3840 -5120 0"
     "angles" "0 0 0"
@@ -3414,7 +3264,7 @@ entity
 }
 entity
 {
-    "id" "341"
+    "id" "326"
     "classname" "func_instance"
     "origin" "4480 -5120 0"
     "angles" "0 0 0"
@@ -3424,7 +3274,7 @@ entity
 }
 entity
 {
-    "id" "342"
+    "id" "327"
     "classname" "func_instance"
     "origin" "5120 -5120 0"
     "angles" "0 0 0"
@@ -3434,7 +3284,7 @@ entity
 }
 entity
 {
-    "id" "343"
+    "id" "328"
     "classname" "func_instance"
     "origin" "6400 -2560 0"
     "angles" "0 0 0"
@@ -3444,7 +3294,7 @@ entity
 }
 entity
 {
-    "id" "344"
+    "id" "329"
     "classname" "func_instance"
     "origin" "7040 -2560 0"
     "angles" "0 0 0"
@@ -3454,7 +3304,7 @@ entity
 }
 entity
 {
-    "id" "345"
+    "id" "330"
     "classname" "func_instance"
     "origin" "7680 -2560 0"
     "angles" "0 0 0"
@@ -3464,7 +3314,7 @@ entity
 }
 entity
 {
-    "id" "346"
+    "id" "331"
     "classname" "func_instance"
     "origin" "8320 -2560 0"
     "angles" "0 0 0"
@@ -3474,7 +3324,7 @@ entity
 }
 entity
 {
-    "id" "347"
+    "id" "332"
     "classname" "func_instance"
     "origin" "8960 -2560 0"
     "angles" "0 0 0"
@@ -3484,17 +3334,17 @@ entity
 }
 entity
 {
-    "id" "348"
+    "id" "333"
     "classname" "func_instance"
     "origin" "6400 -3200 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_bunker_1a.vmf"
     "targetname" "zm_dev_street_14_landmark_0_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "349"
+    "id" "334"
     "classname" "func_instance"
     "origin" "7040 -3200 0"
     "angles" "0 0 0"
@@ -3504,7 +3354,7 @@ entity
 }
 entity
 {
-    "id" "350"
+    "id" "335"
     "classname" "func_instance"
     "origin" "7680 -3200 0"
     "angles" "0 0 0"
@@ -3514,7 +3364,7 @@ entity
 }
 entity
 {
-    "id" "351"
+    "id" "336"
     "classname" "func_instance"
     "origin" "8320 -3200 0"
     "angles" "0 0 0"
@@ -3524,17 +3374,17 @@ entity
 }
 entity
 {
-    "id" "352"
+    "id" "337"
     "classname" "func_instance"
     "origin" "8960 -3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_14_building_4_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "353"
+    "id" "338"
     "classname" "func_instance"
     "origin" "6400 -3840 0"
     "angles" "0 90 0"
@@ -3544,7 +3394,7 @@ entity
 }
 entity
 {
-    "id" "354"
+    "id" "339"
     "classname" "func_instance"
     "origin" "7040 -3840 0"
     "angles" "0 90 0"
@@ -3554,7 +3404,7 @@ entity
 }
 entity
 {
-    "id" "355"
+    "id" "340"
     "classname" "func_instance"
     "origin" "7680 -3840 0"
     "angles" "0 270 0"
@@ -3564,27 +3414,27 @@ entity
 }
 entity
 {
-    "id" "356"
+    "id" "341"
     "classname" "func_instance"
     "origin" "8320 -3840 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_14_building_3_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "357"
+    "id" "342"
     "classname" "func_instance"
     "origin" "8960 -3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aaa.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1ddd.vmf"
     "targetname" "zm_dev_street_14_building_4_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "358"
+    "id" "343"
     "classname" "func_instance"
     "origin" "6400 -4480 0"
     "angles" "0 0 0"
@@ -3594,7 +3444,7 @@ entity
 }
 entity
 {
-    "id" "359"
+    "id" "344"
     "classname" "func_instance"
     "origin" "7040 -4480 0"
     "angles" "0 0 0"
@@ -3604,7 +3454,7 @@ entity
 }
 entity
 {
-    "id" "360"
+    "id" "345"
     "classname" "func_instance"
     "origin" "7680 -4480 0"
     "angles" "0 0 0"
@@ -3614,7 +3464,7 @@ entity
 }
 entity
 {
-    "id" "361"
+    "id" "346"
     "classname" "func_instance"
     "origin" "8320 -4480 0"
     "angles" "0 0 0"
@@ -3624,7 +3474,7 @@ entity
 }
 entity
 {
-    "id" "362"
+    "id" "347"
     "classname" "func_instance"
     "origin" "8960 -4480 0"
     "angles" "0 0 0"
@@ -3634,27 +3484,27 @@ entity
 }
 entity
 {
-    "id" "363"
+    "id" "348"
     "classname" "func_instance"
     "origin" "6400 -5120 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_14_building_0_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "364"
+    "id" "349"
     "classname" "func_instance"
     "origin" "7040 -5120 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_dev_street_14_building_1_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "365"
+    "id" "350"
     "classname" "func_instance"
     "origin" "7680 -5120 0"
     "angles" "0 0 0"
@@ -3664,7 +3514,7 @@ entity
 }
 entity
 {
-    "id" "366"
+    "id" "351"
     "classname" "func_instance"
     "origin" "8320 -5120 0"
     "angles" "0 0 0"
@@ -3674,7 +3524,7 @@ entity
 }
 entity
 {
-    "id" "367"
+    "id" "352"
     "classname" "func_instance"
     "origin" "8960 -5120 0"
     "angles" "0 0 0"
@@ -3684,27 +3534,27 @@ entity
 }
 entity
 {
-    "id" "368"
+    "id" "353"
     "classname" "func_instance"
     "origin" "-8960 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_15_terrain_0_0"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_15_decoration_0_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "369"
+    "id" "354"
     "classname" "func_instance"
     "origin" "-8320 -6400 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1a.vmf"
-    "targetname" "zm_dev_street_15_landmark_1_0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_15_decoration_1_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "370"
+    "id" "355"
     "classname" "func_instance"
     "origin" "-7680 -6400 0"
     "angles" "0 0 0"
@@ -3714,47 +3564,47 @@ entity
 }
 entity
 {
-    "id" "371"
+    "id" "356"
     "classname" "func_instance"
     "origin" "-7040 -6400 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aaa.vmf"
-    "targetname" "zm_dev_street_15_building_3_0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_15_decoration_3_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "372"
+    "id" "357"
     "classname" "func_instance"
     "origin" "-6400 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bbb.vmf"
-    "targetname" "zm_dev_street_15_building_4_0"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_dev_street_15_terrain_4_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "373"
+    "id" "358"
     "classname" "func_instance"
     "origin" "-8960 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_15_terrain_0_1"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_15_decoration_0_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "374"
+    "id" "359"
     "classname" "func_instance"
     "origin" "-8320 -7040 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
-    "targetname" "zm_dev_street_15_building_1_1"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_15_decoration_1_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "375"
+    "id" "360"
     "classname" "func_instance"
     "origin" "-7680 -7040 0"
     "angles" "0 0 0"
@@ -3764,27 +3614,27 @@ entity
 }
 entity
 {
-    "id" "376"
+    "id" "361"
     "classname" "func_instance"
     "origin" "-7040 -7040 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
-    "targetname" "zm_dev_street_15_building_3_1"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_dev_street_15_terrain_3_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "377"
+    "id" "362"
     "classname" "func_instance"
     "origin" "-6400 -7040 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
-    "targetname" "zm_dev_street_15_building_4_1"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_dev_street_15_terrain_4_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "378"
+    "id" "363"
     "classname" "func_instance"
     "origin" "-8960 -7680 0"
     "angles" "0 90 0"
@@ -3794,7 +3644,7 @@ entity
 }
 entity
 {
-    "id" "379"
+    "id" "364"
     "classname" "func_instance"
     "origin" "-8320 -7680 0"
     "angles" "0 90 0"
@@ -3804,7 +3654,7 @@ entity
 }
 entity
 {
-    "id" "380"
+    "id" "365"
     "classname" "func_instance"
     "origin" "-7680 -7680 0"
     "angles" "0 0 0"
@@ -3814,7 +3664,7 @@ entity
 }
 entity
 {
-    "id" "381"
+    "id" "366"
     "classname" "func_instance"
     "origin" "-7040 -7680 0"
     "angles" "0 90 0"
@@ -3824,7 +3674,7 @@ entity
 }
 entity
 {
-    "id" "382"
+    "id" "367"
     "classname" "func_instance"
     "origin" "-6400 -7680 0"
     "angles" "0 90 0"
@@ -3834,27 +3684,27 @@ entity
 }
 entity
 {
-    "id" "383"
+    "id" "368"
     "classname" "func_instance"
     "origin" "-8960 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
-    "targetname" "zm_dev_street_15_building_0_3"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_dev_street_15_terrain_0_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "384"
+    "id" "369"
     "classname" "func_instance"
     "origin" "-8320 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
-    "targetname" "zm_dev_street_15_building_1_3"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_dev_street_15_terrain_1_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "385"
+    "id" "370"
     "classname" "func_instance"
     "origin" "-7680 -8320 0"
     "angles" "0 0 0"
@@ -3864,47 +3714,47 @@ entity
 }
 entity
 {
-    "id" "386"
+    "id" "371"
     "classname" "func_instance"
     "origin" "-7040 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
     "targetname" "zm_dev_street_15_terrain_3_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "387"
+    "id" "372"
     "classname" "func_instance"
     "origin" "-6400 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_15_terrain_4_3"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_15_decoration_4_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "388"
+    "id" "373"
     "classname" "func_instance"
     "origin" "-8960 -8960 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aaa.vmf"
-    "targetname" "zm_dev_street_15_building_0_4"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_dev_street_15_terrain_0_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "389"
+    "id" "374"
     "classname" "func_instance"
     "origin" "-8320 -8960 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
     "targetname" "zm_dev_street_15_terrain_1_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "390"
+    "id" "375"
     "classname" "func_instance"
     "origin" "-7680 -8960 0"
     "angles" "0 0 0"
@@ -3914,27 +3764,27 @@ entity
 }
 entity
 {
-    "id" "391"
+    "id" "376"
     "classname" "func_instance"
     "origin" "-7040 -8960 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_15_terrain_3_4"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_15_decoration_3_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "392"
+    "id" "377"
     "classname" "func_instance"
     "origin" "-6400 -8960 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_15_terrain_4_4"
+    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
+    "targetname" "zm_dev_street_15_building_4_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "393"
+    "id" "378"
     "classname" "func_instance"
     "origin" "-5120 -6400 0"
     "angles" "0 0 0"
@@ -3944,7 +3794,7 @@ entity
 }
 entity
 {
-    "id" "394"
+    "id" "379"
     "classname" "func_instance"
     "origin" "-4480 -6400 0"
     "angles" "0 0 0"
@@ -3954,7 +3804,7 @@ entity
 }
 entity
 {
-    "id" "395"
+    "id" "380"
     "classname" "func_instance"
     "origin" "-3840 -6400 0"
     "angles" "0 0 0"
@@ -3964,27 +3814,27 @@ entity
 }
 entity
 {
-    "id" "396"
+    "id" "381"
     "classname" "func_instance"
     "origin" "-3200 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
+    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_dev_street_16_building_3_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "397"
+    "id" "382"
     "classname" "func_instance"
     "origin" "-2560 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
+    "file" "../../tiletemplates/buildings/tile_construction_1aaa.vmf"
     "targetname" "zm_dev_street_16_building_4_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "398"
+    "id" "383"
     "classname" "func_instance"
     "origin" "-5120 -7040 0"
     "angles" "0 0 0"
@@ -3994,67 +3844,67 @@ entity
 }
 entity
 {
-    "id" "399"
+    "id" "384"
     "classname" "func_instance"
     "origin" "-4480 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
     "targetname" "zm_dev_street_16_building_1_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "400"
+    "id" "385"
     "classname" "func_instance"
     "origin" "-3840 -7040 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
     "targetname" "zm_dev_street_16_building_2_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "401"
+    "id" "386"
     "classname" "func_instance"
     "origin" "-3200 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1ddd.vmf"
+    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
     "targetname" "zm_dev_street_16_building_3_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "402"
+    "id" "387"
     "classname" "func_instance"
     "origin" "-2560 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
+    "file" "../../tiletemplates/buildings/tile_commercial_1aa.vmf"
     "targetname" "zm_dev_street_16_building_4_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "403"
+    "id" "388"
     "classname" "func_instance"
     "origin" "-5120 -7680 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
+    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_dev_street_16_building_0_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "404"
+    "id" "389"
     "classname" "func_instance"
     "origin" "-4480 -7680 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_construction_1aaa.vmf"
     "targetname" "zm_dev_street_16_building_1_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "405"
+    "id" "390"
     "classname" "func_instance"
     "origin" "-3840 -7680 0"
     "angles" "0 0 0"
@@ -4064,47 +3914,47 @@ entity
 }
 entity
 {
-    "id" "406"
+    "id" "391"
     "classname" "func_instance"
     "origin" "-3200 -7680 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aaa.vmf"
-    "targetname" "zm_dev_street_16_building_3_2"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/roads/tile_concrete_path.vmf"
+    "targetname" "zm_dev_street_16_path_3_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "407"
+    "id" "392"
     "classname" "func_instance"
     "origin" "-2560 -7680 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
-    "targetname" "zm_dev_street_16_decoration_4_2"
+    "angles" "0 90 0"
+    "file" "../../tiletemplates/roads/tile_concrete_path.vmf"
+    "targetname" "zm_dev_street_16_path_4_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "408"
+    "id" "393"
     "classname" "func_instance"
     "origin" "-5120 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1ddd.vmf"
+    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
     "targetname" "zm_dev_street_16_building_0_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "409"
+    "id" "394"
     "classname" "func_instance"
     "origin" "-4480 -8320 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
     "targetname" "zm_dev_street_16_building_1_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "410"
+    "id" "395"
     "classname" "func_instance"
     "origin" "-3840 -8320 0"
     "angles" "0 0 0"
@@ -4114,7 +3964,7 @@ entity
 }
 entity
 {
-    "id" "411"
+    "id" "396"
     "classname" "func_instance"
     "origin" "-3200 -8320 0"
     "angles" "0 0 0"
@@ -4124,7 +3974,7 @@ entity
 }
 entity
 {
-    "id" "412"
+    "id" "397"
     "classname" "func_instance"
     "origin" "-2560 -8320 0"
     "angles" "0 0 0"
@@ -4134,27 +3984,27 @@ entity
 }
 entity
 {
-    "id" "413"
+    "id" "398"
     "classname" "func_instance"
     "origin" "-5120 -8960 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aaa.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
     "targetname" "zm_dev_street_16_building_0_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "414"
+    "id" "399"
     "classname" "func_instance"
     "origin" "-4480 -8960 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_building_1aaa.vmf"
     "targetname" "zm_dev_street_16_building_1_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "415"
+    "id" "400"
     "classname" "func_instance"
     "origin" "-3840 -8960 0"
     "angles" "0 0 0"
@@ -4164,7 +4014,7 @@ entity
 }
 entity
 {
-    "id" "416"
+    "id" "401"
     "classname" "func_instance"
     "origin" "-3200 -8960 0"
     "angles" "0 0 0"
@@ -4174,7 +4024,7 @@ entity
 }
 entity
 {
-    "id" "417"
+    "id" "402"
     "classname" "func_instance"
     "origin" "-2560 -8960 0"
     "angles" "0 0 0"
@@ -4184,7 +4034,7 @@ entity
 }
 entity
 {
-    "id" "418"
+    "id" "403"
     "classname" "func_instance"
     "origin" "-1280 -6400 0"
     "angles" "0 0 0"
@@ -4194,7 +4044,7 @@ entity
 }
 entity
 {
-    "id" "419"
+    "id" "404"
     "classname" "func_instance"
     "origin" "-640 -6400 0"
     "angles" "0 0 0"
@@ -4204,7 +4054,7 @@ entity
 }
 entity
 {
-    "id" "420"
+    "id" "405"
     "classname" "func_instance"
     "origin" "0 -6400 0"
     "angles" "0 0 0"
@@ -4214,7 +4064,7 @@ entity
 }
 entity
 {
-    "id" "421"
+    "id" "406"
     "classname" "func_instance"
     "origin" "640 -6400 0"
     "angles" "0 0 0"
@@ -4224,7 +4074,7 @@ entity
 }
 entity
 {
-    "id" "422"
+    "id" "407"
     "classname" "func_instance"
     "origin" "1280 -6400 0"
     "angles" "0 0 0"
@@ -4234,7 +4084,7 @@ entity
 }
 entity
 {
-    "id" "423"
+    "id" "408"
     "classname" "func_instance"
     "origin" "-1280 -7040 0"
     "angles" "0 0 0"
@@ -4244,7 +4094,7 @@ entity
 }
 entity
 {
-    "id" "424"
+    "id" "409"
     "classname" "func_instance"
     "origin" "-640 -7040 0"
     "angles" "0 0 0"
@@ -4254,7 +4104,7 @@ entity
 }
 entity
 {
-    "id" "425"
+    "id" "410"
     "classname" "func_instance"
     "origin" "0 -7040 0"
     "angles" "0 0 0"
@@ -4264,7 +4114,7 @@ entity
 }
 entity
 {
-    "id" "426"
+    "id" "411"
     "classname" "func_instance"
     "origin" "640 -7040 0"
     "angles" "0 0 0"
@@ -4274,7 +4124,7 @@ entity
 }
 entity
 {
-    "id" "427"
+    "id" "412"
     "classname" "func_instance"
     "origin" "1280 -7040 0"
     "angles" "0 0 0"
@@ -4284,7 +4134,7 @@ entity
 }
 entity
 {
-    "id" "428"
+    "id" "413"
     "classname" "func_instance"
     "origin" "-1280 -7680 0"
     "angles" "0 90 0"
@@ -4294,7 +4144,7 @@ entity
 }
 entity
 {
-    "id" "429"
+    "id" "414"
     "classname" "func_instance"
     "origin" "-640 -7680 0"
     "angles" "0 90 0"
@@ -4304,7 +4154,7 @@ entity
 }
 entity
 {
-    "id" "430"
+    "id" "415"
     "classname" "func_instance"
     "origin" "0 -7680 0"
     "angles" "0 270 0"
@@ -4314,7 +4164,7 @@ entity
 }
 entity
 {
-    "id" "431"
+    "id" "416"
     "classname" "func_instance"
     "origin" "640 -7680 0"
     "angles" "0 0 0"
@@ -4324,7 +4174,7 @@ entity
 }
 entity
 {
-    "id" "432"
+    "id" "417"
     "classname" "func_instance"
     "origin" "1280 -7680 0"
     "angles" "0 0 0"
@@ -4334,7 +4184,7 @@ entity
 }
 entity
 {
-    "id" "433"
+    "id" "418"
     "classname" "func_instance"
     "origin" "-1280 -8320 0"
     "angles" "0 0 0"
@@ -4344,7 +4194,7 @@ entity
 }
 entity
 {
-    "id" "434"
+    "id" "419"
     "classname" "func_instance"
     "origin" "-640 -8320 0"
     "angles" "0 0 0"
@@ -4354,7 +4204,7 @@ entity
 }
 entity
 {
-    "id" "435"
+    "id" "420"
     "classname" "func_instance"
     "origin" "0 -8320 0"
     "angles" "0 0 0"
@@ -4364,7 +4214,7 @@ entity
 }
 entity
 {
-    "id" "436"
+    "id" "421"
     "classname" "func_instance"
     "origin" "640 -8320 0"
     "angles" "0 0 0"
@@ -4374,7 +4224,7 @@ entity
 }
 entity
 {
-    "id" "437"
+    "id" "422"
     "classname" "func_instance"
     "origin" "1280 -8320 0"
     "angles" "0 0 0"
@@ -4384,7 +4234,7 @@ entity
 }
 entity
 {
-    "id" "438"
+    "id" "423"
     "classname" "func_instance"
     "origin" "-1280 -8960 0"
     "angles" "0 0 0"
@@ -4394,7 +4244,7 @@ entity
 }
 entity
 {
-    "id" "439"
+    "id" "424"
     "classname" "func_instance"
     "origin" "-640 -8960 0"
     "angles" "0 0 0"
@@ -4404,7 +4254,7 @@ entity
 }
 entity
 {
-    "id" "440"
+    "id" "425"
     "classname" "func_instance"
     "origin" "0 -8960 0"
     "angles" "0 0 0"
@@ -4414,7 +4264,7 @@ entity
 }
 entity
 {
-    "id" "441"
+    "id" "426"
     "classname" "func_instance"
     "origin" "640 -8960 0"
     "angles" "0 0 0"
@@ -4424,7 +4274,7 @@ entity
 }
 entity
 {
-    "id" "442"
+    "id" "427"
     "classname" "func_instance"
     "origin" "1280 -8960 0"
     "angles" "0 0 0"
@@ -4434,7 +4284,7 @@ entity
 }
 entity
 {
-    "id" "443"
+    "id" "428"
     "classname" "func_instance"
     "origin" "2560 -6400 0"
     "angles" "0 0 0"
@@ -4444,7 +4294,7 @@ entity
 }
 entity
 {
-    "id" "444"
+    "id" "429"
     "classname" "func_instance"
     "origin" "3200 -6400 0"
     "angles" "0 0 0"
@@ -4454,7 +4304,7 @@ entity
 }
 entity
 {
-    "id" "445"
+    "id" "430"
     "classname" "func_instance"
     "origin" "3840 -6400 0"
     "angles" "0 0 0"
@@ -4464,7 +4314,7 @@ entity
 }
 entity
 {
-    "id" "446"
+    "id" "431"
     "classname" "func_instance"
     "origin" "4480 -6400 0"
     "angles" "0 0 0"
@@ -4474,7 +4324,7 @@ entity
 }
 entity
 {
-    "id" "447"
+    "id" "432"
     "classname" "func_instance"
     "origin" "5120 -6400 0"
     "angles" "0 0 0"
@@ -4484,7 +4334,7 @@ entity
 }
 entity
 {
-    "id" "448"
+    "id" "433"
     "classname" "func_instance"
     "origin" "2560 -7040 0"
     "angles" "0 0 0"
@@ -4494,7 +4344,7 @@ entity
 }
 entity
 {
-    "id" "449"
+    "id" "434"
     "classname" "func_instance"
     "origin" "3200 -7040 0"
     "angles" "0 0 0"
@@ -4504,7 +4354,7 @@ entity
 }
 entity
 {
-    "id" "450"
+    "id" "435"
     "classname" "func_instance"
     "origin" "3840 -7040 0"
     "angles" "0 0 0"
@@ -4514,27 +4364,27 @@ entity
 }
 entity
 {
-    "id" "451"
+    "id" "436"
     "classname" "func_instance"
     "origin" "4480 -7040 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_bunker_1a.vmf"
     "targetname" "zm_dev_street_18_landmark_3_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "452"
+    "id" "437"
     "classname" "func_instance"
     "origin" "5120 -7040 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_18_building_4_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "453"
+    "id" "438"
     "classname" "func_instance"
     "origin" "2560 -7680 0"
     "angles" "0 90 0"
@@ -4544,7 +4394,7 @@ entity
 }
 entity
 {
-    "id" "454"
+    "id" "439"
     "classname" "func_instance"
     "origin" "3200 -7680 0"
     "angles" "0 90 0"
@@ -4554,7 +4404,7 @@ entity
 }
 entity
 {
-    "id" "455"
+    "id" "440"
     "classname" "func_instance"
     "origin" "3840 -7680 0"
     "angles" "0 270 0"
@@ -4564,7 +4414,7 @@ entity
 }
 entity
 {
-    "id" "456"
+    "id" "441"
     "classname" "func_instance"
     "origin" "4480 -7680 0"
     "angles" "0 90 0"
@@ -4574,7 +4424,7 @@ entity
 }
 entity
 {
-    "id" "457"
+    "id" "442"
     "classname" "func_instance"
     "origin" "5120 -7680 0"
     "angles" "0 90 0"
@@ -4584,7 +4434,7 @@ entity
 }
 entity
 {
-    "id" "458"
+    "id" "443"
     "classname" "func_instance"
     "origin" "2560 -8320 0"
     "angles" "0 0 0"
@@ -4594,17 +4444,17 @@ entity
 }
 entity
 {
-    "id" "459"
+    "id" "444"
     "classname" "func_instance"
     "origin" "3200 -8320 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_18_building_1_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "460"
+    "id" "445"
     "classname" "func_instance"
     "origin" "3840 -8320 0"
     "angles" "0 0 0"
@@ -4614,7 +4464,7 @@ entity
 }
 entity
 {
-    "id" "461"
+    "id" "446"
     "classname" "func_instance"
     "origin" "4480 -8320 0"
     "angles" "0 0 0"
@@ -4624,7 +4474,7 @@ entity
 }
 entity
 {
-    "id" "462"
+    "id" "447"
     "classname" "func_instance"
     "origin" "5120 -8320 0"
     "angles" "0 0 0"
@@ -4634,7 +4484,7 @@ entity
 }
 entity
 {
-    "id" "463"
+    "id" "448"
     "classname" "func_instance"
     "origin" "2560 -8960 0"
     "angles" "0 0 0"
@@ -4644,7 +4494,7 @@ entity
 }
 entity
 {
-    "id" "464"
+    "id" "449"
     "classname" "func_instance"
     "origin" "3200 -8960 0"
     "angles" "0 0 0"
@@ -4654,7 +4504,7 @@ entity
 }
 entity
 {
-    "id" "465"
+    "id" "450"
     "classname" "func_instance"
     "origin" "3840 -8960 0"
     "angles" "0 0 0"
@@ -4664,7 +4514,7 @@ entity
 }
 entity
 {
-    "id" "466"
+    "id" "451"
     "classname" "func_instance"
     "origin" "4480 -8960 0"
     "angles" "0 0 0"
@@ -4674,7 +4524,7 @@ entity
 }
 entity
 {
-    "id" "467"
+    "id" "452"
     "classname" "func_instance"
     "origin" "5120 -8960 0"
     "angles" "0 0 0"
@@ -4684,27 +4534,27 @@ entity
 }
 entity
 {
-    "id" "468"
+    "id" "453"
     "classname" "func_instance"
     "origin" "6400 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bbb.vmf"
-    "targetname" "zm_dev_street_19_building_0_0"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_19_decoration_0_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "469"
+    "id" "454"
     "classname" "func_instance"
     "origin" "7040 -6400 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1a.vmf"
-    "targetname" "zm_dev_street_19_landmark_1_0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_19_decoration_1_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "470"
+    "id" "455"
     "classname" "func_instance"
     "origin" "7680 -6400 0"
     "angles" "0 0 0"
@@ -4714,47 +4564,47 @@ entity
 }
 entity
 {
-    "id" "471"
+    "id" "456"
     "classname" "func_instance"
     "origin" "8320 -6400 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_19_terrain_3_0"
+    "angles" "0 90 0"
+    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
+    "targetname" "zm_dev_street_19_building_3_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "472"
+    "id" "457"
     "classname" "func_instance"
     "origin" "8960 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_19_terrain_4_0"
+    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
+    "targetname" "zm_dev_street_19_building_4_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "473"
+    "id" "458"
     "classname" "func_instance"
     "origin" "6400 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
-    "targetname" "zm_dev_street_19_building_0_1"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_19_decoration_0_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "474"
+    "id" "459"
     "classname" "func_instance"
     "origin" "7040 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_19_terrain_1_1"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_19_decoration_1_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "475"
+    "id" "460"
     "classname" "func_instance"
     "origin" "7680 -7040 0"
     "angles" "0 0 0"
@@ -4764,47 +4614,47 @@ entity
 }
 entity
 {
-    "id" "476"
+    "id" "461"
     "classname" "func_instance"
     "origin" "8320 -7040 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_19_terrain_3_1"
+    "angles" "0 90 0"
+    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
+    "targetname" "zm_dev_street_19_building_3_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "477"
+    "id" "462"
     "classname" "func_instance"
     "origin" "8960 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_19_terrain_4_1"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_19_decoration_4_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "478"
+    "id" "463"
     "classname" "func_instance"
     "origin" "6400 -7680 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_19_terrain_0_2"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_19_decoration_0_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "479"
+    "id" "464"
     "classname" "func_instance"
     "origin" "7040 -7680 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_19_terrain_1_2"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
+    "targetname" "zm_dev_street_19_building_1_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "480"
+    "id" "465"
     "classname" "func_instance"
     "origin" "7680 -7680 0"
     "angles" "0 0 0"
@@ -4814,47 +4664,47 @@ entity
 }
 entity
 {
-    "id" "481"
+    "id" "466"
     "classname" "func_instance"
     "origin" "8320 -7680 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_19_terrain_3_2"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_19_decoration_3_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "482"
+    "id" "467"
     "classname" "func_instance"
     "origin" "8960 -7680 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
-    "targetname" "zm_dev_street_19_building_4_2"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_dev_street_19_terrain_4_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "483"
+    "id" "468"
     "classname" "func_instance"
     "origin" "6400 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_19_terrain_0_3"
+    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
+    "targetname" "zm_dev_street_19_building_0_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "484"
+    "id" "469"
     "classname" "func_instance"
     "origin" "7040 -8320 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_19_terrain_1_3"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
+    "targetname" "zm_dev_street_19_building_1_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "485"
+    "id" "470"
     "classname" "func_instance"
     "origin" "7680 -8320 0"
     "angles" "0 0 0"
@@ -4864,47 +4714,47 @@ entity
 }
 entity
 {
-    "id" "486"
+    "id" "471"
     "classname" "func_instance"
     "origin" "8320 -8320 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aaa.vmf"
-    "targetname" "zm_dev_street_19_building_3_3"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_dev_street_19_terrain_3_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "487"
+    "id" "472"
     "classname" "func_instance"
     "origin" "8960 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1aaa.vmf"
-    "targetname" "zm_dev_street_19_building_4_3"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_19_decoration_4_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "488"
+    "id" "473"
     "classname" "func_instance"
     "origin" "6400 -8960 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_19_terrain_0_4"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_19_decoration_0_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "489"
+    "id" "474"
     "classname" "func_instance"
     "origin" "7040 -8960 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
-    "targetname" "zm_dev_street_19_building_1_4"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_dirt.vmf"
+    "targetname" "zm_dev_street_19_terrain_1_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "490"
+    "id" "475"
     "classname" "func_instance"
     "origin" "7680 -8960 0"
     "angles" "0 0 0"
@@ -4914,17 +4764,17 @@ entity
 }
 entity
 {
-    "id" "491"
+    "id" "476"
     "classname" "func_instance"
     "origin" "8320 -8960 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
-    "targetname" "zm_dev_street_19_building_3_4"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "targetname" "zm_dev_street_19_decoration_3_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "492"
+    "id" "477"
     "classname" "func_instance"
     "origin" "8960 -8960 0"
     "angles" "0 0 0"
@@ -4934,7 +4784,7 @@ entity
 }
 entity
 {
-    "id" "493"
+    "id" "478"
     "classname" "func_instance"
     "origin" "-8960 -10240 0"
     "angles" "0 0 0"
@@ -4944,27 +4794,27 @@ entity
 }
 entity
 {
-    "id" "494"
+    "id" "479"
     "classname" "func_instance"
     "origin" "-8320 -10240 0"
-    "angles" "0 90 0"
+    "angles" "0 270 0"
     "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
     "targetname" "zm_dev_street_20_building_1_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "495"
+    "id" "480"
     "classname" "func_instance"
     "origin" "-7680 -10240 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/roads/tile_road_deadend.vmf"
     "targetname" "zm_dev_street_20_special_landmark_road_cap_2_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "496"
+    "id" "481"
     "classname" "func_instance"
     "origin" "-7040 -10240 0"
     "angles" "0 0 0"
@@ -4974,7 +4824,7 @@ entity
 }
 entity
 {
-    "id" "497"
+    "id" "482"
     "classname" "func_instance"
     "origin" "-6400 -10240 0"
     "angles" "0 0 0"
@@ -4984,17 +4834,17 @@ entity
 }
 entity
 {
-    "id" "498"
+    "id" "483"
     "classname" "func_instance"
     "origin" "-8960 -10880 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_20_building_0_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "499"
+    "id" "484"
     "classname" "func_instance"
     "origin" "-7680 -11520 0"
     "angles" "0 0 0"
@@ -5004,7 +4854,7 @@ entity
 }
 entity
 {
-    "id" "500"
+    "id" "485"
     "classname" "func_instance"
     "origin" "-6400 -10880 0"
     "angles" "0 0 0"
@@ -5014,17 +4864,17 @@ entity
 }
 entity
 {
-    "id" "501"
+    "id" "486"
     "classname" "func_instance"
     "origin" "-8960 -11520 0"
-    "angles" "0 90 0"
+    "angles" "0 270 0"
     "file" "../../tiletemplates/roads/tile_road_deadend.vmf"
     "targetname" "zm_dev_street_20_special_landmark_road_cap_0_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "502"
+    "id" "487"
     "classname" "func_instance"
     "origin" "-6400 -11520 0"
     "angles" "0 0 0"
@@ -5034,7 +4884,7 @@ entity
 }
 entity
 {
-    "id" "503"
+    "id" "488"
     "classname" "func_instance"
     "origin" "-8960 -12160 0"
     "angles" "0 0 0"
@@ -5044,7 +4894,7 @@ entity
 }
 entity
 {
-    "id" "504"
+    "id" "489"
     "classname" "func_instance"
     "origin" "-6400 -12160 0"
     "angles" "0 0 0"
@@ -5054,7 +4904,7 @@ entity
 }
 entity
 {
-    "id" "505"
+    "id" "490"
     "classname" "func_instance"
     "origin" "-8960 -12800 0"
     "angles" "0 0 0"
@@ -5064,37 +4914,37 @@ entity
 }
 entity
 {
-    "id" "506"
+    "id" "491"
     "classname" "func_instance"
     "origin" "-8320 -12800 0"
-    "angles" "0 90 0"
+    "angles" "0 270 0"
     "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
     "targetname" "zm_dev_street_20_building_1_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "507"
+    "id" "492"
     "classname" "func_instance"
     "origin" "-7680 -12800 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/roads/tile_road_deadend.vmf"
     "targetname" "zm_dev_street_20_special_landmark_road_cap_2_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "508"
+    "id" "493"
     "classname" "func_instance"
     "origin" "-7040 -12800 0"
-    "angles" "0 270 0"
+    "angles" "0 90 0"
     "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
     "targetname" "zm_dev_street_20_building_3_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "509"
+    "id" "494"
     "classname" "func_instance"
     "origin" "-6400 -12800 0"
     "angles" "0 0 0"
@@ -5104,7 +4954,7 @@ entity
 }
 entity
 {
-    "id" "510"
+    "id" "495"
     "classname" "func_instance"
     "origin" "-5120 -10240 0"
     "angles" "0 0 0"
@@ -5114,7 +4964,7 @@ entity
 }
 entity
 {
-    "id" "511"
+    "id" "496"
     "classname" "func_instance"
     "origin" "-4480 -10240 0"
     "angles" "0 0 0"
@@ -5124,7 +4974,7 @@ entity
 }
 entity
 {
-    "id" "512"
+    "id" "497"
     "classname" "func_instance"
     "origin" "-3840 -10240 0"
     "angles" "0 0 0"
@@ -5134,7 +4984,7 @@ entity
 }
 entity
 {
-    "id" "513"
+    "id" "498"
     "classname" "func_instance"
     "origin" "-3200 -10240 0"
     "angles" "0 0 0"
@@ -5144,7 +4994,7 @@ entity
 }
 entity
 {
-    "id" "514"
+    "id" "499"
     "classname" "func_instance"
     "origin" "-2560 -10240 0"
     "angles" "0 0 0"
@@ -5154,7 +5004,7 @@ entity
 }
 entity
 {
-    "id" "515"
+    "id" "500"
     "classname" "func_instance"
     "origin" "-5120 -10880 0"
     "angles" "0 0 0"
@@ -5164,7 +5014,7 @@ entity
 }
 entity
 {
-    "id" "516"
+    "id" "501"
     "classname" "func_instance"
     "origin" "-4480 -10880 0"
     "angles" "0 0 0"
@@ -5174,7 +5024,7 @@ entity
 }
 entity
 {
-    "id" "517"
+    "id" "502"
     "classname" "func_instance"
     "origin" "-3840 -10880 0"
     "angles" "0 0 0"
@@ -5184,7 +5034,7 @@ entity
 }
 entity
 {
-    "id" "518"
+    "id" "503"
     "classname" "func_instance"
     "origin" "-3200 -10880 0"
     "angles" "0 0 0"
@@ -5194,17 +5044,17 @@ entity
 }
 entity
 {
-    "id" "519"
+    "id" "504"
     "classname" "func_instance"
     "origin" "-2560 -10880 0"
-    "angles" "0 180 0"
+    "angles" "0 0 0"
     "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
     "targetname" "zm_dev_street_21_building_4_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "520"
+    "id" "505"
     "classname" "func_instance"
     "origin" "-5120 -11520 0"
     "angles" "0 90 0"
@@ -5214,7 +5064,7 @@ entity
 }
 entity
 {
-    "id" "521"
+    "id" "506"
     "classname" "func_instance"
     "origin" "-4480 -11520 0"
     "angles" "0 90 0"
@@ -5224,7 +5074,7 @@ entity
 }
 entity
 {
-    "id" "522"
+    "id" "507"
     "classname" "func_instance"
     "origin" "-3840 -11520 0"
     "angles" "0 180 0"
@@ -5234,7 +5084,7 @@ entity
 }
 entity
 {
-    "id" "523"
+    "id" "508"
     "classname" "func_instance"
     "origin" "-3200 -11520 0"
     "angles" "0 90 0"
@@ -5244,7 +5094,7 @@ entity
 }
 entity
 {
-    "id" "524"
+    "id" "509"
     "classname" "func_instance"
     "origin" "-2560 -11520 0"
     "angles" "0 90 0"
@@ -5254,7 +5104,7 @@ entity
 }
 entity
 {
-    "id" "525"
+    "id" "510"
     "classname" "func_instance"
     "origin" "-5120 -12160 0"
     "angles" "0 0 0"
@@ -5264,17 +5114,17 @@ entity
 }
 entity
 {
-    "id" "526"
+    "id" "511"
     "classname" "func_instance"
     "origin" "-4480 -12160 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
     "targetname" "zm_dev_street_21_building_1_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "527"
+    "id" "512"
     "classname" "func_instance"
     "origin" "-3840 -12160 0"
     "angles" "0 0 0"
@@ -5284,27 +5134,17 @@ entity
 }
 entity
 {
-    "id" "528"
+    "id" "513"
     "classname" "func_instance"
-    "origin" "-3200 -12160 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
+    "origin" "-2880 -12480 0"
+    "angles" "0 180 0"
+    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
     "targetname" "zm_dev_street_21_building_3_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "529"
-    "classname" "func_instance"
-    "origin" "-2560 -12160 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_21_terrain_4_3"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "530"
+    "id" "514"
     "classname" "func_instance"
     "origin" "-5120 -12800 0"
     "angles" "0 0 0"
@@ -5314,17 +5154,17 @@ entity
 }
 entity
 {
-    "id" "531"
+    "id" "515"
     "classname" "func_instance"
     "origin" "-4480 -12800 0"
-    "angles" "0 90 0"
+    "angles" "0 270 0"
     "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
     "targetname" "zm_dev_street_21_building_1_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "532"
+    "id" "516"
     "classname" "func_instance"
     "origin" "-3840 -12800 0"
     "angles" "0 0 0"
@@ -5334,27 +5174,7 @@ entity
 }
 entity
 {
-    "id" "533"
-    "classname" "func_instance"
-    "origin" "-3200 -12800 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_21_terrain_3_4"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "534"
-    "classname" "func_instance"
-    "origin" "-2560 -12800 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_21_terrain_4_4"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "535"
+    "id" "517"
     "classname" "func_instance"
     "origin" "-1280 -10240 0"
     "angles" "0 0 0"
@@ -5364,7 +5184,7 @@ entity
 }
 entity
 {
-    "id" "536"
+    "id" "518"
     "classname" "func_instance"
     "origin" "-640 -10240 0"
     "angles" "0 0 0"
@@ -5374,7 +5194,7 @@ entity
 }
 entity
 {
-    "id" "537"
+    "id" "519"
     "classname" "func_instance"
     "origin" "0 -10240 0"
     "angles" "0 0 0"
@@ -5384,7 +5204,7 @@ entity
 }
 entity
 {
-    "id" "538"
+    "id" "520"
     "classname" "func_instance"
     "origin" "640 -10240 0"
     "angles" "0 0 0"
@@ -5394,7 +5214,7 @@ entity
 }
 entity
 {
-    "id" "539"
+    "id" "521"
     "classname" "func_instance"
     "origin" "1280 -10240 0"
     "angles" "0 0 0"
@@ -5404,7 +5224,7 @@ entity
 }
 entity
 {
-    "id" "540"
+    "id" "522"
     "classname" "func_instance"
     "origin" "-1280 -10880 0"
     "angles" "0 0 0"
@@ -5414,7 +5234,7 @@ entity
 }
 entity
 {
-    "id" "541"
+    "id" "523"
     "classname" "func_instance"
     "origin" "-640 -10880 0"
     "angles" "0 0 0"
@@ -5424,7 +5244,7 @@ entity
 }
 entity
 {
-    "id" "542"
+    "id" "524"
     "classname" "func_instance"
     "origin" "0 -10880 0"
     "angles" "0 180 0"
@@ -5434,7 +5254,7 @@ entity
 }
 entity
 {
-    "id" "543"
+    "id" "525"
     "classname" "func_instance"
     "origin" "640 -10880 0"
     "angles" "0 0 0"
@@ -5444,7 +5264,7 @@ entity
 }
 entity
 {
-    "id" "544"
+    "id" "526"
     "classname" "func_instance"
     "origin" "1280 -10880 0"
     "angles" "0 0 0"
@@ -5454,7 +5274,7 @@ entity
 }
 entity
 {
-    "id" "545"
+    "id" "527"
     "classname" "func_instance"
     "origin" "-1280 -11520 0"
     "angles" "0 90 0"
@@ -5464,7 +5284,7 @@ entity
 }
 entity
 {
-    "id" "546"
+    "id" "528"
     "classname" "func_instance"
     "origin" "-640 -11520 0"
     "angles" "0 90 0"
@@ -5474,7 +5294,7 @@ entity
 }
 entity
 {
-    "id" "547"
+    "id" "529"
     "classname" "func_instance"
     "origin" "0 -11520 0"
     "angles" "0 90 0"
@@ -5484,7 +5304,7 @@ entity
 }
 entity
 {
-    "id" "548"
+    "id" "530"
     "classname" "func_instance"
     "origin" "640 -11520 0"
     "angles" "0 90 0"
@@ -5494,7 +5314,7 @@ entity
 }
 entity
 {
-    "id" "549"
+    "id" "531"
     "classname" "func_instance"
     "origin" "1280 -11520 0"
     "angles" "0 90 0"
@@ -5504,7 +5324,7 @@ entity
 }
 entity
 {
-    "id" "550"
+    "id" "532"
     "classname" "func_instance"
     "origin" "-1280 -12160 0"
     "angles" "0 0 0"
@@ -5514,7 +5334,7 @@ entity
 }
 entity
 {
-    "id" "551"
+    "id" "533"
     "classname" "func_instance"
     "origin" "-640 -12160 0"
     "angles" "0 0 0"
@@ -5524,7 +5344,7 @@ entity
 }
 entity
 {
-    "id" "552"
+    "id" "534"
     "classname" "func_instance"
     "origin" "0 -12160 0"
     "angles" "0 0 0"
@@ -5534,7 +5354,7 @@ entity
 }
 entity
 {
-    "id" "553"
+    "id" "535"
     "classname" "func_instance"
     "origin" "640 -12160 0"
     "angles" "0 0 0"
@@ -5544,17 +5364,17 @@ entity
 }
 entity
 {
-    "id" "554"
+    "id" "536"
     "classname" "func_instance"
     "origin" "1280 -12160 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
+    "angles" "0 180 0"
+    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_22_building_4_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "555"
+    "id" "537"
     "classname" "func_instance"
     "origin" "-1280 -12800 0"
     "angles" "0 0 0"
@@ -5564,7 +5384,7 @@ entity
 }
 entity
 {
-    "id" "556"
+    "id" "538"
     "classname" "func_instance"
     "origin" "-640 -12800 0"
     "angles" "0 0 0"
@@ -5574,7 +5394,7 @@ entity
 }
 entity
 {
-    "id" "557"
+    "id" "539"
     "classname" "func_instance"
     "origin" "0 -12800 0"
     "angles" "0 0 0"
@@ -5584,27 +5404,27 @@ entity
 }
 entity
 {
-    "id" "558"
+    "id" "540"
     "classname" "func_instance"
     "origin" "640 -12800 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_22_building_3_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "559"
+    "id" "541"
     "classname" "func_instance"
     "origin" "1280 -12800 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_22_building_4_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "560"
+    "id" "542"
     "classname" "func_instance"
     "origin" "2560 -10240 0"
     "angles" "0 0 0"
@@ -5614,17 +5434,17 @@ entity
 }
 entity
 {
-    "id" "561"
+    "id" "543"
     "classname" "func_instance"
     "origin" "3200 -10240 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1a.vmf"
-    "targetname" "zm_dev_street_23_landmark_1_0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_23_terrain_1_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "562"
+    "id" "544"
     "classname" "func_instance"
     "origin" "3840 -10240 0"
     "angles" "0 0 0"
@@ -5634,27 +5454,27 @@ entity
 }
 entity
 {
-    "id" "563"
+    "id" "545"
     "classname" "func_instance"
     "origin" "4480 -10240 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aaa.vmf"
-    "targetname" "zm_dev_street_23_building_3_0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_23_terrain_3_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "564"
+    "id" "546"
     "classname" "func_instance"
     "origin" "5120 -10240 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1aaa.vmf"
-    "targetname" "zm_dev_street_23_building_4_0"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_23_terrain_4_0"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "565"
+    "id" "547"
     "classname" "func_instance"
     "origin" "2560 -10880 0"
     "angles" "0 0 0"
@@ -5664,17 +5484,17 @@ entity
 }
 entity
 {
-    "id" "566"
+    "id" "548"
     "classname" "func_instance"
     "origin" "3200 -10880 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
-    "targetname" "zm_dev_street_23_decoration_1_1"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_23_terrain_1_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "567"
+    "id" "549"
     "classname" "func_instance"
     "origin" "3840 -10880 0"
     "angles" "0 0 0"
@@ -5684,47 +5504,47 @@ entity
 }
 entity
 {
-    "id" "568"
+    "id" "550"
     "classname" "func_instance"
     "origin" "4480 -10880 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
-    "targetname" "zm_dev_street_23_building_3_1"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_23_terrain_3_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "569"
+    "id" "551"
     "classname" "func_instance"
     "origin" "5120 -10880 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
-    "targetname" "zm_dev_street_23_building_4_1"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_23_terrain_4_1"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "570"
+    "id" "552"
     "classname" "func_instance"
     "origin" "2560 -11520 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aaa.vmf"
-    "targetname" "zm_dev_street_23_building_0_2"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_23_terrain_0_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "571"
+    "id" "553"
     "classname" "func_instance"
     "origin" "3200 -11520 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1aaa.vmf"
-    "targetname" "zm_dev_street_23_building_1_2"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_23_terrain_1_2"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "572"
+    "id" "554"
     "classname" "func_instance"
     "origin" "3840 -11520 0"
     "angles" "0 270 0"
@@ -5734,7 +5554,7 @@ entity
 }
 entity
 {
-    "id" "573"
+    "id" "555"
     "classname" "func_instance"
     "origin" "4480 -11520 0"
     "angles" "0 90 0"
@@ -5744,7 +5564,7 @@ entity
 }
 entity
 {
-    "id" "574"
+    "id" "556"
     "classname" "func_instance"
     "origin" "5120 -11520 0"
     "angles" "0 90 0"
@@ -5754,27 +5574,27 @@ entity
 }
 entity
 {
-    "id" "575"
+    "id" "557"
     "classname" "func_instance"
     "origin" "2560 -12160 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
-    "targetname" "zm_dev_street_23_building_0_3"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_23_terrain_0_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "576"
+    "id" "558"
     "classname" "func_instance"
     "origin" "3200 -12160 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
     "targetname" "zm_dev_street_23_building_1_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "577"
+    "id" "559"
     "classname" "func_instance"
     "origin" "3840 -12160 0"
     "angles" "0 0 0"
@@ -5784,17 +5604,17 @@ entity
 }
 entity
 {
-    "id" "578"
+    "id" "560"
     "classname" "func_instance"
     "origin" "4480 -12160 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_23_terrain_3_3"
+    "angles" "0 180 0"
+    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
+    "targetname" "zm_dev_street_23_building_3_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "579"
+    "id" "561"
     "classname" "func_instance"
     "origin" "5120 -12160 0"
     "angles" "0 0 0"
@@ -5804,27 +5624,27 @@ entity
 }
 entity
 {
-    "id" "580"
+    "id" "562"
     "classname" "func_instance"
     "origin" "2560 -12800 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bbb.vmf"
+    "file" "../../tiletemplates/buildings/tile_commercial_1aa.vmf"
     "targetname" "zm_dev_street_23_building_0_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "581"
+    "id" "563"
     "classname" "func_instance"
     "origin" "3200 -12800 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_23_terrain_1_4"
+    "file" "../../tiletemplates/roads/tile_concrete_path.vmf"
+    "targetname" "zm_dev_street_23_path_1_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "582"
+    "id" "564"
     "classname" "func_instance"
     "origin" "3840 -12800 0"
     "angles" "0 0 0"
@@ -5834,7 +5654,7 @@ entity
 }
 entity
 {
-    "id" "583"
+    "id" "565"
     "classname" "func_instance"
     "origin" "4480 -12800 0"
     "angles" "0 0 0"
@@ -5844,7 +5664,7 @@ entity
 }
 entity
 {
-    "id" "584"
+    "id" "566"
     "classname" "func_instance"
     "origin" "5120 -12800 0"
     "angles" "0 0 0"

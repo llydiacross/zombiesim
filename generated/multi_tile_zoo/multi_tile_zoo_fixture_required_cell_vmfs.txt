@@ -1,7 +1,7 @@
-zn_co_rs-h-d2_n-m22-c2a-p2-3-q0.vmf
-zn_co_rs-v-d3_n-m22-c2aa-p0-0-q1-cp.vmf
+zn_co_rs-h-d2_n-m22-c2a-p3-3-q2.vmf
+zn_co_rs-v-d3_n-m22-c2aa-p0-0-q3-cp.vmf
 zn_dx_rc-ne-d1_ep-m33-e1aa-p1-1-q0.vmf
 zn_dx_rt-me-d1_ep-m33-e1aaa-p1-1-q0.vmf
 zn_dx_rx-a-d1_ep-m33-e1a-p1-1-q0.vmf
-zn_gr_rs-v-d1_n-m22-b1aa-p3-0-q3-cp.vmf
-zn_md_rs-h-d2_ho-m22-h1a-p1-0-q2.vmf
+zn_gr_rs-v-d1_n-m22-b1aa-p3-0-q1-cp.vmf
+zn_md_rs-h-d2_ho-m22-h1a-p1-0-q0.vmf

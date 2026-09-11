@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "8"
+	"mapversion" "9"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "8"
+	"mapversion" "9"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -773,15 +773,21 @@ entity
 	"angles" "0 90 0"
 	"fademindist" "-1"
 	"fadescale" "1"
+	"gmod_allowphysgun" "1"
 	"lightmapresolutionx" "32"
 	"lightmapresolutiony" "32"
+	"MaxAnimTime" "10"
+	"MinAnimTime" "5"
 	"model" "models/props_lab/blastdoor001b.mdl"
+	"modelscale" "1.0"
+	"renderamt" "255"
+	"rendercolor" "255 255 255"
 	"skin" "0"
 	"solid" "6"
 	"origin" "0 216 32"
 	editor
 	{
-		"color" "255 255 0"
+		"color" "220 30 220"
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 4500]"
@@ -805,7 +811,7 @@ entity
 				"v" "192 -192 128"
 				"v" "-192 -192 128"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -823,7 +829,7 @@ entity
 				"v" "192 192 32"
 				"v" "-192 192 32"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -841,7 +847,7 @@ entity
 				"v" "-192 -192 32"
 				"v" "-192 192 32"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -859,7 +865,7 @@ entity
 				"v" "192 -192 128"
 				"v" "192 192 128"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -877,7 +883,7 @@ entity
 				"v" "-192 192 32"
 				"v" "192 192 32"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -895,7 +901,7 @@ entity
 				"v" "-192 -192 128"
 				"v" "192 -192 128"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -923,7 +929,7 @@ entity
 				"v" "-160 -160 160"
 				"v" "-160 160 160"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE3"
+			"material" "BRICK/BRICKWALL022A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -941,7 +947,7 @@ entity
 				"v" "-192 192 128"
 				"v" "-192 -192 128"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -959,7 +965,7 @@ entity
 				"v" "-192 192 128"
 				"v" "-160 160 160"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 256] 0.25"
 			"rotation" "0"
@@ -977,7 +983,7 @@ entity
 				"v" "160 160 160"
 				"v" "192 192 128"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 256] 0.25"
 			"rotation" "0"
@@ -995,7 +1001,7 @@ entity
 				"v" "192 192 128"
 				"v" "160 160 160"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 0 -1 256] 0.25"
 			"rotation" "0"
@@ -1013,7 +1019,7 @@ entity
 				"v" "160 -160 160"
 				"v" "192 -192 128"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 0 -1 256] 0.25"
 			"rotation" "0"
@@ -1033,15 +1039,15 @@ entity
 		side
 		{
 			"id" "108"
-			"plane" "(-32 240 152) (-32 192 152) (-64 192 152)"
+			"plane" "(-32 227.2 152) (-32 160 152) (-64 160 152)"
 			vertices_plus
 			{
-				"v" "-32 240 152"
-				"v" "-32 192 152"
-				"v" "-64 192 152"
-				"v" "-64 240 152"
+				"v" "-32 227.2 152"
+				"v" "-32 160 152"
+				"v" "-64 160 152"
+				"v" "-64 227.2 152"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE3"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -1051,15 +1057,15 @@ entity
 		side
 		{
 			"id" "107"
-			"plane" "(-32 192 32) (-32 272 32) (-64 272 32)"
+			"plane" "(-32 160 32) (-32 272 32) (-64 272 32)"
 			vertices_plus
 			{
-				"v" "-32 192 32"
+				"v" "-32 160 32"
 				"v" "-32 272 32"
 				"v" "-64 272 32"
-				"v" "-64 192 32"
+				"v" "-64 160 32"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -1069,15 +1075,15 @@ entity
 		side
 		{
 			"id" "106"
-			"plane" "(-64 192 152) (-64 192 32) (-64 272 32)"
+			"plane" "(-64 160 152) (-64 160 32) (-64 272 32)"
 			vertices_plus
 			{
-				"v" "-64 192 152"
-				"v" "-64 192 32"
+				"v" "-64 160 152"
+				"v" "-64 160 32"
 				"v" "-64 272 32"
-				"v" "-64 240 152"
+				"v" "-64 227.2 152"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -1087,15 +1093,15 @@ entity
 		side
 		{
 			"id" "105"
-			"plane" "(-32 192 32) (-32 192 152) (-32 240 152)"
+			"plane" "(-32 160 32) (-32 160 152) (-32 227.2 152)"
 			vertices_plus
 			{
-				"v" "-32 192 32"
-				"v" "-32 192 152"
-				"v" "-32 240 152"
+				"v" "-32 160 32"
+				"v" "-32 160 152"
+				"v" "-32 227.2 152"
 				"v" "-32 272 32"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -1105,15 +1111,15 @@ entity
 		side
 		{
 			"id" "104"
-			"plane" "(-64 240 152) (-64 272 32) (-32 272 32)"
+			"plane" "(-64 227.2 152) (-64 272 32) (-32 272 32)"
 			vertices_plus
 			{
-				"v" "-64 240 152"
+				"v" "-64 227.2 152"
 				"v" "-64 272 32"
 				"v" "-32 272 32"
-				"v" "-32 240 152"
+				"v" "-32 227.2 152"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -1123,15 +1129,15 @@ entity
 		side
 		{
 			"id" "103"
-			"plane" "(-64 192 32) (-64 192 152) (-32 192 152)"
+			"plane" "(-64 160 32) (-64 160 152) (-32 160 152)"
 			vertices_plus
 			{
-				"v" "-64 192 32"
-				"v" "-64 192 152"
-				"v" "-32 192 152"
-				"v" "-32 192 32"
+				"v" "-64 160 32"
+				"v" "-64 160 152"
+				"v" "-32 160 152"
+				"v" "-32 160 32"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -1151,15 +1157,15 @@ entity
 		side
 		{
 			"id" "114"
-			"plane" "(64 240 152) (64 192 152) (32 192 152)"
+			"plane" "(64 227.2 152) (64 160 152) (32 160 152)"
 			vertices_plus
 			{
-				"v" "64 240 152"
-				"v" "64 192 152"
-				"v" "32 192 152"
-				"v" "32 240 152"
+				"v" "64 227.2 152"
+				"v" "64 160 152"
+				"v" "32 160 152"
+				"v" "32 227.2 152"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE3"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 -384] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -1169,15 +1175,15 @@ entity
 		side
 		{
 			"id" "113"
-			"plane" "(64 192 32) (64 272 32) (32 272 32)"
+			"plane" "(64 160 32) (64 272 32) (32 272 32)"
 			vertices_plus
 			{
-				"v" "64 192 32"
+				"v" "64 160 32"
 				"v" "64 272 32"
 				"v" "32 272 32"
-				"v" "32 192 32"
+				"v" "32 160 32"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 -384] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -1187,15 +1193,15 @@ entity
 		side
 		{
 			"id" "112"
-			"plane" "(32 192 152) (32 192 32) (32 272 32)"
+			"plane" "(32 160 152) (32 160 32) (32 272 32)"
 			vertices_plus
 			{
-				"v" "32 192 152"
-				"v" "32 192 32"
+				"v" "32 160 152"
+				"v" "32 160 32"
 				"v" "32 272 32"
-				"v" "32 240 152"
+				"v" "32 227.2 152"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -1205,15 +1211,15 @@ entity
 		side
 		{
 			"id" "111"
-			"plane" "(64 192 32) (64 192 152) (64 240 152)"
+			"plane" "(64 160 32) (64 160 152) (64 227.2 152)"
 			vertices_plus
 			{
-				"v" "64 192 32"
-				"v" "64 192 152"
-				"v" "64 240 152"
+				"v" "64 160 32"
+				"v" "64 160 152"
+				"v" "64 227.2 152"
 				"v" "64 272 32"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -1223,15 +1229,15 @@ entity
 		side
 		{
 			"id" "110"
-			"plane" "(32 240 152) (32 272 32) (64 272 32)"
+			"plane" "(32 227.2 152) (32 272 32) (64 272 32)"
 			vertices_plus
 			{
-				"v" "32 240 152"
+				"v" "32 227.2 152"
 				"v" "32 272 32"
 				"v" "64 272 32"
-				"v" "64 240 152"
+				"v" "64 227.2 152"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 -384] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -1241,15 +1247,15 @@ entity
 		side
 		{
 			"id" "109"
-			"plane" "(32 192 32) (32 192 152) (64 192 152)"
+			"plane" "(32 160 32) (32 160 152) (64 160 152)"
 			vertices_plus
 			{
-				"v" "32 192 32"
-				"v" "32 192 152"
-				"v" "64 192 152"
-				"v" "64 192 32"
+				"v" "32 160 32"
+				"v" "32 160 152"
+				"v" "64 160 152"
+				"v" "64 160 32"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 -384] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -1269,15 +1275,15 @@ entity
 		side
 		{
 			"id" "120"
-			"plane" "(-32 240 152) (32 240 152) (32 192 152)"
+			"plane" "(-32 227.2 152) (32 227.2 152) (32 160 152)"
 			vertices_plus
 			{
-				"v" "-32 240 152"
-				"v" "32 240 152"
-				"v" "32 192 152"
-				"v" "-32 192 152"
+				"v" "-32 227.2 152"
+				"v" "32 227.2 152"
+				"v" "32 160 152"
+				"v" "-32 160 152"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE3"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -1287,13 +1293,13 @@ entity
 		side
 		{
 			"id" "119"
-			"plane" "(-32 192 136) (32 192 136) (32 240 136)"
+			"plane" "(-32 160 136) (32 160 136) (32 227.2 136)"
 			vertices_plus
 			{
-				"v" "-32 192 136"
-				"v" "32 192 136"
-				"v" "32 240 136"
-				"v" "-32 240 136"
+				"v" "-32 160 136"
+				"v" "32 160 136"
+				"v" "32 227.2 136"
+				"v" "-32 227.2 136"
 			}
 			"material" "PHOENIX_STORMS/CONCRETE3"
 			"uaxis" "[1 0 0 0] 0.25"
@@ -1305,13 +1311,13 @@ entity
 		side
 		{
 			"id" "118"
-			"plane" "(-32 240 152) (-32 192 152) (-32 192 136)"
+			"plane" "(-32 227.2 152) (-32 160 152) (-32 160 136)"
 			vertices_plus
 			{
-				"v" "-32 240 152"
-				"v" "-32 192 152"
-				"v" "-32 192 136"
-				"v" "-32 240 136"
+				"v" "-32 227.2 152"
+				"v" "-32 160 152"
+				"v" "-32 160 136"
+				"v" "-32 227.2 136"
 			}
 			"material" "PHOENIX_STORMS/CONCRETE3"
 			"uaxis" "[0 1 0 0] 0.25"
@@ -1323,13 +1329,13 @@ entity
 		side
 		{
 			"id" "117"
-			"plane" "(32 240 136) (32 192 136) (32 192 152)"
+			"plane" "(32 227.2 136) (32 160 136) (32 160 152)"
 			vertices_plus
 			{
-				"v" "32 240 136"
-				"v" "32 192 136"
-				"v" "32 192 152"
-				"v" "32 240 152"
+				"v" "32 227.2 136"
+				"v" "32 160 136"
+				"v" "32 160 152"
+				"v" "32 227.2 152"
 			}
 			"material" "PHOENIX_STORMS/CONCRETE3"
 			"uaxis" "[0 1 0 0] 0.25"
@@ -1341,15 +1347,15 @@ entity
 		side
 		{
 			"id" "116"
-			"plane" "(32 240 152) (-32 240 152) (-32 240 136)"
+			"plane" "(32 227.2 152) (-32 227.2 152) (-32 227.2 136)"
 			vertices_plus
 			{
-				"v" "32 240 152"
-				"v" "-32 240 152"
-				"v" "-32 240 136"
-				"v" "32 240 136"
+				"v" "32 227.2 152"
+				"v" "-32 227.2 152"
+				"v" "-32 227.2 136"
+				"v" "32 227.2 136"
 			}
-			"material" "PHOENIX_STORMS/CONCRETE2"
+			"material" "BRICK/BRICKWALL020A"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 0 -1 320] 0.25"
 			"rotation" "0"
@@ -1359,13 +1365,13 @@ entity
 		side
 		{
 			"id" "115"
-			"plane" "(32 192 136) (-32 192 136) (-32 192 152)"
+			"plane" "(32 160 136) (-32 160 136) (-32 160 152)"
 			vertices_plus
 			{
-				"v" "32 192 136"
-				"v" "-32 192 136"
-				"v" "-32 192 152"
-				"v" "32 192 152"
+				"v" "32 160 136"
+				"v" "-32 160 136"
+				"v" "-32 160 152"
+				"v" "32 160 152"
 			}
 			"material" "PHOENIX_STORMS/CONCRETE3"
 			"uaxis" "[1 0 0 0] 0.25"
@@ -1388,6 +1394,13 @@ entity
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 1000]"
 	}
+}
+entity
+{
+	"id" "990001"
+	"classname" "zn_tile_direction"
+	"direction" "south"
+	"origin" "0 -320 32"
 }
 cameras
 {

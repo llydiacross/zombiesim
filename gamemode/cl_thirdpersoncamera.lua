@@ -10,6 +10,12 @@ local flipCamera = true
 // Mouse movement rotates the model, while the camera stays behind it.
 local modelYaw = 0
 local modelPitch = 45
+local entryCameraUntil = 0
+
+net.Receive("ZM.PlayerTransitionEntry", function()
+    modelYaw = net.ReadFloat()
+    entryCameraUntil = CurTime() + math.max(0, net.ReadFloat())
+end)
 
 // The closest zoom level flips the camera in front of the player and hides HUD reticles.
 function ZM_IsSelfieCamera()
@@ -31,8 +37,10 @@ hook.Add("CreateMove", "ZM.RotateThirdPersonModel", function(cmd)
     if not IsValid(ply) or not ply:Alive() then return end
 
     targetDist = math.Clamp(targetDist - cmd:GetMouseWheel() * zoomStep, minDist, maxDist)
-    modelYaw = modelYaw - cmd:GetMouseX() * 0.022
-    modelPitch = math.Clamp(modelPitch - cmd:GetMouseY() * 0.022, 0, 89)
+    if CurTime() >= entryCameraUntil then
+        modelYaw = modelYaw - cmd:GetMouseX() * 0.022
+        modelPitch = math.Clamp(modelPitch - cmd:GetMouseY() * 0.022, 0, 89)
+    end
 
     local modelAngles = Angle(modelPitch, modelYaw, 0)
     local cameraAngles = GetCameraAngles()

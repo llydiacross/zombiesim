@@ -320,6 +320,7 @@
       "bridge-ramp": "roads/tile_road_ramp.vmf",
       "bridge": "roads/tile_motorway_road_bridge.vmf",
       "onramp": "roads/tile_motorway_onramp.vmf",
+      "onrampRoad": "roads/tile_road_onramp.vmf",
       "onramp-dual": "roads/tile_motorway_onramp_dual.vmf",
       "bridgeRoad": "roads/tile_road_bridge.vmf",
       "roadDeadEnd": "roads/tile_road_deadend.vmf"
@@ -486,6 +487,11 @@
     "tileZOffset": 0,
     "border": {
       "enabled": true,
+      "transitionGateRoadTemplates": [
+        "roads/tile_road_transitionGate_1.vmf",
+        "roads/tile_road_transitionGate_2.vmf",
+        "roads/tile_road_transitionGate_3.vmf"
+      ],
       "wallTemplatesByDensity": [
         "border/tile_border_wall.vmf",
         "border/tile_border_wall_1a.vmf",

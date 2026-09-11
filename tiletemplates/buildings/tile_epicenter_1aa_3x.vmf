@@ -5678,6 +5678,13 @@ entity
 		"logicalpos" "[0 15500]"
 	}
 }
+entity
+{
+	"id" "900001"
+	"classname" "zn_tile_direction"
+	"direction" "south"
+	"origin" "0 -960 32"
+}
 cameras
 {
 	"activecamera" "-1"

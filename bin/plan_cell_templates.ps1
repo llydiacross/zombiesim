@@ -107,27 +107,70 @@ if ($map.schemaVersion -lt 2) {
     throw 'The map manifest must use schema version 2 or later so environment tags are available.'
 }
 
-function Get-TemplateRoadConnectionDirection {
+function Get-TemplateRoadConnection {
     param([string]$TemplatePath)
 
     $contents = Get-Content -Raw -LiteralPath $TemplatePath
-    $directions = [System.Collections.Generic.List[string]]::new()
+    $directionMarkers = [System.Collections.Generic.List[object]]::new()
+    $markers = [System.Collections.Generic.List[object]]::new()
     foreach ($entity in @([regex]::Matches($contents, '(?s)entity\s*\{\s*(?<body>.*?)\r?\n\}'))) {
         $body = $entity.Groups['body'].Value
         $className = [regex]::Match($body, '"classname"\s+"([^"]+)"').Groups[1].Value
-        if ($className -ne 'zn_road_connection') { continue }
-        $direction = [regex]::Match($body, '"direction"\s+"([^"]+)"').Groups[1].Value.ToUpperInvariant()
-        if ($direction -notin @('NORTH', 'EAST', 'SOUTH', 'WEST')) {
-            throw "Road connection marker in '$TemplatePath' must define direction as north, east, south, or west."
+        if ($className -notin @('zn_tile_direction', 'zn_road_connection')) { continue }
+        $originMatch = [regex]::Match($body, '"origin"\s+"([^\"]+)"')
+        $originParts = if ($originMatch.Success) { @($originMatch.Groups[1].Value -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) } else { @() }
+        if ($originParts.Count -ne 3) {
+            throw "Tile metadata marker in '$TemplatePath' must define a three-component origin."
         }
-        $directions.Add($direction.Substring(0, 1))
+        if ($className -eq 'zn_tile_direction') {
+            $direction = [regex]::Match($body, '"direction"\s+"([^"]+)"').Groups[1].Value.ToUpperInvariant()
+            if ($direction -notin @('NORTH', 'EAST', 'SOUTH', 'WEST')) {
+                throw "Tile direction marker in '$TemplatePath' must define direction as north, east, south, or west."
+            }
+            $directionCode = @{ NORTH = 'N'; EAST = 'E'; SOUTH = 'S'; WEST = 'W' }[$direction]
+            $templateName = [System.IO.Path]::GetFileNameWithoutExtension($TemplatePath)
+            $footprintSize = if ($templateName -match '(?i)_3x(?:3)?$') { 3 } elseif ($templateName -match '(?i)_2x(?:2)?$') { 2 } else { 1 }
+            $edgeMidpoint = $footprintSize * 320.0
+            $expectedOrigin = switch ($direction) {
+                'NORTH' { [pscustomobject]@{ x = 0.0; y = $edgeMidpoint } }
+                'EAST' { [pscustomobject]@{ x = $edgeMidpoint; y = 0.0 } }
+                'SOUTH' { [pscustomobject]@{ x = 0.0; y = -$edgeMidpoint } }
+                'WEST' { [pscustomobject]@{ x = -$edgeMidpoint; y = 0.0 } }
+            }
+            if ([Math]::Abs(([double]$originParts[0]) - $expectedOrigin.x) -gt 0.5 -or [Math]::Abs(([double]$originParts[1]) - $expectedOrigin.y) -gt 0.5) {
+                throw "Tile direction marker in '$TemplatePath' must sit at the midpoint of its $($direction.ToLowerInvariant()) edge."
+            }
+            $directionMarkers.Add([pscustomobject]@{
+                direction = $directionCode
+                originX = [double]$originParts[0]
+                originY = [double]$originParts[1]
+            })
+            continue
+        }
+        $connectionTypeMatch = [regex]::Match($body, '"connection_type"\s+"([^"]+)"')
+        $connectionType = if ($connectionTypeMatch.Success) { $connectionTypeMatch.Groups[1].Value.ToLowerInvariant() } else { 'none' }
+        if ($connectionType -notin @('none', 't_junction')) {
+            throw "Road connection marker in '$TemplatePath' must define connection_type as none or t_junction."
+        }
+        $markers.Add([pscustomobject]@{
+            connectionType = $connectionType
+            originX = [double]$originParts[0]
+            originY = [double]$originParts[1]
+        })
     }
-    $uniqueDirections = @($directions | Sort-Object -Unique)
-    if ($uniqueDirections.Count -gt 1) {
-        throw "Road connection markers in '$TemplatePath' must use one shared direction."
+    if ($directionMarkers.Count -gt 1) {
+        throw "Template '$TemplatePath' must contain at most one zn_tile_direction marker."
     }
-    if ($uniqueDirections.Count -eq 0) { return '' }
-    return [string]$uniqueDirections[0]
+    if ($markers.Count -gt 0 -and $directionMarkers.Count -eq 0) {
+        throw "Road connection markers in '$TemplatePath' require one zn_tile_direction marker."
+    }
+    if ($directionMarkers.Count -eq 0) { return $null }
+    return [pscustomobject]@{
+        direction = [string]$directionMarkers[0].direction
+        directionOriginX = [double]$directionMarkers[0].originX
+        directionOriginY = [double]$directionMarkers[0].originY
+        markers = @($markers)
+    }
 }
 
 $templateFiles = @{}
@@ -139,11 +182,11 @@ Get-ChildItem -Path $TemplateDirectory -Filter '*.vmf' -File -Recurse | ForEach-
 if ($templateFiles.Count -eq 0) {
     throw "No VMF templates were found in $TemplateDirectory"
 }
-$templateRoadConnectionDirections = @{}
+$templateRoadConnections = @{}
 foreach ($template in $templateFiles.Values) {
-    $direction = Get-TemplateRoadConnectionDirection (Join-Path $TemplateDirectory ($template.Replace('/', '\')))
-    if (-not [string]::IsNullOrWhiteSpace($direction)) {
-        $templateRoadConnectionDirections[$template.ToLowerInvariant()] = $direction
+    $roadConnection = Get-TemplateRoadConnection (Join-Path $TemplateDirectory ($template.Replace('/', '\')))
+    if ($null -ne $roadConnection) {
+        $templateRoadConnections[$template.ToLowerInvariant()] = $roadConnection
     }
 }
 $buildingTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.genericBuildings } | Sort-Object)
@@ -158,6 +201,23 @@ $industryTemplates = @($templateFiles.Values | Where-Object { $_ -match $planner
 $decorationTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.decorations } | Sort-Object)
 $carparkTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.carparks } | Sort-Object)
 $filenameAbbreviations = $plannerSettings.filenameAbbreviations
+
+function Get-TemplateRoadConnectionRotation {
+    param(
+        [string]$Template,
+        [string]$FrontageDirection
+    )
+
+    if ([string]::IsNullOrWhiteSpace($FrontageDirection)) { return 0 }
+    $templateKey = $Template.ToLowerInvariant()
+    $localConnectionDirection = if ($templateRoadConnections.ContainsKey($templateKey)) {
+        $storedDirection = [string]$templateRoadConnections[$templateKey].direction
+        @{ NORTH = 'N'; EAST = 'E'; SOUTH = 'S'; WEST = 'W'; N = 'N'; E = 'E'; S = 'S'; W = 'W' }[$storedDirection.ToUpperInvariant()]
+    } else {
+        'N'
+    }
+    return ((Get-BuildingEntranceRotation $FrontageDirection) - (Get-BuildingEntranceRotation $localConnectionDirection) + 360) % 360
+}
 $safeZoneSettings = $plannerSettings.safeZones
 if ($null -eq $safeZoneSettings -or -not $safeZoneSettings.ContainsKey('biomePriority') -or -not $safeZoneSettings.ContainsKey('biomeCodes') -or -not $safeZoneSettings.ContainsKey('templateFilenameFormat')) {
     throw 'cellPlanning.safeZones must define biomePriority, biomeCodes, and templateFilenameFormat to plan standalone den maps.'
@@ -1118,30 +1178,146 @@ function Get-MarkedRoadConnectionCandidates {
     )
 
     $templateKey = $Template.ToLowerInvariant()
-    if (-not $templateRoadConnectionDirections.ContainsKey($templateKey)) { return @() }
-    $localConnectionDirection = [string]$templateRoadConnectionDirections[$templateKey]
+    if (-not $templateRoadConnections.ContainsKey($templateKey)) { return @() }
+    $metadata = $templateRoadConnections[$templateKey]
+    $storedDirection = [string]$metadata.direction
+    $localConnectionDirection = @{ NORTH = 'N'; EAST = 'E'; SOUTH = 'S'; WEST = 'W'; N = 'N'; E = 'E'; S = 'S'; W = 'W' }[$storedDirection.ToUpperInvariant()]
+    $junctionMarkers = @($metadata.markers | Where-Object { $_.connectionType -eq 't_junction' })
+    $motorwayTemplates = @(
+        $plannerSettings.topologyTemplates['motorway-straight'],
+        $plannerSettings.topologyTemplates['motorway-corner'],
+        $plannerSettings.topologyTemplates['motorway-tjunction'],
+        $plannerSettings.topologyTemplates['motorway-crossjunction'],
+        $plannerSettings.topologyTemplates['motorway-deadend']
+    )
+    $concretePathTemplate = 'roads/tile_concrete_path.vmf'
     $candidates = [System.Collections.Generic.List[object]]::new()
     foreach ($anchor in @(Get-FootprintAnchorCandidates $Placements $TileGridSize $FootprintWidth $FootprintHeight $AllowedRoles)) {
+        if ($junctionMarkers.Count -gt 0) {
+            foreach ($rotationYaw in @(0, 90, 180, 270)) {
+                $roadConnections = [System.Collections.Generic.List[object]]::new()
+                $targetKeys = @{}
+                foreach ($marker in $junctionMarkers) {
+                    $halfWidth = $FootprintWidth * 320.0
+                    $halfHeight = $FootprintHeight * 320.0
+                    $tolerance = 0.5
+                    $localDirection = $null
+                    $localTileX = 0
+                    $localTileY = 0
+                    if ([Math]::Abs($marker.originY - $halfHeight) -le $tolerance -and $marker.originX -gt -$halfWidth + $tolerance -and $marker.originX -lt $halfWidth - $tolerance) {
+                        $localDirection = 'N'
+                        $localTileX = [int][Math]::Floor(($marker.originX + $halfWidth) / 640.0)
+                        $localTileY = 0
+                    } elseif ([Math]::Abs($marker.originX - $halfWidth) -le $tolerance -and $marker.originY -gt -$halfHeight + $tolerance -and $marker.originY -lt $halfHeight - $tolerance) {
+                        $localDirection = 'E'
+                        $localTileX = $FootprintWidth - 1
+                        $localTileY = [int][Math]::Floor(($halfHeight - $marker.originY) / 640.0)
+                    } elseif ([Math]::Abs($marker.originY + $halfHeight) -le $tolerance -and $marker.originX -gt -$halfWidth + $tolerance -and $marker.originX -lt $halfWidth - $tolerance) {
+                        $localDirection = 'S'
+                        $localTileX = [int][Math]::Floor(($marker.originX + $halfWidth) / 640.0)
+                        $localTileY = $FootprintHeight - 1
+                    } elseif ([Math]::Abs($marker.originX + $halfWidth) -le $tolerance -and $marker.originY -gt -$halfHeight + $tolerance -and $marker.originY -lt $halfHeight - $tolerance) {
+                        $localDirection = 'W'
+                        $localTileX = 0
+                        $localTileY = [int][Math]::Floor(($halfHeight - $marker.originY) / 640.0)
+                    } else {
+                        throw "Road connection marker in '$Template' must be centered on one exterior footprint edge."
+                    }
+                    if ($localDirection -ne $localConnectionDirection) {
+                        throw "Road connection marker in '$Template' must be on the zn_tile_direction edge."
+                    }
+                    $rotatedTileX = $localTileX
+                    $rotatedTileY = $localTileY
+                    switch ($rotationYaw) {
+                        90 { $rotatedTileX = $FootprintHeight - 1 - $localTileY; $rotatedTileY = $localTileX }
+                        180 { $rotatedTileX = $FootprintWidth - 1 - $localTileX; $rotatedTileY = $FootprintHeight - 1 - $localTileY }
+                        270 { $rotatedTileX = $localTileY; $rotatedTileY = $FootprintWidth - 1 - $localTileX }
+                    }
+                    $frontageDirection = Get-RotatedCardinalDirection $localDirection $rotationYaw
+                    $footprintCoordinate = [pscustomobject]@{ tileX = [int]$anchor.tileX + $rotatedTileX; tileY = [int]$anchor.tileY + $rotatedTileY }
+                    $roadCoordinate = Get-OffsetTileCoordinate $footprintCoordinate $frontageDirection
+                    $roadKey = "$($roadCoordinate.tileX),$($roadCoordinate.tileY)"
+                    if ($targetKeys.ContainsKey($roadKey) -or -not $Placements.ContainsKey($roadKey)) { continue }
+                    $roadPlacement = $Placements[$roadKey]
+                    $isOrdinaryRoad = $roadPlacement.role -in @('road', 'road_center') -and $roadPlacement.template -eq $RoadTemplate
+                    $isMotorway = $roadPlacement.template -in $motorwayTemplates
+                    $isConcretePath = $roadPlacement.role -eq 'path' -and $roadPlacement.template -eq $concretePathTemplate
+                    if (-not $isOrdinaryRoad -and -not $isMotorway -and -not $isConcretePath) { continue }
+                    if ($isOrdinaryRoad) {
+                        $roadAxisIsVertical = ([int]$roadPlacement.rotationYaw % 180) -eq 0
+                        if (($roadAxisIsVertical -and $frontageDirection -in @('N', 'S')) -or (-not $roadAxisIsVertical -and $frontageDirection -in @('E', 'W'))) { continue }
+                    }
+                    $targetKeys[$roadKey] = $true
+                    if ($isOrdinaryRoad) {
+                        $roadConnections.Add([pscustomobject]@{
+                            road = $roadPlacement
+                            branchDirection = Get-OppositeDirection $frontageDirection
+                        })
+                    }
+                }
+                if ($targetKeys.Count -ne $junctionMarkers.Count) { continue }
+                $candidates.Add([pscustomobject]@{
+                    tileX = [int]$anchor.tileX
+                    tileY = [int]$anchor.tileY
+                    centerDistance = [double]$anchor.centerDistance
+                    frontageDirection = Get-RotatedCardinalDirection $localConnectionDirection $rotationYaw
+                    rotationYaw = $rotationYaw
+                    roadConnections = @($roadConnections)
+                })
+            }
+            continue
+        }
         foreach ($footprintCoordinate in @(Get-FootprintCoordinates $anchor.tileX $anchor.tileY $FootprintWidth $FootprintHeight)) {
-            foreach ($roadPlacement in @($Placements.Values | Where-Object { $_.role -in @('road', 'road_center') -and $_.template -eq $RoadTemplate })) {
+            foreach ($roadPlacement in @($Placements.Values | Where-Object {
+                ($_.role -in @('road', 'road_center') -and $_.template -eq $RoadTemplate) -or
+                $_.template -in $motorwayTemplates -or
+                ($_.role -eq 'path' -and $_.template -eq $concretePathTemplate)
+            })) {
                 $branchDirection = Get-DirectionToCoordinate $roadPlacement $footprintCoordinate
                 if ([string]::IsNullOrWhiteSpace($branchDirection)) { continue }
-                $roadAxisIsVertical = ([int]$roadPlacement.rotationYaw % 180) -eq 0
-                if (($roadAxisIsVertical -and $branchDirection -in @('N', 'S')) -or (-not $roadAxisIsVertical -and $branchDirection -in @('E', 'W'))) { continue }
-                $rotationYaw = (Get-BuildingEntranceRotation $branchDirection - Get-BuildingEntranceRotation $localConnectionDirection + 360) % 360
-                if ((Get-RotatedCardinalDirection $localConnectionDirection $rotationYaw) -ne $branchDirection) { continue }
+                $frontageDirection = Get-DirectionToCoordinate $footprintCoordinate $roadPlacement
+                $rotationYaw = ((Get-BuildingEntranceRotation $frontageDirection) - (Get-BuildingEntranceRotation $localConnectionDirection) + 360) % 360
+                if ((Get-RotatedCardinalDirection $localConnectionDirection $rotationYaw) -ne $frontageDirection) { continue }
                 $candidates.Add([pscustomobject]@{
                     tileX = [int]$anchor.tileX
                     tileY = [int]$anchor.tileY
                     centerDistance = [double]$anchor.centerDistance
                     road = $roadPlacement
                     branchDirection = $branchDirection
+                    frontageDirection = $frontageDirection
                     rotationYaw = $rotationYaw
+                    roadConnections = @()
                 })
             }
         }
     }
-    return @($candidates | Sort-Object centerDistance, tileY, tileX, { $_.road.tileY }, { $_.road.tileX }, branchDirection)
+    return @($candidates | Sort-Object centerDistance, tileY, tileX, rotationYaw)
+}
+
+function Test-TemplateRequestsRoadJunction {
+    param([string]$Template)
+
+    $templateKey = $Template.ToLowerInvariant()
+    return $templateRoadConnections.ContainsKey($templateKey) -and @($templateRoadConnections[$templateKey].markers | Where-Object { $_.connectionType -eq 't_junction' }).Count -gt 0
+}
+
+function Set-MarkedRoadJunctions {
+    param(
+        [hashtable]$Placements,
+        [object[]]$RoadConnections,
+        [string]$RoadTjunctionTemplate,
+        [string]$Role
+    )
+
+    foreach ($roadConnection in @($RoadConnections)) {
+        $Placements["$($roadConnection.road.tileX),$($roadConnection.road.tileY)"] = [pscustomobject]@{
+            tileX = $roadConnection.road.tileX
+            tileY = $roadConnection.road.tileY
+            template = $RoadTjunctionTemplate
+            rotationYaw = Get-CarparkJunctionRotation $roadConnection.branchDirection
+            role = $Role
+        }
+    }
 }
 
 function Test-CommercialFootprintHasRequiredFrontage {
@@ -1310,7 +1486,7 @@ function Get-CellTilePlacements {
         }
 
         $transportTemplate = Get-TransportFeatureTemplate $TransportFeature
-        $usesMotorwayDeadEnd = $Topology -eq 'motorway-deadend' -and $TransportFeature -in @('bridge-vertical', 'bridge-horizontal')
+        $usesMotorwayDeadEnd = $Topology -eq 'motorway-deadend' -and ($TransportFeature -in @('bridge-vertical', 'bridge-horizontal') -or $TransportFeature -like 'onramp-*')
         $usesMotorwayCornerOnrampInterchange = $Topology -eq 'motorway-corner' -and $TransportFeature -like 'onramp-*'
         $centerCandidates = if ($usesMotorwayCornerOnrampInterchange) {
             @($plannerSettings.topologyTemplates['motorway-crossjunction'], (Get-GenericTopologyTemplate $Topology), (Get-LinearTopologyTemplate $Topology), $TerrainTemplate)
@@ -1356,19 +1532,21 @@ function Get-CellTilePlacements {
                 tileY = $deadEndCoordinate.tileY
                 template = $deadEndTemplate
                 rotationYaw = Get-MotorwayDeadEndRotation (@{ N = 'north'; E = 'east'; S = 'south'; W = 'west' }[$motorwayDirection])
-                role = 'motorway_bridge_deadend'
+                role = if ($TransportFeature -like 'onramp-*') { 'motorway_onramp_deadend' } else { 'motorway_bridge_deadend' }
             }
         }
 
         if ($TransportFeature -like 'onramp-*') {
-            $rampRoadTemplate = Resolve-Template @($plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
+            $onrampRoadTemplate = Resolve-Template @($plannerSettings.transportTemplates.onrampRoad, $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
+            $roadTemplate = Resolve-Template @($plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
             foreach ($rampExit in @(Get-HighwayRampExits $Cell)) {
                 $rotationYaw = Get-DirectionalTileRotation $rampExit
+                $onrampRoadCoordinate = Get-DirectionalAdjacentCoordinate $rampExit $center
                 foreach ($coordinate in @(Get-DirectionalTileCoordinates $rampExit $center $TileGridSize)) {
                     $placements["$($coordinate.tileX),$($coordinate.tileY)"] = [pscustomobject]@{
                         tileX = $coordinate.tileX
                         tileY = $coordinate.tileY
-                        template = $rampRoadTemplate
+                        template = if ($coordinate.tileX -eq $onrampRoadCoordinate.tileX -and $coordinate.tileY -eq $onrampRoadCoordinate.tileY) { $onrampRoadTemplate } else { $roadTemplate }
                         rotationYaw = $rotationYaw
                         role = 'onramp_road'
                     }
@@ -1477,7 +1655,7 @@ function Get-CellTilePlacements {
                 tileX = $terrainPlacement.tileX
                 tileY = $terrainPlacement.tileY
                 template = $selectedBuildingTemplate
-                rotationYaw = if ($null -eq $entranceDirection) { 0 } else { Get-BuildingEntranceRotation $entranceDirection }
+                rotationYaw = Get-TemplateRoadConnectionRotation $selectedBuildingTemplate $entranceDirection
                 role = 'building'
             }
             if ($null -ne $commercialAccessPlan) {
@@ -1507,7 +1685,22 @@ function Get-CellTilePlacements {
             }
 
             $usesCenteredPlacement = $isEpicenter -or ($null -ne $specialLandmark -and $specialLandmark.placement -eq 'center')
-            $macroCandidates = if ($usesCenteredPlacement) {
+            $templateKey = $resolvedLandmarkTemplate.ToLowerInvariant()
+            $markerRoadConnection = $null
+            if (-not $usesCenteredPlacement -and (Test-TemplateRequestsRoadJunction $resolvedLandmarkTemplate)) {
+                $markerRoadConnectionCandidates = @(Get-MarkedRoadConnectionCandidates $placements $TileGridSize $landmarkFootprint.width $landmarkFootprint.height $resolvedLandmarkTemplate $macroAllowedRoles $plannerSettings.topologyTemplates['road-straight'])
+                $markerRoadConnection = @($markerRoadConnectionCandidates | Select-Object -First 1)[0]
+                if ($null -eq $markerRoadConnection) {
+                    throw "Multi-tile landmark '$resolvedLandmarkTemplate' has no compatible marked road frontage at $($Cell.x),$($Cell.y)."
+                }
+            }
+            $macroCandidates = if ($null -ne $markerRoadConnection) {
+                @([pscustomobject]@{
+                    tileX = $markerRoadConnection.tileX
+                    tileY = $markerRoadConnection.tileY
+                    entranceDirection = $markerRoadConnection.frontageDirection
+                })
+            } elseif ($usesCenteredPlacement) {
                 $centeredTileX = $center - [int][Math]::Floor($landmarkFootprint.width / 2)
                 $centeredTileY = $center - [int][Math]::Floor($landmarkFootprint.height / 2)
                 @(Get-FootprintAnchorCandidates $placements $TileGridSize $landmarkFootprint.width $landmarkFootprint.height $macroAllowedRoles |
@@ -1524,7 +1717,11 @@ function Get-CellTilePlacements {
             }
 
             $macroRole = if ($isEpicenter) { 'landmark_epicenter' } else { 'landmark' }
-            $macroRotationYaw = if ($isEpicenter -or [string]::IsNullOrWhiteSpace([string]$macroPlacement.entranceDirection)) { 0 } else { Get-BuildingEntranceRotation $macroPlacement.entranceDirection }
+            $macroRotationYaw = if ($null -ne $markerRoadConnection) { $markerRoadConnection.rotationYaw } elseif ($isEpicenter -or [string]::IsNullOrWhiteSpace([string]$macroPlacement.entranceDirection)) { 0 } else { Get-TemplateRoadConnectionRotation $resolvedLandmarkTemplate $macroPlacement.entranceDirection }
+            if ($null -ne $markerRoadConnection -and @($markerRoadConnection.roadConnections).Count -gt 0) {
+                $roadTjunctionTemplate = Resolve-Template @($plannerSettings.topologyTemplates['road-tjunction'], $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
+                Set-MarkedRoadJunctions $placements $markerRoadConnection.roadConnections $roadTjunctionTemplate 'landmark_road_junction'
+            }
             $placementId = "${macroRole}:$($macroPlacement.tileX),$($macroPlacement.tileY)"
             Set-FootprintPlacement $placements $TileGridSize $macroPlacement.tileX $macroPlacement.tileY $landmarkFootprint.width $landmarkFootprint.height $resolvedLandmarkTemplate $macroRotationYaw $macroRole $placementId $macroAllowedRoles
             if ($null -ne $specialLandmark -and $specialLandmark.capApproachRoads) {
@@ -1603,7 +1800,7 @@ function Get-CellTilePlacements {
                 tileX = $landmarkPlacement.tileX
                 tileY = $landmarkPlacement.tileY
                 template = $resolvedLandmarkTemplate
-                rotationYaw = if ($null -eq $landmarkEntranceDirection) { 0 } else { Get-BuildingEntranceRotation $landmarkEntranceDirection }
+                rotationYaw = Get-TemplateRoadConnectionRotation $resolvedLandmarkTemplate $landmarkEntranceDirection
                 role = 'landmark'
             }
         }
@@ -1779,16 +1976,12 @@ function Get-CellTilePlacements {
                     $candidateTemplate = [string]$multiTileCandidates[$candidateIndex]
                     $candidateFootprint = Get-TemplateFootprint $candidateTemplate
                     $roadConnectionCandidates = @(Get-MarkedRoadConnectionCandidates $placements $TileGridSize $candidateFootprint.width $candidateFootprint.height $candidateTemplate $macroAllowedRoles $plannerSettings.topologyTemplates['road-straight'])
-                    if ($templateRoadConnectionDirections.ContainsKey($candidateTemplate.ToLowerInvariant())) {
+                    if (Test-TemplateRequestsRoadJunction $candidateTemplate) {
                         if ($roadConnectionCandidates.Count -eq 0) { continue }
                         $roadConnection = $roadConnectionCandidates[(Get-CarparkVariationRoll $PlacementSeed (97 + $candidateIndex)) % $roadConnectionCandidates.Count]
-                        $roadTjunctionTemplate = Resolve-Template @($plannerSettings.topologyTemplates['road-tjunction'], $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
-                        $placements["$($roadConnection.road.tileX),$($roadConnection.road.tileY)"] = [pscustomobject]@{
-                            tileX = $roadConnection.road.tileX
-                            tileY = $roadConnection.road.tileY
-                            template = $roadTjunctionTemplate
-                            rotationYaw = Get-CarparkJunctionRotation $roadConnection.branchDirection
-                            role = 'building_road_junction'
+                        if (@($roadConnection.roadConnections).Count -gt 0) {
+                            $roadTjunctionTemplate = Resolve-Template @($plannerSettings.topologyTemplates['road-tjunction'], $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
+                            Set-MarkedRoadJunctions $placements $roadConnection.roadConnections $roadTjunctionTemplate 'building_road_junction'
                         }
                         Set-FootprintPlacement $placements $TileGridSize $roadConnection.tileX $roadConnection.tileY $candidateFootprint.width $candidateFootprint.height $candidateTemplate $roadConnection.rotationYaw 'building' "building:$($roadConnection.tileX),$($roadConnection.tileY)" $macroAllowedRoles
                         break
@@ -1812,7 +2005,7 @@ function Get-CellTilePlacements {
                     if ($candidateAnchors.Count -eq 0) { continue }
                     $anchorIndex = (Get-CarparkVariationRoll $PlacementSeed (97 + $candidateIndex)) % $candidateAnchors.Count
                     $anchor = $candidateAnchors[$anchorIndex]
-                    $anchorRotationYaw = if ([string]::IsNullOrWhiteSpace([string]$anchor.entranceDirection)) { 0 } else { Get-BuildingEntranceRotation $anchor.entranceDirection }
+                    $anchorRotationYaw = if ([string]::IsNullOrWhiteSpace([string]$anchor.entranceDirection)) { 0 } else { Get-TemplateRoadConnectionRotation $candidateTemplate $anchor.entranceDirection }
                     Set-FootprintPlacement $placements $TileGridSize $anchor.tileX $anchor.tileY $candidateFootprint.width $candidateFootprint.height $candidateTemplate $anchorRotationYaw 'building' "building:$($anchor.tileX),$($anchor.tileY)" $macroAllowedRoles
                     if ($commercialTemplates -contains $candidateTemplate) {
                         Set-CommercialAccessPath $placements $commercialAccessPlans["$($anchor.tileX),$($anchor.tileY)"] $concretePathTemplate
@@ -1824,17 +2017,31 @@ function Get-CellTilePlacements {
 
         if (-not [string]::IsNullOrWhiteSpace($multiTileTemplate)) {
             $fixtureFootprint = Get-TemplateFootprint $multiTileTemplate
-            $fixtureAnchors = if ($macroRoadPlacements.Count -gt 0) {
-                @(Get-FootprintRoadFacingCandidates $placements $TileGridSize $fixtureFootprint.width $fixtureFootprint.height $macroRoadPlacements $connections $Topology $macroAllowedRoles)
+            $templateKey = $multiTileTemplate.ToLowerInvariant()
+            if (Test-TemplateRequestsRoadJunction $multiTileTemplate) {
+                $fixtureRoadConnectionCandidates = @(Get-MarkedRoadConnectionCandidates $placements $TileGridSize $fixtureFootprint.width $fixtureFootprint.height $multiTileTemplate $macroAllowedRoles $plannerSettings.topologyTemplates['road-straight'])
+                if ($fixtureRoadConnectionCandidates.Count -eq 0) {
+                    throw "Forced multi-tile template '$multiTileTemplate' has no compatible road frontage at $($Cell.x),$($Cell.y)."
+                }
+                $fixtureRoadConnection = $fixtureRoadConnectionCandidates[(Get-CarparkVariationRoll $PlacementSeed 101) % $fixtureRoadConnectionCandidates.Count]
+                if (@($fixtureRoadConnection.roadConnections).Count -gt 0) {
+                    $roadTjunctionTemplate = Resolve-Template @($plannerSettings.topologyTemplates['road-tjunction'], $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
+                    Set-MarkedRoadJunctions $placements $fixtureRoadConnection.roadConnections $roadTjunctionTemplate 'building_road_junction'
+                }
+                Set-FootprintPlacement $placements $TileGridSize $fixtureRoadConnection.tileX $fixtureRoadConnection.tileY $fixtureFootprint.width $fixtureFootprint.height $multiTileTemplate $fixtureRoadConnection.rotationYaw 'building' "building:$($fixtureRoadConnection.tileX),$($fixtureRoadConnection.tileY)" $macroAllowedRoles
             } else {
-                @(Get-FootprintAnchorCandidates $placements $TileGridSize $fixtureFootprint.width $fixtureFootprint.height $macroAllowedRoles)
+                $fixtureAnchors = if ($macroRoadPlacements.Count -gt 0) {
+                    @(Get-FootprintRoadFacingCandidates $placements $TileGridSize $fixtureFootprint.width $fixtureFootprint.height $macroRoadPlacements $connections $Topology $macroAllowedRoles)
+                } else {
+                    @(Get-FootprintAnchorCandidates $placements $TileGridSize $fixtureFootprint.width $fixtureFootprint.height $macroAllowedRoles)
+                }
+                if ($fixtureAnchors.Count -eq 0) {
+                    throw "Forced multi-tile template '$multiTileTemplate' has no compatible footprint at $($Cell.x),$($Cell.y)."
+                }
+                $fixtureAnchor = $fixtureAnchors[(Get-CarparkVariationRoll $PlacementSeed 101) % $fixtureAnchors.Count]
+                $fixtureRotationYaw = if ([string]::IsNullOrWhiteSpace([string]$fixtureAnchor.entranceDirection)) { 0 } else { Get-TemplateRoadConnectionRotation $multiTileTemplate $fixtureAnchor.entranceDirection }
+                Set-FootprintPlacement $placements $TileGridSize $fixtureAnchor.tileX $fixtureAnchor.tileY $fixtureFootprint.width $fixtureFootprint.height $multiTileTemplate $fixtureRotationYaw 'building' "building:$($fixtureAnchor.tileX),$($fixtureAnchor.tileY)" $macroAllowedRoles
             }
-            if ($fixtureAnchors.Count -eq 0) {
-                throw "Forced multi-tile template '$multiTileTemplate' has no compatible footprint at $($Cell.x),$($Cell.y)."
-            }
-            $fixtureAnchor = $fixtureAnchors[(Get-CarparkVariationRoll $PlacementSeed 101) % $fixtureAnchors.Count]
-            $fixtureRotationYaw = if ([string]::IsNullOrWhiteSpace([string]$fixtureAnchor.entranceDirection)) { 0 } else { Get-BuildingEntranceRotation $fixtureAnchor.entranceDirection }
-            Set-FootprintPlacement $placements $TileGridSize $fixtureAnchor.tileX $fixtureAnchor.tileY $fixtureFootprint.width $fixtureFootprint.height $multiTileTemplate $fixtureRotationYaw 'building' "building:$($fixtureAnchor.tileX),$($fixtureAnchor.tileY)" $macroAllowedRoles
         }
     }
 

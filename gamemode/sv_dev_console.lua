@@ -162,7 +162,8 @@ end
 
 local scriptValidationDirectories = {
     "gamemodes/zombiesim/gamemode",
-    "gamemodes/zombiesim/gamemode/utils"
+    "gamemodes/zombiesim/gamemode/utils",
+    "gamemodes/zombiesim/entities/entities/zn_walker_zombie"
 }
 
 local function collectScriptPaths()

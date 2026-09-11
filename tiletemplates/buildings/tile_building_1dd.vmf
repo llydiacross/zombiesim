@@ -3255,6 +3255,13 @@ entity
 		"logicalpos" "[0 0]"
 	}
 }
+entity
+{
+	"id" "990001"
+	"classname" "zn_tile_direction"
+	"direction" "south"
+	"origin" "0 -320 32"
+}
 cameras
 {
 	"activecamera" "0"

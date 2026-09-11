@@ -1,0 +1,19 @@
+ENT.Type = "nextbot"
+ENT.Base = "base_nextbot"
+ENT.PrintName = "Walker Zombie"
+ENT.Category = "ZombieSim"
+ENT.Spawnable = false
+ENT.AdminOnly = false
+
+ENT.Model = "models/zombie/classic.mdl"
+ENT.DevelopmentHealth = 100
+ENT.DevelopmentWalkSpeed = 55
+ENT.DevelopmentAttackDamage = 12
+ENT.DevelopmentAttackRange = 64
+ENT.DevelopmentAttackInterval = 1
+ENT.DevelopmentTargetSearchRange = 800
+ENT.DevelopmentTargetSearchInterval = 1
+ENT.DevelopmentPathRefreshInterval = 1.25
+ENT.DevelopmentTargetMoveThreshold = 96
+ENT.DevelopmentPathFailureCooldown = 2
+ENT.DevelopmentTargetMemorySeconds = 10

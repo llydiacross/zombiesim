@@ -57,12 +57,19 @@ if ([string]::IsNullOrWhiteSpace($BuildDirectory)) {
 if ([string]::IsNullOrWhiteSpace($ContentMapDirectory)) {
     $ContentMapDirectory = Join-Path $projectRoot $profileSettings.releaseMapDirectory
 }
+$navmeshGameDirectory = if ([string]::IsNullOrWhiteSpace($GameDirectory)) {
+    Split-Path -Parent (Split-Path -Parent $projectRoot)
+} else {
+    $GameDirectory
+}
+$navmeshMapDirectory = Join-Path (Join-Path $navmeshGameDirectory 'maps') $worldGenerationProfile.Name
 if ([string]::IsNullOrWhiteSpace($ContentMaterialDirectory)) {
     $ContentMaterialDirectory = Join-Path $projectRoot (Join-Path 'content/materials/worlds' $worldGenerationProfile.Name)
 }
 $mapLayerMaterialDirectory = Join-Path $ContentMaterialDirectory 'map_layers'
 $cellMaterialDirectory = Join-Path $ContentMaterialDirectory 'cells'
 $satelliteMaterialPath = Join-Path $mapLayerMaterialDirectory 'satellite.png'
+$wireframeMaterialPath = Join-Path $mapLayerMaterialDirectory 'wireframe.png'
 if ([string]::IsNullOrWhiteSpace($RuntimeWorldData)) {
     $RuntimeWorldData = Join-Path $projectRoot $profileSettings.runtimeWorldData
 }
@@ -103,9 +110,12 @@ if ($WhatIf) {
     Write-Output "WhatIf: required city recipe BSPs: $($cityVmfNames.Count)"
     Write-Output "WhatIf: required standalone den BSPs: $($safeZoneVmfNames.Count)"
     Write-Output "WhatIf: stage BSPs in: $ContentMapDirectory"
+    Write-Output "WhatIf: prepare navmesh directory: $navmeshMapDirectory"
+    & (Join-Path $PSScriptRoot 'stage_world_navmeshes.ps1') -PlanData $PlanData -SourceDirectory $navmeshMapDirectory -DestinationDirectory $ContentMapDirectory -WorldProfile $worldGenerationProfile.Name -WhatIf -SettingsPath $SettingsPath
     & (Join-Path $PSScriptRoot 'stage_world_map_materials.ps1') -MapData $MapData -DestinationDirectory $mapLayerMaterialDirectory -WorldProfile $worldGenerationProfile.Name -WhatIf -SettingsPath $SettingsPath
     & (Join-Path $PSScriptRoot 'build_cell_map_materials.ps1') -PlanData $PlanData -DestinationDirectory $cellMaterialDirectory -WorldProfile $worldGenerationProfile.Name -WhatIf -SettingsPath $SettingsPath
     & (Join-Path $PSScriptRoot 'build_world_satellite_material.ps1') -PlanData $PlanData -CellMaterialDirectory $cellMaterialDirectory -OutputPath $satelliteMaterialPath -WorldProfile $worldGenerationProfile.Name -WhatIf -SettingsPath $SettingsPath
+    & (Join-Path $PSScriptRoot 'build_world_wireframe_material.ps1') -PlanData $PlanData -OutputPath $wireframeMaterialPath -WorldProfile $worldGenerationProfile.Name -WhatIf -SettingsPath $SettingsPath
     Write-Output "WhatIf: write runtime world data: $RuntimeWorldData"
 }
 
@@ -175,21 +185,24 @@ foreach ($bspName in $requiredBspNames) {
 }
 
 if ($CleanStagedCity -and (Test-Path -LiteralPath $ContentMapDirectory)) {
-    $stagedBspNames = @($requiredBspNames | ForEach-Object { $_.ToLowerInvariant() })
-    foreach ($stagedBsp in (Get-ChildItem -LiteralPath $ContentMapDirectory -Filter '*.bsp' -File)) {
-        if ($stagedBsp.Name.ToLowerInvariant() -notin $stagedBspNames) {
-            Remove-Item -LiteralPath $stagedBsp.FullName -Force
+    $stagedMapNames = @($requiredBspNames | ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_).ToLowerInvariant() })
+    foreach ($stagedMapFile in (Get-ChildItem -LiteralPath $ContentMapDirectory -File | Where-Object { $_.Extension -in @('.bsp', '.nav') })) {
+        if ([System.IO.Path]::GetFileNameWithoutExtension($stagedMapFile.Name).ToLowerInvariant() -notin $stagedMapNames) {
+            Remove-Item -LiteralPath $stagedMapFile.FullName -Force
         }
     }
 }
 [System.IO.Directory]::CreateDirectory($ContentMapDirectory) | Out-Null
+[System.IO.Directory]::CreateDirectory($navmeshMapDirectory) | Out-Null
 foreach ($bspName in $requiredBspNames) {
     Copy-Item -LiteralPath (Join-Path $BuildDirectory $bspName) -Destination (Join-Path $ContentMapDirectory $bspName) -Force
 }
+& (Join-Path $PSScriptRoot 'stage_world_navmeshes.ps1') -PlanData $PlanData -SourceDirectory $navmeshMapDirectory -DestinationDirectory $ContentMapDirectory -WorldProfile $worldGenerationProfile.Name -SettingsPath $SettingsPath
 
 & (Join-Path $PSScriptRoot 'stage_world_map_materials.ps1') -MapData $MapData -DestinationDirectory $mapLayerMaterialDirectory -WorldProfile $worldGenerationProfile.Name -SettingsPath $SettingsPath
 & (Join-Path $PSScriptRoot 'build_cell_map_materials.ps1') -PlanData $PlanData -DestinationDirectory $cellMaterialDirectory -WorldProfile $worldGenerationProfile.Name -SettingsPath $SettingsPath
 & (Join-Path $PSScriptRoot 'build_world_satellite_material.ps1') -PlanData $PlanData -CellMaterialDirectory $cellMaterialDirectory -OutputPath $satelliteMaterialPath -WorldProfile $worldGenerationProfile.Name -SettingsPath $SettingsPath
+& (Join-Path $PSScriptRoot 'build_world_wireframe_material.ps1') -PlanData $PlanData -OutputPath $wireframeMaterialPath -WorldProfile $worldGenerationProfile.Name -SettingsPath $SettingsPath
 & (Join-Path $PSScriptRoot 'export_runtime_world_data.ps1') -MapData $MapData -PlanData $PlanData -BuildDirectory $BuildDirectory -Output $RuntimeWorldData -WorldProfile $worldGenerationProfile.Name -RequireCompiledMaps -SettingsPath $SettingsPath
 if (-not (Test-Path -LiteralPath $RuntimeWorldData -PathType Leaf)) {
     throw "Runtime-world exporter did not create the expected data file: $RuntimeWorldData"

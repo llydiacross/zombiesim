@@ -61,10 +61,15 @@ public:
         std::string* error = nullptr);
     [[nodiscard]] bool Start(std::string* error = nullptr);
     void Stop();
+    [[nodiscard]] bool ExportCheckpoint(std::vector<std::byte>& checkpoint, std::string* error = nullptr);
+    [[nodiscard]] bool RequestCheckpointExport(std::string* error = nullptr);
+    [[nodiscard]] bool TakeCheckpointExport(std::vector<std::byte>& checkpoint, std::string* error = nullptr);
+    [[nodiscard]] bool ImportCheckpoint(std::span<const std::byte> checkpoint, std::string* error = nullptr);
     [[nodiscard]] bool Submit(WalkerCommand command, std::string* error = nullptr);
     [[nodiscard]] bool SetActiveCell(std::uint16_t cellId, std::string* error = nullptr);
     [[nodiscard]] std::optional<CellSummary> GetCellSummary(std::uint16_t cellId) const;
     [[nodiscard]] std::vector<HordeSummary> GetHordeSummaries() const;
+    [[nodiscard]] std::vector<TicketSummary> GetTicketSummaries() const;
     [[nodiscard]] WorkerStats GetStats() const;
 
 private:
@@ -95,6 +100,11 @@ private:
     std::uint32_t maximumTickMicroseconds_ = 0;
     std::uint16_t activeCellId_ = kInvalidCellId;
     bool stopRequested_ = false;
+    std::uint64_t requestedCheckpointSequence_ = 0;
+    std::uint64_t completedCheckpointSequence_ = 0;
+    std::vector<std::byte> checkpointResult_;
+    std::string checkpointError_;
+    bool checkpointResultAvailable_ = false;
 };
 
 }  // namespace zombiesim::walker::gmod

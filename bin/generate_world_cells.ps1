@@ -1328,7 +1328,6 @@ function Connect-MetroRouteThroughStops {
         param([System.Drawing.Graphics]$TargetGraphics)
 
         $TargetGraphics.DrawString($cityName.ToUpperInvariant(), $cityTitleFont, $cityTitleBrush, 28, 20)
-        $TargetGraphics.DrawString("Population: $($population.ToString('N0'))   Seed: $Seed", $cityStatsFont, $cityStatsBrush, 36, 108)
     }
 
     function Draw-DistrictLayer {

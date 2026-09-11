@@ -250,6 +250,7 @@ OutputSnapshot WalkerSimulator::AdvanceOneTick() {
     MoveHordes();
     MergeAndSplitHordes();
     ExpireTickets();
+    PruneTerminalTickets();
     PublishSnapshot();
     return snapshot_;
 }
@@ -305,12 +306,12 @@ void WalkerSimulator::ProcessCommands() {
                         typedCommand.requestId);
 
                     auto remaining = typedCommand.maximumCount;
-                    for (auto& horde : hordes_) {
+                    const auto reserveFromHorde = [this, &typedCommand, &remaining](Horde& horde) {
                         if (remaining == 0) {
-                            break;
+                            return;
                         }
-                        if (horde.cellId != typedCommand.cellId || horde.count <= horde.reservedCount) {
-                            continue;
+                        if (horde.count <= horde.reservedCount) {
+                            return;
                         }
 
                         const auto available = static_cast<std::uint16_t>(horde.count - horde.reservedCount);
@@ -323,7 +324,7 @@ void WalkerSimulator::ProcessCommands() {
                                 Ticket{
                                     .ticketId = nextTicketId_,
                                     .hordeId = horde.hordeId,
-                                    .cellId = horde.cellId,
+                                    .cellId = typedCommand.cellId,
                                     .localU = static_cast<std::uint16_t>(random & 0xFFFFU),
                                     .localV = static_cast<std::uint16_t>((random >> 16U) & 0xFFFFU),
                                     .state = TicketState::Reserved,
@@ -332,6 +333,26 @@ void WalkerSimulator::ProcessCommands() {
                             ++nextTicketId_;
                             ++horde.reservedCount;
                             --remaining;
+                        }
+                    };
+                    for (auto& horde : hordes_) {
+                        if (horde.cellId == typedCommand.cellId) {
+                            reserveFromHorde(horde);
+                        }
+                    }
+                    if (remaining == 0) {
+                        return;
+                    }
+
+                    const auto* requestedCell = graph_->FindCell(typedCommand.cellId);
+                    for (const auto& edge : requestedCell->edges) {
+                        if (edge.blocked || remaining == 0) {
+                            continue;
+                        }
+                        for (auto& horde : hordes_) {
+                            if (horde.cellId == edge.targetCellId) {
+                                reserveFromHorde(horde);
+                            }
                         }
                     }
                 } else {
@@ -424,7 +445,11 @@ void WalkerSimulator::MoveHordes() {
             continue;
         }
 
-        const auto progress = static_cast<std::uint32_t>(horde.progressPermille) + config_.progressPerTick;
+        const auto strideOffset = static_cast<std::int32_t>(Mix(graph_->worldSeed ^ horde.hordeId) % 3U) - 1;
+        const auto progressStride = static_cast<std::uint32_t>(std::max(
+            1,
+            static_cast<std::int32_t>(config_.progressPerTick) + strideOffset));
+        const auto progress = static_cast<std::uint32_t>(horde.progressPermille) + progressStride;
         if (progress >= 1000) {
             horde.cellId = horde.nextCellId;
             horde.nextCellId = kInvalidCellId;
@@ -510,6 +535,30 @@ void WalkerSimulator::ExpireTickets() {
             --horde->reservedCount;
         }
         ticket.state = TicketState::Expired;
+    }
+}
+
+void WalkerSimulator::PruneTerminalTickets() {
+    const auto isTerminal = [](TicketState state) {
+        return state == TicketState::Rejected || state == TicketState::Expired ||
+               state == TicketState::Killed || state == TicketState::Despawned;
+    };
+
+    std::size_t terminalCount = 0;
+    for (const auto& [ticketId, ticket] : tickets_) {
+        static_cast<void>(ticketId);
+        if (isTerminal(ticket.state)) {
+            ++terminalCount;
+        }
+    }
+    for (auto iterator = tickets_.begin();
+         terminalCount > kMaximumTerminalTickets && iterator != tickets_.end();) {
+        if (isTerminal(iterator->second.state)) {
+            iterator = tickets_.erase(iterator);
+            --terminalCount;
+        } else {
+            ++iterator;
+        }
     }
 }
 

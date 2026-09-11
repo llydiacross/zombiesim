@@ -37,9 +37,10 @@ WorldMap.WaypointProfile = WorldMap.WaypointProfile or nil
 WorldMap.WaypointPath = WorldMap.WaypointPath or nil
 WorldMap.Viewport = WorldMap.Viewport or { zoom = 1, panX = 0, panY = 0 }
 WorldMap.LocalViewport = WorldMap.LocalViewport or { zoom = localMapDefaultZoom, panX = 0, panY = 0 }
-WorldMap.RenderModes = { default = true, satellite = true, walker = true, map = true }
+WorldMap.RenderModes = { default = true, wireframe = true, satellite = true, walker = true, map = true }
 WorldMap.RenderMode = WorldMap.RenderModes[WorldMap.RenderMode] and WorldMap.RenderMode or "default"
 WorldMap.WalkerSnapshot = WorldMap.WalkerSnapshot or nil
+WorldMap.LivePopulation = WorldMap.LivePopulation or nil
 WorldMap.WalkerDotX = WorldMap.WalkerDotX or {}
 WorldMap.WalkerDotY = WorldMap.WalkerDotY or {}
 WorldMap.WalkerDotCount = WorldMap.WalkerDotCount or 0
@@ -169,6 +170,9 @@ function WorldMap:LoadPersistentState()
     self.WaypointProfile = self.WaypointCell and profile or nil
     self.WaypointPath = nil
     local renderMode = cookie.GetString(getMapStateKey("render_mode"), "default")
+    if renderMode == "wireframe" and profile ~= "preview" then
+        renderMode = "default"
+    end
     if renderMode == "walker" and profile ~= "preview" then
         renderMode = "default"
     end
@@ -193,6 +197,9 @@ end
 
 function WorldMap:SetRenderMode(renderMode)
     if not self.RenderModes[renderMode] then
+        return false
+    end
+    if renderMode == "wireframe" and (not ZM_World or ZM_World.ActiveProfile ~= "preview") then
         return false
     end
 
@@ -227,6 +234,9 @@ local function getMaterial(layerId)
 end
 
 local function getRenderModeMaterial(renderMode)
+    if renderMode == "wireframe" then
+        return getMaterial("wireframe")
+    end
     if renderMode == "satellite" or renderMode == "walker" then
         return getMaterial("satellite")
     end
@@ -244,6 +254,7 @@ net.Receive("ZM.WalkerSnapshot", function()
     local graphRevisionHash = net.ReadString()
     local tick = net.ReadString()
     local totalPopulation = net.ReadUInt(32)
+    local populationPerZombie = net.ReadUInt(16)
     local hordeCount = net.ReadUInt(13)
     local hordes = {}
     for index = 1, hordeCount do
@@ -262,10 +273,31 @@ net.Receive("ZM.WalkerSnapshot", function()
         graphRevisionHash = graphRevisionHash,
         tick = tick,
         totalPopulation = totalPopulation,
+        populationPerZombie = populationPerZombie,
         hordes = hordes
     }
     WorldMap.WalkerDotRevision = nil
 end)
+
+net.Receive("ZM.WalkerPopulation", function()
+    local profile = net.ReadString()
+    local population = net.ReadUInt(32)
+    if not ZM_World or profile ~= ZM_World.ActiveProfile then
+        return
+    end
+    WorldMap.LivePopulation = {
+        profile = profile,
+        population = population
+    }
+end)
+
+function WorldMap:GetLivePopulation()
+    local population = self.LivePopulation
+    if type(population) ~= "table" or not ZM_World or population.profile ~= ZM_World.ActiveProfile then
+        return nil
+    end
+    return population.population
+end
 
 local function getLocalMapKey()
     local profile = ZM_World and ZM_World.ActiveProfile or "city"
@@ -467,6 +499,7 @@ function WorldMap:RebuildWalkerDots()
     local dotX = self.WalkerDotX
     local dotY = self.WalkerDotY
     local dotCount = 0
+    local populationPerZombie = math.max(1, tonumber(snapshot.populationPerZombie) or 4)
     for _, horde in ipairs(snapshot.hordes) do
         local cell = ZM_World:GetCellById(horde.cellId)
         local cellX, cellY
@@ -487,8 +520,9 @@ function WorldMap:RebuildWalkerDots()
                 centerY = Lerp(progress, centerY, nextY + 0.5)
             end
 
-            local seed = bit.bxor(horde.hordeIdLow or 0, horde.hordeIdHigh or 0, horde.cellId or 0)
-            for memberIndex = 1, horde.count do
+            local displayedCount = math.ceil(horde.count / populationPerZombie)
+            local seed = bit.bxor(horde.hordeIdLow or 0, horde.hordeIdHigh or 0)
+            for memberIndex = 1, displayedCount do
                 local randomX, randomY
                 seed = bit.bxor(seed, memberIndex)
                 seed, randomX = nextWalkerRandom(seed)
@@ -516,8 +550,8 @@ function WorldMap:DrawWalkerDots(mapX, mapY, cellWidth, cellHeight)
     local worldData = ZM_World:GetData()
     local mapRight = mapX + cellWidth * (tonumber(worldData.world.grid[1]) or 0)
     local mapBottom = mapY + cellHeight * (tonumber(worldData.world.grid[2]) or 0)
-    local dotSize = math.Clamp(math.floor(math.min(cellWidth, cellHeight) * 0.04), 1, 2)
-    surface.SetDrawColor(232, 69, 57, 178)
+    local dotSize = math.Clamp(math.floor(math.min(cellWidth, cellHeight) * 0.08), 2, 3)
+    surface.SetDrawColor(255, 111, 82, 224)
     for index = 1, self.WalkerDotCount do
         local x = mapX + self.WalkerDotX[index] * cellWidth
         local y = mapY + self.WalkerDotY[index] * cellHeight
@@ -1063,16 +1097,6 @@ local function createMapCanvas(parent, onSelect)
         end
         if renderMode == "walker" then
             WorldMap:DrawWalkerDots(mapX, mapY, cellWidth, cellHeight)
-            local snapshot = WorldMap.WalkerSnapshot
-            draw.SimpleText(
-                "WALKERS " .. string.Comma(snapshot.totalPopulation or 0),
-                "DermaDefaultBold",
-                mapX + 8,
-                mapY + 8,
-                Color(246, 214, 80),
-                TEXT_ALIGN_LEFT,
-                TEXT_ALIGN_TOP
-            )
         end
 
         local player = LocalPlayer()
@@ -1104,7 +1128,7 @@ local function createMapCanvas(parent, onSelect)
             end
         end
 
-        if renderMode == "default" or renderMode == "satellite" or renderMode == "walker" then
+        if renderMode == "default" or renderMode == "wireframe" or renderMode == "satellite" or renderMode == "walker" then
             drawFixedMapOverlays(worldData, width, height)
         end
         local cursorX, cursorY = self:CursorPos()
@@ -1602,6 +1626,16 @@ function WorldMap:Open()
     canvas:Dock(FILL)
     canvas:DockMargin(8, 8, 8, 8)
 
+    local populationLabel = vgui.Create("DLabel", frame)
+    populationLabel:SetFont("DermaDefaultBold")
+    populationLabel:SetTextColor(MapColors.redBright)
+    populationLabel:SetPos(math.max(220, math.floor(frameWidth * 0.16)), 89)
+    populationLabel:SetSize(math.max(120, math.floor(frameWidth * 0.22)), 18)
+    populationLabel.Think = function(panel)
+        local population = WorldMap:GetLivePopulation()
+        panel:SetText(population and "POPULATION " .. string.Comma(population) or "POPULATION --")
+    end
+
     resetButton.DoClick = function()
         canvas:ResetView()
     end
@@ -1822,7 +1856,7 @@ function WorldMap:Open()
     end
 
     local renderModeControls = vgui.Create("DPanel", canvas)
-    renderModeControls:SetSize(292, 26)
+    renderModeControls:SetSize(372, 26)
     renderModeControls.Paint = function(_, width, height)
         surface.SetDrawColor(MapColors.black.r, MapColors.black.g, MapColors.black.b, 235)
         surface.DrawRect(0, 0, width, height)
@@ -1955,6 +1989,11 @@ function WorldMap:Open()
 
     local satelliteMaterial = getRenderModeMaterial("satellite")
     local satelliteAvailable = satelliteMaterial and not satelliteMaterial:IsError()
+    local wireframeMaterial = getRenderModeMaterial("wireframe")
+    local wireframeAvailable = ZM_World.ActiveProfile == "preview" and wireframeMaterial and not wireframeMaterial:IsError()
+    if WorldMap.RenderMode == "wireframe" and not wireframeAvailable then
+        WorldMap:SetRenderMode("default")
+    end
     if WorldMap.RenderMode == "satellite" and not satelliteAvailable then
         WorldMap:SetRenderMode("default")
     end
@@ -1963,6 +2002,9 @@ function WorldMap:Open()
         WorldMap:SetRenderMode(satelliteAvailable and "satellite" or "default")
     end
     addRenderModeButton("default", "ATLAS", 68, true, "Map View")
+    if ZM_World.ActiveProfile == "preview" then
+        addRenderModeButton("wireframe", "WIREFRAME", 84, wireframeAvailable, "Generate and stage validated navmeshes to enable Wireframe View")
+    end
     addRenderModeButton("satellite", "SATELLITE", 84, satelliteAvailable, "Satellite View")
     local walkerButton = addRenderModeButton("walker", "WALKERS", 70, walkerAvailable, "Preview walker simulation")
     walkerButton.Think = function(panel)

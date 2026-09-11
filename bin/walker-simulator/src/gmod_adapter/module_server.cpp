@@ -18,7 +18,8 @@ using namespace GarrysMod::Lua;
 
 namespace {
 
-constexpr double kWalkerApiVersion = 1.0;
+constexpr double kWalkerApiVersion = 3.0;
+constexpr std::size_t kMaximumCheckpointBytes = 8U * 1024U * 1024U;
 std::unique_ptr<zombiesim::walker::gmod::WalkerWorker> worker;
 
 static_assert(sizeof(void*) == 8);
@@ -43,6 +44,42 @@ bool ReadUnsigned(ILuaBase* lua, int index, std::uint64_t maximum, std::uint64_t
     }
     value = static_cast<std::uint64_t>(number);
     return true;
+}
+
+bool ReadIdPair(ILuaBase* lua, int lowIndex, int highIndex, std::uint64_t& value, std::string& error) {
+    std::uint64_t low = 0;
+    std::uint64_t high = 0;
+    if (!ReadUnsigned(lua, lowIndex, std::numeric_limits<std::uint32_t>::max(), low, error) ||
+        !ReadUnsigned(lua, highIndex, std::numeric_limits<std::uint32_t>::max(), high, error)) {
+        return false;
+    }
+    value = low | (high << 32U);
+    return value != 0;
+}
+
+void PushIdPair(ILuaBase* lua, std::uint64_t value, const char* lowName, const char* highName) {
+    lua->PushNumber(static_cast<double>(static_cast<std::uint32_t>(value)));
+    lua->SetField(-2, lowName);
+    lua->PushNumber(static_cast<double>(value >> 32U));
+    lua->SetField(-2, highName);
+}
+
+const char* TicketStateName(zombiesim::walker::TicketState state) {
+    switch (state) {
+        case zombiesim::walker::TicketState::Reserved:
+            return "reserved";
+        case zombiesim::walker::TicketState::Materialized:
+            return "materialized";
+        case zombiesim::walker::TicketState::Rejected:
+            return "rejected";
+        case zombiesim::walker::TicketState::Expired:
+            return "expired";
+        case zombiesim::walker::TicketState::Killed:
+            return "killed";
+        case zombiesim::walker::TicketState::Despawned:
+            return "despawned";
+    }
+    return "unknown";
 }
 
 bool ReadConfig(ILuaBase* lua, zombiesim::walker::WalkerConfig& config, std::string& error) {
@@ -194,6 +231,70 @@ LUA_FUNCTION(Stop) {
     return 1;
 }
 
+LUA_FUNCTION(ExportCheckpoint) {
+    std::vector<std::byte> checkpoint;
+    std::string error;
+    if (!worker->ExportCheckpoint(checkpoint, &error)) {
+        return PushFailure(LUA, error);
+    }
+    if (checkpoint.empty() || checkpoint.size() > kMaximumCheckpointBytes) {
+        return PushFailure(LUA, "walker checkpoint size is outside the supported range");
+    }
+
+    LUA->PushString(
+        reinterpret_cast<const char*>(checkpoint.data()),
+        static_cast<unsigned int>(checkpoint.size()));
+    return 1;
+}
+
+LUA_FUNCTION(ImportCheckpoint) {
+    if (!LUA->IsType(1, Type::String)) {
+        return PushFailure(LUA, "ImportCheckpoint expects checkpoint bytes");
+    }
+
+    unsigned int checkpointLength = 0;
+    const auto* checkpoint = LUA->GetString(1, &checkpointLength);
+    if (checkpoint == nullptr || checkpointLength == 0 || checkpointLength > kMaximumCheckpointBytes) {
+        return PushFailure(LUA, "walker checkpoint size is outside the supported range");
+    }
+
+    std::vector<std::byte> checkpointBytes;
+    checkpointBytes.reserve(checkpointLength);
+    for (unsigned int index = 0; index < checkpointLength; ++index) {
+        checkpointBytes.push_back(static_cast<std::byte>(static_cast<unsigned char>(checkpoint[index])));
+    }
+
+    std::string error;
+    if (!worker->ImportCheckpoint(checkpointBytes, &error)) {
+        return PushFailure(LUA, error);
+    }
+    LUA->PushBool(true);
+    return 1;
+}
+
+LUA_FUNCTION(RequestCheckpointExport) {
+    std::string error;
+    if (!worker->RequestCheckpointExport(&error)) {
+        return PushFailure(LUA, error);
+    }
+    LUA->PushBool(true);
+    return 1;
+}
+
+LUA_FUNCTION(TakeCheckpointExport) {
+    std::vector<std::byte> checkpoint;
+    std::string error;
+    if (!worker->TakeCheckpointExport(checkpoint, &error)) {
+        LUA->PushNil();
+        LUA->PushString(error.c_str());
+        return 2;
+    }
+    LUA->PushString(
+        reinterpret_cast<const char*>(checkpoint.data()),
+        static_cast<unsigned int>(checkpoint.size()));
+    return 1;
+}
+
 LUA_FUNCTION(SetActiveCell) {
     std::uint64_t cellId = 0;
     std::string error;
@@ -297,6 +398,89 @@ LUA_FUNCTION(GetHordeSummaries) {
     return 1;
 }
 
+LUA_FUNCTION(RequestSpawnTickets) {
+    std::uint64_t cellId = 0;
+    std::uint64_t maximumCount = 0;
+    std::uint64_t requestId = 0;
+    std::string error;
+    if (!ReadUnsigned(LUA, 1, std::numeric_limits<std::uint16_t>::max(), cellId, error) ||
+        !ReadUnsigned(LUA, 2, std::numeric_limits<std::uint16_t>::max(), maximumCount, error) ||
+        !ReadIdPair(LUA, 3, 4, requestId, error) ||
+        !worker->Submit(
+            zombiesim::walker::RequestSpawnTicketsCommand{
+                .cellId = static_cast<std::uint16_t>(cellId),
+                .maximumCount = static_cast<std::uint16_t>(maximumCount),
+                .requestId = requestId,
+            },
+            &error)) {
+        return PushFailure(LUA, error.empty() ? "RequestSpawnTickets received invalid arguments" : error);
+    }
+    LUA->PushBool(true);
+    return 1;
+}
+
+LUA_FUNCTION(AcknowledgeTicket) {
+    std::uint64_t ticketId = 0;
+    std::string error;
+    if (!ReadIdPair(LUA, 1, 2, ticketId, error) ||
+        !worker->Submit(zombiesim::walker::AcknowledgeTicketCommand{.ticketId = ticketId}, &error)) {
+        return PushFailure(LUA, error.empty() ? "AcknowledgeTicket received invalid arguments" : error);
+    }
+    LUA->PushBool(true);
+    return 1;
+}
+
+LUA_FUNCTION(RejectTicket) {
+    std::uint64_t ticketId = 0;
+    std::string error;
+    if (!ReadIdPair(LUA, 1, 2, ticketId, error) ||
+        !worker->Submit(zombiesim::walker::RejectTicketCommand{.ticketId = ticketId}, &error)) {
+        return PushFailure(LUA, error.empty() ? "RejectTicket received invalid arguments" : error);
+    }
+    LUA->PushBool(true);
+    return 1;
+}
+
+LUA_FUNCTION(ResolveTicket) {
+    std::uint64_t ticketId = 0;
+    std::string error;
+    if (!ReadIdPair(LUA, 1, 2, ticketId, error) || !LUA->IsType(3, Type::Bool) ||
+        !worker->Submit(
+            zombiesim::walker::ResolveTicketCommand{
+                .ticketId = ticketId,
+                .killed = LUA->GetBool(3),
+            },
+            &error)) {
+        return PushFailure(LUA, error.empty() ? "ResolveTicket received invalid arguments" : error);
+    }
+    LUA->PushBool(true);
+    return 1;
+}
+
+LUA_FUNCTION(GetTicketSummaries) {
+    const auto tickets = worker->GetTicketSummaries();
+    LUA->CreateTable();
+    for (std::size_t index = 0; index < tickets.size(); ++index) {
+        const auto& ticket = tickets[index];
+        LUA->PushNumber(static_cast<double>(index + 1));
+        LUA->CreateTable();
+        PushIdPair(LUA, ticket.ticketId, "TicketIdLow", "TicketIdHigh");
+        PushIdPair(LUA, ticket.hordeId, "HordeIdLow", "HordeIdHigh");
+        LUA->PushNumber(static_cast<double>(ticket.cellId));
+        LUA->SetField(-2, "CellId");
+        LUA->PushNumber(static_cast<double>(ticket.localU));
+        LUA->SetField(-2, "LocalU");
+        LUA->PushNumber(static_cast<double>(ticket.localV));
+        LUA->SetField(-2, "LocalV");
+        LUA->PushString(TicketStateName(ticket.state));
+        LUA->SetField(-2, "State");
+        LUA->PushString(std::to_string(ticket.expiresAtTick).c_str());
+        LUA->SetField(-2, "ExpiresAtTick");
+        LUA->SetTable(-3);
+    }
+    return 1;
+}
+
 }  // namespace
 
 GMOD_MODULE_OPEN() {
@@ -315,6 +499,14 @@ GMOD_MODULE_OPEN() {
     LUA->SetField(-2, "Start");
     LUA->PushCFunction(Stop);
     LUA->SetField(-2, "Stop");
+    LUA->PushCFunction(ExportCheckpoint);
+    LUA->SetField(-2, "ExportCheckpoint");
+    LUA->PushCFunction(ImportCheckpoint);
+    LUA->SetField(-2, "ImportCheckpoint");
+    LUA->PushCFunction(RequestCheckpointExport);
+    LUA->SetField(-2, "RequestCheckpointExport");
+    LUA->PushCFunction(TakeCheckpointExport);
+    LUA->SetField(-2, "TakeCheckpointExport");
     LUA->PushCFunction(SetActiveCell);
     LUA->SetField(-2, "SetActiveCell");
     LUA->PushCFunction(SubmitAttractor);
@@ -325,6 +517,16 @@ GMOD_MODULE_OPEN() {
     LUA->SetField(-2, "GetCellSummary");
     LUA->PushCFunction(GetHordeSummaries);
     LUA->SetField(-2, "GetHordeSummaries");
+    LUA->PushCFunction(RequestSpawnTickets);
+    LUA->SetField(-2, "RequestSpawnTickets");
+    LUA->PushCFunction(AcknowledgeTicket);
+    LUA->SetField(-2, "AcknowledgeTicket");
+    LUA->PushCFunction(RejectTicket);
+    LUA->SetField(-2, "RejectTicket");
+    LUA->PushCFunction(ResolveTicket);
+    LUA->SetField(-2, "ResolveTicket");
+    LUA->PushCFunction(GetTicketSummaries);
+    LUA->SetField(-2, "GetTicketSummaries");
     LUA->SetField(-2, "ZM_WalkerNative");
     LUA->Pop(1);
     return 0;

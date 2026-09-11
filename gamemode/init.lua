@@ -7,6 +7,7 @@ AddCSLuaFile( "cl_init.lua" )
 AddCSLuaFile( "cl_skin.lua" )
 AddCSLuaFile( "cl_player.lua" )
 AddCSLuaFile( "cl_thirdpersoncamera.lua" )
+AddCSLuaFile( "cl_transitions.lua" )
 AddCSLuaFile( "cl_hud.lua" )
 AddCSLuaFile( "cl_crosshair.lua" )
 AddCSLuaFile( "cl_atmosphere.lua" )
@@ -28,6 +29,8 @@ include( "sv_preview.lua" )
 include( "sv_dev_console.lua" )
 include( "sv_dependency_prompts.lua" )
 include( "sv_walker_sim.lua" )
+include( "sv_walker_materialization.lua" )
+include( "sv_transitions.lua" )
 
 // Ensure the SQLite schema exists before any PlayerSpawn handler performs a lookup.
 local attributesReady, attributesError = ZM_CreatePlayerAttributesTable()
@@ -245,7 +248,7 @@ function GM:GetExpectedPlayerMap(ply)
 end
 
 // Changes level only when the loaded map differs from the player's persisted city or safe-room state.
-function GM:EnsurePlayerWorldMap(ply)
+function GM:EnsurePlayerWorldMap(ply, entryLandmark)
     if self.PlayerWorldMapTransitionQueued then
         return false
     end
@@ -263,7 +266,8 @@ function GM:EnsurePlayerWorldMap(ply)
     end
 
     self.PlayerWorldMapTransitionQueued = true
-    game.ConsoleCommand("changelevel " .. expectedMap .. "\n")
+    local landmark = type(entryLandmark) == "string" and string.match(entryLandmark, "^[A-Z]+_ENTRANCE$") or nil
+    game.ConsoleCommand("changelevel " .. expectedMap .. (landmark and " " .. landmark or "") .. "\n")
     return true
 end
 
@@ -347,6 +351,9 @@ function GM:PlayerSpawn( ply )
     ZM_Preview:SendCapabilities(ply)
     ZM_Preview:ApplyCheatState(ply)
     ZM_Preview:SendCheatStatus(ply, true, "")
+    if ZM_Transitions then
+        ZM_Transitions:ApplyPendingEntry(ply)
+    end
 
     if ZM_DependencyPrompts and ZM_DependencyPrompts:HoldLauncherTransition(ply, profile, previouslyConnected) then
         return

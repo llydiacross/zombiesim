@@ -4634,6 +4634,20 @@ entity
 		"logicalpos" "[0 14000]"
 	}
 }
+entity
+{
+	"id" "900001"
+	"classname" "zn_tile_direction"
+	"direction" "south"
+	"origin" "0 -640 32"
+}
+entity
+{
+	"id" "900002"
+	"classname" "zn_road_connection"
+	"connection_type" "t_junction"
+	"origin" "-320 -640 32"
+}
 cameras
 {
 	"activecamera" "-1"

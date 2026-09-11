@@ -49,7 +49,7 @@ if ($WhatIf) {
 
 [System.IO.Directory]::CreateDirectory($DestinationDirectory) | Out-Null
 Get-ChildItem -LiteralPath $DestinationDirectory -Filter '*.png' -File |
-    Where-Object { $_.Name -ne 'satellite.png' } |
+    Where-Object { $_.Name -notin @('satellite.png', 'wireframe.png') } |
     Remove-Item -Force
 $stagedImageNames = [System.Collections.Generic.List[string]]::new()
 foreach ($mapImageFile in $mapImageFiles) {

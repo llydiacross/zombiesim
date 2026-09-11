@@ -24,7 +24,7 @@ All template rotations are measured from these `$0^\circ$` authored orientations
 | Road and motorway T-junction | East to west, with its connecting stem north |
 | Bridge ramp | North to south, rising toward north |
 | Motorway road bridge | Motorway east to west below; road north to south above |
-| Building | Entrance on the north edge of its tile |
+| Building | Entrance on the south edge of its tile |
 | Border wall | North to south, offset to the east tile edge |
 | Border wall corner | North to east, at the north-east tile corner |
 | Carpark entrance | Connective tip on the south tile edge; standard variants have local east and west lanes. At `$0^\circ$`, `_deadend_west` closes west and connects east, while `_deadend_east` closes east and connects west. |
@@ -33,9 +33,11 @@ The generated border ring sits one tile outside the playable cell. Its corner in
 
 ### Tile Road Connections
 
-For a multi-tile building that needs a vehicle-road frontage, add one `zn_road_connection` point entity to its source VMF and select its authored-local `direction` (`north`, `east`, `south`, or `west`). The planner rotates the building so that edge meets a compatible straight road and converts that road tile into a T-junction. A marked template is not placed when no compatible road arm is available, so it cannot receive a disconnected frontage. The marker is planning metadata and has no gameplay behavior.
+Every building template has one `zn_tile_direction` point entity. Its `direction` identifies the authored-local entrance edge and the point must sit at that edge's midpoint. Buildings in the current library use `south`, so a 1x tile is `0 -320 32`, a 2x tile is `0 -640 32`, and a 3x tile is `0 -960 32`. The planner rotates this entrance edge toward compatible ordinary roads, motorways, or concrete paths without changing the frontage tile by default.
 
-Buildings and landmarks rotate their authored north-edge entrance toward a directly adjacent road or transport tile. At a road corner, only its connected edges are valid frontage: a building or landmark next to the closed corner edge faces away from that edge instead.
+Add zero or more `zn_road_connection` points only where a generated road must physically connect. Each point must be centered on a single exterior footprint segment, and `connection_type` defaults to `none`. A `t_junction` point converts its exact adjacent compatible ordinary straight-road tile into a T-junction; multiple distinct points create multiple T-junctions. The 2x commercial and hospital carpark-frontage templates each use one south-edge T-junction point. A motorway or concrete path is valid frontage but denies a T-junction request and remains unchanged. A marked template is not placed when every requested connection cannot be satisfied. These markers are planning metadata and have no gameplay behavior.
+
+Buildings and landmarks rotate their authored south-edge entrance toward a directly adjacent road, motorway, concrete path, or transport tile. At a road corner, only its connected edges are valid frontage: a building or landmark next to the closed corner edge faces away from that edge instead.
 
 ### Carpark Endcap Orientation Contract
 

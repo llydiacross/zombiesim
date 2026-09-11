@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "10"
+	"mapversion" "11"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "10"
+	"mapversion" "11"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -578,13 +578,13 @@ entity
 		side
 		{
 			"id" "132"
-			"plane" "(-8 320 64) (8 320 64) (8 -320 64)"
+			"plane" "(-8 320 48) (8 320 48) (8 -320 48)"
 			vertices_plus
 			{
-				"v" "-8 320 64"
-				"v" "8 320 64"
-				"v" "8 -320 64"
-				"v" "-8 -320 64"
+				"v" "-8 320 48"
+				"v" "8 320 48"
+				"v" "8 -320 48"
+				"v" "-8 -320 48"
 			}
 			"material" "CONCRETE/CONCRETEWALL001A"
 			"uaxis" "[1 0 0 -448] 0.25"
@@ -614,11 +614,11 @@ entity
 		side
 		{
 			"id" "130"
-			"plane" "(-8 320 64) (-8 -320 64) (-8 -320 40)"
+			"plane" "(-8 320 48) (-8 -320 48) (-8 -320 40)"
 			vertices_plus
 			{
-				"v" "-8 320 64"
-				"v" "-8 -320 64"
+				"v" "-8 320 48"
+				"v" "-8 -320 48"
 				"v" "-8 -320 40"
 				"v" "-8 320 40"
 			}
@@ -632,13 +632,13 @@ entity
 		side
 		{
 			"id" "129"
-			"plane" "(8 320 40) (8 -320 40) (8 -320 64)"
+			"plane" "(8 320 40) (8 -320 40) (8 -320 48)"
 			vertices_plus
 			{
 				"v" "8 320 40"
 				"v" "8 -320 40"
-				"v" "8 -320 64"
-				"v" "8 320 64"
+				"v" "8 -320 48"
+				"v" "8 320 48"
 			}
 			"material" "CONCRETE/CONCRETEWALL001A"
 			"uaxis" "[0 1 0 0] 0.25"
@@ -650,11 +650,11 @@ entity
 		side
 		{
 			"id" "128"
-			"plane" "(8 320 64) (-8 320 64) (-8 320 40)"
+			"plane" "(8 320 48) (-8 320 48) (-8 320 40)"
 			vertices_plus
 			{
-				"v" "8 320 64"
-				"v" "-8 320 64"
+				"v" "8 320 48"
+				"v" "-8 320 48"
 				"v" "-8 320 40"
 				"v" "8 320 40"
 			}
@@ -668,13 +668,13 @@ entity
 		side
 		{
 			"id" "127"
-			"plane" "(8 -320 40) (-8 -320 40) (-8 -320 64)"
+			"plane" "(8 -320 40) (-8 -320 40) (-8 -320 48)"
 			vertices_plus
 			{
 				"v" "8 -320 40"
 				"v" "-8 -320 40"
-				"v" "-8 -320 64"
-				"v" "8 -320 64"
+				"v" "-8 -320 48"
+				"v" "8 -320 48"
 			}
 			"material" "CONCRETE/CONCRETEWALL001A"
 			"uaxis" "[1 0 0 -192] 0.25"

@@ -1,2 +1,2 @@
-# request: scoreboard-safe-zone-name-v1
-zombiesim_validate_scripts
+# request: manual-20260911-001653-5d5078e9
+changelevel zn_preview

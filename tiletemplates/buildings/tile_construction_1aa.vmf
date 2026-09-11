@@ -8762,7 +8762,14 @@ hidden
 cameras
 {
 	"activecamera" "0"
-	camera
+entity
+{
+	"id" "900001"
+	"classname" "zn_tile_direction"
+	"direction" "south"
+	"origin" "0 -320 32"
+}
+cameras
 	{
 		"position" "[-548.585 321.983 843.934]"
 		"look" "[-311.856 68.3511 453.165]"

@@ -41,6 +41,9 @@ if ($borderEnabled) {
             throw "cellPlanning.topologyTemplates must define $requiredTopology when borders are enabled."
         }
     }
+    if (-not $borderSettings.ContainsKey('transitionGateRoadTemplates') -or @($borderSettings.transitionGateRoadTemplates).Count -eq 0) {
+        throw 'vmfBuild.border must define at least one transitionGateRoadTemplates entry when borders are enabled.'
+    }
 }
 
 if ([string]::IsNullOrWhiteSpace($PlanData)) {
@@ -170,6 +173,16 @@ function Get-PlacementId {
     return "tile:$([int]$Placement.tileX),$([int]$Placement.tileY)"
 }
 
+function Get-PlacementDebugTargetname {
+    param([object]$Placement)
+
+    $roleProperty = $Placement.PSObject.Properties['role']
+    $role = if ($null -eq $roleProperty) { 'tile' } else { [string]$roleProperty.Value }
+    $role = $role.ToLowerInvariant() -replace '[^a-z0-9_]+', '_'
+    if ([string]::IsNullOrWhiteSpace($role)) { $role = 'tile' }
+    return "zm_tile_${role}_$([int]$Placement.tileX)_$([int]$Placement.tileY)"
+}
+
 function Get-PlacementOwnerCoordinate {
     param(
         [object]$Placement,
@@ -263,7 +276,8 @@ function Test-GeneratedCellVmf {
     param(
         [string]$Path,
         [int]$ExpectedInteriorInstanceCount = -1,
-        [int]$ExpectedBorderInstanceCount = -1
+        [int]$ExpectedBorderInstanceCount = -1,
+        [int]$ExpectedTransitionGateCount = -1
     )
 
     $contents = Get-Content -Raw $Path
@@ -273,12 +287,15 @@ function Test-GeneratedCellVmf {
         $expectedInstanceCount = $ExpectedInteriorInstanceCount + $expectedBorderCount
         if ($instanceCount -ne $expectedInstanceCount) { return $false }
     }
+    if ($ExpectedTransitionGateCount -ge 0 -and [regex]::Matches($contents, '"zm_transition_gate" "1"').Count -ne $ExpectedTransitionGateCount) {
+        return $false
+    }
     if (-not $borderEnabled) {
         return $contents -match 'tiletemplates/' -and $instanceCount -gt 0
     }
     return $contents -match 'tiletemplates/' -and
         $instanceCount -ge 24 -and
-        [regex]::Matches($contents, '"targetname" "zm_border_').Count -eq 24
+        [regex]::Matches($contents, '"targetname" "(?:zm_border_|zm_transition_road_)').Count -eq 24
 }
 
 function Get-RecipeLightingProfile {
@@ -444,6 +461,8 @@ function Get-BorderPlacements {
     $isMotorway = ([string]$Recipe.topology).ToLowerInvariant() -like 'motorway-*'
     $primaryRoadTemplate = if ($isMotorway) { [string]$topologyTemplates['motorway-straight'] } else { [string]$topologyTemplates['road-straight'] }
     $rampRoadTemplate = [string]$topologyTemplates['road-straight']
+    $transitionGateRoadTemplates = @($borderSettings.transitionGateRoadTemplates | ForEach-Object { [string]$_ })
+    $transitionGateTemplateSeed = [Math]::Abs([int64]$Recipe.placementSeed)
     $borderTemplates = Get-BorderTemplateSet $Recipe
     $center = [int][Math]::Floor($TileGridSize / 2)
     $carparkEndcapsByBorderSlot = @{}
@@ -481,13 +500,19 @@ function Get-BorderPlacements {
             $usesRampRoad = $isCenterEdgeSlot -and $rampExits -contains $side
             $usesPrimaryRoad = $isCenterEdgeSlot -and $edgeConnections -contains $side
             $usesRoad = $usesRampRoad -or $usesPrimaryRoad
+            $usesTransitionGateRoad = $usesRampRoad -or (-not $isMotorway -and $usesPrimaryRoad)
+            $transitionGateRoadTemplate = $null
+            if ($usesTransitionGateRoad) {
+                $sideIndex = @{ N = 0; E = 1; S = 2; W = 3 }[$side]
+                $transitionGateRoadTemplate = $transitionGateRoadTemplates[($transitionGateTemplateSeed + $sideIndex) % $transitionGateRoadTemplates.Count]
+            }
             $carparkEndcap = $carparkEndcapsByBorderSlot["$tileX,$tileY"]
             $placements.Add([ordered]@{
                 tileX = $tileX
                 tileY = $tileY
-                template = if ($usesRampRoad) { $rampRoadTemplate } elseif ($usesPrimaryRoad) { $primaryRoadTemplate } elseif ($null -ne $carparkEndcap) { $carparkEndcap.template } else { $borderTemplates.wallTemplate }
+                template = if ($usesTransitionGateRoad) { $transitionGateRoadTemplate } elseif ($usesRampRoad) { $rampRoadTemplate } elseif ($usesPrimaryRoad) { $primaryRoadTemplate } elseif ($null -ne $carparkEndcap) { $carparkEndcap.template } else { $borderTemplates.wallTemplate }
                 rotationYaw = if ($usesRoad) { $roadYawBySide[$side] } elseif ($null -ne $carparkEndcap) { $carparkEndcap.rotationYaw } else { $wallYawBySide[$side] }
-                targetname = "zm_border_$side`_$tileX`_$tileY"
+                targetname = if ($usesTransitionGateRoad) { "zm_transition_road_$side" } else { "zm_border_$side`_$tileX`_$tileY" }
             })
         }
     }
@@ -497,6 +522,55 @@ function Get-BorderPlacements {
         throw "Border placement count for $($Recipe.cellTemplateFilename) was $($placements.Count), expected $expectedCount."
     }
     return @($placements)
+}
+
+function Get-TransitionGatePlacements {
+    param([object]$Recipe)
+
+    $activeEntrancesProperty = $Recipe.PSObject.Properties['activeEntrances']
+    $directions = if ($null -ne $activeEntrancesProperty) {
+        @($activeEntrancesProperty.Value)
+    } else {
+        @((Get-RecipeEdgeConnections $Recipe) + @($Recipe.rampExits))
+    }
+    $gateCenters = @{
+        N = @{ x = 0; y = 1568; yaw = 90 }
+        E = @{ x = 1568; y = 0; yaw = 0 }
+        S = @{ x = 0; y = -1568; yaw = 270 }
+        W = @{ x = -1568; y = 0; yaw = 180 }
+    }
+
+    return @($directions |
+        Where-Object { $_ -in @('N', 'E', 'S', 'W') } |
+        Sort-Object -Unique |
+        ForEach-Object {
+            $center = $gateCenters[$_]
+            [ordered]@{
+                direction = $_
+                directionName = @{ N = 'north'; E = 'east'; S = 'south'; W = 'west' }[$_]
+                x = [int]$center.x
+                y = [int]$center.y
+                yaw = [int]$center.yaw
+            }
+        })
+}
+
+function Convert-NorthGateOffset {
+    param(
+        [object]$Gate,
+        [double]$Across,
+        [double]$Outward,
+        [double]$Yaw = 0
+    )
+
+    $rotationRadians = ([double]$Gate.yaw - 90) * [Math]::PI / 180
+    $cosine = [Math]::Cos($rotationRadians)
+    $sine = [Math]::Sin($rotationRadians)
+    return [ordered]@{
+        x = [Math]::Round([double]$Gate.x + $Across * $cosine - $Outward * $sine, 3)
+        y = [Math]::Round([double]$Gate.y + $Across * $sine + $Outward * $cosine, 3)
+        yaw = [int](($Yaw + [int]$Gate.yaw - 90 + 360) % 360)
+    }
 }
 
 function New-CellVmf {
@@ -531,6 +605,7 @@ function New-CellVmf {
         $footprint = Get-PlacementFootprint $placement
         $originX = [int]((([int]$placement.tileX - $center) + (($footprint.width - 1) / 2.0)) * $TileWidth)
         $originY = [int]((($center - [int]$placement.tileY) - (($footprint.height - 1) / 2.0)) * $TileWidth)
+        $targetname = Get-PlacementDebugTargetname $placement
         $lines.AddRange([string[]]@(
             'entity',
             '{',
@@ -539,6 +614,7 @@ function New-CellVmf {
             ('    "origin" "{0} {1} {2}"' -f $originX, $originY, $TileVerticalOffset),
             ('    "angles" "0 {0} 0"' -f [int]$placement.rotationYaw),
             ('    "file" "{0}"' -f $instancePath),
+            ('    "targetname" "{0}"' -f $targetname),
             '    "fixup_style" "0"',
             '}'
         ))
@@ -561,6 +637,93 @@ function New-CellVmf {
             '}'
         ))
         $entityId++
+    }
+    foreach ($gate in @(Get-TransitionGatePlacements $Recipe)) {
+        $halfWidth = if ($gate.direction -in @('N', 'S')) { 128 } else { 32 }
+        $halfDepth = if ($gate.direction -in @('N', 'S')) { 32 } else { 128 }
+        $minX = $gate.x - $halfWidth
+        $maxX = $gate.x + $halfWidth
+        $minY = $gate.y - $halfDepth
+        $maxY = $gate.y + $halfDepth
+        $minZ = 0
+        $maxZ = 112
+        $solidId = $entityId + 1
+        $sideId = $solidId + 1
+        $planes = @(
+            "($minX $minY $maxZ) ($maxX $maxY $maxZ) ($maxX $minY $maxZ)",
+            "($minX $maxY $minZ) ($maxX $minY $minZ) ($maxX $maxY $minZ)",
+            "($maxX $minY $minZ) ($maxX $maxY $maxZ) ($maxX $maxY $minZ)",
+            "($minX $maxY $minZ) ($minX $minY $maxZ) ($minX $minY $minZ)",
+            "($maxX $maxY $minZ) ($minX $maxY $maxZ) ($minX $maxY $minZ)",
+            "($minX $minY $minZ) ($maxX $minY $maxZ) ($maxX $minY $minZ)"
+        )
+        $lines.AddRange([string[]]@(
+            'entity',
+            '{',
+            ('    "id" "{0}"' -f $entityId),
+            '    "classname" "trigger_multiple"',
+            ('    "origin" "{0} {1} 56"' -f $gate.x, $gate.y),
+            ('    "angles" "0 {0} 0"' -f $gate.yaw),
+            ('    "targetname" "zm_transition_gate_{0}"' -f $gate.direction),
+            '    "zm_transition_gate" "1"',
+            ('    "zm_transition_direction" "{0}"' -f $gate.directionName),
+            '    "zm_transition_mode" "any"',
+            '    "wait" "1"',
+            '    "solid"',
+            '    {'
+            ('        "id" "{0}"' -f $solidId)
+        ))
+        foreach ($plane in $planes) {
+            $lines.AddRange([string[]]@(
+                '        "side"',
+                '        {',
+                ('            "id" "{0}"' -f $sideId),
+                ('            "plane" "{0}"' -f $plane),
+                '            "material" "TOOLS/TOOLSTRIGGER"',
+                '            "uaxis" "[1 0 0 0] 0.25"',
+                '            "vaxis" "[0 -1 0 0] 0.25"',
+                '            "rotation" "0"',
+                '            "lightmapscale" "16"',
+                '            "smoothing_groups" "0"',
+                '        }'
+            ))
+            $sideId++
+        }
+        $lines.AddRange([string[]]@(
+            '    }',
+            '}'
+        ))
+        $entityId = $sideId
+
+        $barricadeProps = @(
+            @{ model = 'models/props/de_nuke/car_nuke_red.mdl'; across = -192; outward = -32; z = 44; yaw = 339 },
+            @{ model = 'models/props/de_nuke/car_nuke_glass.mdl'; across = -192.499; outward = -30.74; z = 42.898; yaw = 339 },
+            @{ model = 'models/props/de_nuke/car_nuke_glass.mdl'; across = 192.233; outward = -65.31; z = 42.898; yaw = 152 },
+            @{ model = 'models/props/de_nuke/car_nuke_red.mdl'; across = 191.892; outward = -64; z = 44; yaw = 152 }
+        )
+        foreach ($index in 0..($barricadeProps.Count - 1)) {
+            $prop = $barricadeProps[$index]
+            $placement = Convert-NorthGateOffset $gate $prop.across $prop.outward $prop.yaw
+            $lines.AddRange([string[]]@(
+                'entity',
+                '{',
+                ('    "id" "{0}"' -f $entityId),
+                '    "classname" "prop_static"',
+                ('    "targetname" "zm_transition_gate_{0}_barricade_{1}"' -f $gate.direction, $index),
+                ('    "angles" "0 {0} 0"' -f $placement.yaw),
+                '    "fademindist" "-1"',
+                '    "fadescale" "1"',
+                '    "lightmapresolutionx" "32"',
+                '    "lightmapresolutiony" "32"',
+                ('    "model" "{0}"' -f $prop.model),
+                '    "skin" "0"',
+                '    "solid" "6"',
+                ('    "origin" "{0} {1} {2}"' -f $placement.x, $placement.y, $prop.z),
+                '}'
+            ))
+            $entityId++
+        }
+
     }
     foreach ($anchor in $CubemapAnchors) {
         $lines.AddRange([string[]]@(
@@ -647,13 +810,14 @@ foreach ($recipe in $recipes) {
     $expectedInteriorInstanceCount = Get-RecipeInteriorInstanceCount $recipe
     $cubemapAnchors = Get-CubemapAnchors $recipe $plan.cellTileGridSize $TileSize $TileZOffset
     $borderPlacements = Get-BorderPlacements $recipe $plan.cellTileGridSize
+    $transitionGates = @(Get-TransitionGatePlacements $recipe)
     $expectedBorderInstanceCount = $borderPlacements.Count
     $cubemapProbeCount += $cubemapAnchors.Count
     if ($WhatIf) {
         $cubemapProbeReport.Add("Cubemap probes: $($recipe.cellTemplateFilename) = $($cubemapAnchors.Count)")
     }
     if ((Test-Path $outputPath) -and -not $Force) {
-        if (-not $RefreshGenerated -or -not (Test-GeneratedCellVmf $outputPath $expectedInteriorInstanceCount $expectedBorderInstanceCount)) {
+        if (-not $RefreshGenerated -or -not (Test-GeneratedCellVmf $outputPath $expectedInteriorInstanceCount $expectedBorderInstanceCount $transitionGates.Count)) {
             $skipped++
             continue
         }
@@ -663,7 +827,7 @@ foreach ($recipe in $recipes) {
     $vmf = New-CellVmf $recipe $plan.cellTileGridSize $TileSize $TileZOffset $CellDirectory $TileDirectory $BaseCellTemplate $cubemapAnchors $borderPlacements
     if (-not $WhatIf) {
         [System.IO.File]::WriteAllText($outputPath, $vmf, [System.Text.UTF8Encoding]::new($false))
-        if (-not (Test-GeneratedCellVmf $outputPath $expectedInteriorInstanceCount $expectedBorderInstanceCount)) {
+        if (-not (Test-GeneratedCellVmf $outputPath $expectedInteriorInstanceCount $expectedBorderInstanceCount $transitionGates.Count)) {
             throw "Generated VMF failed border structure validation: $outputPath"
         }
     }

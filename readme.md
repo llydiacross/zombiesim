@@ -91,6 +91,22 @@ Export an already compiled preview without running VBSP, VVIS, or VRAD again:
 
 This copies the selected preview BSPs from `generated/build_preview` to `content/maps/preview`, stages generated world layers in `content/materials/worlds/preview/map_layers`, renders local recipe maps in `content/materials/worlds/preview/cells`, rebuilds `satellite.png`, and writes `content/data_static/zombiesim_world_preview.json`. `-CleanStagedCity` removes stale BSPs from the selected profile's staging folder.
 
+Stage existing engine-generated navmeshes for the same profile without requiring a BSP rebuild:
+
+```powershell
+.\bin\stage_world_navmeshes.ps1 -WorldProfile preview -CleanStagedCity
+```
+
+This copies matching `.nav` files from `garrysmod/maps/preview` into `content/maps/preview`. It does not modify the engine's runtime navmesh files.
+
+After rebuilding recipe BSPs, clear the profile's old navmeshes before generating fresh ones in Garry's Mod:
+
+```powershell
+.\bin\clear_world_navmeshes.ps1 -WorldProfile preview
+```
+
+This removes both engine runtime navmeshes from `garrysmod/maps/preview` and their staged copies. Reload `zn_preview`, run `zombiesim_generate_navmeshes`, then rebuild `wireframe.png` after the batch completes.
+
 Export an already compiled production city with the same process:
 
 ```powershell
@@ -127,7 +143,19 @@ Generate navmeshes for the same map queue:
 zombiesim_generate_navmeshes
 ```
 
-For each cubemap map, run `buildcubemaps` in your console. After its level reload, run `zombiesim_map_batch_next` to load the next map. For each navmesh map, run `nav_generate`, then `nav_save`; after both finish, run `zombiesim_map_batch_complete`. Use `zombiesim_map_batch_status` to view progress or `zombiesim_map_batch_cancel` to stop.
+The navmesh batch automatically generates and saves navigation data only for ordinary city-cell maps that do not already have a `.nav` file in the active profile. Existing navmeshes are skipped. Clear the profile navmeshes after a BSP rebuild to force a fresh full pass. To generate one missing map first, pass its basename or profile-relative name:
+
+```
+zombiesim_generate_navmeshes <mapName>
+```
+
+Wireframe materials read existing Source navmesh files directly from `garrysmod/maps/<profile>`; no map transitions are needed to render them:
+
+```powershell
+.\bin\build_world_wireframe_material.ps1 -WorldProfile preview
+```
+
+Use `zombiesim_navmesh_status` to inspect the loaded map, matching nav file, and nav-area count. Use `zombiesim_map_batch_status` for queue progress, `zombiesim_map_batch_retry` after a failed map, or `zombiesim_map_batch_cancel` to stop. For each cubemap map, run `buildcubemaps` in your console; after its reload, run `zombiesim_map_batch_next` to load the next map.
 
 # In-Game Commands
 
@@ -154,6 +182,19 @@ zombiesim_dev_persistence_report STEAM_0:1:31630
 ```
 
 That report includes the raw `city` and `preview` player/attribute rows, active map and profile, and current live player fields.
+
+## Local Development Session
+
+Use the scripts below from the repository root to start a local ZombieSim session through Steam with the game console, `console.log`, and Source server logs enabled:
+
+```powershell
+.\bin\start_zombiesim_dev.ps1 -WorldProfile preview
+.\bin\read_zombiesim_dev_log.ps1 -Lines 200
+.\bin\send_zombiesim_dev_command.ps1 zombiesim_walker_status
+.\bin\stop_zombiesim_dev.ps1
+```
+
+`send_zombiesim_dev_command.ps1` overwrites the bridge input with a fresh request id, as required by `sv_dev_console.lua`. Use `read_zombiesim_dev_log.ps1 -Console` for the `-condebug` capture, or add `-Follow` when manually observing an active session. `stop_zombiesim_dev.ps1` closes the local `gmod.exe` window first so the server can run normal shutdown hooks; use `-Force` only when it cannot exit gracefully.
 
 Validate every loaded gamemode and utility Lua file with Garry's Mod's native GLua parser without executing the files:
 
@@ -190,45 +231,15 @@ For future multi-tile prefab support, see [docs/two_by_two_tile_templates_plan.m
 
 # Walker Simulator
 
-The portable C++20 simulator lives in [bin/walker-simulator](bin/walker-simulator). `walker_core` is the only importer and simulation implementation: the optional GMod module and standalone observer are hosts around the same core, world JSON, configuration, and deterministic command stream.
-
-## Current Behavior
-
-- The generator exports one `world.population` budget. The preview world has 81,000 virtual walkers and the city has 310,200; the core allocates that exact total across non-safe cells.
-- The GMod module runs one optional worker at 4 Hz. Horde progress is 4 permille per tick, so an unimpeded horde crosses one logical cell in 62.5 seconds.
-- The preview-only `WALKER` world-map mode receives native horde summaries every 0.5 seconds and renders them. It does not simulate a second client-side world.
-- No NPC materialization, spawn anchors, spawn tickets in GMod gameplay, or loot integration exists yet. The worker is currently an abstract population simulation plus diagnostics.
-
-## State And Persistence
-
-`walker_core` can export and import validated, checksummed checkpoints, and its test suite covers that format. The active GMod adapter does **not** currently expose checkpoint save or restore, however: it builds a new simulation from the selected runtime JSON at level initialization and discards it during `ShutDown`.
-
-Consequently, Walker state is not yet preserved across a `changelevel`, server restart, or a fresh server after everyone reconnects. Player persistence is separate and does not preserve virtual walkers. A later persistence implementation must save one per-profile native checkpoint to GMod's `DATA/zombiesim` mount at a completed worker tick, validate its graph/config hashes on load, and start fresh only when the checkpoint is absent or invalid.
-
-A desktop viewer must remain read-only or attach to one authoritative state owner. Running an independent `.exe` against the same JSON creates a separate deterministic replay; it must not write a checkpoint that GMod also writes. To let time advance while GMod is closed, make the viewer the deliberate offline owner of a per-profile checkpoint, then have GMod import that checkpoint on its next startup. Simultaneous GMod and viewer control requires an explicit IPC service and is not implemented.
-
-## Build And Test
-
-Run these commands from [bin/walker-simulator](bin/walker-simulator). The workspace's supported toolchain is CMake, Ninja, and MinGW:
+The authoritative native population system and its Alpha 2 ticket contract are documented in [docs/walker_simulation.md](docs/walker_simulation.md). Run these commands from [bin/walker-simulator](bin/walker-simulator):
 
 ```powershell
 cmake --preset mingw-debug
 cmake --build --preset build-mingw-debug
-ctest --preset test-mingw-debug
+ctest --preset test-mingw-debug --output-on-failure
 ```
 
-The command-line observer replays an exported world/config/command log through `walker_core`; it is not a persistent live-world editor.
-
-```powershell
-.\build\mingw-debug\zombiesim-walker-observer.exe `
-   --world .\tests\fixtures\preview-world.json `
-   --profile preview `
-   --config .\tests\fixtures\walker-config-v1.json `
-   --command-log .\tests\fixtures\command-log-basic.jsonl `
-   --ticks 16
-```
-
-To build the optional Windows x64 server module and run its ABI diagnostic:
+Build and install the optional Win64 server module:
 
 ```powershell
 cmake --preset mingw-gmod-module-debug
@@ -236,15 +247,6 @@ cmake --build --preset build-mingw-gmod-module-debug
 .\scripts\install-local-win64.ps1 -GarrysModRoot "C:\Program Files (x86)\Steam\steamapps\common\GarrysMod"
 ```
 
-`zombiesim_walker_smoke` remains useful after the prior Win64 ABI failure, but it verifies only module loading, the Lua ABI, and the core self-test. It does not load a world, start the worker, persist state, or prove gameplay integration. Use `zombiesim_walker_status` and `zombiesim_walker_noise <strength> <radius> [durationTicks]` to diagnose the live worker. The external loader and DLL can be removed with `scripts/uninstall-local-win64.ps1`.
+In game, run `zombiesim_walker_smoke`, load `zn_preview`, then use `zombiesim_walker_status` and `zombiesim_walker_noise <strength> <radius> [durationTicks]`. Record live evidence in [docs/alpha_2_test_log.md](docs/alpha_2_test_log.md).
 
-The module must use the vendored Facepunch `gmod-module-base` `development` revision; its Win64 `ILuaBase` offset assertion protects against the legacy `master` layout that crashes during module load.
-
-Garry's Mod Workshop uploads made with `gmad` cannot distribute the Walker DLL. Publish the built binary as a GitHub Release asset and install it manually under `garrysmod/lua/bin` using the installer above. 
-
-```powershell
-.\scripts\install-local-win64.ps1 -GarrysModRoot "C:\Program Files (x86)\Steam\steamapps\common\GarrysMod"
-```
-
-
-When a launcher map reports that the server module is absent, Z-Nation shows a `MISSING DLL` prompt with a link to the releases page. Separately, the first client startup without Volt VPhysics shows an optional link to its GMod build page; its client process checks Volt's `vjolt_substeps` console variable and never changes gameplay behavior.
+Compatible Walker checkpoints persist horde movement, attractors, terminal ticket outcomes, and the server ticket-request counter across level changes and restarts. Checkpoints are profile-scoped in the server SQLite `walker_checkpoints` table; periodic serialization runs on the native worker thread. Map-local NextBots are reconciled as despawned after restore, then the materializer resumes normally. Use `zombiesim_walker_checkpoint_status`, `zombiesim_walker_checkpoint_save`, and `zombiesim_walker_checkpoint_clear <profile>` for server-side checkpoint diagnostics and administration. Workshop uploads cannot distribute the DLL; install releases manually under `garrysmod/lua/bin` using the script above.

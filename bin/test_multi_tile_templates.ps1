@@ -43,6 +43,38 @@ function Add-ValidationError {
     $Errors.Add($Message)
 }
 
+function Get-ExpectedRoadJunctionCount {
+    param([string]$Template)
+
+    $templatePath = Join-Path $projectRoot (Join-Path 'tiletemplates' $Template)
+    $contents = Get-Content -Raw -LiteralPath $templatePath
+    return @([regex]::Matches($contents, '(?s)entity\s*\{\s*(?<body>.*?)\r?\n\}') | Where-Object {
+        $_.Groups['body'].Value -match '"classname"\s+"zn_road_connection"' -and
+        $_.Groups['body'].Value -match '"connection_type"\s+"t_junction"'
+    }).Count
+}
+
+function Get-AuthoredTileDirection {
+    param([string]$Template)
+
+    $templatePath = Join-Path $projectRoot (Join-Path 'tiletemplates' $Template)
+    $contents = Get-Content -Raw -LiteralPath $templatePath
+    $marker = @([regex]::Matches($contents, '(?s)entity\s*\{\s*(?<body>.*?)\r?\n\}') | Where-Object {
+        $_.Groups['body'].Value -match '"classname"\s+"zn_tile_direction"'
+    } | Select-Object -First 1)[0]
+    if ($null -eq $marker) { return 'N' }
+    $directionMatch = [regex]::Match($marker.Groups['body'].Value, '"direction"\s+"([^"]+)"')
+    if (-not $directionMatch.Success) { throw "Tile direction marker in '$Template' has no direction." }
+    $direction = [string]$directionMatch.Groups[1].Value
+    return @{ NORTH = 'N'; EAST = 'E'; SOUTH = 'S'; WEST = 'W' }[$direction.ToUpperInvariant()]
+}
+
+function Get-CardinalYaw {
+    param([string]$Direction)
+
+    return @{ N = 0; E = 90; S = 180; W = 270 }[$Direction]
+}
+
 if (-not (Test-Path -LiteralPath $fixtureMapPath -PathType Leaf)) {
     throw "Multi-tile fixture map was not found: $fixtureMapPath"
 }
@@ -109,14 +141,21 @@ foreach ($recipe in $recipes) {
         continue
     }
 
-    $roadPlacements = @($recipe.tilePlacements | Where-Object { $_.role -in @('road', 'road_center', 'onramp_road', 'bridge_road') })
+    $roadPlacements = @($recipe.tilePlacements | Where-Object { $_.role -in @('road', 'road_center', 'onramp_road', 'bridge_road', 'path', 'building_road_junction', 'landmark_carpark_junction', 'landmark_road_junction') })
+    $expectedJunctionCount = Get-ExpectedRoadJunctionCount ([string]$anchor.template)
+    $junctionCount = @($recipe.tilePlacements | Where-Object { $_.role -in @('building_road_junction', 'landmark_carpark_junction', 'landmark_road_junction') }).Count
+    if ($junctionCount -ne $expectedJunctionCount) {
+        Add-ValidationError $errors "$coordinate must create $expectedJunctionCount authored building road T-junction(s); found $junctionCount."
+    }
     $facesRoad = $false
+    $localDirection = Get-AuthoredTileDirection ([string]$anchor.template)
     foreach ($tileY in [int]$anchor.tileY..(([int]$anchor.tileY + $footprint.height) - 1)) {
         foreach ($tileX in [int]$anchor.tileX..(([int]$anchor.tileX + $footprint.width) - 1)) {
             foreach ($roadPlacement in $roadPlacements) {
                 $deltaX = [int]$roadPlacement.tileX - $tileX
                 $deltaY = [int]$roadPlacement.tileY - $tileY
-                $expectedYaw = if ($deltaX -eq 1 -and $deltaY -eq 0) { 90 } elseif ($deltaX -eq -1 -and $deltaY -eq 0) { 270 } elseif ($deltaX -eq 0 -and $deltaY -eq -1) { 0 } elseif ($deltaX -eq 0 -and $deltaY -eq 1) { 180 } else { -1 }
+                $frontageDirection = if ($deltaX -eq 1 -and $deltaY -eq 0) { 'E' } elseif ($deltaX -eq -1 -and $deltaY -eq 0) { 'W' } elseif ($deltaX -eq 0 -and $deltaY -eq -1) { 'N' } elseif ($deltaX -eq 0 -and $deltaY -eq 1) { 'S' } else { $null }
+                $expectedYaw = if ($null -eq $frontageDirection) { -1 } else { ((Get-CardinalYaw $frontageDirection) - (Get-CardinalYaw $localDirection) + 360) % 360 }
                 if ($expectedYaw -ge 0 -and [int]$anchor.rotationYaw -eq $expectedYaw) {
                     $facesRoad = $true
                 }

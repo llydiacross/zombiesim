@@ -12,6 +12,7 @@ namespace {
 
 constexpr auto kTickInterval = std::chrono::milliseconds(250);
 constexpr auto kMaximumCatchUp = std::chrono::seconds(1);
+constexpr auto kCheckpointTimeout = std::chrono::seconds(2);
 
 void SetError(std::string* error, std::string message) {
     if (error != nullptr) {
@@ -76,6 +77,11 @@ bool WalkerWorker::LoadWorldJson(
     maximumTickMicroseconds_ = 0;
     activeCellId_ = kInvalidCellId;
     stopRequested_ = false;
+    requestedCheckpointSequence_ = 0;
+    completedCheckpointSequence_ = 0;
+    checkpointResult_.clear();
+    checkpointError_.clear();
+    checkpointResultAvailable_ = false;
     lifecycle_ = WorkerLifecycle::GraphReady;
     return true;
 }
@@ -122,6 +128,101 @@ void WalkerWorker::Stop() {
     if (simulator_ && lifecycle_ != WorkerLifecycle::Faulted) {
         lifecycle_ = WorkerLifecycle::GraphReady;
     }
+    wakeWorker_.notify_all();
+}
+
+bool WalkerWorker::ExportCheckpoint(std::vector<std::byte>& checkpoint, std::string* error) {
+    std::unique_lock lock(mutex_);
+    if (!simulator_) {
+        SetError(error, "world JSON must load before a checkpoint can export");
+        return false;
+    }
+    if (lifecycle_ == WorkerLifecycle::GraphReady) {
+        checkpoint = simulator_->ExportCheckpoint();
+        return true;
+    }
+    if (lifecycle_ != WorkerLifecycle::Running) {
+        SetError(error, "walker worker is not running or graph-ready");
+        return false;
+    }
+
+    const auto sequence = requestedCheckpointSequence_ > completedCheckpointSequence_
+        ? requestedCheckpointSequence_
+        : ++requestedCheckpointSequence_;
+    wakeWorker_.notify_one();
+    if (!wakeWorker_.wait_for(lock, kCheckpointTimeout, [this, sequence] {
+            return completedCheckpointSequence_ >= sequence || lifecycle_ != WorkerLifecycle::Running;
+        })) {
+        SetError(error, "timed out waiting for walker checkpoint boundary");
+        return false;
+    }
+    if (completedCheckpointSequence_ < sequence) {
+        SetError(error, checkpointError_.empty() ? "walker worker stopped before checkpoint export" : checkpointError_);
+        return false;
+    }
+
+    checkpoint = checkpointResult_;
+    checkpointResultAvailable_ = false;
+    return true;
+}
+
+bool WalkerWorker::RequestCheckpointExport(std::string* error) {
+    std::scoped_lock lock(mutex_);
+    if (!simulator_) {
+        SetError(error, "world JSON must load before a checkpoint can export");
+        return false;
+    }
+    if (lifecycle_ != WorkerLifecycle::Running) {
+        SetError(error, "asynchronous walker checkpoint export requires a running worker");
+        return false;
+    }
+    if (requestedCheckpointSequence_ > completedCheckpointSequence_ || checkpointResultAvailable_) {
+        SetError(error, "a walker checkpoint export is already pending");
+        return false;
+    }
+
+    ++requestedCheckpointSequence_;
+    wakeWorker_.notify_one();
+    return true;
+}
+
+bool WalkerWorker::TakeCheckpointExport(std::vector<std::byte>& checkpoint, std::string* error) {
+    std::scoped_lock lock(mutex_);
+    if (!simulator_) {
+        SetError(error, "world JSON must load before a checkpoint can export");
+        return false;
+    }
+    if (!checkpointResultAvailable_) {
+        SetError(error, "walker checkpoint is not ready");
+        return false;
+    }
+
+    checkpoint = std::move(checkpointResult_);
+    checkpointResult_.clear();
+    checkpointResultAvailable_ = false;
+    return true;
+}
+
+bool WalkerWorker::ImportCheckpoint(std::span<const std::byte> checkpoint, std::string* error) {
+    std::scoped_lock lock(mutex_);
+    if (!simulator_) {
+        SetError(error, "world JSON must load before a checkpoint can import");
+        return false;
+    }
+    if (lifecycle_ != WorkerLifecycle::GraphReady) {
+        SetError(error, "walker checkpoint import requires a graph-ready worker");
+        return false;
+    }
+    if (!simulator_->ImportCheckpoint(checkpoint, error)) {
+        return false;
+    }
+
+    snapshot_ = simulator_->Snapshot();
+    pendingCommands_.clear();
+    checkpointResult_.clear();
+    checkpointError_.clear();
+    checkpointResultAvailable_ = false;
+    return true;
 }
 
 bool WalkerWorker::Submit(WalkerCommand command, std::string* error) {
@@ -168,6 +269,11 @@ std::optional<CellSummary> WalkerWorker::GetCellSummary(std::uint16_t cellId) co
 std::vector<HordeSummary> WalkerWorker::GetHordeSummaries() const {
     std::scoped_lock lock(mutex_);
     return snapshot_.hordes;
+}
+
+std::vector<TicketSummary> WalkerWorker::GetTicketSummaries() const {
+    std::scoped_lock lock(mutex_);
+    return snapshot_.tickets;
 }
 
 WorkerStats WalkerWorker::GetStats() const {
@@ -224,10 +330,26 @@ void WalkerWorker::Run() {
             const auto snapshot = simulator_->AdvanceOneTick();
             const auto completedAt = std::chrono::steady_clock::now();
             const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(completedAt - startedAt);
-            PublishSnapshot(
-                snapshot,
-                static_cast<std::uint32_t>(elapsed.count()),
-                acceptedCommandCount);
+            {
+                std::scoped_lock lock(mutex_);
+                if (requestedCheckpointSequence_ > completedCheckpointSequence_) {
+                    checkpointResult_ = simulator_->ExportCheckpoint();
+                    checkpointError_.clear();
+                    completedCheckpointSequence_ = requestedCheckpointSequence_;
+                    checkpointResultAvailable_ = true;
+                    wakeWorker_.notify_all();
+                }
+                snapshot_ = snapshot;
+                totalTickMicroseconds_ += static_cast<std::uint32_t>(elapsed.count());
+                ++completedTickCount_;
+                maximumTickMicroseconds_ = std::max(
+                    maximumTickMicroseconds_,
+                    static_cast<std::uint32_t>(elapsed.count()));
+                acceptedCommandCount_ += acceptedCommandCount;
+                if (acceptedCommandCount > 0) {
+                    lastAcceptedCommandTick_ = snapshot.tick;
+                }
+            }
 
             nextTickAt += kTickInterval;
             if (completedAt - nextTickAt > kMaximumCatchUp) {
@@ -263,6 +385,7 @@ void WalkerWorker::SetFault(std::string error) {
     lifecycle_ = WorkerLifecycle::Faulted;
     lastError_ = std::move(error);
     stopRequested_ = true;
+    checkpointError_ = lastError_;
     wakeWorker_.notify_all();
 }
 

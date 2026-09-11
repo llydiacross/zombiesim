@@ -68,7 +68,7 @@ entity
     "classname" "func_instance"
     "origin" "3840 6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1aa.vmf"
+    "file" "../../tiletemplates/buildings/tile_commercial_2aaa_2x.vmf"
     "targetname" "zm_dev_zoo_4"
     "fixup_style" "0"
 }
@@ -78,7 +78,7 @@ entity
     "classname" "func_instance"
     "origin" "6400 6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1aaa.vmf"
+    "file" "../../tiletemplates/buildings/tile_commercial_1aa.vmf"
     "targetname" "zm_dev_zoo_5"
     "fixup_style" "0"
 }
@@ -88,7 +88,7 @@ entity
     "classname" "func_instance"
     "origin" "-6400 3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_bunker_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_commercial_1aaa.vmf"
     "targetname" "zm_dev_zoo_6"
     "fixup_style" "0"
 }
@@ -98,7 +98,7 @@ entity
     "classname" "func_instance"
     "origin" "-3840 3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_bunker_2a.vmf"
+    "file" "../../tiletemplates/buildings/tile_bunker_1a.vmf"
     "targetname" "zm_dev_zoo_7"
     "fixup_style" "0"
 }
@@ -108,7 +108,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_church_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_bunker_2a.vmf"
     "targetname" "zm_dev_zoo_8"
     "fixup_style" "0"
 }
@@ -118,7 +118,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_hospital_1a_2x.vmf"
+    "file" "../../tiletemplates/buildings/tile_church_1a.vmf"
     "targetname" "zm_dev_zoo_9"
     "fixup_style" "0"
 }
@@ -128,7 +128,7 @@ entity
     "classname" "func_instance"
     "origin" "3840 3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_bunker_1aa.vmf"
+    "file" "../../tiletemplates/buildings/tile_hospital_1a_2x.vmf"
     "targetname" "zm_dev_zoo_10"
     "fixup_style" "0"
 }
@@ -138,7 +138,7 @@ entity
     "classname" "func_instance"
     "origin" "6400 3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_church_1aa.vmf"
+    "file" "../../tiletemplates/buildings/tile_bunker_1aa.vmf"
     "targetname" "zm_dev_zoo_11"
     "fixup_style" "0"
 }
@@ -148,7 +148,7 @@ entity
     "classname" "func_instance"
     "origin" "-6400 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_church_1aa.vmf"
     "targetname" "zm_dev_zoo_12"
     "fixup_style" "0"
 }
@@ -158,7 +158,7 @@ entity
     "classname" "func_instance"
     "origin" "-3840 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
     "targetname" "zm_dev_zoo_13"
     "fixup_style" "0"
 }
@@ -168,7 +168,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
     "targetname" "zm_dev_zoo_14"
     "fixup_style" "0"
 }
@@ -178,7 +178,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_zoo_15"
     "fixup_style" "0"
 }
@@ -188,7 +188,7 @@ entity
     "classname" "func_instance"
     "origin" "3840 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_zoo_16"
     "fixup_style" "0"
 }
@@ -198,7 +198,7 @@ entity
     "classname" "func_instance"
     "origin" "6400 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
+    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_dev_zoo_17"
     "fixup_style" "0"
 }
@@ -208,7 +208,7 @@ entity
     "classname" "func_instance"
     "origin" "-6400 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
     "targetname" "zm_dev_zoo_18"
     "fixup_style" "0"
 }
@@ -218,7 +218,7 @@ entity
     "classname" "func_instance"
     "origin" "-3840 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
     "targetname" "zm_dev_zoo_19"
     "fixup_style" "0"
 }
@@ -228,7 +228,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
     "targetname" "zm_dev_zoo_20"
     "fixup_style" "0"
 }
@@ -238,7 +238,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aaa.vmf"
+    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
     "targetname" "zm_dev_zoo_21"
     "fixup_style" "0"
 }
@@ -248,7 +248,7 @@ entity
     "classname" "func_instance"
     "origin" "3840 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bbb.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1aaa.vmf"
     "targetname" "zm_dev_zoo_22"
     "fixup_style" "0"
 }
@@ -258,7 +258,7 @@ entity
     "classname" "func_instance"
     "origin" "6400 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1ddd.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1bbb.vmf"
     "targetname" "zm_dev_zoo_23"
     "fixup_style" "0"
 }
@@ -268,7 +268,7 @@ entity
     "classname" "func_instance"
     "origin" "-6400 -3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aaa.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1ddd.vmf"
     "targetname" "zm_dev_zoo_24"
     "fixup_style" "0"
 }
@@ -278,7 +278,7 @@ entity
     "classname" "func_instance"
     "origin" "-3840 -3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_epicenter_1a_3x.vmf"
+    "file" "../../tiletemplates/buildings/tile_construction_1aaa.vmf"
     "targetname" "zm_dev_zoo_25"
     "fixup_style" "0"
 }
@@ -288,7 +288,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 -3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_epicenter_1aa_3x.vmf"
+    "file" "../../tiletemplates/buildings/tile_epicenter_1a_3x.vmf"
     "targetname" "zm_dev_zoo_26"
     "fixup_style" "0"
 }
@@ -298,8 +298,18 @@ entity
     "classname" "func_instance"
     "origin" "1280 -3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_epicenter_1aaa_3x.vmf"
+    "file" "../../tiletemplates/buildings/tile_epicenter_1aa_3x.vmf"
     "targetname" "zm_dev_zoo_27"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "30"
+    "classname" "func_instance"
+    "origin" "3840 -3840 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/buildings/tile_epicenter_1aaa_3x.vmf"
+    "targetname" "zm_dev_zoo_28"
     "fixup_style" "0"
 }
 cameras
