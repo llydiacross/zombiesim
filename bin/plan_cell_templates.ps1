@@ -132,9 +132,9 @@ function Get-TemplateRoadConnection {
             $footprintSize = if ($templateName -match '(?i)_3x(?:3)?$') { 3 } elseif ($templateName -match '(?i)_2x(?:2)?$') { 2 } else { 1 }
             $edgeMidpoint = $footprintSize * 320.0
             $expectedOrigin = switch ($direction) {
-                'NORTH' { [pscustomobject]@{ x = 0.0; y = $edgeMidpoint } }
+                'NORTH' { [pscustomobject]@{ x = 0.0; y = -$edgeMidpoint } }
                 'EAST' { [pscustomobject]@{ x = $edgeMidpoint; y = 0.0 } }
-                'SOUTH' { [pscustomobject]@{ x = 0.0; y = -$edgeMidpoint } }
+                'SOUTH' { [pscustomobject]@{ x = 0.0; y = $edgeMidpoint } }
                 'WEST' { [pscustomobject]@{ x = -$edgeMidpoint; y = 0.0 } }
             }
             if ([Math]::Abs(([double]$originParts[0]) - $expectedOrigin.x) -gt 0.5 -or [Math]::Abs(([double]$originParts[1]) - $expectedOrigin.y) -gt 0.5) {

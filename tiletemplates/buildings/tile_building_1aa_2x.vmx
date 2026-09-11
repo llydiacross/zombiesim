@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "9"
+	"mapversion" "10"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "9"
+	"mapversion" "10"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -32695,6 +32695,13 @@ entity
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 0]"
 	}
+}
+entity
+{
+	"id" "900001"
+	"classname" "zn_tile_direction"
+	"direction" "south"
+	"origin" "0 -640 32"
 }
 cameras
 {
