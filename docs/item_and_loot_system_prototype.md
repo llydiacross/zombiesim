@@ -125,7 +125,29 @@ A plan for a new json data_static powered system for use in the item system and 
 
 # recipie_definitions.json
  
-  // TODO: Mock up
+ - a small pseudo mock up of how recipies could potentially work
+
+```json
+{
+  "recipeBandage": {
+    "name": "Sterile Bandage",
+    "category": "Medical",
+    "craftTime": 2.0,
+    "station": "none",
+    "levelRequirement": 1,
+    "statRequirements": {
+      "Medical": 1
+    },
+    "ingredients": [
+      { "item": "itemCloth", "count": 2 },
+      { "item": "itemAlcohol", "count": 1 }
+    ],
+    "results": [
+      { "item": "itemBandage", "count": 1 }
+    ]
+  },
+}
+```
 
 # enemy_definitions.json
 
@@ -231,7 +253,43 @@ A plan for a new json data_static powered system for use in the item system and 
 
 # boss_spawns.json
 
-// TODO: Mockup how boss spawn definitions work, they would read from enemy_defitions which entity to spawn as a boss, bosses spawn on a random cell in the world. This file in theory would allow to set certian partamers to define when and how a boss spawns, maybe a boss only spawns in radioactive cells, maybe a boss only spawns once a day, or is spawns many times. Maybe it is a rare boss, or a super rare and super dangerous boss. Also, what loot does the boss drop? This would reference the loot tables
+- how boss spawn definitions work, they would read from enemy_defitions which entity to spawn as a boss, bosses spawn on a random cell in the world. This file in theory would allow to set certian partamers to define when and how a boss spawns, maybe a boss only spawns in radioactive cells, maybe a boss only spawns once a day, or is spawns many times. Maybe it is a rare boss, or a super rare and super dangerous boss. Also, what loot does the boss drop? This would reference the loot tables
+
+```json
+{
+  "bossTank": {
+    "entityDefinition": "entityBossTank",
+    "spawnConditions": {
+      "minCellDanger": 0.5,
+      "allowedEnvironmentTags": ["industrial", "military", "radiation"],
+      "maxActiveWorldCount": 1,
+      "cooldownHours": 12
+    },
+    "mapMarker": {
+      "showOnMinimap": true,
+      "icon": "hud/boss_tank_icon",
+      "label": "Mutation Threat: Tank"
+    },
+    "lootGroup": ["lootBossMeleeWeapons", "lootBossGenericLoot"]
+  },
+
+  "bossPatientZero": {
+    "entityDefinition": "entityBossPatientZero",
+    "spawnConditions": {
+      "minCellDanger": 0.8,
+      "allowedEnvironmentTags": ["hospital", "radiation"],
+      "maxActiveWorldCount": 1,
+      "cooldownHours": 24
+    },
+    "mapMarker": {
+      "showOnMinimap": true,
+      "icon": "hud/boss_biohazard_icon",
+      "label": "High Threat: Patient Zero"
+    },
+    "lootGroup": ["lootBossMeleeWeapons"]
+  }
+}
+```
 
 # loot.json
 
