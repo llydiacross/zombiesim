@@ -284,21 +284,23 @@ A clean standard baseline scale to use across your `loot.json` tables is a **1 t
      "maxWeight": 30 // more common in high damage cells
  },
  "weaponHandgunDesertEagle": {
-     "minWeight": 15,
-     "maxWeight": 25 // more common in high damage cells
+     "minWeight": 2,
+     "maxWeight": 5 // more common in high damage cells
  },
  "weaponHandgunTec9": {
-     "minWeight": 15,
-     "maxWeight": 25 // more common in high damage cells
+     "minWeight": 2,
+     "maxWeight": 10 // more common in high damage cells
  },
  "weaponHandgunSilenced9mm": {
-     "minWeight": 15,
-     "maxWeight": 25 // very common in high damage cells
+     "minWeight": 2,
+     "maxWeight": 15 // very common in high damage cells
  }
 }
+```
 
-You can pretty much find steel pipes where ever
+A generic loot table for melee weapons
 
+```jsonl
 "lootGenericMeleeWeapons": {
     // key is the item name in item definition
  "weaponMeleeSteelPipe": {
@@ -317,15 +319,18 @@ You can pretty much find steel pipes where ever
      "minWeight": 30
  },
  "weaponMeleeKatana": {
-     "minWeight": 25
+     "minWeight": 5,
+     "maxWeight": 10, // very uncommon
  },
  "weaponMeleeBroadSword": {
-     "minWeight": 15
+     "minWeight": 5
  },
 }
+```
 
 and for instance loot from a boss is always mastercrafted so we can define loot groups for bosses
 
+```jsonl
 "lootBossMeleeWeapons": {
  "weaponMeleeSteelPipe": {
      "minWeight": 5,
@@ -395,6 +400,7 @@ and for instance loot from a boss is always mastercrafted so we can define loot 
 
 ## Pseudo Json Example
 
+```jsonl
 {
   // works for all props, static, dynamic, physics, also override or multiplayer
   "prop": {
@@ -407,6 +413,7 @@ and for instance loot from a boss is always mastercrafted so we can define loot 
     "<model name>":  [["lootGroup1", "LootGroup2"], 80] // key 0 = the loot groups to use, array or string, key 1 = weighted probability
   }
 }
+```
 
 # Lua side utils and files
 
