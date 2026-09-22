@@ -13,6 +13,7 @@ The generator creates a city plan, turns that plan into reusable 5-by-5 cell rec
 
 Settings use JSON. Text must be inside double quotes, items in a list need commas, and there must not be a comma after the final item in a list. Do not rename setting names unless this guide calls them advanced.
 
+
 ## Canonical Tile Orientations
 
 All template rotations are measured from these `$0^\circ$` authored orientations. Keep this reference when adding generator placement rules or diagnosing a rotated tile in Hammer:
@@ -813,7 +814,33 @@ Generated recipes receive one to three deterministic `env_cubemap` entities. Aft
 | `tileSize` | Distance in Hammer units between the centers of neighbouring tile instances. | Default `640` must match the physical width of normal tiletemplate VMFs. Do not use this to correct a misplaced model inside a source prefab. |
 | `tileZOffset` | Vertical offset, in Hammer units, applied to every generated tile instance. | Default `0`. A non-zero value moves all generated chunks up or down together. |
 
-## Common Problems
+# Zombiesim Loot and loot spots
+
+You can find all sorts of loot spots in the world which will give you awesome loot! The more danger your cell has, the better the loot!
+
+### Recommended Item Weight Ranges (Rule of Thumb)
+
+A clean standard baseline scale to use across your `loot.json` tables is a **1 to 100 relative weight scale**:
+
+| Rarity Class | Item Weight | Expected Outcome in a Standard Table |
+| --- | --- | --- |
+| **Common** (Junk, Basic Ammo, Bandages) | **50 – 100** | Generates frequently; dominates low-danger areas. |
+| **Uncommon** (Steel Pipe, Flashlight, Gasoline) | **20 – 49** | Moderate drops; noticeable but not everywhere. |
+| **Rare** (Glock, 9mm, Shotgun) | **5 – 19** | Harder to find; usually requires high cell danger. |
+| **Very Rare / Boss** (Katana, Desert Eagle) | **1 – 4** | Exciting jackpot loot; drops rarely. |
+
+### Recommended Entity Loot Spots Weight Ranges (Rule of Thumb)
+
+A clean standard baseline scale to use across your `entity_loot.json` tables is a **1 to 100 relative weight scale**:
+
+| Rarity Class | Item Weight | Expected Outcome in a Standard Table |
+| --- | --- | --- |
+| **Common** (Trash Cans, Mail Boxes, Crates, Barrels) | **50 – 100** | Generates frequently; dominates low-danger areas. |
+| **Uncommon** (Civilian Cars, Trucks, Corpses, Shelves) | **20 – 49** | Moderate; noticeable but not everywhere. |
+| **Rare** (Police Cars, Military Vehicles, Ambluances) | **5 – 19** | Hard to find; usually requires high cell danger. |
+| **Very Rare / Boss** ( Military Supply Crates, Caches, Steel Briefcase ) | **1 – 4** | Mythical; seen extremely rarely. |
+
+# Common Problems
 
 ### The script says a settings file is missing
 
@@ -838,7 +865,3 @@ Restore the canonical source VMF first. Then inspect the appropriate `rotations`
 ### Preview generation is too slow or produces too many recipes
 
 Reduce `worldGeneration.profiles.preview.gridCells`, use a smaller `growthDepth`, lower `branchChance`, or raise `variants.usageThreshold`. Make one change, regenerate, and compare the preview key before changing more.
-
-## Future 2x Prefabs
-
-`_2x.vmf` is reserved for a future centered prefab that occupies four tile spaces but emits one `func_instance`. It is not implemented yet. The placement and validation plan is in [two_by_two_tile_templates_plan.md](two_by_two_tile_templates_plan.md).
