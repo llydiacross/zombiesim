@@ -146,8 +146,31 @@ A plan for a new json data_static powered system for use in the item system and 
       { "item": "itemBandage", "count": 1 }
     ]
   },
+  "recipeCrowbarMastercraft": {
+    "name": "Reinforced Crowbar",
+    "category": "Weapons",
+    "craftTime": 10.0,
+    "station": "workbench",
+    "levelRequirement": 15,
+    "statRequirements": {
+      "Strength": 10,
+      "Crafting": 5
+    },
+    "ingredients": [
+      { "item": "weaponMeleeCrowbar", "count": 1 },
+      { "item": "itemScrapMetal", "count": 10 },
+      { "item": "itemGas", "count": 5 }
+    ],
+    "results": [
+      { "item": "weaponMeleeCrowbar", "count": 1, "mastercraft": true }
+    ]
+  }
 }
 ```
+
+- Note: Setting "mastercraft": true on a craftable result (like in recipeCrowbarMastercraft) forces the generated item instance to roll max attributes, consistent with the loot system rules.   
+- Note: recipeCrowbarMastercraft is just an example and usually you cannot craft a mastercraft like this and instead have to use a special entity in the den which requires a special type of credit currency to use. Will be added in the future.
+- Note: You can only craft these recipies in the den via the crafting table entity which will open a crafting UI window. Will be added in the future.
 
 # enemy_definitions.json
 
