@@ -2,6 +2,8 @@
 
 Please read the [GDD](docs/gdd.md) for an overview of the game's design and mechanics.
 
+Work in progress
+
 # Folder Structure
 
 - ./tiletemplates
