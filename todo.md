@@ -11,7 +11,6 @@
 - change nomenclature with "authored-local tile edge" to just "local tile edge" as well as authored entrance edge to just "tile edge" and explain in the description the building will be rotated so this entity is aligned with the road if it is next to one. This will be a more clear and consistent terminology for the tile edge entities.
 - Update docs accordingly so this is clear for developers how they set up their tiles
 
-
 # Phase B
 
 - Make sure the new tile_park and tile_leisure, tile_petrolstation, tile_hospital and tile_laboratory tiles from tiletemplates/buildings folder for our various landmarks are implemented and working.
@@ -29,8 +28,7 @@
 
 # Phase A
 
-- See item_and_loot_system_prototype.md and create a master plan of implementation for the system I have drafted splitting the implementation into phases with reducing as much token usage as possible in mind. 
-- Please base the structore of the json files based on the Pseudo json code I have given you.
-- Please expand on areas I have left thin or where logic doesn't seem to make sense and also clarify the implementation where you are unsure and also look out for anything I might have missed when theorising my implementation when making your plan. Define this all in a new md documment called item_and_loot_system_plan.md in the /docs folder
+- See and digest and read fully item_and_loot_system_prototype.md and based upon that create a new master plan for the fully fledged implementation of everything I have put in the document, split the implementation into phases to keep conversation time short and to reduce the token usage as much as possible.
+- Define this all in a new documment called item_and_loot_system_plan.md in the /docs folder
 
 

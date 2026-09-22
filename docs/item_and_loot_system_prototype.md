@@ -468,7 +468,9 @@ When the gamemode loads, if the system is using the walkersim module, walkersim 
 
 ## How looting will work
 
-When the gamemode loads, it will read entity_loot, then, when the map is ready, using the entity_loot data, will populate the map full of lootable spots (will just colour the prop_entity yellow if possible and draw a question mark there). Then, when you are close to the loot spot and press E, you will wait a bit and then a window will appear showing you what item you have looted (you only loot one item, but that item can be stacked.) You can accept it (that puts it in the inventory) or refuse it. There is a 5 minute refresh on the cell until it can spawn loot again
+When the gamemode loads, it will read entity_loot, then, when the map is ready, using the entity_loot data, will populate the map full of lootable spots (will just colour the prop_entity yellow if possible and draw a question mark there). Then, when you are close to the loot spot and press E, you will wait a bit and then a window will appear showing you what item you have looted (you only loot one item, but that item can be stacked.) You can accept it (that puts it in the inventory) or refuse it. There is a 5 minute refresh on the cell until it can spawn loot again.
+
+For the pop up UI for the loot. It should be a window and itt show a picture of the item thumbnail in the middle along with the items name above it, the text should be gold if the item is mastercrafted and have (MC) at the end of the name. When you hover over the item. It should list its attributes. It should also show the level of the item just below the name, so the layout should be name, then on a new line level, then in the middle of the window picture of the thumbnail of the item, then below the thumbnail docked to the bottom of the window the accept or decline buttons.
 
 ## Weighted randomisation 
 
@@ -514,3 +516,34 @@ To ensure validation works reliably when loading your static data, implement the
 1. `zn_reload_static`: Reloads and re-parses all `.json` files in `data_static/` without restarting the map.
 2. `zn_validate_loot`: Iterates through `loot.json` and `entity_loot.json`, printing warnings for missing items, orphaned loot groups, or invalid model paths.
 3. `zn_test_loot_roll <lootGroup> <cellDanger>`: Runs $1,000$ simulated rolls on a loot table at a given danger level ($0.0$ to $1.0$) and outputs the percentage distribution to the console to verify weight math.
+
+## Recommended Folder & Script Architecture
+
+To keep the project organized as you begin coding in Garry's Mod, structure your files inside your gamemode directory as follows:
+
+```text
+zombiesim/
+├── data_static/
+│   ├── item_definitions.json
+│   ├── enemy_definitions.json
+│   ├── enemy_spawns.json
+│   ├── boss_spawns.json
+│   ├── loot.json
+│   └── entity_loot.json
+└── gamemode/
+    ├── utils/
+    ├── sh_items.lua          -- JSON loader, validation, & item registry
+    ├── sh_loot_tables.lua    -- Weighted selection algorithm & table composition
+    ├── sv_items.lua          -- Inventory server state & database operations
+    ├── sv_loot_spawner.lua   -- Map prop initialization & cell 5-min cooldown timer
+    ├── entities/
+    │   └── weapons/
+    │       ├── weapon_zn_base_hitscan.lua
+    │       ├── weapon_zn_base_melee.lua
+    │       ├── weapon_zn_handgun_9mm.lua
+    │       └── weapon_zn_melee_crowbar.lua
+    └── vgui/
+        ├── cl_inventory.lua       -- Inventory interface
+        └── cl_loot_popup.lua      -- Interaction popup window (Accept / Decline) showing a picture of the item thumbnail along with the 
+                                      items name, the text should be gold if the item is mastercrafted and have (MC) at the end of the name. When you hover over the item. It should list its attributes. It should also show the level of the item just below the name, so the layout should be name, then on a new line level, then the picture of the thumbnail of the item, then accept of decline
+```
