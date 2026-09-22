@@ -514,6 +514,7 @@ Please read the following headings and keep the following bullet points in mind
 
 - Create weaponMeleeCrowbar use weapon_zn_melee_crowbar for testing melee weapon item implementation and loot spawns
 - Create weaponHandgun9mm use weapon_zn_handgun_9mm for testing bullet weapon item implementation and loot spawns
+- Create itemBandage and use the implementation examples below the header Entity Base Classes to build a usable item
 
 ## Generic Base Classes for entity items and weapon items
 
@@ -525,7 +526,155 @@ Once all lua is loaded, we can then read the data in static through a util libra
 
 ## Entity Base Classes
 
-Entity items are not actually real world gmod entities but are items which contain a consumption purpose such as healing or feeding or replenishing the thirst of the player. The default base class needs to check that the player can use the item, for instance if they meet level and stat requirements.
+Entity items are not actually real world gmod entities but are items which contain a consumption purpose such as healing or feeding or replenishing the thirst of the player. The default base class needs to check that the player can use the item, for instance if they meet level and stat requirements. 
+
+- A standard base table for consumable items.
+- An item defines a new item table for that item, ed: itemBandage
+
+### itemBandage Implementation Example
+gamemode/items/item_bandage.lua 
+
+```lua
+-- Create the itemBandage table by inheriting from GenericItem
+local itemBandage = table.copy(ZM_EntityClasses.GenericItem)
+itemBandage.__index = itemBandage
+
+-- Configuration defaults for itemBandage
+itemBandage.BaseHealAmount = 25
+
+--- Custom check for itemBandage usage
+function itemBandage:CanUse(ply, itemData)
+    -- Run base level and stat checks first
+    local canUse, reason = ZM_EntityClasses.GenericItem.CanUse(self, ply, itemData)
+    if not canUse then return false, reason end
+
+    -- Prevent healing if health is already full
+    if ply:Health() >= ply:GetMaxHealth() then
+        return false, "Health is already full."
+    end
+
+    return true, ""
+end
+
+--- Server-side consumption logic for itemBandage
+function itemBandage:OnUse(ply, itemData, targetPly)
+    local target = targetPly or ply
+
+    if not IsValid(target) or not target:Alive() then
+        return false
+    end
+
+    -- Base healing output
+    local healAmount = self.BaseHealAmount
+
+    -- Doctor Bonus Logic:
+    -- If applied by a player with Medical skill >= 5 or Doctor role, double the efficacy
+    local userMedicalStat = ply:GetStat("Medical") or 0
+    if userMedicalStat >= 5 or ply:GetJobRole() == "Doctor" then -- do we have job roles on player yet? if not this should be a networked PlayerData value which is also stored in sql for the player, it should default to civilian
+        healAmount = healAmount * 2
+        if SERVER then
+            ply:ChatPrint("[Medical] Doctor application bonus applied! (+100% Healing)")
+        end
+    end
+
+    -- Apply health increase up to max health cap
+    local currentHealth = target:Health()
+    local maxHealth = target:GetMaxHealth()
+    local newHealth = math.min(currentHealth + healAmount, maxHealth)
+    target:SetHealth(newHealth) -- does this need to be on server side?
+
+    -- Sound & VFX feedback
+    target:EmitSound("items/medshot4.wav", 75, 100)
+
+    if SERVER then
+        local healedDiff = newHealth - currentHealth
+        ply:ChatPrint("[Item] Restored " .. healedDiff .. " HP.")
+    end
+
+    return true
+end
+
+-- Register the class in the global EntityClasses registry
+ZM_EntityClasses["itemBandage"] = itemBandage
+```
+
+### Implementation Example just for EntityClasses (Base Class & Registry Setup)
+gamemode/sh_items.lua 
+
+```lua
+-- Shared container for consumable entity item logic
+ZM_EntityClasses = ZM_EntityClasses or {}
+
+-------------------------------------------------------------------------------
+-- Generic Item Base Class
+-------------------------------------------------------------------------------
+ZM_EntityClasses.GenericItem = {}
+ZM_EntityClasses.GenericItem.__index = ZM_EntityClasses.GenericItem
+
+--- Validates if a player meets the usage requirements for an item
+-- @param ply Player
+-- @param itemData table Item instance/definition data
+-- @return boolean canUse, string reason
+function ZM_EntityClasses.GenericItem:CanUse(ply, itemData)
+    if not IsValid(ply) or not ply:Alive() then
+        return false, "Player is dead or invalid."
+    end
+
+    -- Check minimum level requirement
+    local minLevel = itemData.minLevel or 1
+    if ply:GetLevel() < minLevel then
+        return false, "You do not meet the required level (" .. minLevel .. ")."
+    end
+
+    -- Check required attribute stats (e.g., Medical skill)
+    if itemData.statRequirements then
+        for stat, requiredValue in pairs(itemData.statRequirements) do
+            local playerStat = ply:GetStat(stat) or 0
+            if playerStat < requiredValue then
+                return false, "Requires " .. stat .. " level " .. requiredValue .. "."
+            end
+        end
+    end
+
+    return true, ""
+end
+
+--- Executed when an item usage is executed (Override in derived items)
+-- @param ply Player
+-- @param itemData table
+-- @param targetPly Player (Optional target, e.g., if a doctor applies it to someone else)
+-- @return boolean success
+function ZM_EntityClasses.GenericItem:OnUse(ply, itemData, targetPly)
+    return true
+end
+
+--- Main entry point to attempt using an item
+-- @param ply Player
+-- @param itemData table
+-- @param targetPly Player (Optional)
+function ZM_EntityClasses.GenericItem:Use(ply, itemData, targetPly)
+    local target = targetPly or ply
+    local canUse, reason = self:CanUse(ply, itemData)
+
+    if not canUse then
+        if SERVER then
+            ply:ChatPrint("[Item System] Cannot use item: " .. reason)
+        end
+        return false
+    end
+
+    if SERVER then
+        local success = self:OnUse(ply, itemData, target)
+        if success then
+            -- Remove 1 item from inventory stack on successful consumption
+            ply:RemoveInventoryItem(itemData.id or itemData.class, 1)
+        end
+        return success
+    end
+
+    return true
+end
+```
 
 ## Weapon Base Classes 
 
@@ -628,3 +777,8 @@ zombiesim/
         └── cl_loot_popup.lua      -- Interaction popup window (Accept / Decline) showing a picture of the item thumbnail along with the 
                                       items name, the text should be gold if the item is mastercrafted and have (MC) at the end of the name. When you hover over the item. It should list its attributes. It should also show the level of the item just below the name, so the layout should be name, then on a new line level, then the picture of the thumbnail of the item, then accept of decline
 ```
+
+## Implementation Extras
+
+- a ply:GetStat function so you can easily get the players attributes
+- add "Job" to networked PlayerData and add function ply:GetJobRole()
