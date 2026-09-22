@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "12"
+	"mapversion" "14"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -68,7 +68,7 @@ light_plus
 postprocess_plus
 {
 	"enable" "1"
-	"copied_from_controller" "0"
+	"copied_from_controller" "1"
 	"bloom_scale" "1"
 	"bloom_exponent" "2.5"
 	"bloom_saturation" "1"
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "12"
+	"mapversion" "14"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -208,23 +208,39 @@ world
 		}
 		editor
 		{
-			"color" "0 135 196"
+			"color" "172 161 0"
+			"groupid" "709"
 			"visgroupshown" "1"
 			"visgroupautoshown" "1"
 		}
 	}
+	group
+	{
+		"id" "709"
+		editor
+		{
+			"color" "172 161 0"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+}
+entity
+{
+	"id" "715"
+	"classname" "func_detail"
 	solid
 	{
 		"id" "703"
 		side
 		{
-			"id" "174"
+			"id" "198"
 			"plane" "(64 -64 40) (64.0001 -320 40) (-63.9999 -320 40)"
 			vertices_plus
 			{
 				"v" "64 -64 40"
-				"v" "64.0001 -320 40"
-				"v" "-63.9999 -320 40"
+				"v" "64 -320 40"
+				"v" "-64 -320 40"
 				"v" "-64 64 40"
 			}
 			"material" "DE_PIRANESI/PI_ROAD"
@@ -236,14 +252,14 @@ world
 		}
 		side
 		{
-			"id" "173"
+			"id" "197"
 			"plane" "(64.0001 -320 32) (64 -64 32) (-64 64 32)"
 			vertices_plus
 			{
-				"v" "64.0001 -320 32"
+				"v" "64 -320 32"
 				"v" "64 -64 32"
 				"v" "-64 64 32"
-				"v" "-63.9999 -320 32"
+				"v" "-64 -320 32"
 			}
 			"material" "CONCRETE/CONCRETEFLOOR011A_C17"
 			"uaxis" "[1 0 0 -0] 0.25"
@@ -254,12 +270,12 @@ world
 		}
 		side
 		{
-			"id" "172"
+			"id" "196"
 			"plane" "(-63.9999 -320 40) (-63.9999 -320 32) (-64 64 32)"
 			vertices_plus
 			{
-				"v" "-63.9999 -320 40"
-				"v" "-63.9999 -320 32"
+				"v" "-64 -320 40"
+				"v" "-64 -320 32"
 				"v" "-64 64 32"
 				"v" "-64 64 40"
 			}
@@ -272,12 +288,12 @@ world
 		}
 		side
 		{
-			"id" "171"
+			"id" "195"
 			"plane" "(64.0001 -320 32) (64.0001 -320 40) (64 -64 40)"
 			vertices_plus
 			{
-				"v" "64.0001 -320 32"
-				"v" "64.0001 -320 40"
+				"v" "64 -320 32"
+				"v" "64 -320 40"
 				"v" "64 -64 40"
 				"v" "64 -64 32"
 			}
@@ -290,7 +306,7 @@ world
 		}
 		side
 		{
-			"id" "170"
+			"id" "194"
 			"plane" "(-64 64 40) (-64 64 32) (64 -64 32)"
 			vertices_plus
 			{
@@ -308,14 +324,14 @@ world
 		}
 		side
 		{
-			"id" "169"
+			"id" "193"
 			"plane" "(-63.9999 -320 32) (-63.9999 -320 40) (64.0001 -320 40)"
 			vertices_plus
 			{
-				"v" "-63.9999 -320 32"
-				"v" "-63.9999 -320 40"
-				"v" "64.0001 -320 40"
-				"v" "64.0001 -320 32"
+				"v" "-64 -320 32"
+				"v" "-64 -320 40"
+				"v" "64 -320 40"
+				"v" "64 -320 32"
 			}
 			"material" "CONCRETE/CONCRETEFLOOR011A_C17"
 			"uaxis" "[1 0 0 -0] 0.25"
@@ -326,7 +342,7 @@ world
 		}
 		editor
 		{
-			"color" "0 197 138"
+			"color" "0 180 0"
 			"visgroupshown" "1"
 			"visgroupautoshown" "1"
 		}
@@ -336,7 +352,7 @@ world
 		"id" "705"
 		side
 		{
-			"id" "186"
+			"id" "204"
 			"plane" "(320 -64 32) (64 -64 32) (64 -64 40)"
 			vertices_plus
 			{
@@ -354,7 +370,7 @@ world
 		}
 		side
 		{
-			"id" "185"
+			"id" "203"
 			"plane" "(320 64 32) (320 64 40) (-64 64 40)"
 			vertices_plus
 			{
@@ -372,7 +388,7 @@ world
 		}
 		side
 		{
-			"id" "184"
+			"id" "202"
 			"plane" "(320 64 32) (320 -64 32) (320 -64 40)"
 			vertices_plus
 			{
@@ -390,7 +406,7 @@ world
 		}
 		side
 		{
-			"id" "183"
+			"id" "201"
 			"plane" "(64 -64 40) (-64 64 40) (320 64 40)"
 			vertices_plus
 			{
@@ -408,7 +424,7 @@ world
 		}
 		side
 		{
-			"id" "182"
+			"id" "200"
 			"plane" "(320 -64 32) (320 64 32) (-64 64 32)"
 			vertices_plus
 			{
@@ -426,7 +442,7 @@ world
 		}
 		side
 		{
-			"id" "181"
+			"id" "199"
 			"plane" "(64 -64 32) (-64 64 32) (-64 64 40)"
 			vertices_plus
 			{
@@ -444,15 +460,27 @@ world
 		}
 		editor
 		{
-			"color" "0 101 130"
+			"color" "0 180 0"
 			"visgroupshown" "1"
 			"visgroupautoshown" "1"
 		}
 	}
+	editor
+	{
+		"color" "0 180 0"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 500]"
+	}
 }
 cameras
 {
-	"activecamera" "-1"
+	"activecamera" "0"
+	camera
+	{
+		"position" "[-262.676 5.54233 206.598]"
+		"look" "[-258.592 5.61611 203.894]"
+	}
 }
 cordons
 {

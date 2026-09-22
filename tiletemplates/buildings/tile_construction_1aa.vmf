@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "13"
+	"mapversion" "15"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "13"
+	"mapversion" "15"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -109,7 +109,7 @@ world
 				"v" "-320 -320 32"
 				"v" "-320 320 32"
 			}
-			"material" "CS_HAVANA/SWAMPDIRT01"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 -1 0 -256] 0.25"
 			"vaxis" "[-1 0 0 256] 0.25"
 			"rotation" "0"
@@ -8538,7 +8538,7 @@ entity
 {
 	"id" "781"
 	"classname" "zn_tile_direction"
-	"direction" "north"
+	"direction" "south"
 	"origin" "0 -320 32"
 	editor
 	{

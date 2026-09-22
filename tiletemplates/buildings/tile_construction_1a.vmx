@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "9"
+	"mapversion" "10"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "9"
+	"mapversion" "10"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -122,10 +122,10 @@ world
 			"plane" "(-320 320 7.62939e-06) (-320 -320 7.62939e-06) (320 -320 7.62939e-06)"
 			vertices_plus
 			{
-				"v" "-320 320 7.62939e-06"
-				"v" "-320 -320 7.62939e-06"
-				"v" "320 -320 7.62939e-06"
-				"v" "320 320 7.62939e-06"
+				"v" "-320 320 0"
+				"v" "-320 -320 0"
+				"v" "320 -320 0"
+				"v" "320 320 0"
 			}
 			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE028A"
 			"uaxis" "[0 -1 0 -256] 0.25"
@@ -142,8 +142,8 @@ world
 			{
 				"v" "320 320 32"
 				"v" "-320 320 32"
-				"v" "-320 320 7.62939e-06"
-				"v" "320 320 7.62939e-06"
+				"v" "-320 320 0"
+				"v" "320 320 0"
 			}
 			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE028A"
 			"uaxis" "[1 0 0 256] 0.25"
@@ -158,8 +158,8 @@ world
 			"plane" "(320 -320 7.62939e-06) (-320 -320 7.62939e-06) (-320 -320 32)"
 			vertices_plus
 			{
-				"v" "320 -320 7.62939e-06"
-				"v" "-320 -320 7.62939e-06"
+				"v" "320 -320 0"
+				"v" "-320 -320 0"
 				"v" "-320 -320 32"
 				"v" "320 -320 32"
 			}
@@ -178,8 +178,8 @@ world
 			{
 				"v" "320 -320 32"
 				"v" "320 320 32"
-				"v" "320 320 7.62939e-06"
-				"v" "320 -320 7.62939e-06"
+				"v" "320 320 0"
+				"v" "320 -320 0"
 			}
 			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE028A"
 			"uaxis" "[0 -1 0 -256] 0.25"
@@ -194,8 +194,8 @@ world
 			"plane" "(-320 -320 7.62939e-06) (-320 320 7.62939e-06) (-320 320 32)"
 			vertices_plus
 			{
-				"v" "-320 -320 7.62939e-06"
-				"v" "-320 320 7.62939e-06"
+				"v" "-320 -320 0"
+				"v" "-320 320 0"
 				"v" "-320 320 32"
 				"v" "-320 -320 32"
 			}
@@ -2850,7 +2850,7 @@ entity
 {
 	"id" "146"
 	"classname" "zn_tile_direction"
-	"direction" "north"
+	"direction" "south"
 	"origin" "0 -320 32"
 	editor
 	{

@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "10"
+	"mapversion" "12"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "10"
+	"mapversion" "12"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -573,15 +573,15 @@ world
 		side
 		{
 			"id" "37"
-			"plane" "(-336 320 112) (-192 320 112) (-192 -192 112)"
+			"plane" "(-320 320 112) (-240 320 112) (-240 -216 112)"
 			vertices_plus
 			{
-				"v" "-336 320 112"
-				"v" "-192 320 112"
-				"v" "-192 -192 112"
-				"v" "-336 -192 112"
+				"v" "-320 320 112"
+				"v" "-240 320 112"
+				"v" "-240 -216 112"
+				"v" "-320 -216 112"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE007A"
+			"material" "CS_HAVANA/GROUND01GRASS"
 			"uaxis" "[1 0 0 64] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -591,13 +591,13 @@ world
 		side
 		{
 			"id" "38"
-			"plane" "(-336 -192 32) (-192 -192 32) (-192 320 32)"
+			"plane" "(-320 -216 32) (-240 -216 32) (-240 320 32)"
 			vertices_plus
 			{
-				"v" "-336 -192 32"
-				"v" "-192 -192 32"
-				"v" "-192 320 32"
-				"v" "-336 320 32"
+				"v" "-320 -216 32"
+				"v" "-240 -216 32"
+				"v" "-240 320 32"
+				"v" "-320 320 32"
 			}
 			"material" "BRICK/BRICKWALL048D"
 			"uaxis" "[1 0 0 64] 0.25"
@@ -609,13 +609,13 @@ world
 		side
 		{
 			"id" "39"
-			"plane" "(-336 320 112) (-336 -192 112) (-336 -192 32)"
+			"plane" "(-320 320 112) (-320 -216 112) (-320 -216 32)"
 			vertices_plus
 			{
-				"v" "-336 320 112"
-				"v" "-336 -192 112"
-				"v" "-336 -192 32"
-				"v" "-336 320 32"
+				"v" "-320 320 112"
+				"v" "-320 -216 112"
+				"v" "-320 -216 32"
+				"v" "-320 320 32"
 			}
 			"material" "BRICK/BRICKWALL048D"
 			"uaxis" "[0 1 0 0] 0.25"
@@ -627,13 +627,13 @@ world
 		side
 		{
 			"id" "40"
-			"plane" "(-192 320 32) (-192 -192 32) (-192 -192 112)"
+			"plane" "(-240 320 32) (-240 -216 32) (-240 -216 112)"
 			vertices_plus
 			{
-				"v" "-192 320 32"
-				"v" "-192 -192 32"
-				"v" "-192 -192 112"
-				"v" "-192 320 112"
+				"v" "-240 320 32"
+				"v" "-240 -216 32"
+				"v" "-240 -216 112"
+				"v" "-240 320 112"
 			}
 			"material" "BRICK/BRICKWALL048D"
 			"uaxis" "[0 1 0 0] 0.25"
@@ -645,13 +645,13 @@ world
 		side
 		{
 			"id" "41"
-			"plane" "(-192 320 112) (-336 320 112) (-336 320 32)"
+			"plane" "(-240 320 112) (-320 320 112) (-320 320 32)"
 			vertices_plus
 			{
-				"v" "-192 320 112"
-				"v" "-336 320 112"
-				"v" "-336 320 32"
-				"v" "-192 320 32"
+				"v" "-240 320 112"
+				"v" "-320 320 112"
+				"v" "-320 320 32"
+				"v" "-240 320 32"
 			}
 			"material" "BRICK/BRICKWALL048D"
 			"uaxis" "[1 0 0 64] 0.25"
@@ -663,13 +663,13 @@ world
 		side
 		{
 			"id" "42"
-			"plane" "(-192 -192 32) (-336 -192 32) (-336 -192 112)"
+			"plane" "(-240 -216 32) (-320 -216 32) (-320 -216 112)"
 			vertices_plus
 			{
-				"v" "-192 -192 32"
-				"v" "-336 -192 32"
-				"v" "-336 -192 112"
-				"v" "-192 -192 112"
+				"v" "-240 -216 32"
+				"v" "-320 -216 32"
+				"v" "-320 -216 112"
+				"v" "-240 -216 112"
 			}
 			"material" "BRICK/BRICKWALL048D"
 			"uaxis" "[1 0 0 64] 0.25"
@@ -699,7 +699,7 @@ world
 				"v" "320 -80 160"
 				"v" "256 -80 160"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE007A"
+			"material" "CS_HAVANA/GROUND01GRASS"
 			"uaxis" "[1 0 0 -256] 0.25"
 			"vaxis" "[0 -1 0 192] 0.25"
 			"rotation" "0"
@@ -807,32 +807,302 @@ world
 entity
 {
 	"id" "66"
-	"classname" "prop_static"
-	"angles" "0 0 0"
-	"disableselfshadowing" "0"
+	"classname" "prop_physics_override"
+	"angles" "0 270 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
 	"disableshadows" "0"
-	"disablevertexlighting" "0"
-	"enablelightbounce" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
 	"fademaxdist" "0"
 	"fademindist" "-1"
 	"fadescale" "1"
-	"generatelightmaps" "0"
-	"ignorenormals" "0"
-	"lightmapresolutionx" "32"
-	"lightmapresolutiony" "32"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
 	"maxdxlevel" "0"
 	"mindxlevel" "0"
-	"model" "models/props/de_port/cargo_container01.mdl"
-	"screenspacefade" "0"
+	"minhealthdmg" "0"
+	"model" "models/props_wasteland/wood_fence01a.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "265"
+	"origin" "-250.667 248 168"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1000]"
+	}
+}
+entity
+{
+	"id" "82"
+	"classname" "prop_physics_override"
+	"angles" "0 270 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"disableshadows" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademaxdist" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"maxdxlevel" "0"
+	"mindxlevel" "0"
+	"minhealthdmg" "0"
+	"model" "models/props_wasteland/wood_fence01a.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "265"
+	"origin" "-250.667 120 168"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1000]"
+	}
+}
+entity
+{
+	"id" "88"
+	"classname" "prop_physics_override"
+	"angles" "0 270 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"disableshadows" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademaxdist" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"maxdxlevel" "0"
+	"mindxlevel" "0"
+	"minhealthdmg" "0"
+	"model" "models/props_wasteland/wood_fence01a.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "265"
+	"origin" "-250.667 -136 168"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1000]"
+	}
+}
+entity
+{
+	"id" "92"
+	"classname" "prop_physics_override"
+	"angles" "0 270 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"disableshadows" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademaxdist" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"maxdxlevel" "0"
+	"mindxlevel" "0"
+	"minhealthdmg" "0"
+	"model" "models/props_wasteland/wood_fence01a.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "265"
+	"origin" "-250.667 -8 168"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1000]"
+	}
+}
+entity
+{
+	"id" "107"
+	"classname" "prop_physics_override"
+	"angles" "0 270 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"disableshadows" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademaxdist" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"maxdxlevel" "0"
+	"mindxlevel" "0"
+	"minhealthdmg" "0"
+	"model" "models/props_wasteland/wood_fence01a.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "265"
+	"origin" "272 248 228.166"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1000]"
+	}
+}
+entity
+{
+	"id" "111"
+	"classname" "prop_physics_override"
+	"angles" "0 270 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"disableshadows" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademaxdist" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"maxdxlevel" "0"
+	"mindxlevel" "0"
+	"minhealthdmg" "0"
+	"model" "models/props_wasteland/wood_fence01a.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "265"
+	"origin" "272 120 228.166"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1000]"
+	}
+}
+entity
+{
+	"id" "117"
+	"classname" "prop_physics_override"
+	"angles" "0 270 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"disableshadows" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademaxdist" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"maxdxlevel" "0"
+	"mindxlevel" "0"
+	"minhealthdmg" "0"
+	"model" "models/props_wasteland/wood_fence01a.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "265"
+	"origin" "272 -8 228.166"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1000]"
+	}
+}
+entity
+{
+	"id" "144"
+	"classname" "prop_static"
+	"angles" "-7 180 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props/de_nuke/truck_nuke.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "-272 96 176"
+	"origin" "-96 163.44 40"
 	editor
 	{
 		"color" "255 255 0"
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
-		"logicalpos" "[0 1000]"
+		"logicalpos" "[0 0]"
 	}
 }
 cameras

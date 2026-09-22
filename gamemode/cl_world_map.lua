@@ -2003,10 +2003,10 @@ function WorldMap:Open()
     end
     addRenderModeButton("default", "ATLAS", 68, true, "Map View")
     if ZM_World.ActiveProfile == "preview" then
-        addRenderModeButton("wireframe", "WIREFRAME", 84, wireframeAvailable, "Generate and stage validated navmeshes to enable Wireframe View")
+        addRenderModeButton("wireframe", "WIREFRAME", 84, wireframeAvailable, "Wireframe View")
     end
     addRenderModeButton("satellite", "SATELLITE", 84, satelliteAvailable, "Satellite View")
-    local walkerButton = addRenderModeButton("walker", "WALKERS", 70, walkerAvailable, "Preview walker simulation")
+    local walkerButton = addRenderModeButton("walker", "WALKERS", 70, walkerAvailable, "Walker Simulation View")
     walkerButton.Think = function(panel)
         panel:SetEnabled(satelliteAvailable and WorldMap:HasWalkerSnapshot())
     end

@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "8"
+	"mapversion" "9"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -68,7 +68,7 @@ light_plus
 postprocess_plus
 {
 	"enable" "1"
-	"copied_from_controller" "0"
+	"copied_from_controller" "1"
 	"bloom_scale" "1"
 	"bloom_exponent" "2.5"
 	"bloom_saturation" "1"
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "8"
+	"mapversion" "9"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -208,7 +208,8 @@ world
 		}
 		editor
 		{
-			"color" "0 135 196"
+			"color" "164 189 0"
+			"groupid" "8"
 			"visgroupshown" "1"
 			"visgroupautoshown" "1"
 		}
@@ -326,7 +327,18 @@ world
 		}
 		editor
 		{
-			"color" "0 197 138"
+			"color" "164 189 0"
+			"groupid" "8"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	group
+	{
+		"id" "8"
+		editor
+		{
+			"color" "164 189 0"
 			"visgroupshown" "1"
 			"visgroupautoshown" "1"
 		}

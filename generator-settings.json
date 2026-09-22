@@ -196,8 +196,8 @@
       "enabled": true
     },
     "settlements": {
-      "minimumDensity": 0.75,
-      "districtCenterDensity": 0.25,
+      "minimumDensity": 0.55,
+      "districtCenterDensity": 0.15,
       "placementMode": "random"
     },
     "population": {
@@ -214,10 +214,10 @@
       "falloutRadiusCells": 9,
       "additionalSourceEveryGridCells": 48,
       "maximumSources": 3,
-      "cellMiles": 4,
-      "loreReferenceFalloutMilesAtOneMegaton": 12,
+      "cellMiles": 2,
+      "loreReferenceFalloutMilesAtOneMegaton": 24,
       "destroyedThreshold": 0.7,
-      "damagePerSecondAtPeak": 8,
+      "damagePerSecondAtPeak": 3,
       "overlayMaximumAlpha": 175
     },
     "danger": {
@@ -372,8 +372,8 @@
       "industryProfiles": ["radioactive"]
     },
     "decorations": {
-      "preferredTerrains": ["dirt"],
-      "preferredProfiles": ["radioactive"],
+      "preferredTerrains": ["grassland", "sandy", "dirt"],
+      "preferredProfiles": ["radioactive", "military"],
       "preferredChancePercent": 65,
       "standardChancePercent": 20
     },

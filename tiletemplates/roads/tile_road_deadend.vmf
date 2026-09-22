@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "12"
+	"mapversion" "14"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "12"
+	"mapversion" "14"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -231,7 +231,7 @@ entity
 				"v" "-190 128 30"
 				"v" "192 128 30"
 				"v" "136.056 218.51 30"
-				"v" "0.999973 256 30"
+				"v" "1 256 30"
 			}
 			"material" "CONCRETE/BLENDCONCDIRT004A"
 			"uaxis" "[-1 -0 0 0] 0.25"
@@ -248,7 +248,7 @@ entity
 			{
 				"v" "-190 128 34"
 				"v" "-134.056 218.509 34"
-				"v" "0.999973 256 34"
+				"v" "1 256 34"
 				"v" "136.057 218.51 34"
 				"v" "192 128 34"
 			}
@@ -284,8 +284,8 @@ entity
 			vertices_plus
 			{
 				"v" "-134.059 218.51 30"
-				"v" "0.999973 256 30"
-				"v" "0.999973 256 34"
+				"v" "1 256 30"
+				"v" "1 256 34"
 				"v" "-134.053 218.512 34"
 			}
 			"material" "CONCRETE/BLENDCONCDIRT004A"
@@ -301,10 +301,10 @@ entity
 			"plane" "(0.999973 256 30) (136.057 218.511 30) (136.059 218.51 34)"
 			vertices_plus
 			{
-				"v" "0.999973 256 30"
+				"v" "1 256 30"
 				"v" "136.057 218.511 30"
 				"v" "136.059 218.51 34"
-				"v" "0.999973 256 34"
+				"v" "1 256 34"
 			}
 			"material" "CONCRETE/BLENDCONCDIRT004A"
 			"uaxis" "[0 0 1 8] 0.25"
@@ -369,7 +369,7 @@ entity
 				"v" "192 128 33"
 				"v" "-190 128 33"
 				"v" "-134.056 37.4903 33"
-				"v" "1.00006 1.71661e-05 33"
+				"v" "1 0 33"
 			}
 			"material" "CONCRETE/BLENDCONCDIRT004A"
 			"uaxis" "[1 -0 0 -8] 0.25"
@@ -386,7 +386,7 @@ entity
 			{
 				"v" "192 128 37"
 				"v" "136.056 37.4912 37"
-				"v" "1.00006 1.71661e-05 37"
+				"v" "1 0 37"
 				"v" "-134.057 37.4904 37"
 				"v" "-190 128 37"
 			}
@@ -422,8 +422,8 @@ entity
 			vertices_plus
 			{
 				"v" "136.059 37.4902 33"
-				"v" "1.00006 1.71661e-05 33"
-				"v" "1.00006 1.71661e-05 37"
+				"v" "1 0 33"
+				"v" "1 0 37"
 				"v" "136.053 37.4883 37"
 			}
 			"material" "CONCRETE/BLENDCONCDIRT004A"
@@ -439,10 +439,10 @@ entity
 			"plane" "(1.00006 1.71661e-05 33) (-134.057 37.4895 33) (-134.059 37.4903 37)"
 			vertices_plus
 			{
-				"v" "1.00006 1.71661e-05 33"
+				"v" "1 0 33"
 				"v" "-134.057 37.4895 33"
 				"v" "-134.059 37.4903 37"
-				"v" "1.00006 1.71661e-05 37"
+				"v" "1 0 37"
 			}
 			"material" "CONCRETE/BLENDCONCDIRT004A"
 			"uaxis" "[0 0 1 -4] 0.25"
@@ -854,6 +854,228 @@ entity
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 2500]"
+	}
+}
+entity
+{
+	"id" "296"
+	"classname" "prop_physics_override"
+	"angles" "0 0 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"minhealthdmg" "0"
+	"model" "models/props/cs_assault/barrelwarning.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "257"
+	"origin" "-225.83 70.7207 40.3024"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "300"
+	"classname" "prop_physics_override"
+	"angles" "0 0 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"minhealthdmg" "0"
+	"model" "models/props/cs_assault/barrelwarning.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "257"
+	"origin" "-163.599 71.2072 40.3024"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "344"
+	"classname" "prop_physics_override"
+	"angles" "0 0 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"minhealthdmg" "0"
+	"model" "models/props/cs_assault/barrelwarning.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "257"
+	"origin" "160.001 83.9536 40.3024"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "348"
+	"classname" "prop_physics_override"
+	"angles" "0 0 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"minhealthdmg" "0"
+	"model" "models/props/cs_assault/barrelwarning.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "257"
+	"origin" "222.231 84.44 40.3024"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "352"
+	"classname" "prop_static"
+	"angles" "0 0 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props_phx/construct/concrete_barrier00.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "-60 32 45"
+	editor
+	{
+		"color" "255 255 0"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 500]"
+	}
+}
+entity
+{
+	"id" "362"
+	"classname" "prop_static"
+	"angles" "0 0 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props_phx/construct/concrete_barrier00.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "60 31 45"
+	editor
+	{
+		"color" "255 255 0"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 500]"
+	}
+}
+entity
+{
+	"id" "382"
+	"classname" "prop_physics_override"
+	"angles" "0 90 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"minhealthdmg" "0"
+	"model" "models/props_c17/lamppost03a_off.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "257"
+	"origin" "175 -256 40"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
 	}
 }
 cameras

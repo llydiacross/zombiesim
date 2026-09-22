@@ -403,7 +403,7 @@ end)
 // Continuously drains sprint stamina and restores stamina while the player is not sprinting.
 hook.Add("Think", "ZM.Stamina", function()
     local delta = engine.TickInterval()
-    local baseSprintDrain = 800
+    local baseSprintDrain = 80
 
     for _, ply in ipairs(player.GetAll()) do
         if IsValid(ply) and ply:Alive() then
@@ -481,15 +481,8 @@ end)
 // Adds XP and levels repeatedly if one award crosses several level thresholds.
 function ply:AddXP(amount)
     self.XP = self.XP + amount
-    if self:CanLevelUp() then
-        //  while the player has enough XP to level up, keep leveling up until they don't have enough XP to level up
-        local currentXP = self.XP
-        while(  currentXP >= self.ExperiencePerLevel and self:CanLevelUp() ) do
-            local newXP =  currentXP - self.ExperiencePerLevel 
-            self:LevelUp()
-            self.XP = newXP > 0 and newXP or 0
-        end
-        self.XP = currentXP
+    while( self:CanLevelUp() ) do
+        self:LevelUp()
     end
 end
 

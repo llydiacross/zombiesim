@@ -1,30 +1,23 @@
 
-# Alpha 2.6 Fixes
+# Alpha 2.6 World Gen Fixes
 
 # Phase A
 
-- Fix tile rotations and build zoo script
- - We messed up the logic on the rotatations, currently the entities are placed on the northen edge but set as south and I think the algorithm is completely backwards by accident
- - Basically, all buildings are facing south with their entrance on the south edge. This applies or decoration pieces as well
- - This was because 2aa and 2aa were in reverse compared to everything else throwing us off.
- - All buildings won't work now as it says:
-    + FullyQualifiedErrorId : Tile direction marker in 'C:\Program Files (x86)\Steam\ 
-   steamapps\common\GarrysMod\garrysmod\gamemodes\zombiesim\tiletemplates\buildings\  
-  tile_commercial_2a_2x.vmf' must sit at the midpoint of its north edge.
- - The entity should be equal to which edge the building entrance to the building is facing in order to ensure it is correctly placed next to a road
- - If a tile doesn't have a tile direction marker, just assume it is north
-- change nomenclature with "authored-local tile edge" to just "local tile edge" as well as authored entrance edge to just "local tile edge" and explain in the description the building will be rotated to align with the local tile edge.
+- Fix tile rotation entity and build zoo script giving an error that tile rotation entitys are not in the correct position
+ - I think I messed up the logic on the rotatations when it comes to tile rotations on buildings with a code edit that I did which I can't remember which line. I think I flipped the orientation of north/south in the code when checking with the tile position entity. I am not sure if that change persisted
+ - Now what ever direction the tile is in in hammer shouldn't matter as it should rotate the tile using the tile direction entity to a road or motorway or path it is next too
+ - Verify that the tile direction entity is being used correctly and that the building is being rotated to align with the direction of a road if it is next to one. For instance, if the tile direction entity is set to south the position for a 1x tile sound be 0,-320, and for a 2x tile it should be 0,-640. If the entity is set to north then the position for a 1x tile should be 0,320 and for a 2x tile it should be 0,640. If the entity is set to east then the position for a 1x tile should be -320,0 and for a 2x tile it should be -640,0. If the entity is set to west then the position for a 1x tile should be 320,0 and for a 2x tile it should be 640,0.
+- change nomenclature with "authored-local tile edge" to just "local tile edge" as well as authored entrance edge to just "tile edge" and explain in the description the building will be rotated so this entity is aligned with the road if it is next to one. This will be a more clear and consistent terminology for the tile edge entities.
 - Update docs accordingly so this is clear and consistent with the new terminology.
+
 
 # Phase B
 
-- Thumbnails for maps are not working because garrysmod doesn't like maps which are in a sub folder, so we will need to add a new key to the filename which is a unique abbreviated ID of the current profile. The individual puzzle maps will also appear in the menu which is unintentional after we do this so we will need to filter them out from the menu display into other so we will remove the zn_ from the beginning of their filenames as that is now reserved for the loader maps and instead use a different prefix for the puzzle maps such as zz. Make sure the map thumbs match that new maps name.
+- Thumbnails for maps are not working because garrysmod doesn't like maps which are in a sub folder, so we will need to add a new prefix to the filename after zn which is the name of the current profile. The individual puzzle maps will also appear in the menu which is unintentional after we do this so we will need to filter them out from the menu display into other so we will remove the zn_ from the beginning of their filenames as that is now reserved for the loader maps and instead use a different prefix for the puzzle maps such as zz. Make sure the map thumbs match that new maps name.
 - Perform a smoketest of the production world being generated so we can see how many puzzle pieces the actual game will produce and how long it takes to compile and do all nav generations in a huge smoke test of the game in production setting.
 
-# Alpha Test 3
+# Phase C
 
-
-- Skybox tiles (in tiletmplates/skybox) which are 16th in size and can be used to generate a convincing skybox which makes sense with the most information we can retrieve from a generated cell. We do know which direction the roads should go, so we can draw a road in the skybox on the edges where one would expect it to be. That's all that's really important, then we can randomize the skybox based on density and its environment (if its dense, put more buildings in the skybox)
-- Add a ring of fog around the skybox so you can't look down the road and break the illusion of this being a world pieced together from tiles.
-- Everything in the new skybox tile needs to be func_detail
-
+- Implement new tile_park and tile_leisure, tile_petrolstation, tile_hospital and tile_laboratory tiles from tiletemplates/buildings folder for our various landmarks.
+- Fix an error where if a road bridge is next to a border piece, the border piece is just a normal road instead of a road bridge
+- Make sure new decoration pieces are being used in tiletemplates/decorations

@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "9"
+	"mapversion" "11"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "9"
+	"mapversion" "11"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -109,9 +109,9 @@ world
 				"v" "64 -64 32"
 				"v" "320 -64 32"
 			}
-			"material" "GM_CONSTRUCT/FLATGRASS_2"
-			"uaxis" "[0 1 0 1280] 0.25"
-			"vaxis" "[1 0 0 -1280] 0.25"
+			"material" "DE_CBBLE/GRASSFLOOR01"
+			"uaxis" "[0 1 0 256] 0.25"
+			"vaxis" "[1 0 0 -256] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -227,9 +227,9 @@ world
 				"v" "-64 -64 32"
 				"v" "64 -64 32"
 			}
-			"material" "GM_CONSTRUCT/FLATGRASS_2"
-			"uaxis" "[0 1 0 1280] 0.25"
-			"vaxis" "[1 0 0 -1280] 0.25"
+			"material" "DE_CBBLE/GRASSFLOOR01"
+			"uaxis" "[0 1 0 256] 0.25"
+			"vaxis" "[1 0 0 -256] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -345,9 +345,9 @@ world
 				"v" "-320 -64 32"
 				"v" "-64 -64 32"
 			}
-			"material" "GM_CONSTRUCT/FLATGRASS_2"
-			"uaxis" "[0 1 0 1280] 0.25"
-			"vaxis" "[1 0 0 -1280] 0.25"
+			"material" "DE_CBBLE/GRASSFLOOR01"
+			"uaxis" "[0 1 0 256] 0.25"
+			"vaxis" "[1 0 0 -256] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -463,9 +463,9 @@ world
 				"v" "-64 64 32"
 				"v" "-320 64 32"
 			}
-			"material" "GM_CONSTRUCT/FLATGRASS_2"
-			"uaxis" "[0 -1 0 1280] 0.25"
-			"vaxis" "[-1 0 0 -1280] 0.25"
+			"material" "DE_CBBLE/GRASSFLOOR01"
+			"uaxis" "[0 -1 0 256] 0.25"
+			"vaxis" "[-1 0 0 -256] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -582,9 +582,9 @@ world
 				"v" "64 64 32"
 				"v" "-64 64 32"
 			}
-			"material" "GM_CONSTRUCT/FLATGRASS_2"
-			"uaxis" "[0 -1 0 1280] 0.25"
-			"vaxis" "[-1 0 0 -1280] 0.25"
+			"material" "DE_CBBLE/GRASSFLOOR01"
+			"uaxis" "[0 -1 0 256] 0.25"
+			"vaxis" "[-1 0 0 -256] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -701,9 +701,9 @@ world
 				"v" "320 64 32"
 				"v" "64 64 32"
 			}
-			"material" "GM_CONSTRUCT/FLATGRASS_2"
-			"uaxis" "[0 -1 0 1280] 0.25"
-			"vaxis" "[-1 0 0 -1280] 0.25"
+			"material" "DE_CBBLE/GRASSFLOOR01"
+			"uaxis" "[0 -1 0 256] 0.25"
+			"vaxis" "[-1 0 0 -256] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -820,7 +820,7 @@ world
 				"v" "-320 -64 32"
 				"v" "-320 64 32"
 			}
-			"material" "GM_CONSTRUCT/FLATGRASS_2"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 -1 0 256] 0.25"
 			"vaxis" "[-1 0 0 -256] 0.25"
 			"rotation" "0"
@@ -1806,7 +1806,7 @@ entity
 }
 entity
 {
-	"id" "645"
+	"id" "747"
 	"classname" "prop_static"
 	"angles" "0 270 0"
 	"fademindist" "-1"
@@ -1816,7 +1816,28 @@ entity
 	"model" "models/props/cs_militia/tree_large_militia.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "-32 -160 33.1899"
+	"origin" "-192 144 33.1899"
+	editor
+	{
+		"color" "255 255 0"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 10500]"
+	}
+}
+entity
+{
+	"id" "756"
+	"classname" "prop_static"
+	"angles" "0 225 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props/cs_militia/tree_large_militia.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "85.7618 163.066 33.1899"
 	editor
 	{
 		"color" "255 255 0"

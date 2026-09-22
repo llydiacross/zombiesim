@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "12"
+	"mapversion" "16"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "12"
+	"mapversion" "16"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -122,10 +122,10 @@ world
 			"plane" "(-320 320 1.90735e-06) (-320 -320 1.90735e-06) (320 -320 1.90735e-06)"
 			vertices_plus
 			{
-				"v" "-320 320 1.90735e-06"
-				"v" "-320 -320 1.90735e-06"
-				"v" "320 -320 1.90735e-06"
-				"v" "320 320 1.90735e-06"
+				"v" "-320 320 0"
+				"v" "-320 -320 0"
+				"v" "320 -320 0"
+				"v" "320 320 0"
 			}
 			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE028A"
 			"uaxis" "[0 -1 0 256] 0.25"
@@ -142,8 +142,8 @@ world
 			{
 				"v" "320 320 32"
 				"v" "-320 320 32"
-				"v" "-320 320 1.90735e-06"
-				"v" "320 320 1.90735e-06"
+				"v" "-320 320 0"
+				"v" "320 320 0"
 			}
 			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE028A"
 			"uaxis" "[1 0 0 256] 0.25"
@@ -158,8 +158,8 @@ world
 			"plane" "(320 -320 1.90735e-06) (-320 -320 1.90735e-06) (-320 -320 32)"
 			vertices_plus
 			{
-				"v" "320 -320 1.90735e-06"
-				"v" "-320 -320 1.90735e-06"
+				"v" "320 -320 0"
+				"v" "-320 -320 0"
 				"v" "-320 -320 32"
 				"v" "320 -320 32"
 			}
@@ -178,8 +178,8 @@ world
 			{
 				"v" "320 -320 32"
 				"v" "320 320 32"
-				"v" "320 320 1.90735e-06"
-				"v" "320 -320 1.90735e-06"
+				"v" "320 320 0"
+				"v" "320 -320 0"
 			}
 			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE028A"
 			"uaxis" "[0 -1 0 256] 0.25"
@@ -194,8 +194,8 @@ world
 			"plane" "(-320 -320 1.90735e-06) (-320 320 1.90735e-06) (-320 320 32)"
 			vertices_plus
 			{
-				"v" "-320 -320 1.90735e-06"
-				"v" "-320 320 1.90735e-06"
+				"v" "-320 -320 0"
+				"v" "-320 320 0"
 				"v" "-320 320 32"
 				"v" "-320 -320 32"
 			}
@@ -460,13 +460,13 @@ entity
 		side
 		{
 			"id" "354"
-			"plane" "(320 8 64) (320 -8 64) (-8 -8 64)"
+			"plane" "(320 8 48) (320 -8 48) (-8 -8 48)"
 			vertices_plus
 			{
-				"v" "320 8 64"
-				"v" "320 -8 64"
-				"v" "-8 -8 64"
-				"v" "-8 8 64"
+				"v" "320 8 48"
+				"v" "320 -8 48"
+				"v" "-8 -8 48"
+				"v" "-8 8 48"
 			}
 			"material" "CONCRETE/CONCRETEWALL001A"
 			"uaxis" "[0 -1 0 -448] 0.25"
@@ -496,11 +496,11 @@ entity
 		side
 		{
 			"id" "352"
-			"plane" "(320 8 64) (-8 8 64) (-8 8 40)"
+			"plane" "(320 8 48) (-8 8 48) (-8 8 40)"
 			vertices_plus
 			{
-				"v" "320 8 64"
-				"v" "-8 8 64"
+				"v" "320 8 48"
+				"v" "-8 8 48"
 				"v" "-8 8 40"
 				"v" "320 8 40"
 			}
@@ -514,13 +514,13 @@ entity
 		side
 		{
 			"id" "351"
-			"plane" "(320 -8 40) (-8 -8 40) (-8 -8 64)"
+			"plane" "(320 -8 40) (-8 -8 40) (-8 -8 48)"
 			vertices_plus
 			{
 				"v" "320 -8 40"
 				"v" "-8 -8 40"
-				"v" "-8 -8 64"
-				"v" "320 -8 64"
+				"v" "-8 -8 48"
+				"v" "320 -8 48"
 			}
 			"material" "CONCRETE/CONCRETEWALL001A"
 			"uaxis" "[1 0 0 0] 0.25"
@@ -532,11 +532,11 @@ entity
 		side
 		{
 			"id" "350"
-			"plane" "(320 -8 64) (320 8 64) (320 8 40)"
+			"plane" "(320 -8 48) (320 8 48) (320 8 40)"
 			vertices_plus
 			{
-				"v" "320 -8 64"
-				"v" "320 8 64"
+				"v" "320 -8 48"
+				"v" "320 8 48"
 				"v" "320 8 40"
 				"v" "320 -8 40"
 			}
@@ -550,13 +550,13 @@ entity
 		side
 		{
 			"id" "349"
-			"plane" "(-8 -8 40) (-8 8 40) (-8 8 64)"
+			"plane" "(-8 -8 40) (-8 8 40) (-8 8 48)"
 			vertices_plus
 			{
 				"v" "-8 -8 40"
 				"v" "-8 8 40"
-				"v" "-8 8 64"
-				"v" "-8 -8 64"
+				"v" "-8 8 48"
+				"v" "-8 -8 48"
 			}
 			"material" "CONCRETE/CONCRETEWALL001A"
 			"uaxis" "[0 -1 0 -192] 0.25"
@@ -1525,7 +1525,7 @@ entity
 			"plane" "(-3.8147e-05 -320 36) (0 -16 36) (256 -256 36)"
 			vertices_plus
 			{
-				"v" "-3.8147e-05 -320 36"
+				"v" "-0 -320 36"
 				"v" "0 -16 36"
 				"v" "256 -256 36"
 				"v" "256 -320 36"
@@ -1544,7 +1544,7 @@ entity
 			vertices_plus
 			{
 				"v" "0 -16 32"
-				"v" "-3.8147e-05 -320 32"
+				"v" "-0 -320 32"
 				"v" "256 -320 32"
 				"v" "256 -256 32"
 			}
@@ -1581,8 +1581,8 @@ entity
 			{
 				"v" "0 -16 32"
 				"v" "0 -16 36"
-				"v" "-3.8147e-05 -320 36"
-				"v" "-3.8147e-05 -320 32"
+				"v" "-0 -320 36"
+				"v" "-0 -320 32"
 			}
 			"material" "CONCRETE/CONCRETEFLOOR037A"
 			"uaxis" "[0 -1 0 -49.4545] 0.55"
@@ -1599,8 +1599,8 @@ entity
 			{
 				"v" "256 -320 36"
 				"v" "256 -320 32"
-				"v" "-3.8147e-05 -320 32"
-				"v" "-3.8147e-05 -320 36"
+				"v" "-0 -320 32"
+				"v" "-0 -320 36"
 			}
 			"material" "CONCRETE/CONCRETEFLOOR037A"
 			"uaxis" "[-1 0 0 488.727] 0.55"
@@ -1758,13 +1758,13 @@ entity
 		side
 		{
 			"id" "420"
-			"plane" "(-8 -316 64) (-24 -316 64) (-24 8 64)"
+			"plane" "(-8 -320 48) (-24 -320 48) (-24 8 48)"
 			vertices_plus
 			{
-				"v" "-8 -316 64"
-				"v" "-24 -316 64"
-				"v" "-24 8 64"
-				"v" "-8 8 64"
+				"v" "-8 -320 48"
+				"v" "-24 -320 48"
+				"v" "-24 8 48"
+				"v" "-8 8 48"
 			}
 			"material" "CONCRETE/CONCRETEWALL001A"
 			"uaxis" "[-1 0 0 0] 0.25"
@@ -1776,13 +1776,13 @@ entity
 		side
 		{
 			"id" "419"
-			"plane" "(-8 8 40) (-24 8 40) (-24 -316 40)"
+			"plane" "(-8 8 40) (-24 8 40) (-24 -320 40)"
 			vertices_plus
 			{
 				"v" "-8 8 40"
 				"v" "-24 8 40"
-				"v" "-24 -316 40"
-				"v" "-8 -316 40"
+				"v" "-24 -320 40"
+				"v" "-8 -320 40"
 			}
 			"material" "CONCRETE/CONCRETEWALL001A"
 			"uaxis" "[-1 0 0 256] 0.25"
@@ -1794,13 +1794,13 @@ entity
 		side
 		{
 			"id" "418"
-			"plane" "(-8 -316 64) (-8 8 64) (-8 8 40)"
+			"plane" "(-8 -320 48) (-8 8 48) (-8 8 40)"
 			vertices_plus
 			{
-				"v" "-8 -316 64"
-				"v" "-8 8 64"
+				"v" "-8 -320 48"
+				"v" "-8 8 48"
 				"v" "-8 8 40"
-				"v" "-8 -316 40"
+				"v" "-8 -320 40"
 			}
 			"material" "CONCRETE/CONCRETEWALL001A"
 			"uaxis" "[0 -1 0 0] 0.25"
@@ -1812,13 +1812,13 @@ entity
 		side
 		{
 			"id" "417"
-			"plane" "(-24 -316 40) (-24 8 40) (-24 8 64)"
+			"plane" "(-24 -320 40) (-24 8 40) (-24 8 48)"
 			vertices_plus
 			{
-				"v" "-24 -316 40"
+				"v" "-24 -320 40"
 				"v" "-24 8 40"
-				"v" "-24 8 64"
-				"v" "-24 -316 64"
+				"v" "-24 8 48"
+				"v" "-24 -320 48"
 			}
 			"material" "CONCRETE/CONCRETEWALL001A"
 			"uaxis" "[0 -1 0 0] 0.25"
@@ -1830,13 +1830,13 @@ entity
 		side
 		{
 			"id" "416"
-			"plane" "(-24 -316 64) (-8 -316 64) (-8 -316 40)"
+			"plane" "(-24 -320 48) (-8 -320 48) (-8 -320 40)"
 			vertices_plus
 			{
-				"v" "-24 -316 64"
-				"v" "-8 -316 64"
-				"v" "-8 -316 40"
-				"v" "-24 -316 40"
+				"v" "-24 -320 48"
+				"v" "-8 -320 48"
+				"v" "-8 -320 40"
+				"v" "-24 -320 40"
 			}
 			"material" "CONCRETE/CONCRETEWALL001A"
 			"uaxis" "[-1 0 0 256] 0.25"
@@ -1848,13 +1848,13 @@ entity
 		side
 		{
 			"id" "415"
-			"plane" "(-24 8 40) (-8 8 40) (-8 8 64)"
+			"plane" "(-24 8 40) (-8 8 40) (-8 8 48)"
 			vertices_plus
 			{
 				"v" "-24 8 40"
 				"v" "-8 8 40"
-				"v" "-8 8 64"
-				"v" "-24 8 64"
+				"v" "-8 8 48"
+				"v" "-24 8 48"
 			}
 			"material" "CONCRETE/CONCRETEWALL001A"
 			"uaxis" "[-1 0 0 256] 0.25"
@@ -2112,6 +2112,226 @@ entity
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 7500]"
+	}
+}
+entity
+{
+	"id" "192"
+	"classname" "prop_physics_override"
+	"angles" "0 0 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"minhealthdmg" "0"
+	"model" "models/props/cs_assault/barrelwarning.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "256"
+	"origin" "-7.31912 -3.49225 48.3024"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1000]"
+	}
+}
+entity
+{
+	"id" "223"
+	"classname" "prop_physics_override"
+	"angles" "0 0 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"minhealthdmg" "0"
+	"model" "models/props_wasteland/wood_fence01a.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "265"
+	"origin" "256 276 104"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1000]"
+	}
+}
+entity
+{
+	"id" "231"
+	"classname" "prop_physics_override"
+	"angles" "0 0 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"minhealthdmg" "0"
+	"model" "models/props_wasteland/wood_fence01a.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "265"
+	"origin" "124 276 104"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1000]"
+	}
+}
+entity
+{
+	"id" "238"
+	"classname" "prop_physics_override"
+	"angles" "0 90 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"minhealthdmg" "0"
+	"model" "models/props_wasteland/wood_fence01a.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "265"
+	"origin" "-272 -256 104"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1000]"
+	}
+}
+entity
+{
+	"id" "242"
+	"classname" "prop_physics_override"
+	"angles" "0 90 0"
+	"damagetoenablemotion" "0"
+	"Damagetype" "0"
+	"disableflashlight" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"forcetoenablemotion" "0"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"inertiaScale" "1.0"
+	"massScale" "0"
+	"minhealthdmg" "0"
+	"model" "models/props_wasteland/wood_fence01a.mdl"
+	"modelscale" "1.0"
+	"nodamageforces" "0"
+	"PerformanceMode" "0"
+	"physdamagescale" "0.1"
+	"pressuredelay" "0"
+	"shadowcastdist" "0"
+	"skin" "0"
+	"spawnflags" "265"
+	"origin" "-272 -124 104"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1000]"
+	}
+}
+entity
+{
+	"id" "263"
+	"classname" "prop_dynamic_override"
+	"angles" "0 300 0"
+	"AnimateEveryFrame" "0"
+	"DisableBoneFollowers" "0"
+	"disableflashlight" "0"
+	"disablereceiveshadows" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"HoldAnimation" "0"
+	"MaxAnimTime" "10"
+	"MinAnimTime" "5"
+	"model" "models/props/cs_assault/billboard.mdl"
+	"modelscale" "1.0"
+	"PerformanceMode" "0"
+	"pressuredelay" "0"
+	"RandomAnimation" "0"
+	"renderamt" "255"
+	"rendercolor" "255 255 255"
+	"renderfx" "0"
+	"rendermode" "0"
+	"SetBodyGroup" "0"
+	"skin" "0"
+	"solid" "6"
+	"spawnflags" "0"
+	"origin" "-220 256 136"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 500]"
 	}
 }
 cameras
