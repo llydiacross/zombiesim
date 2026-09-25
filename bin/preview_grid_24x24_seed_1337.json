@@ -61,8 +61,8 @@
                                                            "worldX":  14,
                                                            "worldY":  2,
                                                            "falloutRadiusCells":  9,
-                                                           "falloutRadiusMiles":  36,
-                                                           "loreYieldMegatons":  27
+                                                           "falloutRadiusMiles":  18,
+                                                           "loreYieldMegatons":  0.4
                                                        },
                                          "epicenters":  [
                                                             {
@@ -72,15 +72,15 @@
                                                                 "worldX":  14,
                                                                 "worldY":  2,
                                                                 "falloutRadiusCells":  9,
-                                                                "falloutRadiusMiles":  36,
-                                                                "loreYieldMegatons":  27
+                                                                "falloutRadiusMiles":  18,
+                                                                "loreYieldMegatons":  0.4
                                                             }
                                                         ],
                                          "falloutRadiusCells":  9,
                                          "destroyedThreshold":  0.7,
-                                         "damagePerSecondAtPeak":  8,
-                                         "cellMiles":  4,
-                                         "loreYieldMegatons":  27
+                                         "damagePerSecondAtPeak":  3,
+                                         "cellMiles":  2,
+                                         "loreYieldMegatons":  0.4
                                      },
                        "danger":  {
                                       "enabled":  true,

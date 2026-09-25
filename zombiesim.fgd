@@ -6,7 +6,7 @@
 
 @PointClass base(Targetname) = zn_tile_direction : "ZombieSim Tile Direction"
 [
-    direction(choices) : "Authored entrance edge" : "south" : "The authored-local tile edge containing this building's entrance." =
+    direction(choices) : "Tile edge" : "south" : "The local tile edge containing this building's entrance. The building will be rotated so this edge aligns with an adjacent road, motorway, or concrete path, if one is present." =
     [
         "north" : "North"
         "east" : "East"
@@ -21,6 +21,8 @@
     [
         "none" : "No connection"
         "t_junction" : "T-junction"
+        "bus" : "Bus layby"
+        "driveway" : "Driveway"
     ]
 ]
 

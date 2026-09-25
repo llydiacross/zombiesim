@@ -1520,7 +1520,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_antenna.vmf"
     "targetname" "zm_tile_decoration_4_0"
     "fixup_style" "0"
 }
@@ -1560,7 +1560,7 @@ entity
     "classname" "func_instance"
     "origin" "640 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_a.vmf"
     "targetname" "zm_tile_decoration_3_1"
     "fixup_style" "0"
 }
@@ -1570,7 +1570,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_d.vmf"
     "targetname" "zm_tile_decoration_4_1"
     "fixup_style" "0"
 }
@@ -1630,7 +1630,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_siren_a.vmf"
     "targetname" "zm_tile_decoration_0_3"
     "fixup_style" "0"
 }
@@ -1640,7 +1640,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_trees_b.vmf"
     "targetname" "zm_tile_decoration_1_3"
     "fixup_style" "0"
 }
@@ -1659,8 +1659,8 @@ entity
     "id" "685"
     "classname" "func_instance"
     "origin" "640 -640 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
+    "angles" "0 180 0"
+    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
     "targetname" "zm_tile_building_3_3"
     "fixup_style" "0"
 }
@@ -1680,7 +1680,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_antenna.vmf"
     "targetname" "zm_tile_decoration_0_4"
     "fixup_style" "0"
 }
@@ -1690,7 +1690,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 -1280 0"
     "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
     "targetname" "zm_tile_building_1_4"
     "fixup_style" "0"
 }

@@ -38,7 +38,7 @@ entity
     "classname" "func_instance"
     "origin" "-8320 5120 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_b.vmf"
     "targetname" "zm_dev_street_0_decoration_1_0"
     "fixup_style" "0"
 }
@@ -48,8 +48,8 @@ entity
     "classname" "func_instance"
     "origin" "-7680 5120 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
-    "targetname" "zm_dev_street_0_building_2_0"
+    "file" "../../tiletemplates/decorations/tile_graveyard_c.vmf"
+    "targetname" "zm_dev_street_0_decoration_2_0"
     "fixup_style" "0"
 }
 entity
@@ -58,8 +58,8 @@ entity
     "classname" "func_instance"
     "origin" "-7040 5120 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
-    "targetname" "zm_dev_street_0_building_3_0"
+    "file" "../../tiletemplates/decorations/tile_siren_a.vmf"
+    "targetname" "zm_dev_street_0_decoration_3_0"
     "fixup_style" "0"
 }
 entity
@@ -78,7 +78,7 @@ entity
     "classname" "func_instance"
     "origin" "-8960 4480 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_d.vmf"
     "targetname" "zm_dev_street_0_decoration_0_1"
     "fixup_style" "0"
 }
@@ -88,8 +88,8 @@ entity
     "classname" "func_instance"
     "origin" "-8320 4480 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1ddd.vmf"
-    "targetname" "zm_dev_street_0_building_1_1"
+    "file" "../../tiletemplates/decorations/tile_telephone_pole.vmf"
+    "targetname" "zm_dev_street_0_decoration_1_1"
     "fixup_style" "0"
 }
 entity
@@ -97,9 +97,9 @@ entity
     "id" "9"
     "classname" "func_instance"
     "origin" "-7680 4480 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
-    "targetname" "zm_dev_street_0_building_2_1"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_watertower_a.vmf"
+    "targetname" "zm_dev_street_0_decoration_2_1"
     "fixup_style" "0"
 }
 entity
@@ -128,8 +128,8 @@ entity
     "classname" "func_instance"
     "origin" "-8960 3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
-    "targetname" "zm_dev_street_0_building_0_2"
+    "file" "../../tiletemplates/decorations/tile_watertower_b.vmf"
+    "targetname" "zm_dev_street_0_decoration_0_2"
     "fixup_style" "0"
 }
 entity
@@ -137,9 +137,9 @@ entity
     "id" "13"
     "classname" "func_instance"
     "origin" "-8320 3840 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
-    "targetname" "zm_dev_street_0_building_1_2"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_bushes.vmf"
+    "targetname" "zm_dev_street_0_decoration_1_2"
     "fixup_style" "0"
 }
 entity
@@ -178,8 +178,8 @@ entity
     "classname" "func_instance"
     "origin" "-8960 3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
-    "targetname" "zm_dev_street_0_building_0_3"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
+    "targetname" "zm_dev_street_0_decoration_0_3"
     "fixup_style" "0"
 }
 entity
@@ -208,7 +208,7 @@ entity
     "classname" "func_instance"
     "origin" "-7040 3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_b.vmf"
     "targetname" "zm_dev_street_0_decoration_3_3"
     "fixup_style" "0"
 }
@@ -238,7 +238,7 @@ entity
     "classname" "func_instance"
     "origin" "-8320 2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_c.vmf"
     "targetname" "zm_dev_street_0_decoration_1_4"
     "fixup_style" "0"
 }
@@ -268,8 +268,8 @@ entity
     "classname" "func_instance"
     "origin" "-6400 2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
-    "targetname" "zm_dev_street_0_building_4_4"
+    "file" "../../tiletemplates/decorations/tile_hedges.vmf"
+    "targetname" "zm_dev_street_0_decoration_4_4"
     "fixup_style" "0"
 }
 entity
@@ -278,7 +278,7 @@ entity
     "classname" "func_instance"
     "origin" "-5120 5120 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_a.vmf"
     "targetname" "zm_dev_street_1_decoration_0_0"
     "fixup_style" "0"
 }
@@ -288,7 +288,7 @@ entity
     "classname" "func_instance"
     "origin" "-4480 5120 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
     "targetname" "zm_dev_street_1_decoration_1_0"
     "fixup_style" "0"
 }
@@ -308,7 +308,7 @@ entity
     "classname" "func_instance"
     "origin" "-3200 5120 0"
     "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1c.vmf"
     "targetname" "zm_dev_street_1_building_3_0"
     "fixup_style" "0"
 }
@@ -328,7 +328,7 @@ entity
     "classname" "func_instance"
     "origin" "-5120 4480 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_siren_a.vmf"
     "targetname" "zm_dev_street_1_decoration_0_1"
     "fixup_style" "0"
 }
@@ -338,7 +338,7 @@ entity
     "classname" "func_instance"
     "origin" "-4480 4480 0"
     "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bbb.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1c.vmf"
     "targetname" "zm_dev_street_1_building_1_1"
     "fixup_style" "0"
 }
@@ -457,8 +457,8 @@ entity
     "id" "45"
     "classname" "func_instance"
     "origin" "-2880 2880 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_building_1b_2x.vmf"
     "targetname" "zm_dev_street_1_building_3_3"
     "fixup_style" "0"
 }
@@ -478,7 +478,7 @@ entity
     "classname" "func_instance"
     "origin" "-4480 2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_bushes.vmf"
     "targetname" "zm_dev_street_1_decoration_1_4"
     "fixup_style" "0"
 }
@@ -498,7 +498,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 5120 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_a.vmf"
     "targetname" "zm_dev_street_2_decoration_0_0"
     "fixup_style" "0"
 }
@@ -578,7 +578,7 @@ entity
     "classname" "func_instance"
     "origin" "640 4480 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_a.vmf"
     "targetname" "zm_dev_street_2_decoration_3_1"
     "fixup_style" "0"
 }
@@ -588,7 +588,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 4480 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
     "targetname" "zm_dev_street_2_decoration_4_1"
     "fixup_style" "0"
 }
@@ -626,70 +626,70 @@ entity
 {
     "id" "62"
     "classname" "func_instance"
-    "origin" "640 3840 0"
+    "origin" "960 3520 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
-    "targetname" "zm_dev_street_2_decoration_3_2"
+    "file" "../../tiletemplates/buildings/tile_commercial_2a_2x.vmf"
+    "targetname" "zm_dev_street_2_building_3_2"
     "fixup_style" "0"
 }
 entity
 {
     "id" "63"
     "classname" "func_instance"
-    "origin" "1280 3840 0"
+    "origin" "-1280 3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
-    "targetname" "zm_dev_street_2_building_4_2"
+    "file" "../../tiletemplates/decorations/tile_graveyard_d.vmf"
+    "targetname" "zm_dev_street_2_decoration_0_3"
     "fixup_style" "0"
 }
 entity
 {
     "id" "64"
     "classname" "func_instance"
-    "origin" "-1280 3200 0"
+    "origin" "-640 3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
-    "targetname" "zm_dev_street_2_decoration_0_3"
+    "file" "../../tiletemplates/decorations/tile_telephone_pole.vmf"
+    "targetname" "zm_dev_street_2_decoration_1_3"
     "fixup_style" "0"
 }
 entity
 {
     "id" "65"
     "classname" "func_instance"
-    "origin" "-320 2880 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_2aa_2x.vmf"
-    "targetname" "zm_dev_street_2_building_1_3"
+    "origin" "0 3200 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/roads/tile_concrete_path.vmf"
+    "targetname" "zm_dev_street_2_path_2_3"
     "fixup_style" "0"
 }
 entity
 {
     "id" "66"
     "classname" "func_instance"
-    "origin" "640 3200 0"
+    "origin" "-1280 2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
-    "targetname" "zm_dev_street_2_building_3_3"
+    "file" "../../tiletemplates/decorations/tile_watertower_b.vmf"
+    "targetname" "zm_dev_street_2_decoration_0_4"
     "fixup_style" "0"
 }
 entity
 {
     "id" "67"
     "classname" "func_instance"
-    "origin" "1280 3200 0"
+    "origin" "-640 2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
-    "targetname" "zm_dev_street_2_building_4_3"
+    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
+    "targetname" "zm_dev_street_2_building_1_4"
     "fixup_style" "0"
 }
 entity
 {
     "id" "68"
     "classname" "func_instance"
-    "origin" "-1280 2560 0"
+    "origin" "0 2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
-    "targetname" "zm_dev_street_2_decoration_0_4"
+    "file" "../../tiletemplates/roads/tile_concrete_path.vmf"
+    "targetname" "zm_dev_street_2_path_2_4"
     "fixup_style" "0"
 }
 entity
@@ -697,9 +697,9 @@ entity
     "id" "69"
     "classname" "func_instance"
     "origin" "640 2560 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_2_terrain_3_4"
+    "angles" "0 90 0"
+    "file" "../../tiletemplates/roads/tile_concrete_path.vmf"
+    "targetname" "zm_dev_street_2_path_3_4"
     "fixup_style" "0"
 }
 entity
@@ -707,9 +707,9 @@ entity
     "id" "70"
     "classname" "func_instance"
     "origin" "1280 2560 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_2_terrain_4_4"
+    "angles" "0 90 0"
+    "file" "../../tiletemplates/roads/tile_concrete_path.vmf"
+    "targetname" "zm_dev_street_2_path_4_4"
     "fixup_style" "0"
 }
 entity
@@ -718,8 +718,8 @@ entity
     "classname" "func_instance"
     "origin" "2560 5120 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
-    "targetname" "zm_dev_street_3_building_0_0"
+    "file" "../../tiletemplates/decorations/tile_siren_a.vmf"
+    "targetname" "zm_dev_street_3_decoration_0_0"
     "fixup_style" "0"
 }
 entity
@@ -758,8 +758,8 @@ entity
     "classname" "func_instance"
     "origin" "5120 5120 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
-    "targetname" "zm_dev_street_3_building_4_0"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
+    "targetname" "zm_dev_street_3_decoration_4_0"
     "fixup_style" "0"
 }
 entity
@@ -787,9 +787,9 @@ entity
     "id" "78"
     "classname" "func_instance"
     "origin" "3840 4480 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
-    "targetname" "zm_dev_street_3_building_2_1"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_graveyard_c.vmf"
+    "targetname" "zm_dev_street_3_decoration_2_1"
     "fixup_style" "0"
 }
 entity
@@ -798,8 +798,8 @@ entity
     "classname" "func_instance"
     "origin" "4480 4480 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
-    "targetname" "zm_dev_street_3_building_3_1"
+    "file" "../../tiletemplates/decorations/tile_siren_a.vmf"
+    "targetname" "zm_dev_street_3_decoration_3_1"
     "fixup_style" "0"
 }
 entity
@@ -808,8 +808,8 @@ entity
     "classname" "func_instance"
     "origin" "5120 4480 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aaa.vmf"
-    "targetname" "zm_dev_street_3_building_4_1"
+    "file" "../../tiletemplates/decorations/tile_trees_b.vmf"
+    "targetname" "zm_dev_street_3_decoration_4_1"
     "fixup_style" "0"
 }
 entity
@@ -847,9 +847,9 @@ entity
     "id" "84"
     "classname" "func_instance"
     "origin" "4480 3840 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
-    "targetname" "zm_dev_street_3_building_3_2"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_antenna.vmf"
+    "targetname" "zm_dev_street_3_decoration_3_2"
     "fixup_style" "0"
 }
 entity
@@ -867,8 +867,8 @@ entity
     "id" "86"
     "classname" "func_instance"
     "origin" "2880 2880 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/buildings/tile_building_1b_2x.vmf"
     "targetname" "zm_dev_street_3_building_0_3"
     "fixup_style" "0"
 }
@@ -898,7 +898,7 @@ entity
     "classname" "func_instance"
     "origin" "5120 3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_telephone_pole.vmf"
     "targetname" "zm_dev_street_3_decoration_4_3"
     "fixup_style" "0"
 }
@@ -918,7 +918,7 @@ entity
     "classname" "func_instance"
     "origin" "4480 2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_b.vmf"
     "targetname" "zm_dev_street_3_decoration_3_4"
     "fixup_style" "0"
 }
@@ -928,23 +928,33 @@ entity
     "classname" "func_instance"
     "origin" "5120 2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
-    "targetname" "zm_dev_street_3_building_4_4"
+    "file" "../../tiletemplates/decorations/tile_bushes.vmf"
+    "targetname" "zm_dev_street_3_decoration_4_4"
     "fixup_style" "0"
 }
 entity
 {
     "id" "93"
     "classname" "func_instance"
-    "origin" "6720 4800 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_2a_2x.vmf"
-    "targetname" "zm_dev_street_4_building_0_0"
+    "origin" "6400 5120 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_4_terrain_0_0"
     "fixup_style" "0"
 }
 entity
 {
     "id" "94"
+    "classname" "func_instance"
+    "origin" "7040 5120 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_4_terrain_1_0"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "95"
     "classname" "func_instance"
     "origin" "7680 5120 0"
     "angles" "0 0 0"
@@ -954,7 +964,7 @@ entity
 }
 entity
 {
-    "id" "95"
+    "id" "96"
     "classname" "func_instance"
     "origin" "8320 5120 0"
     "angles" "0 0 0"
@@ -964,7 +974,7 @@ entity
 }
 entity
 {
-    "id" "96"
+    "id" "97"
     "classname" "func_instance"
     "origin" "8960 5120 0"
     "angles" "0 0 0"
@@ -974,7 +984,27 @@ entity
 }
 entity
 {
-    "id" "97"
+    "id" "98"
+    "classname" "func_instance"
+    "origin" "6400 4480 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_4_terrain_0_1"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "99"
+    "classname" "func_instance"
+    "origin" "7040 4480 0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_dev_street_4_terrain_1_1"
+    "fixup_style" "0"
+}
+entity
+{
+    "id" "100"
     "classname" "func_instance"
     "origin" "7680 4480 0"
     "angles" "0 0 0"
@@ -984,7 +1014,7 @@ entity
 }
 entity
 {
-    "id" "98"
+    "id" "101"
     "classname" "func_instance"
     "origin" "8320 4480 0"
     "angles" "0 0 0"
@@ -994,7 +1024,7 @@ entity
 }
 entity
 {
-    "id" "99"
+    "id" "102"
     "classname" "func_instance"
     "origin" "8960 4480 0"
     "angles" "0 0 0"
@@ -1004,7 +1034,7 @@ entity
 }
 entity
 {
-    "id" "100"
+    "id" "103"
     "classname" "func_instance"
     "origin" "6400 3840 0"
     "angles" "0 90 0"
@@ -1014,7 +1044,7 @@ entity
 }
 entity
 {
-    "id" "101"
+    "id" "104"
     "classname" "func_instance"
     "origin" "7040 3840 0"
     "angles" "0 90 0"
@@ -1024,7 +1054,7 @@ entity
 }
 entity
 {
-    "id" "102"
+    "id" "105"
     "classname" "func_instance"
     "origin" "7680 3840 0"
     "angles" "0 0 0"
@@ -1034,7 +1064,7 @@ entity
 }
 entity
 {
-    "id" "103"
+    "id" "106"
     "classname" "func_instance"
     "origin" "8320 3840 0"
     "angles" "0 90 0"
@@ -1044,7 +1074,7 @@ entity
 }
 entity
 {
-    "id" "104"
+    "id" "107"
     "classname" "func_instance"
     "origin" "8960 3840 0"
     "angles" "0 90 0"
@@ -1054,7 +1084,7 @@ entity
 }
 entity
 {
-    "id" "105"
+    "id" "108"
     "classname" "func_instance"
     "origin" "6400 3200 0"
     "angles" "0 0 0"
@@ -1064,7 +1094,7 @@ entity
 }
 entity
 {
-    "id" "106"
+    "id" "109"
     "classname" "func_instance"
     "origin" "7040 3200 0"
     "angles" "0 0 0"
@@ -1074,7 +1104,7 @@ entity
 }
 entity
 {
-    "id" "107"
+    "id" "110"
     "classname" "func_instance"
     "origin" "7680 3200 0"
     "angles" "0 0 0"
@@ -1084,47 +1114,37 @@ entity
 }
 entity
 {
-    "id" "108"
+    "id" "111"
     "classname" "func_instance"
-    "origin" "8320 3200 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
+    "origin" "8640 2880 0"
+    "angles" "0 90 0"
+    "file" "../../tiletemplates/buildings/tile_commercial_3a_2x.vmf"
     "targetname" "zm_dev_street_4_building_3_3"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "109"
-    "classname" "func_instance"
-    "origin" "8960 3200 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_4_terrain_4_3"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "110"
+    "id" "112"
     "classname" "func_instance"
     "origin" "6400 2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
-    "targetname" "zm_dev_street_4_building_0_4"
+    "file" "../../tiletemplates/decorations/tile_watertower_a.vmf"
+    "targetname" "zm_dev_street_4_decoration_0_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "111"
+    "id" "113"
     "classname" "func_instance"
     "origin" "7040 2560 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
-    "targetname" "zm_dev_street_4_building_1_4"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_antenna.vmf"
+    "targetname" "zm_dev_street_4_decoration_1_4"
     "fixup_style" "0"
 }
 entity
 {
-    "id" "112"
+    "id" "114"
     "classname" "func_instance"
     "origin" "7680 2560 0"
     "angles" "0 0 0"
@@ -1134,32 +1154,12 @@ entity
 }
 entity
 {
-    "id" "113"
-    "classname" "func_instance"
-    "origin" "8320 2560 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_4_terrain_3_4"
-    "fixup_style" "0"
-}
-entity
-{
-    "id" "114"
-    "classname" "func_instance"
-    "origin" "8960 2560 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_4_terrain_4_4"
-    "fixup_style" "0"
-}
-entity
-{
     "id" "115"
     "classname" "func_instance"
     "origin" "-8960 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
-    "targetname" "zm_dev_street_5_building_0_0"
+    "file" "../../tiletemplates/decorations/tile_hedges.vmf"
+    "targetname" "zm_dev_street_5_decoration_0_0"
     "fixup_style" "0"
 }
 entity
@@ -1327,9 +1327,9 @@ entity
     "id" "132"
     "classname" "func_instance"
     "origin" "-7680 -640 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
-    "targetname" "zm_dev_street_5_building_2_3"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_dump_b.vmf"
+    "targetname" "zm_dev_street_5_decoration_2_3"
     "fixup_style" "0"
 }
 entity
@@ -1337,9 +1337,9 @@ entity
     "id" "133"
     "classname" "func_instance"
     "origin" "-7040 -640 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
-    "targetname" "zm_dev_street_5_building_3_3"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_graveyard_c.vmf"
+    "targetname" "zm_dev_street_5_decoration_3_3"
     "fixup_style" "0"
 }
 entity
@@ -1368,8 +1368,8 @@ entity
     "classname" "func_instance"
     "origin" "-8320 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
-    "targetname" "zm_dev_street_5_building_1_4"
+    "file" "../../tiletemplates/decorations/tile_graveyard_d.vmf"
+    "targetname" "zm_dev_street_5_decoration_1_4"
     "fixup_style" "0"
 }
 entity
@@ -1378,8 +1378,8 @@ entity
     "classname" "func_instance"
     "origin" "-7680 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
-    "targetname" "zm_dev_street_5_building_2_4"
+    "file" "../../tiletemplates/decorations/tile_telephone_pole.vmf"
+    "targetname" "zm_dev_street_5_decoration_2_4"
     "fixup_style" "0"
 }
 entity
@@ -1408,7 +1408,7 @@ entity
     "classname" "func_instance"
     "origin" "-5120 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_trees_a.vmf"
     "targetname" "zm_dev_street_6_decoration_0_0"
     "fixup_style" "0"
 }
@@ -1418,7 +1418,7 @@ entity
     "classname" "func_instance"
     "origin" "-4480 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_b.vmf"
     "targetname" "zm_dev_street_6_decoration_1_0"
     "fixup_style" "0"
 }
@@ -1438,7 +1438,7 @@ entity
     "classname" "func_instance"
     "origin" "-3200 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_a.vmf"
     "targetname" "zm_dev_street_6_decoration_3_0"
     "fixup_style" "0"
 }
@@ -1448,7 +1448,7 @@ entity
     "classname" "func_instance"
     "origin" "-2560 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1c.vmf"
     "targetname" "zm_dev_street_6_building_4_0"
     "fixup_style" "0"
 }
@@ -1458,7 +1458,7 @@ entity
     "classname" "func_instance"
     "origin" "-5120 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_a.vmf"
     "targetname" "zm_dev_street_6_decoration_0_1"
     "fixup_style" "0"
 }
@@ -1468,7 +1468,7 @@ entity
     "classname" "func_instance"
     "origin" "-4480 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
     "targetname" "zm_dev_street_6_decoration_1_1"
     "fixup_style" "0"
 }
@@ -1638,7 +1638,7 @@ entity
     "classname" "func_instance"
     "origin" "-3200 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_antenna.vmf"
     "targetname" "zm_dev_street_6_decoration_3_4"
     "fixup_style" "0"
 }
@@ -1658,8 +1658,8 @@ entity
     "classname" "func_instance"
     "origin" "-1280 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
-    "targetname" "zm_dev_street_7_building_0_0"
+    "file" "../../tiletemplates/decorations/tile_siren_a.vmf"
+    "targetname" "zm_dev_street_7_decoration_0_0"
     "fixup_style" "0"
 }
 entity
@@ -1837,9 +1837,9 @@ entity
     "id" "183"
     "classname" "func_instance"
     "origin" "640 -640 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
-    "targetname" "zm_dev_street_7_building_3_3"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_graveyard_d.vmf"
+    "targetname" "zm_dev_street_7_decoration_3_3"
     "fixup_style" "0"
 }
 entity
@@ -1848,7 +1848,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 -640 0"
     "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_7_building_4_3"
     "fixup_style" "0"
 }
@@ -1867,9 +1867,9 @@ entity
     "id" "186"
     "classname" "func_instance"
     "origin" "-640 -1280 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
-    "targetname" "zm_dev_street_7_building_1_4"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_hedges.vmf"
+    "targetname" "zm_dev_street_7_decoration_1_4"
     "fixup_style" "0"
 }
 entity
@@ -1938,7 +1938,7 @@ entity
     "classname" "func_instance"
     "origin" "4480 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_telephone_pole.vmf"
     "targetname" "zm_dev_street_8_decoration_3_0"
     "fixup_style" "0"
 }
@@ -1948,7 +1948,7 @@ entity
     "classname" "func_instance"
     "origin" "5120 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_a.vmf"
     "targetname" "zm_dev_street_8_decoration_4_0"
     "fixup_style" "0"
 }
@@ -1968,7 +1968,7 @@ entity
     "classname" "func_instance"
     "origin" "3200 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_trees_a.vmf"
     "targetname" "zm_dev_street_8_decoration_1_1"
     "fixup_style" "0"
 }
@@ -1978,7 +1978,7 @@ entity
     "classname" "func_instance"
     "origin" "3840 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_b.vmf"
     "targetname" "zm_dev_street_8_decoration_2_1"
     "fixup_style" "0"
 }
@@ -1988,7 +1988,7 @@ entity
     "classname" "func_instance"
     "origin" "4480 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_bushes.vmf"
     "targetname" "zm_dev_street_8_decoration_3_1"
     "fixup_style" "0"
 }
@@ -1998,7 +1998,7 @@ entity
     "classname" "func_instance"
     "origin" "5120 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
     "targetname" "zm_dev_street_8_building_4_1"
     "fixup_style" "0"
 }
@@ -2038,7 +2038,7 @@ entity
     "classname" "func_instance"
     "origin" "4480 0 0"
     "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1c.vmf"
     "targetname" "zm_dev_street_8_building_3_2"
     "fixup_style" "0"
 }
@@ -2128,7 +2128,7 @@ entity
     "classname" "func_instance"
     "origin" "6400 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_trees_a.vmf"
     "targetname" "zm_dev_street_9_decoration_0_0"
     "fixup_style" "0"
 }
@@ -2138,8 +2138,8 @@ entity
     "classname" "func_instance"
     "origin" "7040 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
-    "targetname" "zm_dev_street_9_building_1_0"
+    "file" "../../tiletemplates/decorations/tile_watertower_b.vmf"
+    "targetname" "zm_dev_street_9_decoration_1_0"
     "fixup_style" "0"
 }
 entity
@@ -2148,8 +2148,8 @@ entity
     "classname" "func_instance"
     "origin" "7680 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
-    "targetname" "zm_dev_street_9_building_2_0"
+    "file" "../../tiletemplates/decorations/tile_bushes.vmf"
+    "targetname" "zm_dev_street_9_decoration_2_0"
     "fixup_style" "0"
 }
 entity
@@ -2178,8 +2178,8 @@ entity
     "classname" "func_instance"
     "origin" "6400 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
-    "targetname" "zm_dev_street_9_building_0_1"
+    "file" "../../tiletemplates/decorations/tile_dump_a.vmf"
+    "targetname" "zm_dev_street_9_decoration_0_1"
     "fixup_style" "0"
 }
 entity
@@ -2188,8 +2188,8 @@ entity
     "classname" "func_instance"
     "origin" "7040 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
-    "targetname" "zm_dev_street_9_building_1_1"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
+    "targetname" "zm_dev_street_9_decoration_1_1"
     "fixup_style" "0"
 }
 entity
@@ -2218,7 +2218,7 @@ entity
     "classname" "func_instance"
     "origin" "8960 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_b.vmf"
     "targetname" "zm_dev_street_9_decoration_4_1"
     "fixup_style" "0"
 }
@@ -2288,7 +2288,7 @@ entity
     "classname" "func_instance"
     "origin" "7040 -640 0"
     "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1c.vmf"
     "targetname" "zm_dev_street_9_building_1_3"
     "fixup_style" "0"
 }
@@ -2298,7 +2298,7 @@ entity
     "classname" "func_instance"
     "origin" "7680 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_c.vmf"
     "targetname" "zm_dev_street_9_decoration_2_3"
     "fixup_style" "0"
 }
@@ -2307,8 +2307,8 @@ entity
     "id" "230"
     "classname" "func_instance"
     "origin" "8640 -960 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_building_1b_2x.vmf"
     "targetname" "zm_dev_street_9_building_3_3"
     "fixup_style" "0"
 }
@@ -2318,7 +2318,7 @@ entity
     "classname" "func_instance"
     "origin" "6400 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_d.vmf"
     "targetname" "zm_dev_street_9_decoration_0_4"
     "fixup_style" "0"
 }
@@ -2338,8 +2338,8 @@ entity
     "classname" "func_instance"
     "origin" "7680 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
-    "targetname" "zm_dev_street_9_building_2_4"
+    "file" "../../tiletemplates/decorations/tile_watertower_a.vmf"
+    "targetname" "zm_dev_street_9_decoration_2_4"
     "fixup_style" "0"
 }
 entity
@@ -2348,7 +2348,7 @@ entity
     "classname" "func_instance"
     "origin" "-8960 -2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_a.vmf"
     "targetname" "zm_dev_street_10_decoration_0_0"
     "fixup_style" "0"
 }
@@ -2438,7 +2438,7 @@ entity
     "classname" "func_instance"
     "origin" "-6400 -3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_d.vmf"
     "targetname" "zm_dev_street_10_decoration_4_1"
     "fixup_style" "0"
 }
@@ -2478,7 +2478,7 @@ entity
     "classname" "func_instance"
     "origin" "-7040 -3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_trees_a.vmf"
     "targetname" "zm_dev_street_10_decoration_3_2"
     "fixup_style" "0"
 }
@@ -2508,7 +2508,7 @@ entity
     "classname" "func_instance"
     "origin" "-8320 -4480 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_trees_b.vmf"
     "targetname" "zm_dev_street_10_decoration_1_3"
     "fixup_style" "0"
 }
@@ -2548,7 +2548,7 @@ entity
     "classname" "func_instance"
     "origin" "-8960 -5120 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_antenna.vmf"
     "targetname" "zm_dev_street_10_decoration_0_4"
     "fixup_style" "0"
 }
@@ -2558,7 +2558,7 @@ entity
     "classname" "func_instance"
     "origin" "-8320 -5120 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_b.vmf"
     "targetname" "zm_dev_street_10_decoration_1_4"
     "fixup_style" "0"
 }
@@ -2598,7 +2598,7 @@ entity
     "classname" "func_instance"
     "origin" "-5120 -2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_a.vmf"
     "targetname" "zm_dev_street_11_decoration_0_0"
     "fixup_style" "0"
 }
@@ -2608,8 +2608,8 @@ entity
     "classname" "func_instance"
     "origin" "-4480 -2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
-    "targetname" "zm_dev_street_11_building_1_0"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
+    "targetname" "zm_dev_street_11_decoration_1_0"
     "fixup_style" "0"
 }
 entity
@@ -2618,8 +2618,8 @@ entity
     "classname" "func_instance"
     "origin" "-3840 -2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
-    "targetname" "zm_dev_street_11_building_2_0"
+    "file" "../../tiletemplates/decorations/tile_hedges.vmf"
+    "targetname" "zm_dev_street_11_decoration_2_0"
     "fixup_style" "0"
 }
 entity
@@ -2628,8 +2628,8 @@ entity
     "classname" "func_instance"
     "origin" "-3200 -2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
-    "targetname" "zm_dev_street_11_building_3_0"
+    "file" "../../tiletemplates/decorations/tile_trees_a.vmf"
+    "targetname" "zm_dev_street_11_decoration_3_0"
     "fixup_style" "0"
 }
 entity
@@ -2638,7 +2638,7 @@ entity
     "classname" "func_instance"
     "origin" "-2560 -2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1ddd.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_11_building_4_0"
     "fixup_style" "0"
 }
@@ -2648,8 +2648,8 @@ entity
     "classname" "func_instance"
     "origin" "-5120 -3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
-    "targetname" "zm_dev_street_11_building_0_1"
+    "file" "../../tiletemplates/decorations/tile_siren_a.vmf"
+    "targetname" "zm_dev_street_11_decoration_0_1"
     "fixup_style" "0"
 }
 entity
@@ -2658,8 +2658,8 @@ entity
     "classname" "func_instance"
     "origin" "-4480 -3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
-    "targetname" "zm_dev_street_11_building_1_1"
+    "file" "../../tiletemplates/decorations/tile_trees_b.vmf"
+    "targetname" "zm_dev_street_11_decoration_1_1"
     "fixup_style" "0"
 }
 entity
@@ -2688,7 +2688,7 @@ entity
     "classname" "func_instance"
     "origin" "-2560 -3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
     "targetname" "zm_dev_street_11_decoration_4_1"
     "fixup_style" "0"
 }
@@ -2698,8 +2698,8 @@ entity
     "classname" "func_instance"
     "origin" "-5120 -3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
-    "targetname" "zm_dev_street_11_building_0_2"
+    "file" "../../tiletemplates/decorations/tile_antenna.vmf"
+    "targetname" "zm_dev_street_11_decoration_0_2"
     "fixup_style" "0"
 }
 entity
@@ -2747,8 +2747,8 @@ entity
     "id" "274"
     "classname" "func_instance"
     "origin" "-4800 -4800 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/buildings/tile_building_1b_2x.vmf"
     "targetname" "zm_dev_street_11_building_0_3"
     "fixup_style" "0"
 }
@@ -2777,9 +2777,9 @@ entity
     "id" "277"
     "classname" "func_instance"
     "origin" "-2560 -4480 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
-    "targetname" "zm_dev_street_11_building_4_3"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_dump_b.vmf"
+    "targetname" "zm_dev_street_11_decoration_4_3"
     "fixup_style" "0"
 }
 entity
@@ -2797,9 +2797,9 @@ entity
     "id" "279"
     "classname" "func_instance"
     "origin" "-3200 -5120 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
-    "targetname" "zm_dev_street_11_building_3_4"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_graveyard_d.vmf"
+    "targetname" "zm_dev_street_11_decoration_3_4"
     "fixup_style" "0"
 }
 entity
@@ -2858,8 +2858,8 @@ entity
     "classname" "func_instance"
     "origin" "1280 -2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aaa.vmf"
-    "targetname" "zm_dev_street_12_building_4_0"
+    "file" "../../tiletemplates/decorations/tile_graveyard_c.vmf"
+    "targetname" "zm_dev_street_12_decoration_4_0"
     "fixup_style" "0"
 }
 entity
@@ -2897,9 +2897,9 @@ entity
     "id" "289"
     "classname" "func_instance"
     "origin" "640 -3200 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
-    "targetname" "zm_dev_street_12_building_3_1"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_telephone_pole.vmf"
+    "targetname" "zm_dev_street_12_decoration_3_1"
     "fixup_style" "0"
 }
 entity
@@ -2908,8 +2908,8 @@ entity
     "classname" "func_instance"
     "origin" "1280 -3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
-    "targetname" "zm_dev_street_12_building_4_1"
+    "file" "../../tiletemplates/decorations/tile_watertower_a.vmf"
+    "targetname" "zm_dev_street_12_decoration_4_1"
     "fixup_style" "0"
 }
 entity
@@ -2927,9 +2927,9 @@ entity
     "id" "292"
     "classname" "func_instance"
     "origin" "-640 -3840 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
-    "targetname" "zm_dev_street_12_building_1_2"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_trees_a.vmf"
+    "targetname" "zm_dev_street_12_decoration_1_2"
     "fixup_style" "0"
 }
 entity
@@ -2968,8 +2968,8 @@ entity
     "classname" "func_instance"
     "origin" "-1280 -4480 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
-    "targetname" "zm_dev_street_12_building_0_3"
+    "file" "../../tiletemplates/decorations/tile_watertower_c.vmf"
+    "targetname" "zm_dev_street_12_decoration_0_3"
     "fixup_style" "0"
 }
 entity
@@ -2978,8 +2978,8 @@ entity
     "classname" "func_instance"
     "origin" "-640 -4480 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
-    "targetname" "zm_dev_street_12_building_1_3"
+    "file" "../../tiletemplates/decorations/tile_dump_a.vmf"
+    "targetname" "zm_dev_street_12_decoration_1_3"
     "fixup_style" "0"
 }
 entity
@@ -3078,7 +3078,7 @@ entity
     "classname" "func_instance"
     "origin" "3200 -2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_c.vmf"
     "targetname" "zm_dev_street_13_decoration_1_0"
     "fixup_style" "0"
 }
@@ -3098,7 +3098,7 @@ entity
     "classname" "func_instance"
     "origin" "4480 -2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
     "targetname" "zm_dev_street_13_decoration_3_0"
     "fixup_style" "0"
 }
@@ -3108,7 +3108,7 @@ entity
     "classname" "func_instance"
     "origin" "5120 -2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1c.vmf"
     "targetname" "zm_dev_street_13_building_4_0"
     "fixup_style" "0"
 }
@@ -3118,7 +3118,7 @@ entity
     "classname" "func_instance"
     "origin" "2560 -3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_b.vmf"
     "targetname" "zm_dev_street_13_decoration_0_1"
     "fixup_style" "0"
 }
@@ -3128,7 +3128,7 @@ entity
     "classname" "func_instance"
     "origin" "3200 -3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_c.vmf"
     "targetname" "zm_dev_street_13_decoration_1_1"
     "fixup_style" "0"
 }
@@ -3148,7 +3148,7 @@ entity
     "classname" "func_instance"
     "origin" "4480 -3200 0"
     "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_13_building_3_1"
     "fixup_style" "0"
 }
@@ -3217,8 +3217,8 @@ entity
     "id" "321"
     "classname" "func_instance"
     "origin" "2880 -4800 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_building_1b_2x.vmf"
     "targetname" "zm_dev_street_13_building_0_3"
     "fixup_style" "0"
 }
@@ -3278,7 +3278,7 @@ entity
     "classname" "func_instance"
     "origin" "5120 -5120 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_a.vmf"
     "targetname" "zm_dev_street_13_decoration_4_4"
     "fixup_style" "0"
 }
@@ -3318,7 +3318,7 @@ entity
     "classname" "func_instance"
     "origin" "8320 -2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_c.vmf"
     "targetname" "zm_dev_street_14_decoration_3_0"
     "fixup_style" "0"
 }
@@ -3328,7 +3328,7 @@ entity
     "classname" "func_instance"
     "origin" "8960 -2560 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_siren_a.vmf"
     "targetname" "zm_dev_street_14_decoration_4_0"
     "fixup_style" "0"
 }
@@ -3337,7 +3337,7 @@ entity
     "id" "333"
     "classname" "func_instance"
     "origin" "6400 -3200 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_bunker_1a.vmf"
     "targetname" "zm_dev_street_14_landmark_0_1"
     "fixup_style" "0"
@@ -3348,7 +3348,7 @@ entity
     "classname" "func_instance"
     "origin" "7040 -3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_d.vmf"
     "targetname" "zm_dev_street_14_decoration_1_1"
     "fixup_style" "0"
 }
@@ -3358,7 +3358,7 @@ entity
     "classname" "func_instance"
     "origin" "7680 -3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_telephone_pole.vmf"
     "targetname" "zm_dev_street_14_decoration_2_1"
     "fixup_style" "0"
 }
@@ -3368,7 +3368,7 @@ entity
     "classname" "func_instance"
     "origin" "8320 -3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_a.vmf"
     "targetname" "zm_dev_street_14_decoration_3_1"
     "fixup_style" "0"
 }
@@ -3378,7 +3378,7 @@ entity
     "classname" "func_instance"
     "origin" "8960 -3200 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
+    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_dev_street_14_building_4_1"
     "fixup_style" "0"
 }
@@ -3418,7 +3418,7 @@ entity
     "classname" "func_instance"
     "origin" "8320 -3840 0"
     "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
+    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
     "targetname" "zm_dev_street_14_building_3_2"
     "fixup_style" "0"
 }
@@ -3428,7 +3428,7 @@ entity
     "classname" "func_instance"
     "origin" "8960 -3840 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1ddd.vmf"
+    "file" "../../tiletemplates/buildings/tile_commercial_1a.vmf"
     "targetname" "zm_dev_street_14_building_4_2"
     "fixup_style" "0"
 }
@@ -3438,7 +3438,7 @@ entity
     "classname" "func_instance"
     "origin" "6400 -4480 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_a.vmf"
     "targetname" "zm_dev_street_14_decoration_0_3"
     "fixup_style" "0"
 }
@@ -3448,7 +3448,7 @@ entity
     "classname" "func_instance"
     "origin" "7040 -4480 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
     "targetname" "zm_dev_street_14_decoration_1_3"
     "fixup_style" "0"
 }
@@ -3468,8 +3468,8 @@ entity
     "classname" "func_instance"
     "origin" "8320 -4480 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_14_terrain_3_3"
+    "file" "../../tiletemplates/roads/tile_concrete_path.vmf"
+    "targetname" "zm_dev_street_14_path_3_3"
     "fixup_style" "0"
 }
 entity
@@ -3477,9 +3477,9 @@ entity
     "id" "347"
     "classname" "func_instance"
     "origin" "8960 -4480 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/terrain/tile_grass.vmf"
-    "targetname" "zm_dev_street_14_terrain_4_3"
+    "angles" "0 90 0"
+    "file" "../../tiletemplates/roads/tile_concrete_path.vmf"
+    "targetname" "zm_dev_street_14_path_4_3"
     "fixup_style" "0"
 }
 entity
@@ -3488,7 +3488,7 @@ entity
     "classname" "func_instance"
     "origin" "6400 -5120 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
+    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
     "targetname" "zm_dev_street_14_building_0_4"
     "fixup_style" "0"
 }
@@ -3498,7 +3498,7 @@ entity
     "classname" "func_instance"
     "origin" "7040 -5120 0"
     "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_commercial_1a.vmf"
     "targetname" "zm_dev_street_14_building_1_4"
     "fixup_style" "0"
 }
@@ -3538,7 +3538,7 @@ entity
     "classname" "func_instance"
     "origin" "-8960 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_b.vmf"
     "targetname" "zm_dev_street_15_decoration_0_0"
     "fixup_style" "0"
 }
@@ -3548,7 +3548,7 @@ entity
     "classname" "func_instance"
     "origin" "-8320 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_c.vmf"
     "targetname" "zm_dev_street_15_decoration_1_0"
     "fixup_style" "0"
 }
@@ -3568,7 +3568,7 @@ entity
     "classname" "func_instance"
     "origin" "-7040 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_trees_b.vmf"
     "targetname" "zm_dev_street_15_decoration_3_0"
     "fixup_style" "0"
 }
@@ -3588,7 +3588,7 @@ entity
     "classname" "func_instance"
     "origin" "-8960 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_telephone_pole.vmf"
     "targetname" "zm_dev_street_15_decoration_0_1"
     "fixup_style" "0"
 }
@@ -3598,7 +3598,7 @@ entity
     "classname" "func_instance"
     "origin" "-8320 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_a.vmf"
     "targetname" "zm_dev_street_15_decoration_1_1"
     "fixup_style" "0"
 }
@@ -3728,7 +3728,7 @@ entity
     "classname" "func_instance"
     "origin" "-6400 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_a.vmf"
     "targetname" "zm_dev_street_15_decoration_4_3"
     "fixup_style" "0"
 }
@@ -3768,7 +3768,7 @@ entity
     "classname" "func_instance"
     "origin" "-7040 -8960 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_hedges.vmf"
     "targetname" "zm_dev_street_15_decoration_3_4"
     "fixup_style" "0"
 }
@@ -3778,7 +3778,7 @@ entity
     "classname" "func_instance"
     "origin" "-6400 -8960 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
     "targetname" "zm_dev_street_15_building_4_4"
     "fixup_style" "0"
 }
@@ -3808,7 +3808,7 @@ entity
     "classname" "func_instance"
     "origin" "-3840 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_a.vmf"
     "targetname" "zm_dev_street_16_decoration_2_0"
     "fixup_style" "0"
 }
@@ -3818,8 +3818,8 @@ entity
     "classname" "func_instance"
     "origin" "-3200 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
-    "targetname" "zm_dev_street_16_building_3_0"
+    "file" "../../tiletemplates/decorations/tile_antenna.vmf"
+    "targetname" "zm_dev_street_16_decoration_3_0"
     "fixup_style" "0"
 }
 entity
@@ -3828,8 +3828,8 @@ entity
     "classname" "func_instance"
     "origin" "-2560 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aaa.vmf"
-    "targetname" "zm_dev_street_16_building_4_0"
+    "file" "../../tiletemplates/decorations/tile_dump_b.vmf"
+    "targetname" "zm_dev_street_16_decoration_4_0"
     "fixup_style" "0"
 }
 entity
@@ -3848,8 +3848,8 @@ entity
     "classname" "func_instance"
     "origin" "-4480 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
-    "targetname" "zm_dev_street_16_building_1_1"
+    "file" "../../tiletemplates/decorations/tile_bushes.vmf"
+    "targetname" "zm_dev_street_16_decoration_1_1"
     "fixup_style" "0"
 }
 entity
@@ -3858,8 +3858,8 @@ entity
     "classname" "func_instance"
     "origin" "-3840 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
-    "targetname" "zm_dev_street_16_building_2_1"
+    "file" "../../tiletemplates/decorations/tile_graveyard_a.vmf"
+    "targetname" "zm_dev_street_16_decoration_2_1"
     "fixup_style" "0"
 }
 entity
@@ -3868,8 +3868,8 @@ entity
     "classname" "func_instance"
     "origin" "-3200 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
-    "targetname" "zm_dev_street_16_building_3_1"
+    "file" "../../tiletemplates/decorations/tile_graveyard_d.vmf"
+    "targetname" "zm_dev_street_16_decoration_3_1"
     "fixup_style" "0"
 }
 entity
@@ -3878,7 +3878,7 @@ entity
     "classname" "func_instance"
     "origin" "-2560 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1aa.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
     "targetname" "zm_dev_street_16_building_4_1"
     "fixup_style" "0"
 }
@@ -3888,8 +3888,8 @@ entity
     "classname" "func_instance"
     "origin" "-5120 -7680 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
-    "targetname" "zm_dev_street_16_building_0_2"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
+    "targetname" "zm_dev_street_16_decoration_0_2"
     "fixup_style" "0"
 }
 entity
@@ -3897,9 +3897,9 @@ entity
     "id" "389"
     "classname" "func_instance"
     "origin" "-4480 -7680 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aaa.vmf"
-    "targetname" "zm_dev_street_16_building_1_2"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_hedges.vmf"
+    "targetname" "zm_dev_street_16_decoration_1_2"
     "fixup_style" "0"
 }
 entity
@@ -3917,9 +3917,9 @@ entity
     "id" "391"
     "classname" "func_instance"
     "origin" "-3200 -7680 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/roads/tile_concrete_path.vmf"
-    "targetname" "zm_dev_street_16_path_3_2"
+    "angles" "0 90 0"
+    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
+    "targetname" "zm_dev_street_16_building_3_2"
     "fixup_style" "0"
 }
 entity
@@ -3927,9 +3927,9 @@ entity
     "id" "392"
     "classname" "func_instance"
     "origin" "-2560 -7680 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/roads/tile_concrete_path.vmf"
-    "targetname" "zm_dev_street_16_path_4_2"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_bushes.vmf"
+    "targetname" "zm_dev_street_16_decoration_4_2"
     "fixup_style" "0"
 }
 entity
@@ -3938,8 +3938,8 @@ entity
     "classname" "func_instance"
     "origin" "-5120 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
-    "targetname" "zm_dev_street_16_building_0_3"
+    "file" "../../tiletemplates/decorations/tile_trees_b.vmf"
+    "targetname" "zm_dev_street_16_decoration_0_3"
     "fixup_style" "0"
 }
 entity
@@ -3948,7 +3948,7 @@ entity
     "classname" "func_instance"
     "origin" "-4480 -8320 0"
     "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
     "targetname" "zm_dev_street_16_building_1_3"
     "fixup_style" "0"
 }
@@ -3968,7 +3968,7 @@ entity
     "classname" "func_instance"
     "origin" "-3200 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
     "targetname" "zm_dev_street_16_decoration_3_3"
     "fixup_style" "0"
 }
@@ -3988,7 +3988,7 @@ entity
     "classname" "func_instance"
     "origin" "-5120 -8960 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
     "targetname" "zm_dev_street_16_building_0_4"
     "fixup_style" "0"
 }
@@ -3998,7 +3998,7 @@ entity
     "classname" "func_instance"
     "origin" "-4480 -8960 0"
     "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aaa.vmf"
+    "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_dev_street_16_building_1_4"
     "fixup_style" "0"
 }
@@ -4038,7 +4038,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_c.vmf"
     "targetname" "zm_dev_street_17_decoration_0_0"
     "fixup_style" "0"
 }
@@ -4118,7 +4118,7 @@ entity
     "classname" "func_instance"
     "origin" "640 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_c.vmf"
     "targetname" "zm_dev_street_17_decoration_3_1"
     "fixup_style" "0"
 }
@@ -4128,7 +4128,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_siren_a.vmf"
     "targetname" "zm_dev_street_17_decoration_4_1"
     "fixup_style" "0"
 }
@@ -4168,7 +4168,7 @@ entity
     "classname" "func_instance"
     "origin" "640 -7680 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_a.vmf"
     "targetname" "zm_dev_street_17_decoration_3_2"
     "fixup_style" "0"
 }
@@ -4188,7 +4188,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_trees_a.vmf"
     "targetname" "zm_dev_street_17_decoration_0_3"
     "fixup_style" "0"
 }
@@ -4198,7 +4198,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_b.vmf"
     "targetname" "zm_dev_street_17_decoration_1_3"
     "fixup_style" "0"
 }
@@ -4208,7 +4208,7 @@ entity
     "classname" "func_instance"
     "origin" "0 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_bushes.vmf"
     "targetname" "zm_dev_street_17_decoration_2_3"
     "fixup_style" "0"
 }
@@ -4238,7 +4238,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 -8960 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_a.vmf"
     "targetname" "zm_dev_street_17_decoration_0_4"
     "fixup_style" "0"
 }
@@ -4248,7 +4248,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 -8960 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
     "targetname" "zm_dev_street_17_decoration_1_4"
     "fixup_style" "0"
 }
@@ -4278,7 +4278,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 -8960 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_b.vmf"
     "targetname" "zm_dev_street_17_decoration_4_4"
     "fixup_style" "0"
 }
@@ -4308,7 +4308,7 @@ entity
     "classname" "func_instance"
     "origin" "3840 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_bushes.vmf"
     "targetname" "zm_dev_street_18_decoration_2_0"
     "fixup_style" "0"
 }
@@ -4318,7 +4318,7 @@ entity
     "classname" "func_instance"
     "origin" "4480 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_a.vmf"
     "targetname" "zm_dev_street_18_decoration_3_0"
     "fixup_style" "0"
 }
@@ -4328,7 +4328,7 @@ entity
     "classname" "func_instance"
     "origin" "5120 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_d.vmf"
     "targetname" "zm_dev_street_18_decoration_4_0"
     "fixup_style" "0"
 }
@@ -4338,7 +4338,7 @@ entity
     "classname" "func_instance"
     "origin" "2560 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_a.vmf"
     "targetname" "zm_dev_street_18_decoration_0_1"
     "fixup_style" "0"
 }
@@ -4348,7 +4348,7 @@ entity
     "classname" "func_instance"
     "origin" "3200 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
     "targetname" "zm_dev_street_18_decoration_1_1"
     "fixup_style" "0"
 }
@@ -4358,7 +4358,7 @@ entity
     "classname" "func_instance"
     "origin" "3840 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_hedges.vmf"
     "targetname" "zm_dev_street_18_decoration_2_1"
     "fixup_style" "0"
 }
@@ -4367,7 +4367,7 @@ entity
     "id" "436"
     "classname" "func_instance"
     "origin" "4480 -7040 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_bunker_1a.vmf"
     "targetname" "zm_dev_street_18_landmark_3_1"
     "fixup_style" "0"
@@ -4438,7 +4438,7 @@ entity
     "classname" "func_instance"
     "origin" "2560 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_antenna.vmf"
     "targetname" "zm_dev_street_18_decoration_0_3"
     "fixup_style" "0"
 }
@@ -4538,7 +4538,7 @@ entity
     "classname" "func_instance"
     "origin" "6400 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_trees_b.vmf"
     "targetname" "zm_dev_street_19_decoration_0_0"
     "fixup_style" "0"
 }
@@ -4548,7 +4548,7 @@ entity
     "classname" "func_instance"
     "origin" "7040 -6400 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_c.vmf"
     "targetname" "zm_dev_street_19_decoration_1_0"
     "fixup_style" "0"
 }
@@ -4567,9 +4567,9 @@ entity
     "id" "456"
     "classname" "func_instance"
     "origin" "8320 -6400 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
-    "targetname" "zm_dev_street_19_building_3_0"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_leisure_1a.vmf"
+    "targetname" "zm_dev_street_19_landmark_3_0"
     "fixup_style" "0"
 }
 entity
@@ -4588,7 +4588,7 @@ entity
     "classname" "func_instance"
     "origin" "6400 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_b.vmf"
     "targetname" "zm_dev_street_19_decoration_0_1"
     "fixup_style" "0"
 }
@@ -4598,7 +4598,7 @@ entity
     "classname" "func_instance"
     "origin" "7040 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_c.vmf"
     "targetname" "zm_dev_street_19_decoration_1_1"
     "fixup_style" "0"
 }
@@ -4628,7 +4628,7 @@ entity
     "classname" "func_instance"
     "origin" "8960 -7040 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_c.vmf"
     "targetname" "zm_dev_street_19_decoration_4_1"
     "fixup_style" "0"
 }
@@ -4638,7 +4638,7 @@ entity
     "classname" "func_instance"
     "origin" "6400 -7680 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_telephone_pole.vmf"
     "targetname" "zm_dev_street_19_decoration_0_2"
     "fixup_style" "0"
 }
@@ -4668,7 +4668,7 @@ entity
     "classname" "func_instance"
     "origin" "8320 -7680 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_b.vmf"
     "targetname" "zm_dev_street_19_decoration_3_2"
     "fixup_style" "0"
 }
@@ -4728,7 +4728,7 @@ entity
     "classname" "func_instance"
     "origin" "8960 -8320 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_a.vmf"
     "targetname" "zm_dev_street_19_decoration_4_3"
     "fixup_style" "0"
 }
@@ -4738,7 +4738,7 @@ entity
     "classname" "func_instance"
     "origin" "6400 -8960 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_hedges.vmf"
     "targetname" "zm_dev_street_19_decoration_0_4"
     "fixup_style" "0"
 }
@@ -4768,7 +4768,7 @@ entity
     "classname" "func_instance"
     "origin" "8320 -8960 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_bushes.vmf"
     "targetname" "zm_dev_street_19_decoration_3_4"
     "fixup_style" "0"
 }
@@ -4788,8 +4788,8 @@ entity
     "classname" "func_instance"
     "origin" "-8960 -10240 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
-    "targetname" "zm_dev_street_20_building_0_0"
+    "file" "../../tiletemplates/decorations/tile_hedges.vmf"
+    "targetname" "zm_dev_street_20_decoration_0_0"
     "fixup_style" "0"
 }
 entity
@@ -4797,9 +4797,9 @@ entity
     "id" "479"
     "classname" "func_instance"
     "origin" "-8320 -10240 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
-    "targetname" "zm_dev_street_20_building_1_0"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_trees_a.vmf"
+    "targetname" "zm_dev_street_20_decoration_1_0"
     "fixup_style" "0"
 }
 entity
@@ -4818,7 +4818,7 @@ entity
     "classname" "func_instance"
     "origin" "-7040 -10240 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_bushes.vmf"
     "targetname" "zm_dev_street_20_decoration_3_0"
     "fixup_style" "0"
 }
@@ -4838,7 +4838,7 @@ entity
     "classname" "func_instance"
     "origin" "-8960 -10880 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1c.vmf"
     "targetname" "zm_dev_street_20_building_0_1"
     "fixup_style" "0"
 }
@@ -4858,8 +4858,8 @@ entity
     "classname" "func_instance"
     "origin" "-6400 -10880 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
-    "targetname" "zm_dev_street_20_building_4_1"
+    "file" "../../tiletemplates/decorations/tile_trees_a.vmf"
+    "targetname" "zm_dev_street_20_decoration_4_1"
     "fixup_style" "0"
 }
 entity
@@ -4878,7 +4878,7 @@ entity
     "classname" "func_instance"
     "origin" "-6400 -11520 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_20_building_4_2"
     "fixup_style" "0"
 }
@@ -4908,8 +4908,8 @@ entity
     "classname" "func_instance"
     "origin" "-8960 -12800 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
-    "targetname" "zm_dev_street_20_building_0_4"
+    "file" "../../tiletemplates/decorations/tile_graveyard_a.vmf"
+    "targetname" "zm_dev_street_20_decoration_0_4"
     "fixup_style" "0"
 }
 entity
@@ -4917,9 +4917,9 @@ entity
     "id" "491"
     "classname" "func_instance"
     "origin" "-8320 -12800 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
-    "targetname" "zm_dev_street_20_building_1_4"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_graveyard_d.vmf"
+    "targetname" "zm_dev_street_20_decoration_1_4"
     "fixup_style" "0"
 }
 entity
@@ -4948,7 +4948,7 @@ entity
     "classname" "func_instance"
     "origin" "-6400 -12800 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_antenna.vmf"
     "targetname" "zm_dev_street_20_decoration_4_4"
     "fixup_style" "0"
 }
@@ -5048,8 +5048,8 @@ entity
     "classname" "func_instance"
     "origin" "-2560 -10880 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
-    "targetname" "zm_dev_street_21_building_4_1"
+    "file" "../../tiletemplates/decorations/tile_trees_b.vmf"
+    "targetname" "zm_dev_street_21_decoration_4_1"
     "fixup_style" "0"
 }
 entity
@@ -5117,9 +5117,9 @@ entity
     "id" "511"
     "classname" "func_instance"
     "origin" "-4480 -12160 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
-    "targetname" "zm_dev_street_21_building_1_3"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_bushes.vmf"
+    "targetname" "zm_dev_street_21_decoration_1_3"
     "fixup_style" "0"
 }
 entity
@@ -5137,8 +5137,8 @@ entity
     "id" "513"
     "classname" "func_instance"
     "origin" "-2880 -12480 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa_2x.vmf"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_building_1b_2x.vmf"
     "targetname" "zm_dev_street_21_building_3_3"
     "fixup_style" "0"
 }
@@ -5148,8 +5148,8 @@ entity
     "classname" "func_instance"
     "origin" "-5120 -12800 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1aa.vmf"
-    "targetname" "zm_dev_street_21_building_0_4"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
+    "targetname" "zm_dev_street_21_decoration_0_4"
     "fixup_style" "0"
 }
 entity
@@ -5157,9 +5157,9 @@ entity
     "id" "515"
     "classname" "func_instance"
     "origin" "-4480 -12800 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bb.vmf"
-    "targetname" "zm_dev_street_21_building_1_4"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_hedges.vmf"
+    "targetname" "zm_dev_street_21_decoration_1_4"
     "fixup_style" "0"
 }
 entity
@@ -5178,7 +5178,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 -10240 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_siren_a.vmf"
     "targetname" "zm_dev_street_22_decoration_0_0"
     "fixup_style" "0"
 }
@@ -5188,7 +5188,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 -10240 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_trees_b.vmf"
     "targetname" "zm_dev_street_22_decoration_1_0"
     "fixup_style" "0"
 }
@@ -5228,7 +5228,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 -10880 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_antenna.vmf"
     "targetname" "zm_dev_street_22_decoration_0_1"
     "fixup_style" "0"
 }
@@ -5238,7 +5238,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 -10880 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_b.vmf"
     "targetname" "zm_dev_street_22_decoration_1_1"
     "fixup_style" "0"
 }
@@ -5358,7 +5358,7 @@ entity
     "classname" "func_instance"
     "origin" "640 -12160 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_d.vmf"
     "targetname" "zm_dev_street_22_decoration_3_3"
     "fixup_style" "0"
 }
@@ -5368,7 +5368,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 -12160 0"
     "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1c.vmf"
     "targetname" "zm_dev_street_22_building_4_3"
     "fixup_style" "0"
 }
@@ -5388,7 +5388,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 -12800 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_hedges.vmf"
     "targetname" "zm_dev_street_22_decoration_1_4"
     "fixup_style" "0"
 }
@@ -5398,7 +5398,7 @@ entity
     "classname" "func_instance"
     "origin" "0 -12800 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_trees_a.vmf"
     "targetname" "zm_dev_street_22_decoration_2_4"
     "fixup_style" "0"
 }
@@ -5408,7 +5408,7 @@ entity
     "classname" "func_instance"
     "origin" "640 -12800 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
     "targetname" "zm_dev_street_22_building_3_4"
     "fixup_style" "0"
 }
@@ -5418,7 +5418,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 -12800 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
+    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
     "targetname" "zm_dev_street_22_building_4_4"
     "fixup_style" "0"
 }
@@ -5587,9 +5587,9 @@ entity
     "id" "558"
     "classname" "func_instance"
     "origin" "3200 -12160 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
-    "targetname" "zm_dev_street_23_building_1_3"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_telephone_pole.vmf"
+    "targetname" "zm_dev_street_23_decoration_1_3"
     "fixup_style" "0"
 }
 entity
@@ -5607,9 +5607,9 @@ entity
     "id" "560"
     "classname" "func_instance"
     "origin" "4480 -12160 0"
-    "angles" "0 180 0"
-    "file" "../../tiletemplates/buildings/tile_building_1b.vmf"
-    "targetname" "zm_dev_street_23_building_3_3"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_antenna.vmf"
+    "targetname" "zm_dev_street_23_decoration_3_3"
     "fixup_style" "0"
 }
 entity
@@ -5628,8 +5628,8 @@ entity
     "classname" "func_instance"
     "origin" "2560 -12800 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1aa.vmf"
-    "targetname" "zm_dev_street_23_building_0_4"
+    "file" "../../tiletemplates/decorations/tile_watertower_b.vmf"
+    "targetname" "zm_dev_street_23_decoration_0_4"
     "fixup_style" "0"
 }
 entity
@@ -5638,8 +5638,8 @@ entity
     "classname" "func_instance"
     "origin" "3200 -12800 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/roads/tile_concrete_path.vmf"
-    "targetname" "zm_dev_street_23_path_1_4"
+    "file" "../../tiletemplates/decorations/tile_bushes.vmf"
+    "targetname" "zm_dev_street_23_decoration_1_4"
     "fixup_style" "0"
 }
 entity

@@ -4494,8 +4494,8 @@ entity
 {
 	"id" "1938"
 	"classname" "zn_tile_direction"
-	"direction" "north"
-	"origin" "0 -608 32"
+	"direction" "south"
+	"origin" "0 -640 32"
 	editor
 	{
 		"color" "220 30 220"

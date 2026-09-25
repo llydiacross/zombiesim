@@ -3929,7 +3929,7 @@ entity
 {
 	"id" "689"
 	"classname" "zn_tile_direction"
-	"direction" "north"
+	"direction" "south"
 	"origin" "0 -320 32"
 	editor
 	{

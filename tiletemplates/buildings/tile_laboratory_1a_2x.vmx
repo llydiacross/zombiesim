@@ -1311,7 +1311,7 @@ entity
 {
 	"id" "857"
 	"classname" "zn_tile_direction"
-	"direction" "north"
+	"direction" "south"
 	"origin" "0 -640 32"
 	editor
 	{

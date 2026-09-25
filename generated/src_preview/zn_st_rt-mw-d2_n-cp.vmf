@@ -1480,8 +1480,8 @@ entity
     "classname" "func_instance"
     "origin" "-1280 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
-    "targetname" "zm_tile_building_0_0"
+    "file" "../../tiletemplates/decorations/tile_trees_b.vmf"
+    "targetname" "zm_tile_decoration_0_0"
     "fixup_style" "0"
 }
 entity
@@ -1489,9 +1489,9 @@ entity
     "id" "668"
     "classname" "func_instance"
     "origin" "-640 1280 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1ddd.vmf"
-    "targetname" "zm_tile_building_1_0"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/carparks/tile_carpark_entrance_deadend_east.vmf"
+    "targetname" "zm_tile_carpark_entrance_1_0"
     "fixup_style" "0"
 }
 entity
@@ -1499,9 +1499,9 @@ entity
     "id" "669"
     "classname" "func_instance"
     "origin" "0 1280 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/roads/tile_road.vmf"
-    "targetname" "zm_tile_road_2_0"
+    "angles" "0 90 0"
+    "file" "../../tiletemplates/roads/tile_road_tjunction.vmf"
+    "targetname" "zm_tile_carpark_road_junction_2_0"
     "fixup_style" "0"
 }
 entity
@@ -1509,9 +1509,9 @@ entity
     "id" "670"
     "classname" "func_instance"
     "origin" "640 1280 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/carparks/tile_carpark_straight_2.vmf"
-    "targetname" "zm_tile_carpark_lane_west_3_0"
+    "angles" "0 270 0"
+    "file" "../../tiletemplates/buildings/tile_building_1c.vmf"
+    "targetname" "zm_tile_building_3_0"
     "fixup_style" "0"
 }
 entity
@@ -1530,8 +1530,8 @@ entity
     "classname" "func_instance"
     "origin" "-1280 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
-    "targetname" "zm_tile_building_0_1"
+    "file" "../../tiletemplates/decorations/tile_dump_b.vmf"
+    "targetname" "zm_tile_decoration_0_1"
     "fixup_style" "0"
 }
 entity
@@ -1539,9 +1539,9 @@ entity
     "id" "673"
     "classname" "func_instance"
     "origin" "-640 640 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_warehouse_1a.vmf"
-    "targetname" "zm_tile_building_1_1"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/carparks/tile_carpark_straight_2.vmf"
+    "targetname" "zm_tile_carpark_lane_west_1_1"
     "fixup_style" "0"
 }
 entity
@@ -1549,9 +1549,9 @@ entity
     "id" "674"
     "classname" "func_instance"
     "origin" "0 640 0"
-    "angles" "0 270 0"
-    "file" "../../tiletemplates/roads/tile_road_tjunction.vmf"
-    "targetname" "zm_tile_carpark_road_junction_2_1"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/roads/tile_road.vmf"
+    "targetname" "zm_tile_road_2_1"
     "fixup_style" "0"
 }
 entity
@@ -1559,9 +1559,9 @@ entity
     "id" "675"
     "classname" "func_instance"
     "origin" "640 640 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/carparks/tile_carpark_entrance_deadend_east.vmf"
-    "targetname" "zm_tile_carpark_entrance_3_1"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/terrain/tile_grass.vmf"
+    "targetname" "zm_tile_terrain_3_1"
     "fixup_style" "0"
 }
 entity
@@ -1580,7 +1580,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 0 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_commercial_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1c.vmf"
     "targetname" "zm_tile_building_0_2"
     "fixup_style" "0"
 }
@@ -1589,9 +1589,9 @@ entity
     "id" "678"
     "classname" "func_instance"
     "origin" "-640 0 0"
-    "angles" "0 0 0"
-    "file" "../../tiletemplates/roads/tile_concrete_path.vmf"
-    "targetname" "zm_tile_path_1_2"
+    "angles" "0 90 0"
+    "file" "../../tiletemplates/carparks/tile_carpark_deadend_west.vmf"
+    "targetname" "zm_tile_carpark_lane_endcap_west_1_2"
     "fixup_style" "0"
 }
 entity
@@ -1660,8 +1660,8 @@ entity
     "classname" "func_instance"
     "origin" "640 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1dd.vmf"
-    "targetname" "zm_tile_building_3_3"
+    "file" "../../tiletemplates/decorations/tile_telephone_pole.vmf"
+    "targetname" "zm_tile_decoration_3_3"
     "fixup_style" "0"
 }
 entity
@@ -1669,7 +1669,7 @@ entity
     "id" "686"
     "classname" "func_instance"
     "origin" "1280 -640 0"
-    "angles" "0 0 0"
+    "angles" "0 180 0"
     "file" "../../tiletemplates/buildings/tile_construction_1a.vmf"
     "targetname" "zm_tile_building_4_3"
     "fixup_style" "0"
@@ -1689,9 +1689,9 @@ entity
     "id" "688"
     "classname" "func_instance"
     "origin" "-640 -1280 0"
-    "angles" "0 90 0"
-    "file" "../../tiletemplates/buildings/tile_building_1d.vmf"
-    "targetname" "zm_tile_building_1_4"
+    "angles" "0 0 0"
+    "file" "../../tiletemplates/decorations/tile_trees_a.vmf"
+    "targetname" "zm_tile_decoration_1_4"
     "fixup_style" "0"
 }
 entity
@@ -1740,7 +1740,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 1920 0"
     "angles" "0 270 0"
-    "file" "../../tiletemplates/border/tile_border_wall_1a.vmf"
+    "file" "../../tiletemplates/border/tile_border_wall_1aa.vmf"
     "targetname" "zm_border_N_0_-1"
     "fixup_style" "0"
 }
@@ -1750,7 +1750,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 1920 0"
     "angles" "0 270 0"
-    "file" "../../tiletemplates/border/tile_border_wall_1a.vmf"
+    "file" "../../tiletemplates/border/tile_border_wall_1aa.vmf"
     "targetname" "zm_border_N_1_-1"
     "fixup_style" "0"
 }
@@ -1770,7 +1770,7 @@ entity
     "classname" "func_instance"
     "origin" "640 1920 0"
     "angles" "0 270 0"
-    "file" "../../tiletemplates/carparks/tile_carpark_deadend_west.vmf"
+    "file" "../../tiletemplates/border/tile_border_wall.vmf"
     "targetname" "zm_border_N_3_-1"
     "fixup_style" "0"
 }
@@ -1800,7 +1800,7 @@ entity
     "classname" "func_instance"
     "origin" "-1920 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/border/tile_border_wall_1a.vmf"
+    "file" "../../tiletemplates/border/tile_border_wall_1aaa.vmf"
     "targetname" "zm_border_W_-1_0"
     "fixup_style" "0"
 }
@@ -1810,7 +1810,7 @@ entity
     "classname" "func_instance"
     "origin" "1920 1280 0"
     "angles" "0 180 0"
-    "file" "../../tiletemplates/border/tile_border_wall_1a.vmf"
+    "file" "../../tiletemplates/border/tile_border_wall_1aa.vmf"
     "targetname" "zm_border_E_5_0"
     "fixup_style" "0"
 }
@@ -1820,7 +1820,7 @@ entity
     "classname" "func_instance"
     "origin" "-1920 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/border/tile_border_wall_1a.vmf"
+    "file" "../../tiletemplates/border/tile_border_wall_1aa.vmf"
     "targetname" "zm_border_W_-1_1"
     "fixup_style" "0"
 }
@@ -1830,7 +1830,7 @@ entity
     "classname" "func_instance"
     "origin" "1920 640 0"
     "angles" "0 180 0"
-    "file" "../../tiletemplates/border/tile_border_wall_1a.vmf"
+    "file" "../../tiletemplates/border/tile_border_wall_1aaa.vmf"
     "targetname" "zm_border_E_5_1"
     "fixup_style" "0"
 }
@@ -1840,7 +1840,7 @@ entity
     "classname" "func_instance"
     "origin" "-1920 0 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/border/tile_border_wall_1a.vmf"
+    "file" "../../tiletemplates/border/tile_border_wall.vmf"
     "targetname" "zm_border_W_-1_2"
     "fixup_style" "0"
 }
@@ -1870,7 +1870,7 @@ entity
     "classname" "func_instance"
     "origin" "1920 -640 0"
     "angles" "0 180 0"
-    "file" "../../tiletemplates/border/tile_border_wall_1a.vmf"
+    "file" "../../tiletemplates/border/tile_border_wall.vmf"
     "targetname" "zm_border_E_5_3"
     "fixup_style" "0"
 }
@@ -1890,7 +1890,7 @@ entity
     "classname" "func_instance"
     "origin" "1920 -1280 0"
     "angles" "0 180 0"
-    "file" "../../tiletemplates/border/tile_border_wall_1a.vmf"
+    "file" "../../tiletemplates/border/tile_border_wall.vmf"
     "targetname" "zm_border_E_5_4"
     "fixup_style" "0"
 }
@@ -1940,7 +1940,7 @@ entity
     "classname" "func_instance"
     "origin" "640 -1920 0"
     "angles" "0 90 0"
-    "file" "../../tiletemplates/border/tile_border_wall_1a.vmf"
+    "file" "../../tiletemplates/border/tile_border_wall_1aaa.vmf"
     "targetname" "zm_border_S_3_5"
     "fixup_style" "0"
 }
@@ -1950,7 +1950,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 -1920 0"
     "angles" "0 90 0"
-    "file" "../../tiletemplates/border/tile_border_wall_1a.vmf"
+    "file" "../../tiletemplates/border/tile_border_wall_1aa.vmf"
     "targetname" "zm_border_S_4_5"
     "fixup_style" "0"
 }
@@ -2394,13 +2394,13 @@ entity
 {
     "id" "752"
     "classname" "env_cubemap"
-    "origin" "-1280 -640 96"
+    "origin" "1280 0 96"
 }
 entity
 {
     "id" "753"
     "classname" "env_cubemap"
-    "origin" "1280 0 96"
+    "origin" "-1280 -640 96"
 }
 cameras
 {

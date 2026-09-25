@@ -1,0 +1,2184 @@
+{
+    "schemaVersion":  2,
+    "map":  {
+                "seed":  20260903,
+                "gridCells":  6,
+                "cellSize":  64,
+                "width":  384,
+                "height":  384,
+                "origin":  {
+                               "cellX":  0,
+                               "cellY":  0,
+                               "worldX":  0,
+                               "worldY":  0
+                           },
+                "environment":  {
+                                    "taggingVersion":  1,
+                                    "tags":  [
+                                                 "grassland",
+                                                 "roadside",
+                                                 "low_density"
+                                             ]
+                                }
+            },
+    "generation":  {
+
+                   },
+    "statistics":  {
+
+                   },
+    "districts":  [
+
+                  ],
+    "safeZones":  [
+
+                  ],
+    "metro":  {
+                  "lines":  [
+
+                            ],
+                  "stops":  [
+
+                            ]
+              },
+    "cells":  [
+                  {
+                      "x":  0,
+                      "y":  0,
+                      "worldX":  0,
+                      "worldY":  0,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  1,
+                      "y":  0,
+                      "worldX":  1,
+                      "worldY":  0,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  2,
+                      "y":  0,
+                      "worldX":  2,
+                      "worldY":  0,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  3,
+                      "y":  0,
+                      "worldX":  3,
+                      "worldY":  0,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  4,
+                      "y":  0,
+                      "worldX":  4,
+                      "worldY":  0,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  5,
+                      "y":  0,
+                      "worldX":  5,
+                      "worldY":  0,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  0,
+                      "y":  1,
+                      "worldX":  0,
+                      "worldY":  1,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  1,
+                      "y":  1,
+                      "worldX":  1,
+                      "worldY":  1,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  2,
+                      "y":  1,
+                      "worldX":  2,
+                      "worldY":  1,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  3,
+                      "y":  1,
+                      "worldX":  3,
+                      "worldY":  1,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  4,
+                      "y":  1,
+                      "worldX":  4,
+                      "worldY":  1,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  5,
+                      "y":  1,
+                      "worldX":  5,
+                      "worldY":  1,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  0,
+                      "y":  2,
+                      "worldX":  0,
+                      "worldY":  2,
+                      "zooScenario":  "road_deadend_east",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "roadside"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  true,
+                                   "connections":  [
+                                                       "E"
+                                                   ],
+                                   "degree":  1,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  1,
+                      "y":  2,
+                      "worldX":  1,
+                      "worldY":  2,
+                      "zooScenario":  "road_straight_horizontal",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "roadside"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  true,
+                                   "connections":  [
+                                                       "E",
+                                                       "W"
+                                                   ],
+                                   "degree":  2,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  2,
+                      "y":  2,
+                      "worldX":  2,
+                      "worldY":  2,
+                      "zooScenario":  "road_crossjunction",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "roadside"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  true,
+                                   "connections":  [
+                                                       "N",
+                                                       "E",
+                                                       "S",
+                                                       "W"
+                                                   ],
+                                   "degree":  4,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  3,
+                      "y":  2,
+                      "worldX":  3,
+                      "worldY":  2,
+                      "zooScenario":  "road_corner_ne",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "roadside"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  true,
+                                   "connections":  [
+                                                       "N",
+                                                       "E"
+                                                   ],
+                                   "degree":  2,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  4,
+                      "y":  2,
+                      "worldX":  4,
+                      "worldY":  2,
+                      "zooScenario":  "road_straight_horizontal",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "roadside"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  true,
+                                   "connections":  [
+                                                       "E",
+                                                       "W"
+                                                   ],
+                                   "degree":  2,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  5,
+                      "y":  2,
+                      "worldX":  5,
+                      "worldY":  2,
+                      "zooScenario":  "road_deadend_west",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "roadside"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  true,
+                                   "connections":  [
+                                                       "W"
+                                                   ],
+                                   "degree":  1,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  0,
+                      "y":  3,
+                      "worldX":  0,
+                      "worldY":  3,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  1,
+                      "y":  3,
+                      "worldX":  1,
+                      "worldY":  3,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  2,
+                      "y":  3,
+                      "worldX":  2,
+                      "worldY":  3,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  3,
+                      "y":  3,
+                      "worldX":  3,
+                      "worldY":  3,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  4,
+                      "y":  3,
+                      "worldX":  4,
+                      "worldY":  3,
+                      "zooScenario":  "road_straight_vertical",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "roadside"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  true,
+                                   "connections":  [
+                                                       "N",
+                                                       "S"
+                                                   ],
+                                   "degree":  2,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  5,
+                      "y":  3,
+                      "worldX":  5,
+                      "worldY":  3,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  0,
+                      "y":  4,
+                      "worldX":  0,
+                      "worldY":  4,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  1,
+                      "y":  4,
+                      "worldX":  1,
+                      "worldY":  4,
+                      "zooScenario":  "motorway_straight_horizontal",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "roadside"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  true,
+                                      "connections":  [
+                                                          "E",
+                                                          "W"
+                                                      ],
+                                      "degree":  2,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  2,
+                      "y":  4,
+                      "worldX":  2,
+                      "worldY":  4,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  3,
+                      "y":  4,
+                      "worldX":  3,
+                      "worldY":  4,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  4,
+                      "y":  4,
+                      "worldX":  4,
+                      "worldY":  4,
+                      "zooScenario":  "road_straight_vertical",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "roadside"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  true,
+                                   "connections":  [
+                                                       "N",
+                                                       "S"
+                                                   ],
+                                   "degree":  2,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  5,
+                      "y":  4,
+                      "worldX":  5,
+                      "worldY":  4,
+                      "zooScenario":  "bridge_ramp_west_corner",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "roadside"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  true,
+                                   "connections":  [
+                                                       "W",
+                                                       "N"
+                                                   ],
+                                   "degree":  1,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+                                                                "W"
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  0,
+                      "y":  5,
+                      "worldX":  0,
+                      "worldY":  5,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  1,
+                      "y":  5,
+                      "worldX":  1,
+                      "worldY":  5,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  2,
+                      "y":  5,
+                      "worldX":  2,
+                      "worldY":  5,
+                      "zooScenario":  "landmark_park",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+                                        {
+                                            "name":  "Park"
+                                        }
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  3,
+                      "y":  5,
+                      "worldX":  3,
+                      "worldY":  5,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  4,
+                      "y":  5,
+                      "worldX":  4,
+                      "worldY":  5,
+                      "zooScenario":  "road_tjunction_missing_south",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "roadside"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  true,
+                                   "connections":  [
+                                                       "N",
+                                                       "E",
+                                                       "W"
+                                                   ],
+                                   "degree":  3,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  },
+                  {
+                      "x":  5,
+                      "y":  5,
+                      "worldX":  5,
+                      "worldY":  5,
+                      "zooScenario":  "open",
+                      "environment":  {
+                                          "terrain":  "grassland",
+                                          "tags":  [
+                                                       "low_density"
+                                                   ]
+                                      },
+                      "radiation":  {
+                                        "intensity":  0
+                                    },
+                      "danger":  {
+
+                                 },
+                      "deadZone":  false,
+                      "building":  {
+                                       "present":  false
+                                   },
+                      "landmarks":  [
+
+                                    ],
+                      "safeZone":  null,
+                      "road":  {
+                                   "present":  false,
+                                   "connections":  [
+
+                                                   ],
+                                   "degree":  0,
+                                   "blockades":  [
+
+                                                 ],
+                                   "bridgeRampDirections":  [
+
+                                                            ]
+                               },
+                      "highway":  {
+                                      "present":  false,
+                                      "connections":  [
+
+                                                      ],
+                                      "degree":  0,
+                                      "bridge":  false,
+                                      "bridgeCrossingDirection":  null,
+                                      "rampExits":  [
+
+                                                    ],
+                                      "diagonal":  false
+                                  },
+                      "metro":  {
+                                    "lines":  [
+
+                                              ],
+                                    "stop":  null
+                                }
+                  }
+              ]
+}

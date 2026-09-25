@@ -27,11 +27,12 @@ $vmfBuildSettings = $generatorSettings.vmfBuild
 $borderSettings = if ($vmfBuildSettings.ContainsKey('border')) { $vmfBuildSettings.border } else { @{} }
 $borderEnabled = $borderSettings.ContainsKey('enabled') -and [bool]$borderSettings.enabled
 $topologyTemplates = $generatorSettings.cellPlanning.topologyTemplates
+$transportTemplates = $generatorSettings.cellPlanning.transportTemplates
 if (-not $PSBoundParameters.ContainsKey('PruneStaleGenerated')) { $PruneStaleGenerated = $true }
 Import-Module (Join-Path $PSScriptRoot 'carpark_endcaps.psm1') -Force
 if ($borderEnabled) {
-    if (-not $borderSettings.ContainsKey('wallTemplatesByDensity') -or @($borderSettings.wallTemplatesByDensity).Count -eq 0) {
-        throw 'vmfBuild.border must define at least one wallTemplatesByDensity entry when borders are enabled.'
+    if (-not $borderSettings.ContainsKey('wallVariationTemplates') -or @($borderSettings.wallVariationTemplates).Count -eq 0) {
+        throw 'vmfBuild.border must define at least one wallVariationTemplates entry when borders are enabled.'
     }
     if (-not $borderSettings.ContainsKey('cornerTemplate') -or [string]::IsNullOrWhiteSpace([string]$borderSettings.cornerTemplate)) {
         throw 'vmfBuild.border must define cornerTemplate when borders are enabled.'
@@ -64,6 +65,34 @@ $safeZoneMaps = @($plan.safeZoneMaps)
 $safeZoneTemplateDirectory = [string]$plan.safeZoneTemplateDirectory
 if ($safeZoneMaps.Count -gt 0 -and ([string]::IsNullOrWhiteSpace($safeZoneTemplateDirectory) -or -not (Test-Path -LiteralPath $safeZoneTemplateDirectory -PathType Container))) {
     throw 'The template plan defines standalone safe-zone maps but has no valid safeZoneTemplateDirectory. Re-run plan_cell_templates.ps1.'
+}
+
+$waterSettings = if ($borderSettings.ContainsKey('water')) { $borderSettings.water } else { @{} }
+$waterEnabled = $borderEnabled -and $waterSettings.ContainsKey('enabled') -and [bool]$waterSettings.enabled
+$waterPierInterval = [Math]::Max(1, $(if ($waterSettings.ContainsKey('pierEveryTiles')) { [int]$waterSettings.pierEveryTiles } else { 3 }))
+if ($waterEnabled -and (-not $waterSettings.ContainsKey('deadendTemplate') -or -not $waterSettings.ContainsKey('noneTemplate') -or -not $waterSettings.ContainsKey('cornerTemplate') -or @($waterSettings.pierTemplates).Count -eq 0)) {
+    throw 'vmfBuild.border.water must define deadendTemplate, noneTemplate, cornerTemplate, and at least one pierTemplates entry when enabled.'
+}
+
+function Get-WaterBorderPlan {
+    param([object]$Recipe)
+
+    $sides = @{}
+    if (-not $waterEnabled) { return $sides }
+    foreach ($entry in @($Recipe.waterBorderSides)) {
+        $sides[[string]$entry.side] = [pscustomobject]@{ isFarTip = [bool]$entry.isFarTip }
+    }
+    return $sides
+}
+
+function Get-WaterWallTemplate {
+    param([int]$Index)
+
+    $pierTemplates = @($waterSettings.pierTemplates)
+    if (($Index % $waterPierInterval) -eq 0) {
+        return [string]$pierTemplates[[int](($Index / $waterPierInterval) % $pierTemplates.Count)]
+    }
+    return [string]$waterSettings.noneTemplate
 }
 
 if ([string]::IsNullOrWhiteSpace($CellDirectory)) {
@@ -430,25 +459,32 @@ function Get-RecipeEdgeConnections {
 function Get-BorderTemplateSet {
     param([object]$Recipe)
 
-    $wallTemplates = @($borderSettings.wallTemplatesByDensity)
+    $wallTemplates = @($borderSettings.wallVariationTemplates)
     $cornerTemplate = [string]$borderSettings.cornerTemplate
     $profile = ([string]$Recipe.environmentProfile).ToLowerInvariant()
     if ($borderSettings.ContainsKey('profileTemplates') -and $borderSettings.profileTemplates.ContainsKey($profile)) {
         $profileTemplates = $borderSettings.profileTemplates[$profile]
-        if ($profileTemplates.ContainsKey('wallTemplatesByDensity') -and @($profileTemplates.wallTemplatesByDensity).Count -gt 0) {
-            $wallTemplates = @($profileTemplates.wallTemplatesByDensity)
+        if ($profileTemplates.ContainsKey('wallVariationTemplates') -and @($profileTemplates.wallVariationTemplates).Count -gt 0) {
+            $wallTemplates = @($profileTemplates.wallVariationTemplates)
         }
         if ($profileTemplates.ContainsKey('cornerTemplate') -and -not [string]::IsNullOrWhiteSpace([string]$profileTemplates.cornerTemplate)) {
             $cornerTemplate = [string]$profileTemplates.cornerTemplate
         }
     }
 
-    $densityTier = [Math]::Max(1, [int]$Recipe.buildingDensityTier)
-    $wallIndex = [Math]::Min($densityTier - 1, $wallTemplates.Count - 1)
     return [ordered]@{
-        wallTemplate = [string]$wallTemplates[$wallIndex]
+        wallTemplates = $wallTemplates
         cornerTemplate = $cornerTemplate
     }
+}
+
+function Get-RandomWallVariationTemplate {
+    param([string[]]$WallTemplates, [int64]$PlacementSeed, [int]$TileX, [int]$TileY)
+
+    if ($WallTemplates.Count -eq 1) { return $WallTemplates[0] }
+    $hash = ([int64]$PlacementSeed * 2654435761) -bxor ([int64]$TileX * 73856093) -bxor ([int64]$TileY * 19349663)
+    $hash = $hash -bxor ($hash -shr 15)
+    return $WallTemplates[[int]([Math]::Abs($hash) % $WallTemplates.Count)]
 }
 
 function Get-BorderPlacements {
@@ -461,15 +497,20 @@ function Get-BorderPlacements {
     $isMotorway = ([string]$Recipe.topology).ToLowerInvariant() -like 'motorway-*'
     $primaryRoadTemplate = if ($isMotorway) { [string]$topologyTemplates['motorway-straight'] } else { [string]$topologyTemplates['road-straight'] }
     $rampRoadTemplate = [string]$topologyTemplates['road-straight']
+    $bridgeRoadTemplate = [string]$transportTemplates.bridgeRoad
+    $transportFeature = [string]$Recipe.transportFeature
+    $bridgeSides = if ($transportFeature -eq 'bridge-vertical') { @('N', 'S') } elseif ($transportFeature -eq 'bridge-horizontal') { @('E', 'W') } elseif ($transportFeature -like 'bridge-ramp-*') { @($transportFeature.Substring('bridge-ramp-'.Length, 1).ToUpperInvariant()) } else { @() }
     $transitionGateRoadTemplates = @($borderSettings.transitionGateRoadTemplates | ForEach-Object { [string]$_ })
-    $transitionGateTemplateSeed = [Math]::Abs([int64]$Recipe.placementSeed)
+    $placementSeed = [Math]::Abs([int64]$Recipe.placementSeed)
     $borderTemplates = Get-BorderTemplateSet $Recipe
+    $waterSides = Get-WaterBorderPlan $Recipe
     $center = [int][Math]::Floor($TileGridSize / 2)
     $carparkEndcapsByBorderSlot = @{}
     foreach ($endcap in @(Get-CarparkEndcapPlacements -Recipe $Recipe -TileGridSize $TileGridSize -CarparkTemplates $generatorSettings.cellPlanning.carparks.templates)) {
         $carparkEndcapsByBorderSlot["$($endcap.tileX),$($endcap.tileY)"] = $endcap
     }
     $wallYawBySide = @{ N = 270; E = 180; S = 90; W = 0 }
+    $waterDeadendYawBySide = @{ N = 180; E = 90; S = 0; W = 270 }
     $cornerYawByPosition = @{ 'N-W' = 0; 'N-E' = 270; 'S-E' = 180; 'S-W' = 90 }
     $roadYawBySide = @{ N = 0; E = 90; S = 0; W = 90 }
     $placements = [System.Collections.Generic.List[object]]::new()
@@ -485,10 +526,11 @@ function Get-BorderPlacements {
                 $northSouth = if ($tileY -eq -1) { 'N' } else { 'S' }
                 $eastWest = if ($tileX -eq -1) { 'W' } else { 'E' }
                 $cornerKey = "$northSouth-$eastWest"
+                $isWaterCorner = $waterSides.ContainsKey($northSouth) -and $waterSides.ContainsKey($eastWest)
                 $placements.Add([ordered]@{
                     tileX = $tileX
                     tileY = $tileY
-                    template = $borderTemplates.cornerTemplate
+                    template = if ($isWaterCorner) { [string]$waterSettings.cornerTemplate } else { $borderTemplates.cornerTemplate }
                     rotationYaw = $cornerYawByPosition[$cornerKey]
                     targetname = "zm_border_corner_$northSouth$eastWest"
                 })
@@ -504,14 +546,21 @@ function Get-BorderPlacements {
             $transitionGateRoadTemplate = $null
             if ($usesTransitionGateRoad) {
                 $sideIndex = @{ N = 0; E = 1; S = 2; W = 3 }[$side]
-                $transitionGateRoadTemplate = $transitionGateRoadTemplates[($transitionGateTemplateSeed + $sideIndex) % $transitionGateRoadTemplates.Count]
+                $transitionGateRoadTemplate = $transitionGateRoadTemplates[($placementSeed + $sideIndex) % $transitionGateRoadTemplates.Count]
             }
             $carparkEndcap = $carparkEndcapsByBorderSlot["$tileX,$tileY"]
+            $isBridgeSide = $usesRoad -and ($side -in $bridgeSides)
+            $usesWaterSide = -not $usesRoad -and $null -eq $carparkEndcap -and $waterSides.ContainsKey($side)
+            $waterIndex = if ($side -in @('N', 'S')) { $tileX } else { $tileY }
+            $waterPlan = if ($usesWaterSide) { $waterSides[$side] } else { $null }
+            # Only the single center slot caps the run; the rest of a tip cell's side is plain wall, not a repeating water strip.
+            $usesWaterDeadend = $usesWaterSide -and $waterPlan.isFarTip -and $isCenterEdgeSlot
+            $usesWaterFill = $usesWaterSide -and -not $waterPlan.isFarTip
             $placements.Add([ordered]@{
                 tileX = $tileX
                 tileY = $tileY
-                template = if ($usesTransitionGateRoad) { $transitionGateRoadTemplate } elseif ($usesRampRoad) { $rampRoadTemplate } elseif ($usesPrimaryRoad) { $primaryRoadTemplate } elseif ($null -ne $carparkEndcap) { $carparkEndcap.template } else { $borderTemplates.wallTemplate }
-                rotationYaw = if ($usesRoad) { $roadYawBySide[$side] } elseif ($null -ne $carparkEndcap) { $carparkEndcap.rotationYaw } else { $wallYawBySide[$side] }
+                template = if ($isBridgeSide) { $bridgeRoadTemplate } elseif ($usesTransitionGateRoad) { $transitionGateRoadTemplate } elseif ($usesRampRoad) { $rampRoadTemplate } elseif ($usesPrimaryRoad) { $primaryRoadTemplate } elseif ($null -ne $carparkEndcap) { $carparkEndcap.template } elseif ($usesWaterDeadend) { [string]$waterSettings.deadendTemplate } elseif ($usesWaterFill) { Get-WaterWallTemplate $waterIndex } else { Get-RandomWallVariationTemplate $borderTemplates.wallTemplates $placementSeed $tileX $tileY }
+                rotationYaw = if ($usesRoad) { $roadYawBySide[$side] } elseif ($null -ne $carparkEndcap) { $carparkEndcap.rotationYaw } elseif ($usesWaterDeadend) { $waterDeadendYawBySide[$side] } else { $wallYawBySide[$side] }
                 targetname = if ($usesTransitionGateRoad) { "zm_transition_road_$side" } else { "zm_border_$side`_$tileX`_$tileY" }
             })
         }

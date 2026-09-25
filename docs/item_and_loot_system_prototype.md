@@ -496,7 +496,7 @@ and for instance loot from a boss is always mastercrafted so we can define loot 
 }
 ```
 
-# Lua side utils and files
+# Lua Implementation
 
 - Please spread out the implementation of gmod side code between files such as sh_items, sv_items, sh_loot_tables, etc etc
 - Need various lua files to parse the various json objects we have created inside the gamemode data_static and easily iterate or retrieve valid information. Certian definition files such as lootand enemy_spawns and boss_spawns need to be first be parsed in game and them the data presented in an easily accessible way since for instance in loot tables their definitions can request references to other loot as well as reference another loot table and override specific values inside of that loot table so the data in .json needs to be parsed and populated when it is read so it can reflect the real data in game. This will make it extremely easy to make complex loot tables just in .json as well as enemy spawns and boss spawns.
@@ -508,9 +508,9 @@ and for instance loot from a boss is always mastercrafted so we can define loot 
 - the same two above points might also apply to enemy_spawns.json and boss_spawns.json
 - will also need to add console commands to easily test the systems in game
 
-# Notes
+## Some Notes
 
-Please read the following headings and keep the following bullet points in mind
+Please read the all the following headings and keep the following bullet points in mind
 
 - Create weaponMeleeCrowbar use weapon_zn_melee_crowbar for testing melee weapon item implementation and loot spawns
 - Create weaponHandgun9mm use weapon_zn_handgun_9mm for testing bullet weapon item implementation and loot spawns
@@ -676,6 +676,8 @@ function ZM_EntityClasses.GenericItem:Use(ply, itemData, targetPly)
 end
 ```
 
+- Somewhere in the shared.lua file after we load sh_items.lua we need to load all the items in the items/ folder and 
+
 ## Weapon Base Classes 
 
 Ideally weapon base classes should base them selves off of the approritate swep base class for the type of weapon this weapon item is as we have both melee, hitscan weapons and potentially thrown projective weapons
@@ -702,7 +704,7 @@ When the gamemode loads, it will read entity_loot, then, when the map is ready, 
 
 For the pop up UI for the loot. It should be a window and itt show a picture of the item thumbnail in the middle along with the items name above it, the text should be gold if the item is mastercrafted and have (MC) at the end of the name. When you hover over the item. It should list its attributes. It should also show the level of the item just below the name, so the layout should be name, then on a new line level, then in the middle of the window picture of the thumbnail of the item, then below the thumbnail docked to the bottom of the window the accept or decline buttons.
 
-## Weighted randomisation 
+## Weighted randomisation example
 
 ```lua
 -- a pseudo example of how we do weighted randomisation with a loot table
@@ -762,6 +764,7 @@ zombiesim/
 │   └── entity_loot.json
 └── gamemode/
     ├── utils/
+    ├── items/
     ├── sh_items.lua          -- JSON loader, validation, & item registry
     ├── sh_loot_tables.lua    -- Weighted selection algorithm & table composition
     ├── sv_items.lua          -- Inventory server state & database operations

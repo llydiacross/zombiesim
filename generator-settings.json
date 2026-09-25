@@ -325,6 +325,10 @@
       "bridgeRoad": "roads/tile_road_bridge.vmf",
       "roadDeadEnd": "roads/tile_road_deadend.vmf"
     },
+    "roadConnectionTemplates": {
+      "bus": "roads/tile_road_bus.vmf",
+      "driveway": "roads/tile_road_driveway.vmf"
+    },
     "rotations": {
       "layout": {
         "road-deadend": { "south": 0, "east": 90, "north": 180, "west": 270 },
@@ -426,6 +430,8 @@
       "Bunker": "*/tile_bunker*.vmf",
       "Market": "*/tile_market*.vmf",
       "Airport": "*/tile_airport*.vmf",
+      "Leisure": "*/tile_leisure*.vmf",
+      "Park": "*/tile_park*.vmf",
       "The Epicenter": "buildings/tile_epicenter_*_3x.vmf"
     },
     "filenameAbbreviations": {
@@ -492,7 +498,7 @@
         "roads/tile_road_transitionGate_2.vmf",
         "roads/tile_road_transitionGate_3.vmf"
       ],
-      "wallTemplatesByDensity": [
+      "wallVariationTemplates": [
         "border/tile_border_wall.vmf",
         "border/tile_border_wall_1a.vmf",
         "border/tile_border_wall_1aa.vmf",
@@ -501,11 +507,11 @@
       "cornerTemplate": "border/tile_border_wall_corner.vmf",
       "profileTemplates": {
         "radioactive": {
-          "wallTemplatesByDensity": ["border/tile_border_ra_wall.vmf"],
+          "wallVariationTemplates": ["border/tile_border_ra_wall.vmf"],
           "cornerTemplate": "border/tile_border_ra_wall_corner.vmf"
         },
         "military": {
-          "wallTemplatesByDensity": [
+          "wallVariationTemplates": [
             "border/tile_border_army_wall.vmf",
             "border/tile_border_army_wall_1a.vmf",
             "border/tile_border_army_wall_1aa.vmf"
@@ -513,13 +519,26 @@
           "cornerTemplate": "border/tile_border_army_wall_corner.vmf"
         },
         "fortified": {
-          "wallTemplatesByDensity": [
+          "wallVariationTemplates": [
             "border/tile_border_army_wall.vmf",
             "border/tile_border_army_wall_1a.vmf",
             "border/tile_border_army_wall_1aa.vmf"
           ],
           "cornerTemplate": "border/tile_border_army_wall_corner.vmf"
         }
+      },
+      "water": {
+        "enabled": true,
+        "chancePercent": 40,
+        "cornerSpan": 4,
+        "pierEveryTiles": 3,
+        "deadendTemplate": "border/tile_border_water_deadend.vmf",
+        "noneTemplate": "border/tile_border_water_none.vmf",
+        "pierTemplates": [
+          "border/tile_border_water_pier_1.vmf",
+          "border/tile_border_water_pier_2.vmf"
+        ],
+        "cornerTemplate": "border/tile_border_water_pier_corner.vmf"
       }
     }
   }

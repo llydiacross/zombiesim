@@ -1480,7 +1480,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_antenna.vmf"
     "targetname" "zm_tile_decoration_0_0"
     "fixup_style" "0"
 }
@@ -1570,7 +1570,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_dump_b.vmf"
     "targetname" "zm_tile_decoration_4_1"
     "fixup_style" "0"
 }
@@ -1620,7 +1620,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 0 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
+    "file" "../../tiletemplates/buildings/tile_construction_1aa.vmf"
     "targetname" "zm_tile_building_4_2"
     "fixup_style" "0"
 }
@@ -1630,7 +1630,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_graveyard_b.vmf"
     "targetname" "zm_tile_decoration_0_3"
     "fixup_style" "0"
 }
@@ -1640,7 +1640,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_hedges.vmf"
     "targetname" "zm_tile_decoration_1_3"
     "fixup_style" "0"
 }
@@ -1670,7 +1670,7 @@ entity
     "classname" "func_instance"
     "origin" "1280 -640 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/buildings/tile_building_1bbb.vmf"
+    "file" "../../tiletemplates/buildings/tile_building_1a.vmf"
     "targetname" "zm_tile_building_4_3"
     "fixup_style" "0"
 }
@@ -1680,7 +1680,7 @@ entity
     "classname" "func_instance"
     "origin" "-1280 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_trees_b.vmf"
     "targetname" "zm_tile_decoration_0_4"
     "fixup_style" "0"
 }
@@ -1690,7 +1690,7 @@ entity
     "classname" "func_instance"
     "origin" "-640 -1280 0"
     "angles" "0 0 0"
-    "file" "../../tiletemplates/decorations/tile_graveyard.vmf"
+    "file" "../../tiletemplates/decorations/tile_watertower_c.vmf"
     "targetname" "zm_tile_decoration_1_4"
     "fixup_style" "0"
 }
@@ -2259,6 +2259,12 @@ entity
     "id" "741"
     "classname" "env_cubemap"
     "origin" "0 -640 96"
+}
+entity
+{
+    "id" "742"
+    "classname" "env_cubemap"
+    "origin" "-640 0 96"
 }
 cameras
 {

@@ -6775,7 +6775,7 @@ entity
 	"id" "900001"
 	"classname" "zn_tile_direction"
 	"direction" "south"
-	"origin" "4 -640 32"
+	"origin" "0 -640 32"
 	editor
 	{
 		"color" "220 30 220"

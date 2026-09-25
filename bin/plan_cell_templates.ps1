@@ -107,6 +107,71 @@ if ($map.schemaVersion -lt 2) {
     throw 'The map manifest must use schema version 2 or later so environment tags are available.'
 }
 
+$borderWaterSettings = if ($generatorSettings.vmfBuild.ContainsKey('border') -and $generatorSettings.vmfBuild.border.ContainsKey('water')) { $generatorSettings.vmfBuild.border.water } else { @{} }
+$borderWaterEnabled = $borderWaterSettings.ContainsKey('enabled') -and [bool]$borderWaterSettings.enabled
+$mapGridCells = [int]$map.map.gridCells
+$waterCornerSpan = if ($borderWaterSettings.ContainsKey('cornerSpan')) { [int]$borderWaterSettings.cornerSpan } else { 4 }
+$waterCornerActive = $false
+$waterCornerSides = @()
+if ($borderWaterEnabled -and $mapGridCells -gt 0) {
+    $mapSeedValue = [int64]$map.map.seed
+    $waterChancePercent = if ($borderWaterSettings.ContainsKey('chancePercent')) { [int]$borderWaterSettings.chancePercent } else { 100 }
+    $waterRollHash = ([int64]$mapSeedValue * 2654435761) -bxor ($mapSeedValue -shr 13)
+    $waterRoll = [int]([Math]::Abs($waterRollHash) % 100)
+    if ($waterRoll -lt $waterChancePercent) {
+        $waterCornerActive = $true
+        $cornerIndex = [int]([Math]::Abs($waterRollHash -shr 7) % 4)
+        $waterCornerSides = @(@('N', 'W'), @('N', 'E'), @('S', 'E'), @('S', 'W'))[$cornerIndex]
+    }
+}
+
+function Get-WaterBorderPlan {
+    param([object]$Cell)
+
+    $sides = [System.Collections.Generic.List[object]]::new()
+    if (-not $waterCornerActive) { return @($sides) }
+    $cellX = [int]$Cell.x
+    $cellY = [int]$Cell.y
+    $hasNorth = $waterCornerSides -contains 'N'
+    $hasSouth = $waterCornerSides -contains 'S'
+    $hasEast = $waterCornerSides -contains 'E'
+    $hasWest = $waterCornerSides -contains 'W'
+    foreach ($side in $waterCornerSides) {
+        $onEdge = switch ($side) {
+            'N' { $cellY -eq 0 }
+            'S' { $cellY -eq ($mapGridCells - 1) }
+            'E' { $cellX -eq ($mapGridCells - 1) }
+            'W' { $cellX -eq 0 }
+        }
+        if (-not $onEdge) { continue }
+        $alongCoordinate = if ($side -in @('N', 'S')) { $cellX } else { $cellY }
+        $approachesNearCorner = ($side -in @('N', 'S') -and $hasWest) -or ($side -in @('E', 'W') -and $hasNorth)
+        $approachesFarCorner = ($side -in @('N', 'S') -and $hasEast) -or ($side -in @('E', 'W') -and $hasSouth)
+        if ($approachesNearCorner) {
+            $qualifies = $alongCoordinate -lt $waterCornerSpan
+            $isFarTip = $qualifies -and ($alongCoordinate -eq ($waterCornerSpan - 1))
+        } elseif ($approachesFarCorner) {
+            $qualifies = $alongCoordinate -ge ($mapGridCells - $waterCornerSpan)
+            $isFarTip = $qualifies -and ($alongCoordinate -eq ($mapGridCells - $waterCornerSpan))
+        } else {
+            $qualifies = $false
+            $isFarTip = $false
+        }
+        if ($qualifies) {
+            $sides.Add([pscustomobject]@{ side = $side; isFarTip = [bool]$isFarTip })
+        }
+    }
+    return @($sides)
+}
+
+function Get-WaterBorderFilename {
+    param([string]$BaseFilename, [object[]]$WaterBorderSides)
+
+    if (@($WaterBorderSides).Count -eq 0) { return $BaseFilename }
+    $suffix = (@($WaterBorderSides) | Sort-Object side | ForEach-Object { "$($_.side.ToLowerInvariant())$(if ($_.isFarTip) { 't' } else { '' })" }) -join ''
+    return '{0}-wtr{1}.vmf' -f [System.IO.Path]::GetFileNameWithoutExtension($BaseFilename), $suffix
+}
+
 function Get-TemplateRoadConnection {
     param([string]$TemplatePath)
 
@@ -132,9 +197,9 @@ function Get-TemplateRoadConnection {
             $footprintSize = if ($templateName -match '(?i)_3x(?:3)?$') { 3 } elseif ($templateName -match '(?i)_2x(?:2)?$') { 2 } else { 1 }
             $edgeMidpoint = $footprintSize * 320.0
             $expectedOrigin = switch ($direction) {
-                'NORTH' { [pscustomobject]@{ x = 0.0; y = -$edgeMidpoint } }
+                'NORTH' { [pscustomobject]@{ x = 0.0; y = $edgeMidpoint } }
                 'EAST' { [pscustomobject]@{ x = $edgeMidpoint; y = 0.0 } }
-                'SOUTH' { [pscustomobject]@{ x = 0.0; y = $edgeMidpoint } }
+                'SOUTH' { [pscustomobject]@{ x = 0.0; y = -$edgeMidpoint } }
                 'WEST' { [pscustomobject]@{ x = -$edgeMidpoint; y = 0.0 } }
             }
             if ([Math]::Abs(([double]$originParts[0]) - $expectedOrigin.x) -gt 0.5 -or [Math]::Abs(([double]$originParts[1]) - $expectedOrigin.y) -gt 0.5) {
@@ -149,8 +214,8 @@ function Get-TemplateRoadConnection {
         }
         $connectionTypeMatch = [regex]::Match($body, '"connection_type"\s+"([^"]+)"')
         $connectionType = if ($connectionTypeMatch.Success) { $connectionTypeMatch.Groups[1].Value.ToLowerInvariant() } else { 'none' }
-        if ($connectionType -notin @('none', 't_junction')) {
-            throw "Road connection marker in '$TemplatePath' must define connection_type as none or t_junction."
+        if ($connectionType -notin @('none', 't_junction', 'bus', 'driveway')) {
+            throw "Road connection marker in '$TemplatePath' must define connection_type as none, t_junction, bus, or driveway."
         }
         $markers.Add([pscustomobject]@{
             connectionType = $connectionType
@@ -216,7 +281,8 @@ function Get-TemplateRoadConnectionRotation {
     } else {
         'N'
     }
-    return ((Get-BuildingEntranceRotation $FrontageDirection) - (Get-BuildingEntranceRotation $localConnectionDirection) + 360) % 360
+    $yawByDirection = @{ N = 0; E = 270; S = 180; W = 90 }
+    return (($yawByDirection[$FrontageDirection] - $yawByDirection[$localConnectionDirection] + 360) % 360)
 }
 $safeZoneSettings = $plannerSettings.safeZones
 if ($null -eq $safeZoneSettings -or -not $safeZoneSettings.ContainsKey('biomePriority') -or -not $safeZoneSettings.ContainsKey('biomeCodes') -or -not $safeZoneSettings.ContainsKey('templateFilenameFormat')) {
@@ -942,10 +1008,16 @@ function Test-RoadPlacementFacesCoordinate {
     if ($roadRole -eq 'road_center' -and $Topology -like '*-corner') {
         return $facingDirection -in $CellConnections
     }
+    if ($roadRole -eq 'road' -and [string]$RoadPlacement.template -eq $plannerSettings.topologyTemplates['road-deadend']) {
+        # A deadend only has one open side; facing its capped side would put a building's frontage against a dead wall.
+        $deadEndOpenDirectionByYaw = @{ 0 = 'S'; 90 = 'E'; 180 = 'N'; 270 = 'W' }
+        $openDirection = $deadEndOpenDirectionByYaw[(([int]$RoadPlacement.rotationYaw % 360) + 360) % 360]
+        return $facingDirection -eq $openDirection
+    }
     return $true
 }
 
-function Get-ClosedCornerAvoidanceDirection {
+function Get-ClosedCornerFrontageDirection {
     param(
         [object]$CandidatePlacement,
         [object[]]$RoadCenterPlacements,
@@ -962,7 +1034,7 @@ function Get-ClosedCornerAvoidanceDirection {
         }
     }
     if ($closedDirections.Count -eq 0) { return $null }
-    return @($closedDirections | Sort-Object | Select-Object -First 1)[0]
+    return Get-OppositeDirection (@($closedDirections | Sort-Object | Select-Object -First 1)[0])
 }
 
 function Get-CarparkJunctionRotation {
@@ -1182,7 +1254,7 @@ function Get-MarkedRoadConnectionCandidates {
     $metadata = $templateRoadConnections[$templateKey]
     $storedDirection = [string]$metadata.direction
     $localConnectionDirection = @{ NORTH = 'N'; EAST = 'E'; SOUTH = 'S'; WEST = 'W'; N = 'N'; E = 'E'; S = 'S'; W = 'W' }[$storedDirection.ToUpperInvariant()]
-    $junctionMarkers = @($metadata.markers | Where-Object { $_.connectionType -eq 't_junction' })
+    $junctionMarkers = @($metadata.markers | Where-Object { $_.connectionType -ne 'none' })
     $motorwayTemplates = @(
         $plannerSettings.topologyTemplates['motorway-straight'],
         $plannerSettings.topologyTemplates['motorway-corner'],
@@ -1243,7 +1315,7 @@ function Get-MarkedRoadConnectionCandidates {
                     $isMotorway = $roadPlacement.template -in $motorwayTemplates
                     $isConcretePath = $roadPlacement.role -eq 'path' -and $roadPlacement.template -eq $concretePathTemplate
                     if (-not $isOrdinaryRoad -and -not $isMotorway -and -not $isConcretePath) { continue }
-                    if ($isOrdinaryRoad) {
+                    if ($isOrdinaryRoad -or $isConcretePath) {
                         $roadAxisIsVertical = ([int]$roadPlacement.rotationYaw % 180) -eq 0
                         if (($roadAxisIsVertical -and $frontageDirection -in @('N', 'S')) -or (-not $roadAxisIsVertical -and $frontageDirection -in @('E', 'W'))) { continue }
                     }
@@ -1252,16 +1324,25 @@ function Get-MarkedRoadConnectionCandidates {
                         $roadConnections.Add([pscustomobject]@{
                             road = $roadPlacement
                             branchDirection = Get-OppositeDirection $frontageDirection
+                            connectionType = [string]$marker.connectionType
                         })
                     }
                 }
                 if ($targetKeys.Count -ne $junctionMarkers.Count) { continue }
-                $candidates.Add([pscustomobject]@{
+                    $candidateRotationYaw = $rotationYaw
+                    $templateName = [System.IO.Path]::GetFileName($Template)
+                    $touchesGridBorder = [int]$anchor.tileX -eq 0 -or [int]$anchor.tileY -eq 0 -or
+                        ([int]$anchor.tileX + $FootprintWidth) -eq $TileGridSize -or
+                        ([int]$anchor.tileY + $FootprintHeight) -eq $TileGridSize
+                    if ($templateName -eq 'tile_commercial_2a_2x.vmf' -and $touchesGridBorder) {
+                        $candidateRotationYaw = Get-TemplateRoadConnectionRotation $Template $frontageDirection
+                    }
+                    $candidates.Add([pscustomobject]@{
                     tileX = [int]$anchor.tileX
                     tileY = [int]$anchor.tileY
                     centerDistance = [double]$anchor.centerDistance
                     frontageDirection = Get-RotatedCardinalDirection $localConnectionDirection $rotationYaw
-                    rotationYaw = $rotationYaw
+                        rotationYaw = $candidateRotationYaw
                     roadConnections = @($roadConnections)
                 })
             }
@@ -1276,6 +1357,12 @@ function Get-MarkedRoadConnectionCandidates {
                 $branchDirection = Get-DirectionToCoordinate $roadPlacement $footprintCoordinate
                 if ([string]::IsNullOrWhiteSpace($branchDirection)) { continue }
                 $frontageDirection = Get-DirectionToCoordinate $footprintCoordinate $roadPlacement
+                $isOrdinaryRoad = $roadPlacement.role -in @('road', 'road_center') -and $roadPlacement.template -eq $RoadTemplate
+                $isConcretePath = $roadPlacement.role -eq 'path' -and $roadPlacement.template -eq $concretePathTemplate
+                if ($isOrdinaryRoad -or $isConcretePath) {
+                    $roadAxisIsVertical = ([int]$roadPlacement.rotationYaw % 180) -eq 0
+                    if (($roadAxisIsVertical -and $frontageDirection -in @('N', 'S')) -or (-not $roadAxisIsVertical -and $frontageDirection -in @('E', 'W'))) { continue }
+                }
                 $rotationYaw = ((Get-BuildingEntranceRotation $frontageDirection) - (Get-BuildingEntranceRotation $localConnectionDirection) + 360) % 360
                 if ((Get-RotatedCardinalDirection $localConnectionDirection $rotationYaw) -ne $frontageDirection) { continue }
                 $candidates.Add([pscustomobject]@{
@@ -1298,22 +1385,23 @@ function Test-TemplateRequestsRoadJunction {
     param([string]$Template)
 
     $templateKey = $Template.ToLowerInvariant()
-    return $templateRoadConnections.ContainsKey($templateKey) -and @($templateRoadConnections[$templateKey].markers | Where-Object { $_.connectionType -eq 't_junction' }).Count -gt 0
+    return $templateRoadConnections.ContainsKey($templateKey) -and @($templateRoadConnections[$templateKey].markers | Where-Object { $_.connectionType -ne 'none' }).Count -gt 0
 }
 
 function Set-MarkedRoadJunctions {
     param(
         [hashtable]$Placements,
         [object[]]$RoadConnections,
-        [string]$RoadTjunctionTemplate,
+        [hashtable]$RoadConnectionTemplates,
         [string]$Role
     )
 
     foreach ($roadConnection in @($RoadConnections)) {
+        $connectionType = if ([string]::IsNullOrWhiteSpace([string]$roadConnection.connectionType)) { 't_junction' } else { [string]$roadConnection.connectionType }
         $Placements["$($roadConnection.road.tileX),$($roadConnection.road.tileY)"] = [pscustomobject]@{
             tileX = $roadConnection.road.tileX
             tileY = $roadConnection.road.tileY
-            template = $RoadTjunctionTemplate
+            template = $RoadConnectionTemplates[$connectionType]
             rotationYaw = Get-CarparkJunctionRotation $roadConnection.branchDirection
             role = $Role
         }
@@ -1330,9 +1418,6 @@ function Test-CommercialFootprintHasRequiredFrontage {
         [int]$FootprintHeight
     )
 
-    if ($TileX -eq 0 -or $TileY -eq 0 -or ($TileX + $FootprintWidth) -eq $TileGridSize -or ($TileY + $FootprintHeight) -eq $TileGridSize) {
-        return $true
-    }
     foreach ($coordinate in @(Get-FootprintCoordinates $TileX $TileY $FootprintWidth $FootprintHeight)) {
         foreach ($direction in @('N', 'E', 'S', 'W')) {
             $neighbor = Get-OffsetTileCoordinate $coordinate $direction
@@ -1647,7 +1732,7 @@ function Get-CellTilePlacements {
                 (Test-RoadPlacementFacesCoordinate $_ $terrainPlacement $connections $Topology)
             } | Sort-Object tileY, tileX | Select-Object -First 1
             $entranceDirection = if ($null -eq $adjacentRoadPlacement) {
-                Get-ClosedCornerAvoidanceDirection $terrainPlacement $roadCenterPlacements $connections $Topology
+                Get-ClosedCornerFrontageDirection $terrainPlacement $roadCenterPlacements $connections $Topology
             } else {
                 Get-DirectionToCoordinate $terrainPlacement $adjacentRoadPlacement
             }
@@ -1720,7 +1805,12 @@ function Get-CellTilePlacements {
             $macroRotationYaw = if ($null -ne $markerRoadConnection) { $markerRoadConnection.rotationYaw } elseif ($isEpicenter -or [string]::IsNullOrWhiteSpace([string]$macroPlacement.entranceDirection)) { 0 } else { Get-TemplateRoadConnectionRotation $resolvedLandmarkTemplate $macroPlacement.entranceDirection }
             if ($null -ne $markerRoadConnection -and @($markerRoadConnection.roadConnections).Count -gt 0) {
                 $roadTjunctionTemplate = Resolve-Template @($plannerSettings.topologyTemplates['road-tjunction'], $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
-                Set-MarkedRoadJunctions $placements $markerRoadConnection.roadConnections $roadTjunctionTemplate 'landmark_road_junction'
+                $roadConnectionTemplates = @{
+                    't_junction' = $roadTjunctionTemplate
+                    'bus' = Resolve-Template @($plannerSettings.roadConnectionTemplates.bus, $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
+                    'driveway' = Resolve-Template @($plannerSettings.roadConnectionTemplates.driveway, $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
+                }
+                Set-MarkedRoadJunctions $placements $markerRoadConnection.roadConnections $roadConnectionTemplates 'landmark_road_junction'
             }
             $placementId = "${macroRole}:$($macroPlacement.tileX),$($macroPlacement.tileY)"
             Set-FootprintPlacement $placements $TileGridSize $macroPlacement.tileX $macroPlacement.tileY $landmarkFootprint.width $landmarkFootprint.height $resolvedLandmarkTemplate $macroRotationYaw $macroRole $placementId $macroAllowedRoles
@@ -1793,7 +1883,7 @@ function Get-CellTilePlacements {
         }
         if ($null -eq $landmarkPlacement) {
             $landmarkPlacement = @($landmarkCandidates | Select-Object -First 1)[0]
-            $landmarkEntranceDirection = Get-ClosedCornerAvoidanceDirection $landmarkPlacement $roadCenterPlacements $connections $Topology
+            $landmarkEntranceDirection = Get-ClosedCornerFrontageDirection $landmarkPlacement $roadCenterPlacements $connections $Topology
         }
         if ($null -ne $landmarkPlacement) {
             $placements["$($landmarkPlacement.tileX),$($landmarkPlacement.tileY)"] = [pscustomobject]@{
@@ -1981,7 +2071,12 @@ function Get-CellTilePlacements {
                         $roadConnection = $roadConnectionCandidates[(Get-CarparkVariationRoll $PlacementSeed (97 + $candidateIndex)) % $roadConnectionCandidates.Count]
                         if (@($roadConnection.roadConnections).Count -gt 0) {
                             $roadTjunctionTemplate = Resolve-Template @($plannerSettings.topologyTemplates['road-tjunction'], $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
-                            Set-MarkedRoadJunctions $placements $roadConnection.roadConnections $roadTjunctionTemplate 'building_road_junction'
+                            $roadConnectionTemplates = @{
+                                't_junction' = $roadTjunctionTemplate
+                                'bus' = Resolve-Template @($plannerSettings.roadConnectionTemplates.bus, $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
+                                'driveway' = Resolve-Template @($plannerSettings.roadConnectionTemplates.driveway, $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
+                            }
+                            Set-MarkedRoadJunctions $placements $roadConnection.roadConnections $roadConnectionTemplates 'building_road_junction'
                         }
                         Set-FootprintPlacement $placements $TileGridSize $roadConnection.tileX $roadConnection.tileY $candidateFootprint.width $candidateFootprint.height $candidateTemplate $roadConnection.rotationYaw 'building' "building:$($roadConnection.tileX),$($roadConnection.tileY)" $macroAllowedRoles
                         break
@@ -2026,7 +2121,12 @@ function Get-CellTilePlacements {
                 $fixtureRoadConnection = $fixtureRoadConnectionCandidates[(Get-CarparkVariationRoll $PlacementSeed 101) % $fixtureRoadConnectionCandidates.Count]
                 if (@($fixtureRoadConnection.roadConnections).Count -gt 0) {
                     $roadTjunctionTemplate = Resolve-Template @($plannerSettings.topologyTemplates['road-tjunction'], $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
-                    Set-MarkedRoadJunctions $placements $fixtureRoadConnection.roadConnections $roadTjunctionTemplate 'building_road_junction'
+                    $roadConnectionTemplates = @{
+                        't_junction' = $roadTjunctionTemplate
+                        'bus' = Resolve-Template @($plannerSettings.roadConnectionTemplates.bus, $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
+                        'driveway' = Resolve-Template @($plannerSettings.roadConnectionTemplates.driveway, $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
+                    }
+                    Set-MarkedRoadJunctions $placements $fixtureRoadConnection.roadConnections $roadConnectionTemplates 'building_road_junction'
                 }
                 Set-FootprintPlacement $placements $TileGridSize $fixtureRoadConnection.tileX $fixtureRoadConnection.tileY $fixtureFootprint.width $fixtureFootprint.height $multiTileTemplate $fixtureRoadConnection.rotationYaw 'building' "building:$($fixtureRoadConnection.tileX),$($fixtureRoadConnection.tileY)" $macroAllowedRoles
             } else {
@@ -2389,7 +2489,8 @@ foreach ($cell in $map.cells) {
     $activeEntrances = @(Get-ActiveEntrances $cell)
     $tilePlacements = @(Get-CellTilePlacements $cell $terrainTemplate $buildingCandidates $landmarkTemplate $landmarks $profile $carparkTemplates $decorationTemplates $placementSeed $buildingDensityTier $transportFeature $topology $orientation $CellTileSize $templateFiles $forceCarpark)
     $filenameCodes = Get-RecipeFilenameCodes $profile $topology $orientation $transportFeature $buildingDensityTier $landmarks $tilePlacements
-    $cellTemplateFilename = Get-CarparkCoverageFilename (Get-CellFilename $filenameCodes) $forceCarpark
+    $waterBorderSides = @(Get-WaterBorderPlan $cell)
+    $cellTemplateFilename = Get-CarparkCoverageFilename (Get-WaterBorderFilename (Get-CellFilename $filenameCodes) $waterBorderSides) $forceCarpark
     $cellTemplatePath = Join-Path $CellDirectory $cellTemplateFilename
 
     $planCells += [pscustomobject]@{
@@ -2406,6 +2507,7 @@ foreach ($cell in $map.cells) {
         environmentProfile = $profile
         buildingDensityTier = $buildingDensityTier
         filenameCodes = $filenameCodes
+        waterBorderSides = $waterBorderSides
         environmentTags = @($cell.environment.tags)
         landmarks = $landmarks
         landmarkMarkers = @($cell.landmarks | Where-Object { $landmarks -contains [string]$_.name } | ForEach-Object {
@@ -2526,6 +2628,8 @@ $plan = [ordered]@{
     availableChunkTemplates = @($templateFiles.Values | Sort-Object)
     filenameAbbreviations = $filenameAbbreviations
     cellTileGridSize = $CellTileSize
+    mapSeed = [int64]$map.map.seed
+    mapGridCells = [int]$map.map.gridCells
     selectedCellCount = $planCells.Count
     requiredCellCount = $requiredCellFiles.Count
     requiredStandaloneMapCount = $safeZoneMaps.Count
