@@ -1,0 +1,137 @@
+{
+  "cases": [
+    {
+      "name": "shipped_data_is_valid",
+      "files": {},
+      "expectValues": [
+        { "path": "items.weaponMeleeCrowbar.weaponClass", "value": "weapon_zn_melee_crowbar" },
+        { "path": "items.weaponHandgun9mm.weaponClass", "value": "weapon_zn_handgun_9mm" },
+        { "path": "items.weaponMeleeCrowbar.minAttributes", "value": 2 },
+        { "path": "items.weaponMeleeCrowbar.maxAttributes", "value": 32 },
+        { "path": "lootGroups.lootGenericWeapons.entries.1.item", "value": "weaponHandgun9mm" },
+        { "path": "lootGroups.lootGenericWeapons.entries.2.item", "value": "weaponMeleeCrowbar" },
+        { "path": "lootGroups.lootGenericZombie.entries.2.item", "value": "itemCashBundle" },
+        { "path": "lootGroups.lootGenericZombie.entries.2.minWeight", "value": 4 },
+        { "path": "lootGroups.lootGenericZombie.entries.2.maxWeight", "value": 4 },
+        { "path": "lootGroups.lootGenericMeleeWeapons.entries.1.maxWeight", "value": 35 },
+        { "path": "lootGroups.lootGenericMeleeWeapons.entries.1.mastercraftChance", "value": 0.05 },
+        { "path": "lootGroups.lootGenericMedical.entries.1.mastercraftChance", "value": 0 },
+        { "path": "lootGroups.lootGenericMedical.entries.1.minCount", "value": 1 },
+        { "path": "lootGroups.lootGenericMedical.entries.1.maxCount", "value": 3 },
+        { "path": "defaultSpawnGroup", "value": "cellGenericEnemies" },
+        { "path": "spawnGroups.cellGenericEnemies.enemies.2.maxSpawnWeight", "value": 0.75 }
+      ]
+    },
+    {
+      "name": "loot_composition_and_overrides",
+      "files": {
+        "loot": "composition_loot.json",
+        "entityLoot": "empty_entity_loot.json",
+        "enemies": "no_loot_enemies.json",
+        "bosses": "empty_boss_spawns.json"
+      },
+      "expectValues": [
+        { "path": "lootGroups.lootCombined.entries.1.item", "value": "itemBandage" },
+        { "path": "lootGroups.lootCombined.entries.1.maxWeight", "value": 20 },
+        { "path": "lootGroups.lootCombined.entries.1.maxCount", "value": 2 },
+        { "path": "lootGroups.lootCombined.entries.1.mastercraftChance", "value": 0 },
+        { "path": "lootGroups.lootCombined.entries.2.item", "value": "weaponMeleeCrowbar" },
+        { "path": "lootGroups.lootCombined.entries.2.minWeight", "value": 50 },
+        { "path": "lootGroups.lootCombined.entries.2.maxWeight", "value": 60 },
+        { "path": "lootGroups.lootCombined.entries.3.item", "value": "weaponHandgun9mm" },
+        { "path": "lootGroups.lootCombined.entries.3.maxWeight", "value": 5 },
+        { "path": "lootGroups.lootImplied.entries.2.minWeight", "value": 5 },
+        { "path": "lootGroups.lootImplied.entries.2.maxWeight", "value": 5 },
+        { "path": "lootGroups.lootForcedMastercraft.entries.1.mastercraft", "value": true },
+        { "path": "lootGroups.lootChained.entries.3.item", "value": "weaponHandgun9mm" }
+      ]
+    },
+    {
+      "name": "malformed_json_is_rejected",
+      "files": { "items": "malformed_items.json" },
+      "expectErrors": [
+        { "file": "item_definitions.json", "path": "", "message": "is not a valid JSON object" }
+      ]
+    },
+    {
+      "name": "missing_file_is_rejected",
+      "files": { "items": "does_not_exist.json" },
+      "expectErrors": [
+        { "file": "item_definitions.json", "path": "", "message": "is missing or unreadable" }
+      ]
+    },
+    {
+      "name": "wrong_schema_version_is_rejected",
+      "files": { "enemySpawns": "wrong_schema_enemy_spawns.json" },
+      "expectErrors": [
+        { "file": "enemy_spawns.json", "path": "schemaVersion", "message": "must be 1" }
+      ]
+    },
+    {
+      "name": "item_bounds_and_renamed_fields",
+      "files": { "items": "bad_items.json" },
+      "expectErrors": [
+        { "file": "item_definitions.json", "path": "items.weaponMeleeCrowbar.maxLevel", "message": "must not be below minLevel" },
+        { "file": "item_definitions.json", "path": "items.weaponHandgun9mm.maxStack", "message": "must be 1 for weapon items" },
+        { "file": "item_definitions.json", "path": "items.itemBandage.mastercrafted", "message": "was removed" },
+        { "file": "item_definitions.json", "path": "items.itemBandage.statRequirements.Medical", "message": "did you mean Medicine" },
+        { "file": "item_definitions.json", "path": "items.itemVest.entityClass", "message": "not implemented yet" },
+        { "file": "item_definitions.json", "path": "items.weaponhandgun", "message": "must start with 'weapon' followed by an uppercase letter" }
+      ]
+    },
+    {
+      "name": "loot_references_cycles_and_counts",
+      "files": { "loot": "bad_loot.json" },
+      "expectErrors": [
+        { "file": "loot.json", "path": "groups.lootCycleA", "message": "includes itself" },
+        { "file": "loot.json", "path": "groups.lootBadInclude.include[1]", "message": "references unknown loot group" },
+        { "file": "loot.json", "path": "groups.lootUnknownItem.items.itemMissing", "message": "references unknown item" },
+        { "file": "loot.json", "path": "groups.lootBadOverride.overrides.weaponHandgun9mm", "message": "which is not in this group" },
+        { "file": "loot.json", "path": "groups.lootNeverRolls", "message": "can never roll" },
+        { "file": "loot.json", "path": "groups.lootTooMany.itemBandage", "message": "exceeds the item's maxStack" },
+        { "file": "loot.json", "path": "groups.lootBadMastercraft.itemBandage", "message": "mastercraft only applies" }
+      ]
+    },
+    {
+      "name": "entity_loot_rules_are_validated",
+      "files": { "entityLoot": "bad_entity_loot.json" },
+      "expectErrors": [
+        { "file": "entity_loot.json", "path": "rules[1].classes[1]", "message": "static props are compiled into the map" },
+        { "file": "entity_loot.json", "path": "rules[2].lootGroups[1]", "message": "references unknown loot group" },
+        { "file": "entity_loot.json", "path": "rules[4]", "message": "duplicates rules[3]" },
+        { "file": "entity_loot.json", "path": "rules[5].model", "message": "must be a path like" },
+        { "file": "entity_loot.json", "path": "rules[5].activationChance", "message": "must be at most 1" },
+        { "file": "entity_loot.json", "path": "rules[6]", "message": "must be an object" }
+      ]
+    },
+    {
+      "name": "enemy_bounds_and_renamed_fields",
+      "files": { "enemies": "bad_enemies.json" },
+      "expectErrors": [
+        { "file": "enemy_definitions.json", "path": "enemies.entityWalker.minRarity", "message": "renamed to minSpawnWeight" },
+        { "file": "enemy_definitions.json", "path": "enemies.entityWalker.lootGroup", "message": "renamed to lootGroups" },
+        { "file": "enemy_definitions.json", "path": "enemies.entityRareWalker.maxHealth", "message": "must not be below minHealth" },
+        { "file": "enemy_definitions.json", "path": "enemies.entityRareWalker.maxDanger", "message": "must not be below minDanger" },
+        { "file": "enemy_definitions.json", "path": "enemies.entityNoLoot.lootGroups", "message": "is required when a loot drop chance is above 0" }
+      ]
+    },
+    {
+      "name": "spawn_groups_and_bosses_are_validated",
+      "files": {
+        "enemies": "boss_enemies.json",
+        "enemySpawns": "bad_enemy_spawns.json",
+        "bosses": "bad_boss_spawns.json"
+      },
+      "expectErrors": [
+        { "file": "enemy_spawns.json", "path": "defaultGroup", "message": "references unknown spawn group" },
+        { "file": "enemy_spawns.json", "path": "groups.cellBad.enemies", "message": "is a boss" },
+        { "file": "enemy_spawns.json", "path": "groups.cellBad.enemies[3]", "message": "references unknown enemy" },
+        { "file": "enemy_spawns.json", "path": "environmentTags.Radioactive", "message": "lowercase words" },
+        { "file": "enemy_spawns.json", "path": "environmentTags.military", "message": "references unknown spawn group" },
+        { "file": "boss_spawns.json", "path": "bosses.bossWrong.enemy", "message": "must set boss: true" },
+        { "file": "boss_spawns.json", "path": "bosses.bossNoLoot.lootGroups", "message": "is required" },
+        { "file": "boss_spawns.json", "path": "bosses.bossOld.entityDefinition", "message": "was renamed to enemy" }
+      ]
+    }
+  ]
+}

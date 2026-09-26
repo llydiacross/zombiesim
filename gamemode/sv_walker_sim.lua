@@ -781,18 +781,29 @@ function WalkerSim:FindZombieSpawnPosition(ticket, relevancePosition, relevanceR
 end
 
 function WalkerSim:SpawnTicketZombie(ticket, cellId, relevancePosition, relevanceRadius)
+    local cell = ZM_World:GetCellById(cellId)
+    if not cell then
+        return nil, "unknown cell " .. tostring(cellId)
+    end
+    local context = ZM_Enemies:GetCellContext(cell)
+    local enemy, enemyError = ZM_Enemies:Pick(context, ZM_ItemGeneration.NewRng(ZM_Enemies.GetTicketSeed(ticket)))
+    if not enemy then
+        return nil, enemyError
+    end
+
     local position, positionError = self:FindZombieSpawnPosition(ticket, relevancePosition, relevanceRadius)
     if not position then
         return nil, positionError
     end
 
-    local zombie = ents.Create("zn_walker_zombie")
+    local zombie = ents.Create(enemy.entity)
     if not IsValid(zombie) then
-        return nil, "could not create zn_walker_zombie"
+        return nil, "could not create " .. enemy.entity
     end
     zombie:SetPos(position)
     zombie:Spawn()
     zombie:Activate()
+    zombie:ApplyEnemyDefinition(enemy, context.danger)
     if not zombie:SetWalkerTicket(ticket, cellId) then
         zombie:Remove()
         return nil, "could not assign ticket metadata to zombie"

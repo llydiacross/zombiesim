@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "bosses": {
+    "bossWrong": { "enemy": "entityWalker", "lootGroups": ["lootGenericWeapons"] },
+    "bossNoLoot": { "enemy": "entityBossTank" },
+    "bossOld": { "entityDefinition": "entityBossTank", "lootGroup": "lootGenericWeapons" }
+  }
+}

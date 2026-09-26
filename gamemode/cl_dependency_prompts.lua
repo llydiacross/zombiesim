@@ -464,6 +464,7 @@ concommand.Add("zombiesim_dev_dependency_prompt_status", function()
 end)
 
 local function createLauncherBeginPrompt()
+    print("[ZombieSim] Launcher is waiting for player input: press BEGIN to deploy.")
     local palette = ZM_DermaSkin.Palette
     local frame = vgui.Create("DFrame")
     frame:SetSkin("ZombieSim")
@@ -508,6 +509,7 @@ local function createLauncherBeginPrompt()
     begin:SetTall(54)
     begin:SetText("BEGIN")
     begin.DoClick = function()
+        print("[ZombieSim] Launcher deployment input received; continuing.")
         DependencyPrompts:SendLauncherReady()
         frame:Remove()
     end

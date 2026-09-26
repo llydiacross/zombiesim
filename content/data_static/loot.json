@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "groups": {
+    "lootGenericMedical": {
+      "items": {
+        "itemBandage": { "minWeight": 60, "maxWeight": 40, "maxCount": 3 },
+        "itemCashBundle": { "minWeight": 4, "minCount": 5, "maxCount": 25 }
+      }
+    },
+    "lootGenericMeleeWeapons": {
+      "items": {
+        "weaponMeleeCrowbar": { "minWeight": 35 }
+      }
+    },
+    "lootGenericHandguns": {
+      "items": {
+        "weaponHandgun9mm": { "minWeight": 25, "maxWeight": 10 }
+      }
+    },
+    "lootGenericWeapons": {
+      "include": ["lootGenericHandguns", "lootGenericMeleeWeapons"]
+    },
+    "lootGenericZombie": {
+      "include": ["lootGenericMedical", "lootGenericWeapons"],
+      "overrides": {
+        "weaponHandgun9mm": { "minWeight": 5, "maxWeight": 10 }
+      }
+    },
+    "lootGenericCarLoot": {
+      "include": ["lootGenericMedical", "lootGenericMeleeWeapons"],
+      "overrides": { "itemCashBundle": { "minWeight": 20, "minCount": 50, "maxCount": 500 } }
+    },
+    "lootBossRewards": {
+      "items": {
+        "weaponMeleeCrowbar": { "minWeight": 35 },
+        "weaponHandgun9mm": { "minWeight": 25 },
+        "itemBossJuice": { "minWeight": 2, "bossOnly": true },
+        "itemCashBundle": { "minWeight": 8, "minCount": 1000, "maxCount": 5000, "bossOnly": true }
+      }
+    }
+  }
+}

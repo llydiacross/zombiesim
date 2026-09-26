@@ -4,6 +4,16 @@ include("sh_compass.lua")
 include("utils/world.lua")
 include("utils/safezone.lua")
 include("sh_preview.lua")
+include("sh_static_data.lua")
+include("sh_items.lua")
+
+// Item behaviour classes; each file registers itself in ZM_EntityClasses.
+for _, itemFile in ipairs(file.Find(GM.FolderName .. "/gamemode/items/*.lua", "LUA")) do
+	if SERVER then
+		AddCSLuaFile("items/" .. itemFile)
+	end
+	include("items/" .. itemFile)
+end
 
 GM.Name = "Z-Nation"
 GM.Author = "N/A"

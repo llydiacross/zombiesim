@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    { "classes": ["prop_static"], "model": "models/props_junk/trashdumpster01a.mdl", "lootGroups": ["lootGenericMedical"], "activationChance": 0.5 },
+    { "model": "models/props_vehicles/car001b_phy.mdl", "lootGroups": ["lootMissing"], "activationChance": 0.5 },
+    { "model": "models/props_vehicles/car002a.mdl", "lootGroups": ["lootGenericCarLoot"], "activationChance": 0.5 },
+    { "classes": ["prop_physics_override"], "model": "MODELS\\props_vehicles\\CAR002A.mdl", "lootGroups": ["lootGenericCarLoot"], "activationChance": 0.5 },
+    { "model": "props/car.mdl", "lootGroups": ["lootGenericCarLoot"], "activationChance": 1.5 },
+    [["lootGenericCarLoot"], 80]
+  ]
+}

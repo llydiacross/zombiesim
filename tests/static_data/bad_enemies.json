@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "enemies": {
+    "entityWalker": {
+      "entity": "zn_walker_zombie",
+      "minHealth": 19,
+      "minRarity": 0.75,
+      "lootGroup": "lootGenericZombie"
+    },
+    "entityRareWalker": {
+      "entity": "zn_walker_zombie",
+      "minHealth": 49,
+      "maxHealth": 29,
+      "minDanger": 0.8,
+      "maxDanger": 0.2,
+      "minSpawnWeight": 0.25
+    },
+    "entityNoLoot": {
+      "entity": "zn_walker_zombie",
+      "minHealth": 10,
+      "minSpawnWeight": 0.1,
+      "maxLootDropChance": 0.2
+    }
+  }
+}

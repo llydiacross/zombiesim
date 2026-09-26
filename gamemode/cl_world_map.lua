@@ -41,6 +41,7 @@ WorldMap.RenderModes = { default = true, wireframe = true, satellite = true, wal
 WorldMap.RenderMode = WorldMap.RenderModes[WorldMap.RenderMode] and WorldMap.RenderMode or "default"
 WorldMap.WalkerSnapshot = WorldMap.WalkerSnapshot or nil
 WorldMap.LivePopulation = WorldMap.LivePopulation or nil
+WorldMap.BossSnapshot = WorldMap.BossSnapshot or nil
 WorldMap.WalkerDotX = WorldMap.WalkerDotX or {}
 WorldMap.WalkerDotY = WorldMap.WalkerDotY or {}
 WorldMap.WalkerDotCount = WorldMap.WalkerDotCount or 0
@@ -596,6 +597,26 @@ local function drawWaypoint(cell, mapX, mapY, cellSize)
     surface.DrawLine(centerX - radius, centerY, centerX, centerY - radius)
 end
 
+local function drawBossMarkers(mapX, mapY, cellWidth, cellHeight)
+    local snapshot = WorldMap.BossSnapshot
+    if not snapshot or snapshot.profile ~= ZM_World.ActiveProfile then return end
+    for _, boss in ipairs(snapshot.bosses or {}) do
+        local cell = ZM_World:GetCellById(boss.cellId)
+        if cell then
+            local gridX, gridY = getCellGridCoordinates(cell)
+            if gridX and gridY then
+                local markerX = mapX + (gridX + 0.5) * cellWidth
+                local markerY = mapY + (gridY + 0.5) * cellHeight
+                surface.SetDrawColor(20, 8, 10, 255)
+                surface.DrawRect(markerX - 9, markerY - 9, 18, 18)
+                surface.SetDrawColor(239, 57, 72, 255)
+                surface.DrawOutlinedRect(markerX - 7, markerY - 7, 14, 14, 2)
+                draw.SimpleText("B", "DermaDefaultBold", markerX, markerY, Color(255, 230, 232), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+            end
+        end
+    end
+end
+
 local function getWaypointPath(playerCell)
     local waypointCell = WorldMap.WaypointCell
     if not playerCell or not waypointCell or WorldMap.WaypointProfile ~= ZM_World.ActiveProfile then
@@ -1098,6 +1119,7 @@ local function createMapCanvas(parent, onSelect)
         if renderMode == "walker" then
             WorldMap:DrawWalkerDots(mapX, mapY, cellWidth, cellHeight)
         end
+        drawBossMarkers(mapX, mapY, cellWidth, cellHeight)
 
         local player = LocalPlayer()
         local playerCell
@@ -1531,7 +1553,7 @@ function WorldMap:Open()
 
     local sidebar = vgui.Create("DPanel", frame)
     sidebar:Dock(LEFT)
-    sidebar:SetWide(math.Clamp(math.floor(frameWidth * 0.17), 120, 174))
+    sidebar:SetWide(math.Clamp(math.floor(frameWidth * 0.22), 190, 250))
     sidebar.Paint = function(_, width, height)
         surface.SetDrawColor(MapColors.panel.r, MapColors.panel.g, MapColors.panel.b, 255)
         surface.DrawRect(0, 0, width, height)
@@ -1626,14 +1648,56 @@ function WorldMap:Open()
     canvas:Dock(FILL)
     canvas:DockMargin(8, 8, 8, 8)
 
-    local populationLabel = vgui.Create("DLabel", frame)
-    populationLabel:SetFont("DermaDefaultBold")
-    populationLabel:SetTextColor(MapColors.redBright)
-    populationLabel:SetPos(math.max(220, math.floor(frameWidth * 0.16)), 89)
-    populationLabel:SetSize(math.max(120, math.floor(frameWidth * 0.22)), 18)
+    local worldHeader = vgui.Create("DPanel", frame)
+    local cityName = string.upper((ZM_World.Data and ZM_World.Data.world and ZM_World.Data.world.cityName) or ZM_World.ActiveProfile or "WORLD")
+    worldHeader:SetPos(sidebar:GetWide() + 8, 48)
+    worldHeader:SetSize(math.max(220, math.floor(frameWidth * 0.22)), 60)
+    worldHeader.Paint = function(panel, width, height)
+        if WorldMap.RenderMode == "wireframe" or WorldMap.RenderMode == "map" then
+            return
+        end
+        surface.SetDrawColor(0, 0, 0, 220)
+        surface.DrawRect(0, 0, width, height)
+        surface.SetDrawColor(MapColors.border.r, MapColors.border.g, MapColors.border.b, 255)
+        surface.DrawOutlinedRect(0, 0, width, height, 1)
+    end
+
+    local cityLabel = vgui.Create("DLabel", worldHeader)
+    cityLabel:Dock(TOP)
+    cityLabel:DockMargin(8, 3, 8, 0)
+    cityLabel:SetFont("DermaLarge")
+    cityLabel:SetTextColor(MapColors.redBright)
+    cityLabel:SetTall(31)
+    cityLabel:SetText(cityName)
+
+    local populationLabel = vgui.Create("DLabel", worldHeader)
+    populationLabel:Dock(TOP)
+    populationLabel:DockMargin(8, 0, 8, 0)
+    populationLabel:SetFont("DermaDefault")
+    populationLabel:SetTextColor(MapColors.text)
+    populationLabel:SetTall(16)
     populationLabel.Think = function(panel)
         local population = WorldMap:GetLivePopulation()
         panel:SetText(population and "POPULATION " .. string.Comma(population) or "POPULATION --")
+    end
+    local function refreshWorldHeader()
+        local visible = WorldMap.RenderMode == "default" or WorldMap.RenderMode == "satellite" or WorldMap.RenderMode == "walker"
+        cityLabel:SetText(cityName)
+        worldHeader:SetVisible(visible)
+        if visible then
+            worldHeader:InvalidateLayout(true)
+        end
+    end
+    worldHeader.Think = function(panel)
+        refreshWorldHeader()
+        surface.SetFont("DermaLarge")
+        local cityWidth = surface.GetTextSize(cityLabel:GetText() or "")
+        surface.SetFont("DermaDefault")
+        local populationWidth = surface.GetTextSize(populationLabel:GetText() or "")
+        local availableWidth = math.max(220, frame:GetWide() - sidebar:GetWide() - 24)
+        panel:SetSize(math.min(availableWidth, math.max(220, cityWidth + 16, populationWidth + 16)), 60)
+        panel:SetPos(sidebar:GetWide() + 8, 48)
+        panel:SetVisible(WorldMap.RenderMode == "default" or WorldMap.RenderMode == "satellite" or WorldMap.RenderMode == "walker")
     end
 
     resetButton.DoClick = function()
@@ -1787,9 +1851,12 @@ function WorldMap:Open()
         sidebarView = view
         layersContent:SetVisible(view == "layers")
         placesContent:SetVisible(view == "places")
+        cellInspector:SetVisible(view ~= "preview")
         if previewContent then
             previewContent:SetVisible(view == "preview")
+            sidebarContent:Dock(view == "preview" and FILL or TOP)
         end
+        sidebar:InvalidateLayout(true)
         sidebarContent:InvalidateLayout(true)
     end
 
@@ -1941,9 +2008,16 @@ function WorldMap:Open()
     end
 
     focusControls.Think = function(panel)
-        if panel.LastCanvasWidth ~= canvas:GetWide() then
-            panel:SetPos(10, 10)
+        local focusVisible = WorldMap.RenderMode ~= "wireframe" and WorldMap.RenderMode ~= "map"
+        panel:SetVisible(focusVisible)
+        if not focusVisible then
+            return
+        end
+        local focusY = math.max(10, worldHeader:GetY() + worldHeader:GetTall() + 8 - canvas:GetY())
+        if panel.LastCanvasWidth ~= canvas:GetWide() or panel.LastFocusY ~= focusY then
+            panel:SetPos(10, focusY)
             panel.LastCanvasWidth = canvas:GetWide()
+            panel.LastFocusY = focusY
         end
         local player = LocalPlayer()
         local canFocusPlayer = IsValid(player) and (WorldMap.RenderMode == "map" or getPlayerMapCell(player) ~= nil)
@@ -1980,6 +2054,10 @@ function WorldMap:Open()
                 end
             end
             if WorldMap:SetRenderMode(renderMode) then
+                local showWorldOverlays = renderMode == "default" or renderMode == "satellite" or renderMode == "walker"
+                worldHeader:SetVisible(showWorldOverlays)
+                focusControls:SetVisible(showWorldOverlays)
+                refreshWorldHeader()
                 canvas:LoadRenderViewport()
                 rebuildLayerControls()
             end
@@ -2002,15 +2080,15 @@ function WorldMap:Open()
         WorldMap:SetRenderMode(satelliteAvailable and "satellite" or "default")
     end
     addRenderModeButton("default", "ATLAS", 68, true, "Map View")
-    if ZM_World.ActiveProfile == "preview" then
-        addRenderModeButton("wireframe", "WIREFRAME", 84, wireframeAvailable, "Wireframe View")
-    end
     addRenderModeButton("satellite", "SATELLITE", 84, satelliteAvailable, "Satellite View")
     local walkerButton = addRenderModeButton("walker", "WALKERS", 70, walkerAvailable, "Walker Simulation View")
     walkerButton.Think = function(panel)
         panel:SetEnabled(satelliteAvailable and WorldMap:HasWalkerSnapshot())
     end
     addRenderModeButton("map", "MAP", 66, true, "Level View")
+    if ZM_World.ActiveProfile == "preview" then
+        addRenderModeButton("wireframe", "WIREFRAME", 84, wireframeAvailable, "Wireframe View")
+    end
 
     rebuildLayerControls()
     rebuildDirectory()
@@ -2098,4 +2176,19 @@ hook.Add("PostRender", "ZM.WorldMap.LocalMapRefresh", function()
     if IsValid(WorldMap.Frame) and WorldMap.RenderMode == "map" then
         WorldMap:RefreshLocalMapIfDue()
     end
+end)
+
+net.Receive("ZM.BossSnapshot", function()
+    local profile = net.ReadString()
+    local count = net.ReadUInt(8)
+    local bosses = {}
+    for index = 1, count do
+        bosses[index] = {
+            instanceId = net.ReadUInt(32),
+            cellId = net.ReadUInt(16),
+            bossId = net.ReadString(),
+            entity = net.ReadEntity()
+        }
+    end
+    WorldMap.BossSnapshot = { profile = profile, bosses = bosses }
 end)

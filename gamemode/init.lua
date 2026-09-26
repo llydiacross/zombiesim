@@ -3,6 +3,11 @@ AddCSLuaFile( "shared.lua" )
 AddCSLuaFile( "sh_player.lua" )
 AddCSLuaFile( "sh_compass.lua" )
 AddCSLuaFile( "sh_preview.lua" )
+AddCSLuaFile( "sh_static_data.lua" )
+AddCSLuaFile( "sh_items.lua" )
+AddCSLuaFile( "cl_inventory.lua" )
+AddCSLuaFile( "cl_crafting.lua" )
+AddCSLuaFile( "cl_loot_popup.lua" )
 AddCSLuaFile( "cl_init.lua" )
 AddCSLuaFile( "cl_skin.lua" )
 AddCSLuaFile( "cl_player.lua" )
@@ -16,6 +21,7 @@ AddCSLuaFile( "cl_scoreboard.lua" )
 AddCSLuaFile( "cl_map_batch.lua" )
 AddCSLuaFile( "cl_preview.lua" )
 AddCSLuaFile( "cl_dependency_prompts.lua" )
+AddCSLuaFile( "cl_pause_log.lua" )
 AddCSLuaFile( "cl_quick_menu.lua" )
 AddCSLuaFile( "utils/world.lua" )
 AddCSLuaFile( "utils/safezone.lua" )
@@ -23,7 +29,20 @@ AddCSLuaFile( "utils/safezone.lua" )
 // These are server-only utilities; shared.lua loads code needed by both realms.
 include( "utils/sql.lua" )
 include( "shared.lua" )
+include( "sv_static_data.lua" )
+include( "sv_static_data_tests.lua" )
 include( "sv_player.lua" )
+include( "sv_item_generation.lua" )
+include( "sv_inventory.lua" )
+include( "sv_inventory_tests.lua" )
+include( "sv_loot.lua" )
+include( "sv_loot_tests.lua" )
+include( "sv_enemies.lua" )
+include( "sv_enemies_tests.lua" )
+include( "sv_bosses.lua" )
+include( "sv_bosses_tests.lua" )
+include( "sv_loot_spots.lua" )
+include( "sv_loot_spots_tests.lua" )
 include( "sv_map_batch.lua" )
 include( "sv_preview.lua" )
 include( "sv_dev_console.lua" )
@@ -35,11 +54,19 @@ include( "sv_transitions.lua" )
 // Ensure the SQLite schema exists before any PlayerSpawn handler performs a lookup.
 local attributesReady, attributesError = ZM_CreatePlayerAttributesTable()
 local playerDataReady, playerDataError = ZM_CreatePlayerDataTable()
+local playerItemsReady, playerItemsError = ZM_CreatePlayerItemsTable()
+local lootSpotsReady, lootSpotsError = ZM_CreateLootSpotTables()
 if not attributesReady then
     ErrorNoHalt("[ZombieSim] Could not prepare player attributes: " .. tostring(attributesError) .. "\n")
 end
 if not playerDataReady then
     ErrorNoHalt("[ZombieSim] Could not prepare player data: " .. tostring(playerDataError) .. "\n")
+end
+if not playerItemsReady then
+    ErrorNoHalt("[ZombieSim] Could not prepare player items: " .. tostring(playerItemsError) .. "\n")
+end
+if not lootSpotsReady then
+    ErrorNoHalt("[ZombieSim] Could not prepare loot spots: " .. tostring(lootSpotsError) .. "\n")
 end
 
 // Clients use these lightweight signals to refresh their local Player extension fields.
@@ -47,6 +74,7 @@ util.AddNetworkString("ZM.RefreshPlayerAttributes")
 util.AddNetworkString("ZM.RefreshPlayerData")
 util.AddNetworkString("ZM.SetAtmosphereProfile")
 util.AddNetworkString("ZM.UpdatePlayerBio")
+util.AddNetworkString("ZM.DenEntity.Open")
 
 net.Receive("ZM.UpdatePlayerBio", function(_, ply)
     if not IsValid(ply) or not ply:IsPlayer() then
@@ -327,6 +355,11 @@ function GM:PlayerSpawn( ply )
     end
     ply.PreviouslyConnected = previouslyConnected
     ply.ZM_PersistentStateLoaded = true
+    ply.ZM_InventoryProfile = profile
+    local inventoryLoaded, inventoryError = ZM_InventoryService:Load(ply)
+    if not inventoryLoaded then
+        ErrorNoHalt("[ZombieSim] Could not load player inventory: " .. tostring(inventoryError) .. "\n")
+    end
     self:ReconcilePlayerOriginCell(ply)
     ply:SetHealth(math.max(ply.SavedHealth, 1))
     ply.Stamina = math.Clamp(tonumber(ply.Stamina) or ply:GetMaxStamina(), 0, ply:GetMaxStamina())
@@ -351,9 +384,11 @@ function GM:PlayerSpawn( ply )
     ZM_Preview:SendCapabilities(ply)
     ZM_Preview:ApplyCheatState(ply)
     ZM_Preview:SendCheatStatus(ply, true, "")
+    ZM_Bosses:SendSnapshot(ply)
     if ZM_Transitions then
         ZM_Transitions:ApplyPendingEntry(ply)
     end
+    ZM_LootSpots:OnPlayerReady(ply)
 
     if ZM_DependencyPrompts and ZM_DependencyPrompts:HoldLauncherTransition(ply, profile, previouslyConnected) then
         return

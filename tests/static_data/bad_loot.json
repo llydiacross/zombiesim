@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "groups": {
+    "lootCycleA": { "include": ["lootCycleB"] },
+    "lootCycleB": { "include": ["lootCycleA"] },
+    "lootBadInclude": { "include": ["lootDoesNotExist"] },
+    "lootUnknownItem": { "items": { "itemMissing": { "minWeight": 10 } } },
+    "lootBadOverride": {
+      "items": { "itemBandage": { "minWeight": 10 } },
+      "overrides": { "weaponHandgun9mm": { "minWeight": 1 } }
+    },
+    "lootNeverRolls": { "items": { "itemBandage": { "minWeight": 0 } } },
+    "lootTooMany": { "items": { "itemBandage": { "minWeight": 10, "maxCount": 5 } } },
+    "lootBadMastercraft": { "items": { "itemBandage": { "minWeight": 10, "mastercraft": true } } }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    { "model": "models/props_vehicles/car001b_phy.mdl", "lootGroups": ["lootGenericCarLoot"], "activationChance": 0.35 },
+    { "model": "models/props_vehicles/car002a.mdl", "lootGroups": ["lootGenericCarLoot"], "activationChance": 0.35 },
+    { "model": "models/props_vehicles/car002b_physics.mdl", "lootGroups": ["lootGenericCarLoot"], "activationChance": 0.35 },
+    { "model": "models/props_vehicles/car005a.mdl", "lootGroups": ["lootGenericCarLoot"], "activationChance": 0.35 },
+    { "model": "models/props/de_train/barrel.mdl", "lootGroups": ["lootGenericMedical"], "activationChance": 0.15 },
+    { "classes": ["prop_dynamic"], "model": "models/props_junk/trashdumpster01a.mdl", "lootGroups": ["lootGenericMedical"], "activationChance": 0.4 },
+    { "classes": ["prop_dynamic"], "model": "models/props_lab/scrapyarddumpster.mdl", "lootGroups": ["lootGenericWeapons"], "activationChance": 0.3 }
+  ]
+}

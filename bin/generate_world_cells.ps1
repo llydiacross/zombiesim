@@ -1336,8 +1336,6 @@ function Connect-MetroRouteThroughStops {
 
     function Draw-LabelLayer {
         param([System.Drawing.Graphics]$TargetGraphics)
-
-        $TargetGraphics.DrawString($cityName.ToUpperInvariant(), $cityTitleFont, $cityTitleBrush, 28, 20)
     }
 
     function Draw-DistrictLayer {
@@ -1645,7 +1643,7 @@ function Connect-MetroRouteThroughStops {
         })
         $mapData = [ordered]@{
             schemaVersion = 2
-            map = [ordered]@{ seed = $Seed; gridCells = $GridCells; cellSize = $CellSize; width = $width; height = $height; origin = [ordered]@{ cellX = 0; cellY = $originCellY; worldX = 0; worldY = 0 }; environment = [ordered]@{ taggingVersion = 1; tags = @($cells | ForEach-Object { $_.environment.tags } | Sort-Object -Unique) } }
+            map = [ordered]@{ seed = $Seed; cityName = $cityName; gridCells = $GridCells; cellSize = $CellSize; width = $width; height = $height; origin = [ordered]@{ cellX = 0; cellY = $originCellY; worldX = 0; worldY = 0 }; environment = [ordered]@{ taggingVersion = 1; tags = @($cells | ForEach-Object { $_.environment.tags } | Sort-Object -Unique) } }
             generation = [ordered]@{ roadDepth = $RoadDepth; branchChance = $BranchChance; blockadeChance = $BlockadeChance; bridgeChance = $BridgeChance; biomeOpacity = $biomeOpacity; safeZonePlacement = [ordered]@{ minimumSpacingCells = $safeZoneMinimumSpacingCells; actualMinimumSpacingCells = [Math]::Round($minimumSafeZoneDistance, 3); districts = @($safeZonePlacementDiagnostics) }; radiation = [ordered]@{ enabled = $radiationEnabled; epicenter = if ($radiationSources.Count -gt 0) { $radiationSources[0] } else { $null }; epicenters = @($radiationSources); falloutRadiusCells = $radiationFalloutRadiusCells; destroyedThreshold = $radiationDestroyedThreshold; damagePerSecondAtPeak = $radiationDamagePerSecondAtPeak; cellMiles = $radiationCellMiles; loreYieldMegatons = $radiationLoreYieldMegatons }; danger = [ordered]@{ enabled = $dangerEnabled; pattern = 'chevron'; origin = [ordered]@{ worldX = 0; worldY = 0; cellX = 0; cellY = $originCellY }; tierCount = $dangerTierCount } }
             statistics = [ordered]@{ population = $population; roadCells = $roadCells.Count; highwayCells = $highwayCells.Count; buildingCells = $buildingCells.Count; landmarkCells = $landmarkCells.Count; airports = $airportKeys.Count; safeZones = $denCells.Count; metroLines = $metroLines.Count; metroStops = $metroStations.Count }
             districts = $districtData

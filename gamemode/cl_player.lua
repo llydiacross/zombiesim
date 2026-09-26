@@ -42,4 +42,5 @@ function ply:SetPlayerData(snapshot)
     self.Stamina = number("Stamina", self:GetNWFloat("Stamina", 100))
     self.Hunger = number("Hunger", self:GetNWFloat("Hunger", 100))
     self.Thirst = number("Thirst", self:GetNWFloat("Thirst", 100))
+    self.Job = tostring(snapshot.Job or self:GetNWString("Job", "Civilian"))
 end

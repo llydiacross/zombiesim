@@ -12,7 +12,7 @@ function ENT:Initialize()
     self:SetSolid(SOLID_BBOX)
     self:SetMoveType(MOVETYPE_STEP)
     self:SetCollisionGroup(COLLISION_GROUP_NPC)
-    self.loco:SetDesiredSpeed(self.DevelopmentWalkSpeed)
+    self.loco:SetDesiredSpeed(self.WalkSpeed or self.DevelopmentWalkSpeed)
     self.loco:SetAcceleration(250)
     self.loco:SetDeceleration(300)
     self.NextAttackAt = 0
@@ -48,6 +48,19 @@ function ENT:MarkWalkerTicketAcknowledged()
     self.WalkerTicketAcknowledged = true
     self.WalkerState = "search"
     self:RecordWalkerLifecycle("acknowledged")
+end
+
+// Applies an enemy_definitions.json entry. Health and speed interpolate across the enemy's own danger range;
+// speed is a multiplier on the development walk speed.
+function ENT:ApplyEnemyDefinition(enemy, danger)
+    local progress = ZM_Enemies.GetDangerProgress(enemy, danger)
+    local health = math.max(1, math.Round(Lerp(progress, enemy.minHealth, enemy.maxHealth)))
+    self.EnemyId = enemy.id
+    self.EnemyDanger = math.Clamp(tonumber(danger) or 0, 0, 1)
+    self.WalkSpeed = self.DevelopmentWalkSpeed * Lerp(progress, enemy.minSpeed, enemy.maxSpeed)
+    self:SetMaxHealth(health)
+    self:SetHealth(health)
+    self.loco:SetDesiredSpeed(self.WalkSpeed)
 end
 
 function ENT:RecordWalkerLifecycle(event, details)
@@ -194,7 +207,7 @@ end
 
 function ENT:ChaseTarget(target)
     self:StartActivity(ACT_WALK)
-    self.loco:SetDesiredSpeed(self.DevelopmentWalkSpeed)
+    self.loco:SetDesiredSpeed(self.WalkSpeed or self.DevelopmentWalkSpeed)
 
     while self:IsValidTarget(target) do
         if self:RefreshTarget() ~= target then
@@ -226,7 +239,7 @@ function ENT:RunBehaviour()
         elseif self.LastKnownTargetPosition and CurTime() < self.LastKnownTargetExpiresAt then
             self.WalkerState = "targetLost"
             self:StartActivity(ACT_WALK)
-            self.loco:SetDesiredSpeed(self.DevelopmentWalkSpeed)
+            self.loco:SetDesiredSpeed(self.WalkSpeed or self.DevelopmentWalkSpeed)
             if self:UpdatePath(self.LastKnownTargetPosition) then
                 coroutine.yield()
             else
@@ -287,6 +300,9 @@ function ENT:OnKilled(damage)
     end
     self.WalkerDead = true
     self:ResolveWalkerTicket(true)
+    if self.EnemyId and ZM_Enemies then
+        ZM_Enemies:OnEnemyKilled(self, damage:GetAttacker())
+    end
     self:BecomeRagdoll(damage)
 end
 

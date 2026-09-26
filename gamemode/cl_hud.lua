@@ -1,6 +1,6 @@
-// Short-lived messages shown around the crosshair, newest message nearest the center.
+// Short-lived messages shown above the local player's head, newest message nearest the player.
 local getAllPlayers = player.GetAll
-local crosshairNotifications = {}
+local playerNotifications = {}
 local notificationDuration = 1
 local notificationFadeDuration = 0.35
 local minimapMaterials = {}
@@ -57,7 +57,7 @@ hook.Add("HUDShouldDraw", "ZM.SuppressDefaultSurvivalHud", function(hudName)
 end)
 
 // Dedicated notification font keeps combat feedback independent from the default HUD font.
-surface.CreateFont("ZM_CrosshairNotification", {
+surface.CreateFont("ZM_PlayerNotification", {
     font = "Trebuchet24",
     size = 20,
     weight = 700,
@@ -209,17 +209,52 @@ local function drawCompassMarker(x, y, width, heading, targetYaw, icon, color, p
     end
 end
 
+// Screen rectangles of the fixed HUD panels, shared by their draw code and the crosshair clip.
+local function getCompassRect()
+    local width = math.min(500, ScrW() - 40)
+    return math.floor((ScrW() - width) * 0.5), 18, width, 51
+end
+
+local minimapMargin = 20
+local minimapBarAreaHeight = 76
+
+local function getMinimapRect()
+    local width = math.min(230, ScrW() - minimapMargin * 2)
+    local height = math.floor(width * 0.62) + minimapBarAreaHeight
+    return minimapMargin, ScrH() - height - minimapMargin, width, height
+end
+
+function ZM_GetHudReservedRects()
+    local rects = {}
+    for _, getRect in ipairs({ getCompassRect, getMinimapRect }) do
+        local x, y, width, height = getRect()
+        table.insert(rects, { x = x, y = y, w = width, h = height })
+    end
+    return rects
+end
+
+// Displayed compass heading eases toward the player's facing along the shortest turn, hiding cursor jitter.
+local compassSmoothing = 10
+local compassHeading
+
+local function getSmoothedCompassHeading(player)
+    local target = player:EyeAngles().y
+    if not compassHeading then
+        compassHeading = target
+    end
+    local blend = 1 - math.exp(-compassSmoothing * FrameTime())
+    compassHeading = math.NormalizeAngle(compassHeading + math.AngleDifference(target, compassHeading) * blend)
+    return compassHeading
+end
+
 local function drawPlayerCompass()
     local player = LocalPlayer()
     if not IsValid(player) or not ZM_World or not ZM_World:IsLoaded() then
         return
     end
 
-    local width = math.min(500, ScrW() - 40)
-    local height = 51
-    local x = math.floor((ScrW() - width) * 0.5)
-    local y = 18
-    local heading = player:EyeAngles().y
+    local x, y, width, height = getCompassRect()
+    local heading = getSmoothedCompassHeading(player)
     local playerCell = getHudPlayerCell(player)
     local isInDen = hasCurrentSafeZone(player)
 
@@ -403,17 +438,24 @@ local function drawOtherPlayerMinimapMarker(mapX, mapY, mapWidth, mapHeight, mar
     )
 end
 
+local function drawBossMinimapMarker(mapX, mapY, mapWidth, mapHeight, markerX, markerY)
+    if markerX < mapX or markerX > mapX + mapWidth or markerY < mapY or markerY > mapY + mapHeight then
+        return
+    end
+    surface.SetDrawColor(35, 8, 12, 255)
+    surface.DrawRect(markerX - 7, markerY - 7, 14, 14)
+    surface.SetDrawColor(239, 57, 72, 255)
+    surface.DrawOutlinedRect(markerX - 6, markerY - 6, 12, 12, 2)
+    draw.SimpleText("B", "ZM_MinimapLabel", markerX, markerY, Color(255, 230, 232), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+end
+
 local function drawPlayerMinimap()
     local player = LocalPlayer()
     if not IsValid(player) then return end
 
-    local margin = 20
-    local width = math.min(230, ScrW() - margin * 2)
-    local mapHeight = math.floor(width * 0.62)
-    local barAreaHeight = 76
-    local height = mapHeight + barAreaHeight
-    local x = margin
-    local y = ScrH() - height - margin
+    local x, y, width, height = getMinimapRect()
+    local mapHeight = height - minimapBarAreaHeight
+    local barAreaHeight = minimapBarAreaHeight
     local mapX = x + 8
     local mapY = y + 8
     local mapWidth = width - 16
@@ -482,6 +524,20 @@ local function drawPlayerMinimap()
                 end
             end
         end
+        local bossSnapshot = ZM_WorldMap and ZM_WorldMap.BossSnapshot
+        if bossSnapshot and bossSnapshot.profile == ZM_World.ActiveProfile then
+            for _, boss in ipairs(bossSnapshot.bosses or {}) do
+                if IsValid(boss.entity) then
+                    local bossX, bossY
+                    if minimapViewMode == "map" and ZM_WorldMap.ProjectLocalMapPosition then
+                        bossX, bossY = ZM_WorldMap:ProjectLocalMapPosition(mapX, mapY, mapWidth, mapHeight, position, localMapViewHeight, boss.entity:GetPos())
+                    elseif cellTextureTransform then
+                        bossX, bossY = projectCellTexturePosition(mapX, mapY, mapWidth, mapHeight, boss.entity:GetPos(), cellTextureTransform)
+                    end
+                    if bossX and bossY then drawBossMinimapMarker(mapX, mapY, mapWidth, mapHeight, bossX, bossY) end
+                end
+            end
+        end
     else
         surface.SetDrawColor(0, 0, 0, 118)
         surface.DrawRect(mapX, mapY, mapWidth, mapHeight)
@@ -541,25 +597,58 @@ hook.Add("Think", "ZM.PlayerMinimap.Mode", function()
 end)
 
 // Queues a message that HUDPaint will fade and remove after notificationDuration seconds.
-function ZM_AddCrosshairNotification(text)
-    table.insert(crosshairNotifications, {
+function ZM_AddPlayerNotification(text)
+    table.insert(playerNotifications, {
         text = tostring(text),
         created = CurTime(),
     })
 end
 
-// Draws queued notifications in reverse order so expired messages can be removed safely.
-hook.Add("HUDPaint", "ZM.CrosshairNotifications", function()
+// Screen position just above the player's head, or the screen centre when the head is off-screen.
+function ZM_GetPlayerOverheadScreenPos(ply)
+    local screen = (ply:GetPos() + Vector(0, 0, ply:OBBMaxs().z + 10)):ToScreen()
+    if not screen.visible then
+        return ScrW() * 0.5, ScrH() * 0.5
+    end
+    return screen.x, screen.y
+end
+
+local lastPlayerHealth
+
+// Detects local health loss and shows the amount above the player.
+hook.Add("Think", "ZM.TrackPlayerDamage", function()
+    local ply = LocalPlayer()
+    if not IsValid(ply) or not ply:Alive() then
+        lastPlayerHealth = nil
+        return
+    end
+
+    local currentHealth = ply:Health()
+    local damage = lastPlayerHealth and lastPlayerHealth - currentHealth or 0
+    if damage > 0 then
+        ZM_AddPlayerNotification("-" .. damage .. " HP")
+    end
+    lastPlayerHealth = currentHealth
+end)
+
+local staminaBarWidth = 80
+local staminaBarHeight = 5
+
+// Draws queued notifications above the player (and above the stamina bar), removing expired ones.
+hook.Add("HUDPaint", "ZM.PlayerNotifications", function()
+    local ply = LocalPlayer()
+    if not IsValid(ply) then return end
     local now = CurTime()
-    local y = ScrH() * 0.5 - 28
+    local anchorX, anchorY = ZM_GetPlayerOverheadScreenPos(ply)
+    local y = anchorY - staminaBarHeight - 16
     local index = 1
 
-    for notificationIndex = #crosshairNotifications, 1, -1 do
-        local notification = crosshairNotifications[notificationIndex]
+    for notificationIndex = #playerNotifications, 1, -1 do
+        local notification = playerNotifications[notificationIndex]
         local age = now - notification.created
 
         if age >= notificationDuration then
-            table.remove(crosshairNotifications, notificationIndex)
+            table.remove(playerNotifications, notificationIndex)
         else
             local alpha = 255
             if age > notificationDuration - notificationFadeDuration then
@@ -568,8 +657,8 @@ hook.Add("HUDPaint", "ZM.CrosshairNotifications", function()
 
             draw.SimpleText(
                 notification.text,
-                "ZM_CrosshairNotification",
-                ScrW() * 0.5,
+                "ZM_PlayerNotification",
+                anchorX,
                 y - (index - 1) * 22,
                 Color(255, 255, 255, alpha),
                 TEXT_ALIGN_CENTER,
@@ -580,11 +669,10 @@ hook.Add("HUDPaint", "ZM.CrosshairNotifications", function()
     end
 end)
 
-// Draws stamina only while sprinting or recovering, and hides it in the selfie camera view.
+// Draws stamina above the player only while sprinting or recovering.
 hook.Add("HUDPaint", "ZM.StaminaBar", function()
     local ply = LocalPlayer()
     if not IsValid(ply) or not ply:Alive() then return end
-    if ZM_IsSelfieCamera() then return end
 
     local stamina = ply:GetNWFloat("Stamina", 100)
     local maxStamina = math.max(ply:GetNWFloat("MaxStamina", 100), 1)
@@ -592,10 +680,11 @@ hook.Add("HUDPaint", "ZM.StaminaBar", function()
     local isUsingStamina = ply:KeyDown(IN_SPEED) or staminaPercent < 1
     if not isUsingStamina then return end
 
-    local barWidth = 80
-    local barHeight = 5
-    local barX = math.floor((ScrW() - barWidth) * 0.5)
-    local barY = math.floor(ScrH() * 0.5 + 8)
+    local anchorX, anchorY = ZM_GetPlayerOverheadScreenPos(ply)
+    local barWidth = staminaBarWidth
+    local barHeight = staminaBarHeight
+    local barX = math.floor(anchorX - barWidth * 0.5)
+    local barY = math.floor(anchorY - barHeight)
     local alpha = 255
     if staminaPercent <= 0.1 then
         alpha = math.floor(80 + (math.sin(CurTime() * 14) + 1) * 87.5)

@@ -48,6 +48,16 @@ skin.Colours.Button.Disabled = Color(103, 107, 111)
 skin.Colours.TextEntry = skin.Colours.TextEntry or {}
 skin.Colours.TextEntry.Text = palette.text
 skin.Colours.TextEntry.Highlight = palette.redBright
+skin.Colours.ComboBox = skin.Colours.ComboBox or {}
+skin.Colours.ComboBox.Normal = Color(0, 0, 0)
+skin.Colours.ComboBox.Hover = Color(0, 0, 0)
+skin.Colours.ComboBox.Down = Color(0, 0, 0)
+skin.Colours.ComboBox.Disabled = Color(0, 0, 0)
+skin.Colours.MenuOption = skin.Colours.MenuOption or {}
+skin.Colours.MenuOption.Normal = Color(0, 0, 0)
+skin.Colours.MenuOption.Hover = Color(0, 0, 0)
+skin.Colours.MenuOption.Down = Color(0, 0, 0)
+skin.Colours.MenuOption.Disabled = Color(0, 0, 0)
 
 local function drawBevel(width, height, accent)
     surface.SetDrawColor(palette.border)

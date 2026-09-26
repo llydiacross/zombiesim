@@ -75,8 +75,25 @@ function Preview:RequestTeleport(cell)
     net.SendToServer()
 end
 
+function Preview:RequestDenTeleport(safeZoneId)
+    net.Start("ZM.RequestPreviewDenTeleport")
+        net.WriteString(safeZoneId or "")
+    net.SendToServer()
+end
+
 function Preview:CreateMapPane(parent, mapContext)
     local palette = ZM_DermaSkin.Palette
+    local function styleComboBox(combo)
+        combo:SetTextColor(Color(0, 0, 0))
+        combo.OnMenuOpened = function(_, menu)
+            for _, option in ipairs(menu:GetCanvas():GetChildren()) do
+                if option.SetTextColor then
+                    option:SetTextColor(Color(0, 0, 0))
+                end
+            end
+        end
+        return combo
+    end
     local pane = vgui.Create("DPanel", parent)
     pane:Dock(FILL)
     pane.Paint = function() end
@@ -123,6 +140,36 @@ function Preview:CreateMapPane(parent, mapContext)
     teleportButton:SetTall(26)
     teleportButton:SetText("Teleport")
 
+    local denPicker = styleComboBox(vgui.Create("DComboBox", pane))
+    denPicker:Dock(TOP)
+    denPicker:DockMargin(6, 0, 6, 4)
+    denPicker:SetTall(22)
+    denPicker:SetValue("Select a den")
+    local selectedDenId = ""
+    local denChoices = {}
+    if ZM_World and ZM_World:IsLoaded() then
+        for _, safeZone in ipairs(ZM_World.Data.safeZones or {}) do
+            if safeZone.id and safeZone.name then
+                table.insert(denChoices, safeZone)
+            end
+        end
+        table.sort(denChoices, function(left, right)
+            return string.lower(left.name) < string.lower(right.name)
+        end)
+        for _, safeZone in ipairs(denChoices) do
+            denPicker:AddChoice(safeZone.name, safeZone.id)
+        end
+    end
+    denPicker.OnSelect = function(_, _, _, data)
+        selectedDenId = data or ""
+    end
+
+    local denButton = vgui.Create("DButton", pane)
+    denButton:Dock(TOP)
+    denButton:DockMargin(6, 0, 6, 4)
+    denButton:SetTall(24)
+    denButton:SetText("Teleport to Selected Den")
+
     local consoleButton = vgui.Create("DButton", pane)
     consoleButton:Dock(TOP)
     consoleButton:DockMargin(6, 0, 6, 4)
@@ -142,21 +189,28 @@ function Preview:CreateMapPane(parent, mapContext)
     pickerTitle:SetText("RECIPE FINDER")
     pickerTitle:SetTall(16)
 
-    local environmentFilter = vgui.Create("DComboBox", pane)
+    local environmentFilter = styleComboBox(vgui.Create("DComboBox", pane))
     environmentFilter:Dock(TOP)
     environmentFilter:DockMargin(6, 0, 6, 3)
     environmentFilter:SetTall(22)
     environmentFilter:SetValue("Any environment")
     environmentFilter:AddChoice("Any environment", "")
 
-    local topologyFilter = vgui.Create("DComboBox", pane)
+    local selectedResultCell
+    local teleportResultButton = vgui.Create("DButton", pane)
+    teleportResultButton:Dock(TOP)
+    teleportResultButton:DockMargin(6, 0, 6, 4)
+    teleportResultButton:SetTall(24)
+    teleportResultButton:SetText("Teleport to Selected Environment Cell")
+
+    local topologyFilter = styleComboBox(vgui.Create("DComboBox", pane))
     topologyFilter:Dock(TOP)
     topologyFilter:DockMargin(6, 0, 6, 3)
     topologyFilter:SetTall(22)
     topologyFilter:SetValue("Any layout")
     topologyFilter:AddChoice("Any layout", "")
 
-    local landmarkFilter = vgui.Create("DComboBox", pane)
+    local landmarkFilter = styleComboBox(vgui.Create("DComboBox", pane))
     landmarkFilter:Dock(TOP)
     landmarkFilter:DockMargin(6, 0, 6, 3)
     landmarkFilter:SetTall(22)
@@ -241,6 +295,9 @@ function Preview:CreateMapPane(parent, mapContext)
             button.DoClick = function()
                 xInput:SetText("")
                 yInput:SetText("")
+                selectedResultCell = cell
+                local resultX, resultY = ZM_World:GetWorldCoordinates(cell)
+                teleportResultButton:SetText(string.format("Teleport to Cell %d, %d", resultX, resultY))
                 mapContext.selectCell(cell)
                 mapContext.focusCell(cell)
             end
@@ -304,16 +361,7 @@ function Preview:CreateMapPane(parent, mapContext)
         return gridX and ZM_World:GetCell(gridX, gridY) or nil
     end
 
-    focusButton.DoClick = function()
-        local cell = resolveCoordinateCell() or mapContext.getSelectedCell()
-        if cell then
-            mapContext.selectCell(cell)
-            mapContext.focusCell(cell)
-        end
-    end
-
-    teleportButton.DoClick = function()
-        local cell = resolveCoordinateCell() or mapContext.getSelectedCell()
+    local function requestCellTeleport(cell)
         if not cell then
             self.TeleportStatus = "REJECTED: Select a valid cell"
             return
@@ -325,6 +373,37 @@ function Preview:CreateMapPane(parent, mapContext)
             "Confirm Preview Teleport",
             "Teleport",
             function() self:RequestTeleport(cell) end,
+            "Cancel"
+        )
+    end
+
+    focusButton.DoClick = function()
+        local cell = resolveCoordinateCell() or mapContext.getSelectedCell()
+        if cell then
+            mapContext.selectCell(cell)
+            mapContext.focusCell(cell)
+        end
+    end
+
+    teleportButton.DoClick = function()
+        requestCellTeleport(resolveCoordinateCell() or mapContext.getSelectedCell())
+    end
+
+    teleportResultButton.DoClick = function()
+        requestCellTeleport(selectedResultCell)
+    end
+
+    denButton.DoClick = function()
+        local safeZone = selectedDenId ~= "" and ZM_SafeZones and ZM_SafeZones:Get(selectedDenId) or nil
+        if not safeZone then
+            self.TeleportStatus = "REJECTED: Select a den"
+            return
+        end
+        Derma_Query(
+            string.format("Enter %s on this one-player preview server?\n%s", safeZone.name or safeZone.id, ZM_SafeZones:GetMap(safeZone.id) or "unresolved"),
+            "Confirm Den Teleport",
+            "Enter Den",
+            function() self:RequestDenTeleport(safeZone.id) end,
             "Cancel"
         )
     end
@@ -344,6 +423,8 @@ function Preview:CreateMapPane(parent, mapContext)
         status:SetText(self.TeleportStatus ~= "" and self.TeleportStatus or (hasDiagnostics and "READY" or "BLOCKED"))
         focusButton:SetEnabled(hasDiagnostics and cell ~= nil)
         teleportButton:SetEnabled(hasOperator and cell ~= nil)
+        denButton:SetEnabled(hasOperator and selectedDenId ~= "")
+        teleportResultButton:SetEnabled(hasOperator and selectedResultCell ~= nil)
         consoleButton:SetEnabled(hasDataAdmin and self.OpenDataConsole ~= nil)
     end
 

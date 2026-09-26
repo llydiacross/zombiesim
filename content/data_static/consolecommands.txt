@@ -1,2 +1,4 @@
-# request: manual-20260926-043446-15c215b4
-zombiesim_map_batch_retry
+# request: drag-debug-4
+zn_equip_item 6ab8397f613d401dc1
+zn_move_item 6ab8397f613d401dc1 backpack 4
+zn_inventory

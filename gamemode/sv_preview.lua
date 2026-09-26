@@ -11,6 +11,7 @@ CreateConVar(
 util.AddNetworkString("ZM.PreviewCapabilities")
 util.AddNetworkString("ZM.RequestPreviewCapabilities")
 util.AddNetworkString("ZM.RequestPreviewTeleport")
+util.AddNetworkString("ZM.RequestPreviewDenTeleport")
 util.AddNetworkString("ZM.PreviewTeleportStatus")
 util.AddNetworkString("ZM.RequestPreviewCheat")
 util.AddNetworkString("ZM.PreviewCheatStatus")
@@ -216,6 +217,84 @@ end)
 
 hook.Add("InitPostEntity", "ZM.Preview.ReleaseTransitionLock", function()
     Preview.TransitionLocked = false
+end)
+
+// An empty id selects the world-origin den.
+net.Receive("ZM.RequestPreviewDenTeleport", function(_, playerEntity)
+    local safeZoneId = net.ReadString()
+    local requestId = nextTeleportRequestId()
+    local function reject(message)
+        sendTeleportStatus(playerEntity, requestId, false, message, 0)
+    end
+
+    if not Preview:HasServerCapability(playerEntity, Preview.Capabilities.operator) then
+        reject("Preview teleport is unavailable")
+        return
+    end
+    if getHumanPlayerCount() ~= 1 then
+        reject("Preview teleport requires exactly one human player")
+        return
+    end
+    if ZM_MapBatch and ZM_MapBatch:IsActive() then
+        reject("Map maintenance is active")
+        return
+    end
+    if Preview.TransitionLocked then
+        reject("A preview transition is already pending")
+        return
+    end
+    local lastRequestAt = Preview.TeleportCooldowns[playerEntity:SteamID()] or 0
+    if CurTime() - lastRequestAt < 1 then
+        reject("Preview teleport is cooling down")
+        return
+    end
+    if not ZM_World or not ZM_World:IsLoaded() then
+        reject("Preview world data is not loaded")
+        return
+    end
+
+    local safeZone = safeZoneId ~= "" and ZM_SafeZones:Get(safeZoneId) or ZM_SafeZones:GetOrigin()
+    local entrance = safeZone and ZM_SafeZones:GetEntranceCell(safeZone.id) or nil
+    local mapPath = safeZone and ZM_SafeZones:GetMap(safeZone.id) or nil
+    if not safeZone or not entrance or type(mapPath) ~= "string" or not string.match(mapPath, "^[%w_/%-]+$") then
+        reject("Selected den has no valid map")
+        return
+    end
+    if not file.Exists("maps/" .. mapPath .. ".bsp", "GAME") then
+        reject("Den map is not staged in Garry's Mod")
+        return
+    end
+
+    local worldX, worldY = ZM_World:GetWorldCoordinates(entrance)
+    local positioned, positionError = playerEntity:SetWorldCell(worldX, worldY)
+    if not positioned then
+        reject(positionError or "Could not update player world position")
+        return
+    end
+    local entered, enterError = playerEntity:SetCurrentSafeZone(safeZone.id)
+    if not entered then
+        reject(enterError or "Could not enter den")
+        return
+    end
+
+    Preview.TeleportCooldowns[playerEntity:SteamID()] = CurTime()
+    local targetMapName = string.lower(string.match(mapPath, "([^/]+)$") or mapPath)
+    local currentMapName = string.lower(string.match(game.GetMap(), "([^/]+)$") or game.GetMap())
+    if targetMapName == currentMapName then
+        sendTeleportStatus(playerEntity, requestId, true, "Already in " .. (safeZone.name or safeZone.id), entrance.id, mapPath)
+        return
+    end
+
+    Preview.TransitionLocked = true
+    local transitionQueued = GAMEMODE and GAMEMODE.EnsurePlayerWorldMap and GAMEMODE:EnsurePlayerWorldMap(playerEntity)
+    if not transitionQueued then
+        Preview.TransitionLocked = false
+        reject("Core world transition could not be queued")
+        return
+    end
+
+    sendTeleportStatus(playerEntity, requestId, true, "Loading " .. (safeZone.name or safeZone.id), entrance.id, mapPath)
+    print(string.format("[ZombieSim] Preview den teleport: %s -> %s (%s)", playerEntity:SteamID(), safeZone.id, mapPath))
 end)
 
 local cheatDirections = {

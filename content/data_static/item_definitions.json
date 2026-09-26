@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "items": {
+    "itemBandage": {
+      "name": "Bandage",
+      "entityClass": "entity",
+      "thumbnail": "itemBandage",
+      "value": 2,
+      "maxStack": 3
+    },
+    "weaponMeleeCrowbar": {
+      "name": "Crowbar",
+      "entityClass": "weapon",
+      "type": "melee_weapon",
+      "thumbnail": "weaponMeleeCrowbar",
+      "statRequirements": {
+        "Strength": 5
+      },
+      "minLevel": 10,
+      "maxLevel": 30,
+      "value": 200,
+      "maxStack": 1
+    },
+    "weaponHandgun9mm": {
+      "name": "9mm Handgun",
+      "entityClass": "weapon",
+      "type": "bullet_weapon",
+      "thumbnail": "weaponHandgun9mm",
+      "minLevel": 1,
+      "maxLevel": 20,
+      "value": 150,
+      "maxStack": 1
+    },
+    "weaponUsp9mm": {
+      "name": "USP 9mm",
+      "entityClass": "weapon",
+      "type": "bullet_weapon",
+      "thumbnail": "weaponUsp9mm",
+      "minLevel": 1,
+      "maxLevel": 12,
+      "value": 180,
+      "maxStack": 1
+    },
+    "weaponAutoPistol9mm": {
+      "name": "Auto 9mm Pistol",
+      "entityClass": "weapon",
+      "type": "bullet_weapon",
+      "thumbnail": "weaponAutoPistol9mm",
+      "minLevel": 15,
+      "maxLevel": 30,
+      "value": 420,
+      "maxStack": 1
+    },
+    "weaponMp5": {
+      "name": "MP5",
+      "entityClass": "weapon",
+      "type": "bullet_weapon",
+      "thumbnail": "weaponMp5",
+      "minLevel": 5,
+      "maxLevel": 18,
+      "value": 340,
+      "maxStack": 1
+    },
+    "weaponM4a1": {
+      "name": "M4A1",
+      "entityClass": "weapon",
+      "type": "bullet_weapon",
+      "thumbnail": "weaponM4a1",
+      "minLevel": 8,
+      "maxLevel": 24,
+      "value": 520,
+      "maxStack": 1
+    },
+    "weaponAk47": {
+      "name": "AK-47",
+      "entityClass": "weapon",
+      "type": "bullet_weapon",
+      "thumbnail": "weaponAk47",
+      "minLevel": 8,
+      "maxLevel": 24,
+      "value": 540,
+      "maxStack": 1
+    },
+    "weaponShotgunM3": {
+      "name": "M3 Shotgun",
+      "entityClass": "weapon",
+      "type": "bullet_weapon",
+      "thumbnail": "weaponShotgunM3",
+      "minLevel": 4,
+      "maxLevel": 16,
+      "value": 300,
+      "maxStack": 1
+    },
+    "weaponScout": {
+      "name": "Scout",
+      "entityClass": "weapon",
+      "type": "bullet_weapon",
+      "thumbnail": "weaponScout",
+      "minLevel": 10,
+      "maxLevel": 28,
+      "value": 620,
+      "maxStack": 1
+    },
+    "weaponAwp": {
+      "name": "AWP",
+      "entityClass": "weapon",
+      "type": "bullet_weapon",
+      "thumbnail": "weaponAwp",
+      "minLevel": 18,
+      "maxLevel": 35,
+      "value": 980,
+      "maxStack": 1
+    },
+    "itemBossJuice": {
+      "name": "Boss Juice",
+      "entityClass": "entity",
+      "thumbnail": "itemBossJuice",
+      "value": 1000,
+      "maxStack": 1,
+      "minLevel": 30,
+      "maxLevel": 30
+    },
+    "itemCashBundle": {
+      "name": "Cash Bundle",
+      "entityClass": "entity",
+      "thumbnail": "itemCashBundle",
+      "value": 1,
+      "maxStack": 2147483647
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "bosses": {
+    "bossWalker": {
+      "enemy": "entityBossWalker",
+      "spawnConditions": {
+        "minCellDanger": 0.5,
+        "maxActiveWorldCount": 1,
+        "cooldownHours": 1
+      },
+      "mapMarker": {
+        "showOnMinimap": true,
+        "icon": "boss",
+        "label": "Boss Walker"
+      },
+      "lootGroups": ["lootBossRewards"]
+    }
+  }
+}

@@ -368,7 +368,7 @@ function Scoreboard:Open()
 
     local profileAvatar = vgui.Create("AvatarImage", dossier)
     profileAvatar:SetSize(104, 104)
-    profileAvatar:SetPos(22, 22)
+    profileAvatar:SetPos(26, 22)
 
     local modelPreview = vgui.Create("DModelPanel", dossier)
     modelPreview:SetSize(96, 110)

@@ -189,6 +189,71 @@ zombiesim_validate_scripts
 
 When invoked through the bridge, `consolecommands.result.json` includes `reports.scriptValidation` with the checked, passed, and failed counts plus one result for each source file. Syntax failures are also printed in the server console with their mounted `GAME` path.
 
+For an offline syntax check without launching the game, run `.\bin\test_glua_syntax.ps1`. It uses the `gluac.exe` bundled with the GLua Enhanced VS Code extension and exits with code 1 on any failure.
+
+# Static Data (Items, Loot, Enemies, Bosses)
+
+`ZM_StaticData` loads `item_definitions.json`, `loot.json`, `entity_loot.json`, `enemy_definitions.json`, `enemy_spawns.json`, and `boss_spawns.json` from `content/data_static/` in both realms. A load that has any error keeps the previous registry. Admin/server commands:
+
+```
+zn_validate_static [file ...]   // validate the files on disk; the live registry is unchanged
+zn_validate_loot                // validate loot.json and entity_loot.json only
+zn_reload_static                // reload and, on success, tell clients to reload
+zn_test_static_data             // run the fixture tests in tests/static_data/cases.json
+```
+
+`zn_validate_static`, `zn_reload_static`, and `zn_test_static_data` run synchronously through the development bridge and add `reports.staticDataValidation`, `reports.staticDataReload`, and `reports.staticDataTests` to `consolecommands.result.json`. Warnings for missing SWEPs, thumbnails, models, or entity classes never block a load.
+
+# Inventory
+
+Each player has a 20-slot backpack and a 60-slot den stash, stored per profile in the `player_items` SQLite table. The backpack is lost on death; the stash can only be changed inside the player's current den. Admin commands (from the server console or bridge they act on the first connected player):
+
+```
+zn_inventory                                              // print backpack and stash
+zn_give_item <itemId> [count] [level] [mastercraft 0/1]   // add to the backpack
+zn_remove_item <itemId> [count] [container]
+zn_move_item <instanceId> <backpack|stash> [slot] [count]
+zn_test_inventory                                         // operation and persistence tests (throwaway SteamID/profile)
+```
+
+Through the bridge these add `reports.inventory` or `reports.inventoryTests`. The bridge-only `zombiesim_dev_kill_player` kills the first player for death-path tests, because the engine blocks `lua_run` sent through `game.ConsoleCommand`.
+
+# Loot Rolls
+
+`ZM_Loot` (server) rolls items from the resolved loot groups, entity-loot rules, enemies, and bosses. Weights interpolate linearly from `minWeight` (danger 0) to `maxWeight` (danger 1); `activationChance` and the enemy loot-drop chances are probabilities, not weights.
+
+```
+zn_test_loot_roll <group> <danger 0-1> [samples] [seed]   // expected vs observed shares, average count, mastercraft rate
+zn_give_loot <group> [danger]                             // roll for the player and add it to the backpack
+zn_test_loot                                              // loot engine tests
+```
+
+Through the bridge these add `reports.lootRoll`, `reports.lootGrant`, and `reports.lootTests`.
+
+# Enemies
+
+`ZM_Enemies` (server) picks the enemy type for each Walker ticket from the spawn groups matching the cell's environment tags (or `defaultGroup`), limited to enemies whose `minDanger`..`maxDanger` contains the cell danger. Health, speed, and spawn weight scale across each enemy's own danger range. A player kill awards the enemy's `xp` and rolls its loot drop once; despawns give nothing.
+
+```
+zn_spawn_enemy [enemyId|auto] [danger]   // development spawn in front of the player (not Walker-ticketed)
+zn_kill_enemies                          // kill nearby defined enemies, credited to the player
+zn_test_enemies                          // selection, scaling, and reward tests
+```
+
+Through the bridge these add `reports.enemySpawn`, `reports.enemyKills`, and `reports.enemyTests`.
+
+# World Loot Spots
+
+`ZM_LootSpots` (server) turns matching map props from `entity_loot.json` into loot spots when a player loads into a city cell. Spot state is saved per profile and cell in SQLite; a cell re-rolls on the next load after 5 minutes with nobody in it. Press E near a highlighted prop to search it, then accept or decline the offered item (declining keeps the same item on the spot).
+
+```
+zn_loot_spots            // matching props and spot states in the current cell
+zn_loot_spots_refresh    // re-roll every spot now
+zn_test_loot_spots       // loot spot tests (throwaway profiles)
+```
+
+Through the bridge these add `reports.lootSpots` and `reports.lootSpotTests`. The bridge-only `zombiesim_dev_teleport_cell <gridX> <gridY>` moves the first player to a raw grid cell through the normal world transition.
+
 # Runtime World Data
 
 `ZM_World` loads `data_static/zombiesim_world.json` from the `GAME` mount during gamemode initialization. It returns `nil` or `false, error` when the index is unavailable, so gameplay code can fail safely while a release is being assembled.

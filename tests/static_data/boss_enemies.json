@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "enemies": {
+    "entityWalker": { "entity": "zn_walker_zombie", "minHealth": 19, "minSpawnWeight": 1 },
+    "entityRareWalker": { "entity": "zn_walker_zombie", "minHealth": 29, "minSpawnWeight": 1 },
+    "entityBossTank": { "entity": "zn_walker_zombie", "minHealth": 500, "boss": true },
+    "entityBossWalker": { "entity": "zn_boss_zombie", "minHealth": 220, "boss": true }
+  }
+}

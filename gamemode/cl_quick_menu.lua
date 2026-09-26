@@ -112,21 +112,8 @@ function ZM_PreviewCheats:Request(action)
     net.SendToServer()
 end
 
-function ZM_Inventory:Open()
-    local frame = openFrame(self, "INVENTORY", 560, 440)
-    if frame.InventoryBuilt then return end
-    frame.InventoryBuilt = true
-    local label = vgui.Create("DLabel", frame)
-    label:Dock(FILL)
-    label:DockMargin(16, 34, 16, 16)
-    label:SetFont("DermaDefaultBold")
-    label:SetTextColor(ZM_DermaSkin.Palette.muted)
-    label:SetContentAlignment(5)
-    label:SetText("No inventory data is available in this build.")
-end
-
 function ZM_Options:Open()
-    local frame = openFrame(self, "OPTIONS", 480, 430)
+    local frame = openFrame(self, "OPTIONS", 480, 550)
     if frame.OptionsBuilt then return end
     frame.OptionsBuilt = true
     local panel = vgui.Create("DPanel", frame)
@@ -175,12 +162,44 @@ function ZM_Options:Open()
         cookie.Set("zombiesim_quick_menu_scale", tostring(math.Round(value, 1)))
     end
 
+    if ZM_GetMouseSensitivity then
+        local minimumSensitivity, maximumSensitivity = ZM_GetMouseSensitivityRange()
+        local sensitivity = vgui.Create("DNumSlider", panel)
+        sensitivity:Dock(TOP)
+        sensitivity:DockMargin(4, 0, 4, 4)
+        setSliderLabel(sensitivity, "Mouse sensitivity")
+        sensitivity:SetMin(minimumSensitivity)
+        sensitivity:SetMax(maximumSensitivity)
+        sensitivity:SetDecimals(2)
+        sensitivity:SetValue(ZM_GetMouseSensitivity())
+        sensitivity.OnValueChanged = function(_, value)
+            ZM_SetMouseSensitivity(value)
+        end
+    end
+
+    if ZM_GetInvertMouseY then
+        for _, option in ipairs({
+            { mode = "orbit", label = "Invert mouse Y when orbiting" },
+            { mode = "shoulder", label = "Invert mouse Y in shoulder view" }
+        }) do
+            local invert = vgui.Create("DCheckBoxLabel", panel)
+            invert:Dock(TOP)
+            invert:DockMargin(4, 4, 4, 4)
+            invert:SetText(option.label)
+            invert:SetTextColor(ZM_DermaSkin.Palette.text)
+            invert:SetValue(ZM_GetInvertMouseY(option.mode) and 1 or 0)
+            invert.OnChange = function(_, enabled)
+                ZM_SetInvertMouseY(option.mode, enabled)
+            end
+        end
+    end
+
     local walkerHeading = vgui.Create("DLabel", panel)
     walkerHeading:Dock(TOP)
     walkerHeading:DockMargin(4, 14, 4, 4)
     walkerHeading:SetTall(20)
     walkerHeading:SetFont("DermaDefaultBold")
-    walkerHeading:SetText("WALKER MATERIALIZATION")
+    walkerHeading:SetText("ZOMBIE SETTINGS")
     walkerHeading:SetTextColor(ZM_DermaSkin.Palette.text)
 
     local activeCap = vgui.Create("DNumSlider", panel)

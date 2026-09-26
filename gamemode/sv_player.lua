@@ -56,10 +56,12 @@ local function getDefaultPlayerData()
         CellY = tonumber(worldOrigin[2]) or 0,
         CurrentSafeZoneId = nil,
         SkillPoints = 0,
+        Cash = 0,
         Health = 100,
         Stamina = 100,
         Hunger = 100,
-        Thirst = 100
+        Thirst = 100,
+        Job = "Civilian"
     }
 end
 
@@ -125,10 +127,12 @@ function ply:SendPlayerData()
         CellY = tonumber(self.CellY) or 0,
         CurrentSafeZoneId = self.CurrentSafeZoneId or "",
         SkillPoints = tonumber(self.SkillPoints) or 0,
+        Cash = tonumber(self.Cash) or 0,
         Health = tonumber(self.SavedHealth) or 100,
         Stamina = tonumber(self.Stamina) or 100,
         Hunger = tonumber(self.Hunger) or 100,
-        Thirst = tonumber(self.Thirst) or 100
+        Thirst = tonumber(self.Thirst) or 100,
+        Job = self.Job or "Civilian"
     }
     net.Start("ZM.RefreshPlayerData")
         net.WriteString(util.TableToJSON(snapshot, false) or "{}")
@@ -164,7 +168,7 @@ function ply:UpdatePlayerData(source)
         return false, "Player persistent state has not been loaded"
     end
 
-    return ZM_SetPlayerData(self:SteamID(), ZM_World.ActiveProfile, {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, CurrentSafeZoneId = self.CurrentSafeZoneId, SkillPoints = self.SkillPoints, Health = self.SavedHealth, Stamina = self.Stamina, Hunger = self.Hunger, Thirst = self.Thirst}, source or "runtime update")
+    return ZM_SetPlayerData(self:SteamID(), ZM_World.ActiveProfile, {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, CurrentSafeZoneId = self.CurrentSafeZoneId, SkillPoints = self.SkillPoints, Cash = self.Cash, Health = self.SavedHealth, Stamina = self.Stamina, Hunger = self.Hunger, Thirst = self.Thirst, Job = self.Job}, source or "runtime update")
 end
 
 // Records the standalone safe room the player is currently in without changing their city cell.
@@ -188,6 +192,15 @@ function ply:SetCurrentSafeZone(safeZoneId)
         return false, updateError or "Could not persist current safe zone"
     end
     self:SetNetworkPlayerData()
+    if self.CurrentSafeZoneId and ZM_InventoryService and ZM_InventoryService.DepositCashBundles then
+        local deposited, depositError = ZM_InventoryService:DepositCashBundles(self)
+        if not deposited then
+            ErrorNoHalt("[ZombieSim] Could not deposit den cash bundles: " .. tostring(depositError) .. "\n")
+        end
+    end
+    if self.SendInventory then
+        self:SendInventory()
+    end
     if GAMEMODE and GAMEMODE.SendPlayerAtmosphereProfile then
         GAMEMODE:SendPlayerAtmosphereProfile(self)
     end
@@ -264,9 +277,16 @@ function ply:ResetForWorldOrigin()
     self.Stamina = self:GetMaxStamina()
     self.Hunger = 100
     self.Thirst = 100
+    self.Job = "Civilian"
     self:SetHealth(self.SavedHealth)
     self:UpdateAttributes()
     self:UpdatePlayerData("player reset")
+    if ZM_InventoryService then
+        local cleared, clearError = ZM_InventoryService:Clear(self)
+        if not cleared then
+            ErrorNoHalt("[ZombieSim] Could not clear inventory during reset: " .. tostring(clearError) .. "\n")
+        end
+    end
     self:SetNetworkAttributes()
     self:SetNetworkPlayerData()
     self:SendPlayerAttributes()
@@ -329,11 +349,13 @@ function ply:FetchPlayerData()
     self.CellY = tonumber(data.CellY) or originY
     self.CurrentSafeZoneId = data.CurrentSafeZoneId or nil
     self.SkillPoints = tonumber(data.SkillPoints) or 0
+    self.Cash = tonumber(data.Cash) or 0
     self.SavedHealth = tonumber(data.Health) or 100
     self.Stamina = tonumber(data.Stamina) or 100
     self.Stamina = math.Clamp(self.Stamina, 0, self:GetMaxStamina())
     self.Hunger = math.Clamp(tonumber(data.Hunger) or 100, 0, 100)
     self.Thirst = math.Clamp(tonumber(data.Thirst) or 100, 0, 100)
+    self.Job = ZM_NormalizeJob(data.Job)
     if ZM_World.ActiveProfile == "preview" and ZM_DevConsole and ZM_DevConsole.WritePlayerHydration then
         ZM_DevConsole:WritePlayerHydration({
             steamId = self:SteamID(),
@@ -385,6 +407,7 @@ function ply:SetNetworkPlayerData()
     self:SetNWFloat("MaxStamina", self:GetMaxStamina())
     self:SetNWFloat("Hunger", self.Hunger)
     self:SetNWFloat("Thirst", self.Thirst)
+    self:SetNWString("Job", self.Job or "Civilian")
 end
 
 // Prevents sprint input from moving an exhausted living player faster than walking speed.
@@ -451,7 +474,7 @@ hook.Add("Think", "ZM.Survival", function()
     end
 end)
 
-// Applies ambient radiation once per second; standalone safe rooms remain protected.
+// Applies ambient radiation after 120 seconds in the same cell; standalone safe rooms remain protected.
 local nextRadiationDamageAt = 0
 hook.Add("Think", "ZM.RadiationDamage", function()
     if CurTime() < nextRadiationDamageAt then return end
@@ -466,11 +489,19 @@ hook.Add("Think", "ZM.RadiationDamage", function()
         ply:SetNWFloat("RadiationIntensity", intensity)
         if intensity <= 0 then continue end
 
-        local damagePerSecond = ply:GetRadiationDamagePerSecond()
-        if not damagePerSecond or damagePerSecond <= 0 then continue end
+        local cell = ply:GetWorldCell()
+        local cellId = cell and cell.id or nil
+        if ply.RadiationCellId ~= cellId then
+            ply.RadiationCellId = cellId
+            ply.RadiationEnteredAt = CurTime()
+            continue
+        end
+        if not ply.RadiationEnteredAt or CurTime() - ply.RadiationEnteredAt < 120 then continue end
+
+        local damagePerTick = intensity >= 0.75 and math.random(1, 3) == 1 and 2 or 1
 
         local damageInfo = DamageInfo()
-        damageInfo:SetDamage(damagePerSecond)
+        damageInfo:SetDamage(damagePerTick)
         damageInfo:SetDamageType(DMG_RADIATION)
         damageInfo:SetAttacker(game.GetWorld())
         damageInfo:SetInflictor(game.GetWorld())

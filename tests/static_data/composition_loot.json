@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "groups": {
+    "lootBase": {
+      "items": {
+        "weaponMeleeCrowbar": { "minWeight": 30 },
+        "itemBandage": { "minWeight": 10, "maxWeight": 20 }
+      }
+    },
+    "lootSecond": {
+      "items": {
+        "weaponMeleeCrowbar": { "minWeight": 50, "maxWeight": 60 },
+        "weaponHandgun9mm": { "minWeight": 5 }
+      }
+    },
+    "lootCombined": {
+      "include": ["lootBase", "lootSecond"],
+      "overrides": {
+        "itemBandage": { "maxCount": 2 }
+      }
+    },
+    "lootImplied": {
+      "include": ["lootBase"],
+      "overrides": {
+        "weaponMeleeCrowbar": { "minWeight": 5 }
+      }
+    },
+    "lootForcedMastercraft": {
+      "items": {
+        "weaponMeleeCrowbar": { "minWeight": 5, "mastercraft": true }
+      }
+    },
+    "lootChained": {
+      "include": ["lootCombined"]
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 2,
+  "defaultGroup": "cellGenericEnemies",
+  "groups": {
+    "cellGenericEnemies": { "enemies": ["entityWalker"] }
+  }
+}

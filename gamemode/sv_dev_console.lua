@@ -1,6 +1,65 @@
 // Development-only bridge from a mounted command file to the server console.
 ZM_DevConsole = ZM_DevConsole or {}
 local DevConsole = ZM_DevConsole
+// Commands run synchronously by the bridge so their DevConsole:Report output reaches the result file.
+DevConsole.DirectCommands = DevConsole.DirectCommands or {}
+
+// Bridge-only: game.ConsoleCommand blocks lua_run, so death-path tests need a direct kill.
+DevConsole.DirectCommands.zombiesim_dev_kill_player = function()
+    local target = player.GetHumans()[1]
+    if not IsValid(target) or not target:Alive() then
+        return false, "no living player to kill"
+    end
+    target:Kill()
+    return true
+end
+
+// Bridge-only: moves the first player to a raw grid cell through the normal world-map transition.
+DevConsole.DirectCommands.zombiesim_dev_teleport_cell = function(argumentString)
+    local gridX, gridY = string.match(argumentString or "", "^(%-?%d+)%s+(%-?%d+)$")
+    local target = player.GetHumans()[1]
+    local cell = gridX and ZM_World:GetCell(tonumber(gridX), tonumber(gridY)) or nil
+    if not IsValid(target) or not cell then
+        return false, "usage: zombiesim_dev_teleport_cell <gridX> <gridY> with a connected player"
+    end
+    local worldX, worldY = ZM_World:GetWorldCoordinates(cell)
+    local positioned, positionError = target:SetWorldCell(worldX, worldY)
+    if not positioned then
+        return false, positionError
+    end
+    if not GAMEMODE:EnsurePlayerWorldMap(target) then
+        return false, "the player is already on that cell's map or a transition is queued"
+    end
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_spawn_boss = function(argumentString)
+    local target = player.GetHumans()[1]
+    local bossId = string.Trim(argumentString or "")
+    if not IsValid(target) or bossId == "" then
+        return false, "usage: zombiesim_dev_spawn_boss <bossId>"
+    end
+    local instance, entityOrError = ZM_Bosses:SpawnForPlayer(target, bossId)
+    if not instance then return false, entityOrError end
+    return true, string.format("spawned boss %s instance %d", bossId, instance.id)
+end
+
+DevConsole.DirectCommands.zombiesim_dev_kill_boss = function()
+    local target = player.GetHumans()[1]
+    if not IsValid(target) then return false, "no connected player" end
+    local profileState = ZM_Bosses.Profiles[ZM_World.ActiveProfile]
+    for _, instance in pairs(profileState and profileState.active or {}) do
+        if IsValid(instance.entity) then
+            local damage = DamageInfo()
+            damage:SetDamage(999999)
+            damage:SetAttacker(target)
+            damage:SetInflictor(target)
+            instance.entity:OnKilled(damage)
+            return true, string.format("killed boss instance %d", instance.id)
+        end
+    end
+    return false, "no active boss"
+end
 
 local inputPath = "data_static/consolecommands.txt"
 local outputPath = "zombiesim/consolecommands.result.json"
@@ -230,6 +289,12 @@ local function dispatchCommand(command)
 
     if string.match(command, "^zombiesim_validate_scripts%s*$") then
         return runScriptValidation()
+    end
+
+    local commandName, commandArguments = string.match(command, "^(%S+)%s*(.-)%s*$")
+    local directCommand = commandName and DevConsole.DirectCommands[commandName] or nil
+    if directCommand then
+        return directCommand(commandArguments)
     end
 
     game.ConsoleCommand(command .. "\n")

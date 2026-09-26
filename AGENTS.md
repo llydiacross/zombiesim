@@ -4,8 +4,8 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Active Task Tracker
 
-- `todo-alpha-2.7.md` is the authoritative tracker for current Alpha 2.7 work.
-- `docs/todo-alpha-2.6.md`, older roadmaps, test logs, and prior agent notes are historical context unless an item is explicitly promoted into the active tracker.
+- `todo-alpha-2.8.md` is the authoritative tracker for current Alpha 2.8 work.
+- `docs/todo-alpha-2.7.md`, `docs/todo-alpha-2.6.md`, older roadmaps, test logs, and prior agent notes are historical context unless an item is explicitly promoted into the active tracker.
 - When the active milestone changes, update this guide and the root tracker together; do not infer current work from historical phase labels.
 
 ## Read First
@@ -39,6 +39,8 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 - Before diagnosing or validating a generated layout, resolve its exact recipe filename from the current matching plan, rebuild that recipe from current inputs, and confirm the inspected VMF's instance name, source template, origin, and angles. Do not infer freshness or behavior from a similarly named recipe or an older zoo output.
 - Do not change a native model's `ModelOffset` to correct Backrooms placement. Correct the generator's block-cell placement.
 - Standalone safe-zone maps are complete templates copied unchanged. Edit `celltemplates/safezones`, not their generated copies.
+- Before changing a placement, orientation, or UI layout direction, restate the intended relationship in logical coordinates and cardinal directions, including whether it is edge-adjacent, in-line, in-front, left, or right. If the visual evidence leaves that relationship ambiguous, ask one focused clarification before editing.
+- Treat generated plans, VMFs, BSPs, navmesh outputs, and runtime exports as potentially stale until the current matching input is resolved and the affected output is regenerated. Validate the exact artifact that was produced, not a similarly named or previously inspected file.
 
 ## Focused Validation
 
@@ -56,6 +58,9 @@ Run PowerShell commands from the repository root. For changes to planning or VMF
 - Only use `-SkipVBSP` with `-SkipRecipeRefresh` when the source VMFs are unchanged from the portal preflight. Review `generated/build_<profile>/compile-report.json` for failed or incomplete stages.
 - A full VVIS/VRAD build and in-game launch are deliberate final checks. Batch related changes before launching Garry's Mod; reload `zn_preview_start` after preview staging or `zn_city_start` after city staging.
 - For `cl_*.lua`, camera, Derma, and map-transition changes, parsing or compilation is only static validation. Do not report behavior as verified until the affected input path has been exercised in a running client; otherwise state that an in-game check remains.
+- After any Lua change, run `./bin/test_glua_syntax.ps1` for an offline GLua syntax check. It uses the `gluac.exe` bundled with the GLua Enhanced VS Code extension (Garry's Mod's own `lua_shared.dll`), so `//`, `!=`, `&&`, and `continue` parse correctly. Stock `lua`/`luac` cannot parse GLua. This checks syntax only, not GMod APIs or realms.
+- For runtime changes, use a two-part validation matrix: run the narrowest static or automated check first, then exercise the affected in-game command, input path, persistence transition, or client flow. Report static success and live success separately, and explicitly state when live verification remains.
+- In long implementation sessions, create or refresh a checkpoint after each subsystem boundary and after a failed validation loop. Record the current hypothesis, exact artifact or command under test, result, and next discriminating check before moving to another subsystem.
 
 ## Environment Notes
 

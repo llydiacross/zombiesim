@@ -194,3 +194,19 @@ function ply:CanLevelUp()
     return self.XP >= self.ExperiencePerLevel
 end
 
+// Top-down aim: the camera's downward pitch is ignored, so attacks leave the centre of mass level with the ground.
+function ply:GetLevelAim()
+    return self:WorldSpaceCenter(), Angle(0, self:EyeAngles().y, 0):Forward()
+end
+
+// Returns the trace of a level shot from the centre of mass, used by weapons and the crosshair.
+function ply:GetLevelAimTrace(range)
+    local origin, direction = self:GetLevelAim()
+    return util.TraceLine({
+        start = origin,
+        endpos = origin + direction * (range or 4096),
+        filter = self,
+        mask = MASK_SHOT
+    })
+end
+

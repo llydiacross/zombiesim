@@ -452,6 +452,7 @@ $runtimeWorld = [ordered]@{
     schemaVersion = 1
     world = [ordered]@{
         seed = $map.map.seed
+        cityName = [string]$map.map.cityName
         grid = @($width, $height)
         origin = @([int]$map.map.origin.worldX, [int]$map.map.origin.worldY)
         gridOrigin = @([int]$map.map.origin.cellX, [int]$map.map.origin.cellY)

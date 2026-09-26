@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "defaultGroup": "cellMissing",
+  "groups": {
+    "cellBad": { "enemies": ["entityWalker", "entityBossTank", "entityGhost"] }
+  },
+  "environmentTags": {
+    "Radioactive": "cellBad",
+    "military": "cellMissing"
+  }
+}
