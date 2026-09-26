@@ -1964,7 +1964,7 @@ function WorldMap:Open()
             local active = WorldMap.RenderMode == renderMode
             local enabled = panel:IsEnabled()
             surface.SetDrawColor(active and MapColors.raised.r or MapColors.panel.r, active and MapColors.raised.g or MapColors.panel.g, active and MapColors.raised.b or MapColors.panel.b, enabled and 255 or 145)
-            surface.DrawRect(0, 0, buttonWidth, buttonHeight)
+            surface.DrawRect(0, 2, buttonWidth, buttonHeight - 4)
             if active then
                 surface.SetDrawColor(MapColors.redBright.r, MapColors.redBright.g, MapColors.redBright.b, 255)
                 surface.DrawRect(0, buttonHeight - 2, buttonWidth, 2)

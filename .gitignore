@@ -12,3 +12,14 @@ generated/build_preview/
 # Generated release staging output
 content/maps/preview/
 content/data_static/zombiesim_world_preview.json
+
+# Developer-only pipeline outputs (regenerate with the bin/ scripts)
+generated/
+celltemplates/dev/
+bin/*_grid_*_seed_*.json
+bin/*_grid_*_seed_*.png
+bin/*_seed_*_required_cell_vmfs.txt
+bin/*_seed_*_template_plan.json
+bin/*_seed_*_template_plan_filename_key.txt
+bin/*_fixture_template_plan.json
+bin/*_fixture_required_cell_vmfs.txt

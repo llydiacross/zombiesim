@@ -146,7 +146,7 @@ cmake --build --preset build-mingw-gmod-module-debug
 .\scripts\install-local-win64.ps1 -GarrysModRoot "C:\Program Files (x86)\Steam\steamapps\common\GarrysMod"
 ```
 
-After installation, run `zombiesim_walker_smoke`, load `zn_preview`, then use `zombiesim_walker_status` and `zombiesim_walker_noise`. Record each live test in [alpha_2_test_log.md](alpha_2_test_log.md).
+After installation, run `zombiesim_walker_smoke`, load `zn_preview_start`, then use `zombiesim_walker_status` and `zombiesim_walker_noise`. Record each live test in [alpha_2_test_log.md](alpha_2_test_log.md).
 
 ## Known Limitations
 

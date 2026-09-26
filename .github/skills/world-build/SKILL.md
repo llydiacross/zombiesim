@@ -99,7 +99,7 @@ For a deliberate full preview compile, use:
 .\bin\build_city.ps1 -WorldProfile preview -OnlyRequiredMaps -Force -CleanStagedCity -VvisTimeoutSeconds 1800 -VradTimeoutSeconds 3600
 ```
 
-Review `generated/build_preview/compile-report.json` before staging or testing. Compiler timeouts are deferred rather than killed; incomplete work blocks release staging. For in-game verification, reload `zn_preview`, test the changed map behavior, and use `zombiesim_player_status` for profile/cell resolution issues. Batch related changes before one deliberate game launch.
+Review `generated/build_preview/compile-report.json` before staging or testing. Compiler timeouts are deferred rather than killed; incomplete work blocks release staging. For in-game verification, reload `zn_preview_start`, test the changed map behavior, and use `zombiesim_player_status` for profile/cell resolution issues. Batch related changes before one deliberate game launch.
 
 For production, replace `preview` with `city` only after the preview is accepted. Use the selected profile's current manifest and template-plan paths; do not mix artifacts between profiles.
 

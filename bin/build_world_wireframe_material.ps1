@@ -146,7 +146,7 @@ if ([string]::IsNullOrWhiteSpace($PlanData) -or -not (Test-Path -LiteralPath $Pl
 }
 if ([string]::IsNullOrWhiteSpace($NavmeshDirectory)) {
     $gameRoot = Split-Path -Parent (Split-Path -Parent $projectRoot)
-    $NavmeshDirectory = Join-Path (Join-Path $gameRoot 'maps') $worldGenerationProfile.Name
+    $NavmeshDirectory = Join-Path $gameRoot 'maps'
 }
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
     $OutputPath = Join-Path $projectRoot (Join-Path (Join-Path (Join-Path 'content/materials/worlds' $worldGenerationProfile.Name) 'map_layers') 'wireframe.png')
@@ -183,6 +183,13 @@ $navmeshesByMap = @{}
 $invalidNavmeshes = @{}
 foreach ($mapName in @($cells | ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension([string]$_.cellTemplateFilename) } | Sort-Object -Unique)) {
     $navmeshPath = Join-Path $NavmeshDirectory "$mapName.nav"
+    if (-not (Test-Path -LiteralPath $navmeshPath -PathType Leaf) -and $mapName -like 'zz_preview_*') {
+        $cityMapName = 'zz_city_' + $mapName.Substring('zz_preview_'.Length)
+        $cityNavmeshPath = Join-Path $NavmeshDirectory "$cityMapName.nav"
+        if (Test-Path -LiteralPath $cityNavmeshPath -PathType Leaf) {
+            $navmeshPath = $cityNavmeshPath
+        }
+    }
     if (-not (Test-Path -LiteralPath $navmeshPath -PathType Leaf)) {
         continue
     }

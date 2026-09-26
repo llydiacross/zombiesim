@@ -6,22 +6,19 @@ Work in progress
 
 # Folder Structure
 
-- ./tiletemplates
-   - the pieces (chunks) for making the cells, usually each file is just 1 chunk wide
-- ./content
-   - data read by gmod
-
-Further into content is the `maps/city` folder
+- `tiletemplates/` and `celltemplates/` contain authored VMFs, including launcher sources in `celltemplates/launchers`.
+- `content/` contains distributable addon data read by Garry's Mod, including flat `content/maps` BSPs, thumbnails, materials, and runtime world indexes.
+- `generated/` contains compiler artifacts, reports, intermediate BSPs, developer zoos, and launcher build output under `generated/launcher_build`.
 
 These are compiled reusable recipe maps for the city. A recipe can serve more than one logical city cell, so its filename does not identify a coordinate.
 
 `content/data_static/zombiesim_world.json` maps every cell coordinate to its selected recipe BSP and provides the navigation graph and gameplay metadata. Build a transition map name from `world.mapDirectory .. "/" .. cell.map`; it is the authoritative lookup for map transitions.
 
-Recipe BSPs use the generated VMF basename, for example `zn_grassland_open_none.bsp`.
+Generated recipe BSPs use compact `zz_<profile>_<hash>` basenames, for example `zz_city_5b87e00b9082-v1.bsp`. Runtime staging is flat under `content/maps` and engine maps; launcher maps retain `zn_city_start` and `zn_preview_start`.
 
 # Powershell Commands
 
-Run these from the project root. The preview profile is isolated from production and stages its playable maps in `content/maps/preview`.
+Run these from the project root. The preview profile is isolated from production and stages its playable maps flat under `content/maps`.
 
 Generate the deterministic preview world image, manifest, and map layers:
 
@@ -77,7 +74,7 @@ Export an already compiled preview without running VBSP, VVIS, or VRAD again:
 .\bin\build_city.ps1 -WorldProfile preview -OnlyRequiredMaps -SkipRecipeRefresh -SkipCompile -CleanStagedCity
 ```
 
-This copies the selected preview BSPs from `generated/build_preview` to `content/maps/preview`, stages generated world layers in `content/materials/worlds/preview/map_layers`, renders local recipe maps in `content/materials/worlds/preview/cells`, rebuilds `satellite.png`, and writes `content/data_static/zombiesim_world_preview.json`. `-CleanStagedCity` removes stale BSPs from the selected profile's staging folder.
+This copies the selected preview BSPs from `generated/build_preview` to flat `content/maps`, stages generated world layers in `content/materials/worlds/preview/map_layers`, renders local recipe maps in `content/materials/worlds/preview/cells`, rebuilds `satellite.png`, and writes `content/data_static/zombiesim_world_preview.json`. `-CleanStagedCity` removes stale BSPs from the selected profile's staging area while preserving other profiles.
 
 Stage existing engine-generated navmeshes for the same profile without requiring a BSP rebuild:
 
@@ -85,7 +82,7 @@ Stage existing engine-generated navmeshes for the same profile without requiring
 .\bin\stage_world_navmeshes.ps1 -WorldProfile preview -CleanStagedCity
 ```
 
-This copies matching `.nav` files from `garrysmod/maps/preview` into `content/maps/preview`. It does not modify the engine's runtime navmesh files.
+This copies matching `.nav` files from `garrysmod/maps` into `content/maps`. It does not modify the engine's runtime navmesh files.
 
 After rebuilding recipe BSPs, clear the profile's old navmeshes before generating fresh ones in Garry's Mod:
 
@@ -93,7 +90,7 @@ After rebuilding recipe BSPs, clear the profile's old navmeshes before generatin
 .\bin\clear_world_navmeshes.ps1 -WorldProfile preview
 ```
 
-This removes both engine runtime navmeshes from `garrysmod/maps/preview` and their staged copies. Reload `zn_preview`, run `zombiesim_generate_navmeshes`, then rebuild `wireframe.png` after the batch completes.
+This removes both engine runtime navmeshes from `garrysmod/maps` and their staged copies. Reload `zn_preview_start`, run `zombiesim_generate_navmeshes`, then rebuild `wireframe.png` after the batch completes.
 
 Export an already compiled production city with the same process:
 
@@ -101,7 +98,7 @@ Export an already compiled production city with the same process:
 .\bin\build_city.ps1 -WorldProfile city -OnlyRequiredMaps -SkipRecipeRefresh -SkipCompile -CleanStagedCity
 ```
 
-The production outputs are `content/maps/city`, `content/materials/worlds/city`, and `content/data_static/zombiesim_world.json`.
+The production outputs are flat BSPs in `content/maps`, profile materials in `content/materials/worlds/city`, and `content/data_static/zombiesim_world.json`.
 
 To refresh only generated map materials after a visual renderer change, while keeping existing BSPs and runtime data, run:
 
@@ -117,7 +114,7 @@ When the map manifest or template plan has changed, also refresh the matching ru
 .\bin\export_runtime_world_data.ps1 -WorldProfile preview -RequireCompiledMaps
 ```
 
-After staging, reload the `zn_preview` launcher map for the preview profile or `zn_start` for the city profile so Garry's Mod loads the matching staged world index.
+After staging, reload the `zn_preview_start` launcher map for the preview profile or `zn_city_start` for the city profile so Garry's Mod loads the matching staged world index.
 
 Build cubemaps for every unique recipe and safe-zone map in the loaded world profile. Run this from the in-game server console or as an admin; it changes level to the first map and prints the native command to run:
 
@@ -137,7 +134,7 @@ The navmesh batch automatically generates and saves navigation data only for ord
 zombiesim_generate_navmeshes <mapName>
 ```
 
-Wireframe materials read existing Source navmesh files directly from `garrysmod/maps/<profile>`; no map transitions are needed to render them:
+Wireframe materials read existing Source navmesh files directly from `garrysmod/maps`; no map transitions are needed to render them. When rendering preview, a city navmesh is reused only when its deterministic recipe hash matches the preview recipe exactly; cells without a matching generated navmesh remain marked unavailable:
 
 ```powershell
 .\bin\build_world_wireframe_material.ps1 -WorldProfile preview
@@ -235,6 +232,6 @@ cmake --build --preset build-mingw-gmod-module-debug
 .\scripts\install-local-win64.ps1 -GarrysModRoot "C:\Program Files (x86)\Steam\steamapps\common\GarrysMod"
 ```
 
-In game, run `zombiesim_walker_smoke`, load `zn_preview`, then use `zombiesim_walker_status` and `zombiesim_walker_noise <strength> <radius> [durationTicks]`. Record live evidence in [docs/alpha_2_test_log.md](docs/alpha_2_test_log.md).
+In game, run `zombiesim_walker_smoke`, load `zn_preview_start`, then use `zombiesim_walker_status` and `zombiesim_walker_noise <strength> <radius> [durationTicks]`. Record live evidence in [docs/alpha_2_test_log.md](docs/alpha_2_test_log.md).
 
 Compatible Walker checkpoints persist horde movement, attractors, terminal ticket outcomes, and the server ticket-request counter across level changes and restarts. Checkpoints are profile-scoped in the server SQLite `walker_checkpoints` table; periodic serialization runs on the native worker thread. Map-local NextBots are reconciled as despawned after restore, then the materializer resumes normally. Use `zombiesim_walker_checkpoint_status`, `zombiesim_walker_checkpoint_save`, and `zombiesim_walker_checkpoint_clear <profile>` for server-side checkpoint diagnostics and administration. Workshop uploads cannot distribute the DLL; install releases manually under `garrysmod/lua/bin` using the script above.

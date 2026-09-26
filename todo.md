@@ -1,6 +1,14 @@
 
 # Alpha 2.6 Fixes
 
+# Source of Truth / Working Rules
+
+- This file is the authoritative task tracker for active work in this repo.
+- Treat this document as the source of truth for current milestones, status, and next actions.
+- Historical notes in `docs/alpha_2_plan.md`, `docs/alpha_2_test_log.md`, older local TODOs, and prior agent notes are context only unless their content is explicitly copied into this file and updated here.
+- Do not treat historical roadmap items or archived TODOs as current work unless they are intentionally active in this file.
+- When in doubt, the current state in this file wins over older notes or design docs.
+
 # Phase A (Done)
 
 - Fixed the inverted `zn_tile_direction` origin formula in `bin/plan_cell_templates.ps1` (`Get-TemplateRoadConnection`) that made the planner throw on valid templates; canonical origins are now south=(0,-edge), north=(0,+edge), east=(-edge,0), west=(+edge,0) per footprint edge (`footprintSize*320`).
@@ -71,16 +79,35 @@
 - Thumbnails for maps are not working because garrysmod doesn't like maps which are in a sub folder, so we will need to add a new prefix to the filename after zn which is the name of the current profile. The individual puzzle maps will also appear in the menu which is unintentional after we do this so we will need to filter them out from the menu display into other so we will remove the zn_ from the beginning of their filenames as that is now reserved for the loader maps and instead use a different prefix for the puzzle maps such as zz. Make sure the map thumbs match that new maps name. Also clear all old data now in garrysmod maps and gamemode content folder of old map names and also any previous generations as they will no longer be valid
 - Perform a full test run of the production world being generated so we can see how many puzzle pieces the actual game will produce and how long it takes to compile and do all nav generations in a huge smoke test of the game in production setting.
 
-# Phase D
+# Phase C 2 (Implementation Complete; Release Validation Follow-up)
 
-- Slight improvements to the metro line features see the current preview metro image and you will notice the green line awkwardly meets the purple line. I think that in this instance the purple line should actually go as long as to where the green light starts to make the metros seem more human like. If you can think of any other improvements that might make them more human like then I would like to also know
+- Completed: moved launcher compiler artifacts to `generated/launcher_build`, moved authored launcher VMFs to `celltemplates/launchers`, and documented the `content/` versus developer-output boundary.
+- Implemented `bin/analyze_world_reachability.ps1` as a report-only audit of the reciprocal road/highway graph and blockades. Production seed 1337: 2303/4096 graph cells are origin-reachable; 29 entrance-bearing destination cells are disconnected (5 named landmarks); 1764 cells have no external entrance; 9 recipe BSPs are exclusive to the completely inaccessible set, while 11 are exclusive to all graph-disconnected cells. The report is a logical road graph, not proof of metro/player traversal or the reported Red Army Base barrier. Do not prune yet: runtime export currently requires every logical cell to resolve to a recipe map; decide on a valid repair/alias contract before compile exclusion.
+- Implemented bridge-ramp relocation: ordinary ramps occupy the first bridge-axis tile, retain the center cross-junction, continue bridge road beyond the ramp, and omit the perpendicular deadend. Carpark ramps retain their separately-planned junction. `bin/test_phase_c2_layouts.ps1` passes for 12 preview and 34 production bridge-ramp recipes; visual inspection in Hammer remains pending.
+- Implemented post-blockade safe-zone validation and repair. City seed 1337 keeps all 11 den entrances in the origin-connected road graph; the previously disconnected Dustfield den moved from (19,63) to (23,59). Minimum spacing is 12.649 cells against the configured 8-cell target, with no fallbacks. Preview also passes reachability, with 11 dens, a 6-cell minimum separation, and 5 target-spacing fallbacks.
+- Implemented a preview world-map recipe finder with environment-profile, topology, and landmark filters. Results are logical cells that select/focus through the existing map context and use the existing authorized teleport action. `ZM_World:FindCells` supports topology filters; static diagnostics pass. Live client interaction is still pending.
+- Offline follow-up (2026-09-26): refreshed the city reachability report from the current seed-1337 manifest and matching plan. It reports 2,331/4,096 origin-reachable cells, 1,764 cells without external entrances, and 1 entrance-bearing disconnected cell. The 9 recipes exclusive to the completely inaccessible set are all `open` topology with no active entrances, spanning sandy, settlement, radioactive, dirt, and grassland profiles. This supports keeping them as valid isolated-cell recipes, not pruning them; runtime export still expects every logical cell to resolve to a BSP.
+- Bridge-ramp regression passes for all 34 production placements (29 distinct recipe VMFs) and 12 preview placements. Plan data confirms the ordinary ramp is one tile along the bridge direction with a bridge-road continuation beyond it and the expected center junction. Hammer visual inspection remains pending.
+- The recipe finder now has explicit `Find Cells` and `Reset` controls, with each filter retaining its `Any ...` option. Static diagnostics pass, but live interaction remains pending: the staged preview runtime index predates the current preview manifest/plan, so do not use it to claim a current-data test.
+- The latest offline route audit does not verify the Red Army Base barrier in-game. Its previously checked road-graph route remains a logical-path result only. Red Army Base traversal and Hammer inspection are still release follow-up checks; do not replace the active dev bridge request solely to test them.
 
 
-# Alpha 2.7 Item, Loot and enemy/boss definitions.
+# Phase C (Complete; release nav/in-game checks deferred)
+
+- Renamed the profile launcher maps to `zn_city_start` and `zn_preview_start`; generated recipe and safe-room basenames now use short deterministic `zz_<profile>_<hash>` names, while `zombiesim.txt` retains `^zn_` so only loaders appear in the gamemode map list. Recipe thumbnails are generated at `content/maps/thumb/<map>.png`, matching flat map basenames.
+- Moved runtime map staging to the shared `content/maps` root and updated runtime map-path and navmesh-batch handling for flat profile-prefixed basenames. Preview naming plan validates: 576 cells, 11 safe rooms; 168 BSPs compiled with no failures, and 163 recipe thumbnails match the flat staged names. Compact hashed names fixed the prior Source cubemap patch-name overflow. A preview wireframe was rendered from 56 existing city navmeshes with identical recipe hashes: 261 logical cells covered, 315 unavailable, 0 invalid nav files.
+- Production 64x64 seed-1337 smoke build passed: 4096 logical cells, 312 unique recipe maps, 7 unique den maps, 319/319 BSPs compiled, 0 failed/incomplete, 1780.9 total compiler-stage seconds. 312 recipe thumbnails match staged basenames. Removed obsolete `zn_start`/`zn_preview` BSPs and empty nested profile folders. Moved `info_player_start` to the nearest planned terrain tile in every generated recipe; `test_player_start_placement.ps1` passes for all 312 production and 163 preview recipes. Navmesh batch skips per-map failures instead of aborting; map 9 recovered and saved after moving its spawn to terrain. Per user request, the full city nav run is paused/cancelled at checkpoint 184/312, with 177 usable city `.nav` files retained. Preview wireframe rendered from 56 exact-hash matching city navmeshes: 261/576 logical cells covered, 315 unavailable, 0 invalid files. Production nav generation and in-game loader/menu verification are deferred until release validation.
+
+# Phase D (Done)
+
+- Added a shared PowerShell progress logger at `bin/ps_progress_utils.psm1` and imported it into the main world-generation, planning, cell-VMF, city build, and recipe compile scripts.
+- Added explicit progress updates and console-level status output to long-running pipeline steps so map generation and compilation no longer look like a frozen terminal.
+- The logging is intentionally lightweight and consistent: each major script emits start/setup progress, then existing per-map compiler progress continues to provide detailed stage feedback during the long runs.
+
+# Alpha 2.7 Item, Loot and enemy/boss definitions (Next)
 
 # Phase A
 
-- See and digest and read fully item_and_loot_system_prototype.md and based upon that create a new master plan for the fully fledged implementation of everything I have put in the document, split the implementation into phases to keep conversation time short and to reduce the token usage as much as possible.
-- Define this all in a new documment called item_and_loot_system_plan.md in the /docs folder
+1. Read `docs/item_and_loot_system_prototype.md` fully and digest the guidelines and information I have written here, it details a new major feature I would like to add in great detail. Please follow the details exactly and point out any flaws in my reasoning please, then lets a new todo file next to this one called `/todo-alpha-2.7.md` as the master implementation plan split and split it into phases covering the complete scope. Then, move this current file into `docs/` and call it `docs/todo-alpha-2.6.md`.
 
 

@@ -18,7 +18,9 @@ param(
 )
 
 Add-Type -AssemblyName System.Drawing
+Import-Module (Join-Path $PSScriptRoot 'ps_progress_utils.psm1') -Force
 $projectRoot = Split-Path -Parent $PSScriptRoot
+Write-ZMProgress -Activity 'Generating world cells' -Status 'Initializing world generation profile and validation.' -PercentComplete 2 -Step 'setup'
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
 $generatorSettings = $worldGenerationProfile.Settings
 $profileSettings = $worldGenerationProfile.Config
@@ -37,6 +39,11 @@ $settlementMinimumDensity = if ($settlementSettings.ContainsKey('minimumDensity'
 $settlementDistrictCenterDensity = if ($settlementSettings.ContainsKey('districtCenterDensity')) { [double]$settlementSettings.districtCenterDensity } else { 0.25 }
 $settlementPlacementMode = if ($settlementSettings.ContainsKey('placementMode')) { [string]$settlementSettings.placementMode } else { 'random' }
 $settlementSpacing = if ($settlementSettings.ContainsKey('spacing')) { [int]$settlementSettings.spacing } else { 0 }
+$safeZonePlacementSettings = if ($mapSettings.ContainsKey('safeZones')) { $mapSettings.safeZones } else { @{} }
+$safeZoneMinimumSpacingCells = if ($safeZonePlacementSettings.ContainsKey('minimumSpacingCells')) { [double]$safeZonePlacementSettings.minimumSpacingCells } else { 0.0 }
+$safeZoneSpacingWeight = if ($safeZonePlacementSettings.ContainsKey('spacingWeight')) { [double]$safeZonePlacementSettings.spacingWeight } else { 2.0 }
+$safeZoneDistrictCenterWeight = if ($safeZonePlacementSettings.ContainsKey('districtCenterWeight')) { [double]$safeZonePlacementSettings.districtCenterWeight } else { 1.0 }
+$safeZoneLandmarkPreferenceWeight = if ($safeZonePlacementSettings.ContainsKey('landmarkPreferenceWeight')) { [double]$safeZonePlacementSettings.landmarkPreferenceWeight } else { 3.0 }
 $radiationEnabled = if ($radiationSettings.ContainsKey('enabled')) { [bool]$radiationSettings.enabled } else { $true }
 $radiationEpicenterXFraction = if ($radiationSettings.ContainsKey('epicenterXFraction')) { [double]$radiationSettings.epicenterXFraction } else { 0.6 }
 $radiationEpicenterYMinimumFraction = if ($radiationSettings.ContainsKey('epicenterYMinimumFraction')) { [double]$radiationSettings.epicenterYMinimumFraction } else { 0.3 }
@@ -66,6 +73,9 @@ if ($settlementPlacementMode -notin @('random', 'hash_modulo')) {
 }
 if ($settlementPlacementMode -eq 'hash_modulo' -and $settlementSpacing -lt 2) {
     throw 'mapGeneration.settlements.spacing must be at least 2 when placementMode is hash_modulo.'
+}
+if ($safeZoneMinimumSpacingCells -lt 0 -or $safeZoneSpacingWeight -lt 0 -or $safeZoneDistrictCenterWeight -lt 0 -or $safeZoneLandmarkPreferenceWeight -lt 0) {
+    throw 'mapGeneration.safeZones spacing and candidate weights cannot be negative.'
 }
 if ($radiationEpicenterXFraction -le 0 -or $radiationEpicenterXFraction -ge 1) {
     throw 'mapGeneration.radiation.epicenterXFraction must be greater than 0 and less than 1.'
@@ -1619,15 +1629,24 @@ function Connect-MetroRouteThroughStops {
             $coordinates = $_.Key -split ","
             [ordered]@{ name = $_.Value.Name; district = if ($_.Value.District -ge 0) { $zones[$_.Value.District].Name } else { $null }; difficult = $_.Value.Difficult; x = [int]$coordinates[0]; y = [int]$coordinates[1]; worldX = [int]$coordinates[0]; worldY = [int]$coordinates[1] - $originCellY }
         })
+        $minimumSafeZoneDistance = [double]::PositiveInfinity
+        for ($firstSafeZone = 0; $firstSafeZone -lt $safeZoneData.Count; $firstSafeZone++) {
+            for ($secondSafeZone = $firstSafeZone + 1; $secondSafeZone -lt $safeZoneData.Count; $secondSafeZone++) {
+                $deltaX = [double]$safeZoneData[$firstSafeZone].x - [double]$safeZoneData[$secondSafeZone].x
+                $deltaY = [double]$safeZoneData[$firstSafeZone].y - [double]$safeZoneData[$secondSafeZone].y
+                $minimumSafeZoneDistance = [Math]::Min($minimumSafeZoneDistance, [Math]::Sqrt($deltaX * $deltaX + $deltaY * $deltaY))
+            }
+        }
+        if ([double]::IsPositiveInfinity($minimumSafeZoneDistance)) { $minimumSafeZoneDistance = 0.0 }
         $metroLineData = @($metroLines | ForEach-Object { [ordered]@{ name = $_.Name; color = ConvertTo-MapColor $_.Color; schematicPath = @($_.Path); routeCells = @($_.RouteCells) } })
         $metroStopData = @($metroStations.GetEnumerator() | Sort-Object Key | ForEach-Object {
             $coordinates = $_.Key -split ","
-            [ordered]@{ name = $_.Value.Name; major = $_.Value.Major; lines = @($_.Value.Lines | Sort-Object); accessPath = @($_.Value.AccessPath); x = [int]$coordinates[0]; y = [int]$coordinates[1]; worldX = [int]$coordinates[0]; worldY = [int]$coordinates[1] - $originCellY }
+            [ordered]@{ name = $_.Value.Name; major = $_.Value.Major; lines = @($_.Value.Lines | Sort-Object); accessPath = @($_.Value.AccessPath); accessPathRepairedAfterBlockades = [bool]$_.Value.RepairedAccessPath; x = [int]$coordinates[0]; y = [int]$coordinates[1]; worldX = [int]$coordinates[0]; worldY = [int]$coordinates[1] - $originCellY }
         })
         $mapData = [ordered]@{
             schemaVersion = 2
             map = [ordered]@{ seed = $Seed; gridCells = $GridCells; cellSize = $CellSize; width = $width; height = $height; origin = [ordered]@{ cellX = 0; cellY = $originCellY; worldX = 0; worldY = 0 }; environment = [ordered]@{ taggingVersion = 1; tags = @($cells | ForEach-Object { $_.environment.tags } | Sort-Object -Unique) } }
-            generation = [ordered]@{ roadDepth = $RoadDepth; branchChance = $BranchChance; blockadeChance = $BlockadeChance; bridgeChance = $BridgeChance; biomeOpacity = $biomeOpacity; radiation = [ordered]@{ enabled = $radiationEnabled; epicenter = if ($radiationSources.Count -gt 0) { $radiationSources[0] } else { $null }; epicenters = @($radiationSources); falloutRadiusCells = $radiationFalloutRadiusCells; destroyedThreshold = $radiationDestroyedThreshold; damagePerSecondAtPeak = $radiationDamagePerSecondAtPeak; cellMiles = $radiationCellMiles; loreYieldMegatons = $radiationLoreYieldMegatons }; danger = [ordered]@{ enabled = $dangerEnabled; pattern = 'chevron'; origin = [ordered]@{ worldX = 0; worldY = 0; cellX = 0; cellY = $originCellY }; tierCount = $dangerTierCount } }
+            generation = [ordered]@{ roadDepth = $RoadDepth; branchChance = $BranchChance; blockadeChance = $BlockadeChance; bridgeChance = $BridgeChance; biomeOpacity = $biomeOpacity; safeZonePlacement = [ordered]@{ minimumSpacingCells = $safeZoneMinimumSpacingCells; actualMinimumSpacingCells = [Math]::Round($minimumSafeZoneDistance, 3); districts = @($safeZonePlacementDiagnostics) }; radiation = [ordered]@{ enabled = $radiationEnabled; epicenter = if ($radiationSources.Count -gt 0) { $radiationSources[0] } else { $null }; epicenters = @($radiationSources); falloutRadiusCells = $radiationFalloutRadiusCells; destroyedThreshold = $radiationDestroyedThreshold; damagePerSecondAtPeak = $radiationDamagePerSecondAtPeak; cellMiles = $radiationCellMiles; loreYieldMegatons = $radiationLoreYieldMegatons }; danger = [ordered]@{ enabled = $dangerEnabled; pattern = 'chevron'; origin = [ordered]@{ worldX = 0; worldY = 0; cellX = 0; cellY = $originCellY }; tierCount = $dangerTierCount } }
             statistics = [ordered]@{ population = $population; roadCells = $roadCells.Count; highwayCells = $highwayCells.Count; buildingCells = $buildingCells.Count; landmarkCells = $landmarkCells.Count; airports = $airportKeys.Count; safeZones = $denCells.Count; metroLines = $metroLines.Count; metroStops = $metroStations.Count }
             districts = $districtData
             safeZones = $safeZoneData
@@ -2080,7 +2099,10 @@ foreach ($zone in $zones) {
 }
 
 function Get-ConnectedRoadCells {
-    param([string]$StartKey)
+    param(
+        [string]$StartKey,
+        [switch]$RespectBlockades
+    )
 
     $connectedCells = @{}
     if (-not $roadCells.ContainsKey($StartKey)) { return $connectedCells }
@@ -2097,6 +2119,7 @@ function Get-ConnectedRoadCells {
 
         foreach ($direction in @("N", "E", "S", "W")) {
             if (-not $roadCells[$currentKey][$direction]) { continue }
+            if ($RespectBlockades -and $blockadeConnections.ContainsKey("$currentKey`:$direction")) { continue }
             $neighborKey = Get-RoadNeighborKey $cellX $cellY $direction
             if ($null -ne $neighborKey -and $roadCells.ContainsKey($neighborKey) -and -not $connectedCells.ContainsKey($neighborKey)) {
                 $connectedCells[$neighborKey] = $true
@@ -2106,6 +2129,181 @@ function Get-ConnectedRoadCells {
     }
 
     return $connectedCells
+}
+
+function Repair-DisconnectedSafeZoneEntrances {
+    $reachableRoadCells = Get-ConnectedRoadCells $originKey -RespectBlockades
+    $districtDenEntries = @($denCells.GetEnumerator() | Where-Object { $_.Value.District -ge 0 })
+    foreach ($denEntry in $districtDenEntries) {
+        $oldKey = [string]$denEntry.Key
+        if ($reachableRoadCells.ContainsKey($oldKey)) { continue }
+
+        $zone = $zones[[int]$denEntry.Value.District]
+        $candidates = @($reachableRoadCells.Keys | Where-Object {
+            -not $denCells.ContainsKey($_) -and
+            -not $highwayCells.ContainsKey($_) -and
+            -not $diagonalHighwayCells.ContainsKey($_) -and
+            -not $landmarkCells.ContainsKey($_) -and
+            (Get-RoadDegree $roadCells[$_]) -gt 0
+        } | ForEach-Object {
+            $coordinates = $_ -split ','
+            $candidateX = [int]$coordinates[0]
+            $candidateY = [int]$coordinates[1]
+            $nearestDenDistance = [double]::PositiveInfinity
+            foreach ($existingDenKey in $denCells.Keys) {
+                if ($existingDenKey -eq $oldKey) { continue }
+                $existingCoordinates = $existingDenKey -split ','
+                $distance = [Math]::Sqrt([Math]::Pow($candidateX - [int]$existingCoordinates[0], 2) + [Math]::Pow($candidateY - [int]$existingCoordinates[1], 2))
+                $nearestDenDistance = [Math]::Min($nearestDenDistance, $distance)
+            }
+            $districtDistance = [Math]::Sqrt([Math]::Pow($candidateX - $zone.X, 2) + [Math]::Pow($candidateY - $zone.Y, 2))
+            [pscustomobject]@{ key = $_; nearestDenDistance = $nearestDenDistance; districtDistance = $districtDistance }
+        })
+        if ($candidates.Count -eq 0) {
+            throw "Safe-zone entrance '$($denEntry.Value.Name)' at $oldKey is disconnected and has no reachable replacement road."
+        }
+
+        $spacingCandidates = @($candidates | Where-Object { $_.nearestDenDistance -ge $safeZoneMinimumSpacingCells })
+        $selectionPool = if ($spacingCandidates.Count -gt 0) { $spacingCandidates } else { $candidates }
+        $replacement = @($selectionPool | Sort-Object @{ Expression = { ($_.nearestDenDistance * $safeZoneSpacingWeight) - ($_.districtDistance * $safeZoneDistrictCenterWeight) }; Descending = $true }, key | Select-Object -First 1)[0]
+        $denCells.Remove($oldKey)
+        $denCells[$replacement.key] = $denEntry.Value
+        $denEntry.Value.RepairedFrom = $oldKey
+        $diagnostic = @($safeZonePlacementDiagnostics | Where-Object { $_.district -eq $zone.Name })[0]
+        if ($null -ne $diagnostic) {
+            $replacementCoordinates = $replacement.key -split ','
+            $diagnostic.x = [int]$replacementCoordinates[0]
+            $diagnostic.y = [int]$replacementCoordinates[1]
+            $diagnostic.distanceFromDistrictCenter = [Math]::Round($replacement.districtDistance, 3)
+            $diagnostic.nearestSafeZoneDistance = [Math]::Round($replacement.nearestDenDistance, 3)
+            $diagnostic.meetsMinimumSpacing = $replacement.nearestDenDistance -ge $safeZoneMinimumSpacingCells
+            $diagnostic.repairedFromDisconnectedCell = $oldKey
+        }
+    }
+
+    foreach ($diagnostic in $safeZonePlacementDiagnostics) {
+        $denKey = "$($diagnostic.x),$($diagnostic.y)"
+        $nearestDistance = [double]::PositiveInfinity
+        foreach ($otherDenKey in $denCells.Keys) {
+            if ($otherDenKey -eq $denKey) { continue }
+            $denCoordinates = $denKey -split ','
+            $otherCoordinates = $otherDenKey -split ','
+            $distance = [Math]::Sqrt([Math]::Pow([int]$denCoordinates[0] - [int]$otherCoordinates[0], 2) + [Math]::Pow([int]$denCoordinates[1] - [int]$otherCoordinates[1], 2))
+            $nearestDistance = [Math]::Min($nearestDistance, $distance)
+        }
+        if ([double]::IsPositiveInfinity($nearestDistance)) { $nearestDistance = 0.0 }
+        $diagnostic.nearestSafeZoneDistance = [Math]::Round($nearestDistance, 3)
+        $diagnostic.meetsMinimumSpacing = $nearestDistance -ge $safeZoneMinimumSpacingCells
+    }
+}
+
+function Repair-MetroAccessPaths {
+    $script:blockadeMarkers = $blockadeMarkers
+    $reachableRoadCells = Get-ConnectedRoadCells $originKey -RespectBlockades
+    foreach ($stationKey in @($metroStations.Keys | Sort-Object)) {
+        $station = $metroStations[$stationKey]
+        if (-not $reachableRoadCells.ContainsKey($stationKey)) {
+            $stationComponent = Get-ConnectedRoadCells $stationKey -RespectBlockades
+            $stationComponentLookup = @{}
+            foreach ($componentKey in $stationComponent.Keys) { $stationComponentLookup[$componentKey] = $true }
+            $queue = [System.Collections.Generic.Queue[string]]::new()
+            $visited = @{}
+            $previous = @{}
+            foreach ($componentKey in @($stationComponent.Keys | Sort-Object)) {
+                $visited[$componentKey] = $true
+                $queue.Enqueue($componentKey)
+            }
+            $destinationKey = $null
+            while ($queue.Count -gt 0 -and $null -eq $destinationKey) {
+                $currentKey = $queue.Dequeue()
+                if ($reachableRoadCells.ContainsKey($currentKey)) { $destinationKey = $currentKey; break }
+                $coordinates = $currentKey -split ','
+                foreach ($direction in @('N', 'E', 'S', 'W')) {
+                    $nextKey = Get-RoadNeighborKey ([int]$coordinates[0]) ([int]$coordinates[1]) $direction
+                    if ($null -eq $nextKey -or $visited.ContainsKey($nextKey) -or $highwayCells.ContainsKey($nextKey) -or $diagonalHighwayCells.ContainsKey($nextKey)) { continue }
+                    $canCross = $stationComponentLookup.ContainsKey($nextKey) -or $reachableRoadCells.ContainsKey($nextKey)
+                    if (-not $canCross -and ($denCells.ContainsKey($nextKey) -or $buildingCells.ContainsKey($nextKey) -or $landmarkCells.ContainsKey($nextKey))) { continue }
+                    if (-not $canCross -and $roadCells.ContainsKey($nextKey)) { continue }
+                    $visited[$nextKey] = $true
+                    $previous[$nextKey] = [pscustomobject]@{ from = $currentKey; direction = $direction }
+                    $queue.Enqueue($nextKey)
+                }
+            }
+            if ($null -eq $destinationKey) {
+                throw "Metro station '$($station.Name)' at $stationKey has no available cardinal repair path to the origin component."
+            }
+            $repairPath = @($destinationKey)
+            while ($previous.ContainsKey($repairPath[0])) { $repairPath = @($previous[$repairPath[0]].from) + $repairPath }
+            for ($pathIndex = 0; $pathIndex -lt ($repairPath.Count - 1); $pathIndex++) {
+                $fromKey = $repairPath[$pathIndex]
+                $toKey = $repairPath[$pathIndex + 1]
+                $direction = $previous[$toKey].direction
+                $opposite = Get-OppositeDirection $direction
+                $blockadeConnections.Remove("$fromKey`:$direction")
+                $blockadeConnections.Remove("$toKey`:$opposite")
+                $script:blockadeMarkers = @($script:blockadeMarkers | Where-Object { -not (($_.CellKey -eq $fromKey -and $_.Direction -eq $direction) -or ($_.CellKey -eq $toKey -and $_.Direction -eq $opposite)) })
+                $fromCoordinates = $fromKey -split ','
+                if (-not (Add-RoadConnection ([int]$fromCoordinates[0]) ([int]$fromCoordinates[1]) $direction)) {
+                    throw "Metro station '$($station.Name)' road repair exceeded junction capacity at $fromKey."
+                }
+            }
+            $reachableRoadCells = Get-ConnectedRoadCells $originKey -RespectBlockades
+            if (-not $reachableRoadCells.ContainsKey($stationKey)) { throw "Metro station '$($station.Name)' remained disconnected after repair." }
+        }
+
+        $queue = [System.Collections.Generic.Queue[string]]::new()
+        $previous = @{}
+        $visited = @{ $stationKey = $true }
+        $queue.Enqueue($stationKey)
+        $destinationKey = $null
+
+        while ($queue.Count -gt 0 -and $null -eq $destinationKey) {
+            $currentKey = $queue.Dequeue()
+            if ($currentKey -ne $stationKey -and $reachableRoadCells.ContainsKey($currentKey) -and
+                -not $highwayCells.ContainsKey($currentKey) -and -not $diagonalHighwayCells.ContainsKey($currentKey)) {
+                $destinationKey = $currentKey
+                break
+            }
+
+            $coordinates = $currentKey -split ','
+            $currentX = [int]$coordinates[0]
+            $currentY = [int]$coordinates[1]
+            foreach ($direction in @('N', 'E', 'S', 'W')) {
+                $delta = switch ($direction) {
+                    'N' { @{ x = 0; y = -1 } }
+                    'E' { @{ x = 1; y = 0 } }
+                    'S' { @{ x = 0; y = 1 } }
+                    'W' { @{ x = -1; y = 0 } }
+                }
+                $nextX = $currentX + [int]$delta.x
+                $nextY = $currentY + [int]$delta.y
+                if ($nextX -lt 0 -or $nextX -ge $GridCells -or $nextY -lt 0 -or $nextY -ge $GridCells) { continue }
+                $nextKey = "$nextX,$nextY"
+                if ($visited.ContainsKey($nextKey) -or $highwayCells.ContainsKey($nextKey) -or $diagonalHighwayCells.ContainsKey($nextKey)) { continue }
+
+                $edgeIsBlocked = $blockadeConnections.ContainsKey("$currentKey`:$direction")
+                if ($edgeIsBlocked) { continue }
+                if (-not $roadCells.ContainsKey($currentKey) -or -not $roadCells[$currentKey][$direction] -or
+                    -not $roadCells.ContainsKey($nextKey) -or -not $roadCells[$nextKey][(Get-OppositeDirection $direction)]) { continue }
+
+                $visited[$nextKey] = $true
+                $previous[$nextKey] = $currentKey
+                $queue.Enqueue($nextKey)
+            }
+        }
+
+        if ($null -eq $destinationKey) {
+            throw "Metro station '$($station.Name)' at $stationKey has no post-blockade path to the origin-connected road network."
+        }
+        $accessPath = @($destinationKey)
+        while ($previous.ContainsKey($accessPath[0])) { $accessPath = @($previous[$accessPath[0]]) + $accessPath }
+        if ($station.AccessPath -join '|' -ne $accessPath -join '|') {
+            $station.RepairedAccessPath = $true
+        } else {
+            $station.RepairedAccessPath = $false
+        }
+        $station.AccessPath = $accessPath
+    }
 }
 
 function Connect-DistrictCenterToRoadNetwork {
@@ -2594,7 +2792,19 @@ foreach ($source in $radiationSources) {
 # Prefer Hospital, Army Base, and Bunker cells so their standalone safe-room variants are reachable.
 $denCells[$originKey] = @{ Name = "The Evac Zone"; District = -1; Difficult = $false }
 $safeRoomLandmarkPriority = @("Hospital", "Army Base", "Bunker")
-for ($districtIndex = 0; $districtIndex -lt $zones.Count; $districtIndex++) {
+$safeZonePlacementDiagnostics = [System.Collections.Generic.List[object]]::new()
+$districtPlacementOrder = @(
+    for ($districtIndex = 0; $districtIndex -lt $zones.Count; $districtIndex++) {
+        $zone = $zones[$districtIndex]
+        $candidateCount = @($eligibleLandmarkCandidates | Where-Object {
+            $coordinates = $_ -split ','
+            [Math]::Sqrt([Math]::Pow([int]$coordinates[0] - $zone.X, 2) + [Math]::Pow([int]$coordinates[1] - $zone.Y, 2)) -le $zone.Radius
+        }).Count
+        [pscustomobject]@{ districtIndex = $districtIndex; candidateCount = $candidateCount }
+    }
+)
+foreach ($districtPlacement in @($districtPlacementOrder | Sort-Object candidateCount, districtIndex)) {
+    $districtIndex = [int]$districtPlacement.districtIndex
     $zone = $zones[$districtIndex]
     $isDifficultDistrict = $zone.X -ge [int]($GridCells * 0.65) -or $zone.Y -ge [int]($GridCells * 0.75)
     $districtCandidates = @($eligibleLandmarkCandidates | Where-Object {
@@ -2602,32 +2812,49 @@ for ($districtIndex = 0; $districtIndex -lt $zones.Count; $districtIndex++) {
         $coordinates = $_ -split ","
         [Math]::Sqrt([Math]::Pow([int]$coordinates[0] - $zone.X, 2) + [Math]::Pow([int]$coordinates[1] - $zone.Y, 2)) -le $zone.Radius
     })
-    $landmarkSafeRoomCandidates = @($districtCandidates | Where-Object {
-        if (-not $landmarkCells.ContainsKey($_)) { return $false }
-        $landmarkNames = @($landmarkCells[$_] | ForEach-Object { $_.Name })
-        @($landmarkNames | Where-Object { $_ -in $safeRoomLandmarkPriority }).Count -gt 0
-    } | Sort-Object {
-        $landmarkNames = @($landmarkCells[$_] | ForEach-Object { $_.Name })
-        ($safeRoomLandmarkPriority | Where-Object { $_ -in $landmarkNames } | ForEach-Object { [array]::IndexOf($safeRoomLandmarkPriority, $_) } | Measure-Object -Minimum).Minimum
-    }, {
-        $coordinates = $_ -split ","
-        [Math]::Abs([int]$coordinates[0] - $zone.X) + [Math]::Abs([int]$coordinates[1] - $zone.Y)
-    })
-    if ($landmarkSafeRoomCandidates.Count -gt 0) {
-        $districtCandidates = $landmarkSafeRoomCandidates
-    } else {
-        $districtCandidates = @($districtCandidates | Where-Object { -not $landmarkCells.ContainsKey($_) } | Sort-Object {
-            $coordinates = $_ -split ","
-            [Math]::Abs([int]$coordinates[0] - $zone.X) + [Math]::Abs([int]$coordinates[1] - $zone.Y)
-        })
-    }
     if ($districtCandidates.Count -eq 0) {
         $districtCandidates = @($eligibleLandmarkCandidates | Where-Object { -not $denCells.ContainsKey($_) -and -not $landmarkCells.ContainsKey($_) })
     }
     if ($districtCandidates.Count -eq 0) { continue }
 
-    $denKey = $districtCandidates[0]
-    $denCells[$denKey] = @{ Name = Get-DistrictDenName $districtIndex $isDifficultDistrict; District = $districtIndex; Difficult = $isDifficultDistrict }
+    $rankedDenCandidates = foreach ($candidateKey in $districtCandidates) {
+        $coordinates = $candidateKey -split ","
+        $candidateX = [int]$coordinates[0]
+        $candidateY = [int]$coordinates[1]
+        $nearestDenDistance = [double]::PositiveInfinity
+        foreach ($existingDenKey in $denCells.Keys) {
+            $existingCoordinates = $existingDenKey -split ","
+            $distance = [Math]::Sqrt([Math]::Pow($candidateX - [int]$existingCoordinates[0], 2) + [Math]::Pow($candidateY - [int]$existingCoordinates[1], 2))
+            $nearestDenDistance = [Math]::Min($nearestDenDistance, $distance)
+        }
+        $districtDistance = [Math]::Sqrt([Math]::Pow($candidateX - $zone.X, 2) + [Math]::Pow($candidateY - $zone.Y, 2))
+        $landmarkRank = $safeRoomLandmarkPriority.Count
+        if ($landmarkCells.ContainsKey($candidateKey)) {
+            foreach ($landmark in @($landmarkCells[$candidateKey])) {
+                $rank = [array]::IndexOf($safeRoomLandmarkPriority, [string]$landmark.Name)
+                if ($rank -ge 0) { $landmarkRank = [Math]::Min($landmarkRank, $rank); break }
+            }
+        }
+        $landmarkBonus = if ($landmarkRank -lt $safeRoomLandmarkPriority.Count) { ($safeRoomLandmarkPriority.Count - $landmarkRank) * $safeZoneLandmarkPreferenceWeight } else { 0.0 }
+        $score = ($nearestDenDistance * $safeZoneSpacingWeight) - ($districtDistance * $safeZoneDistrictCenterWeight) + $landmarkBonus
+        [pscustomobject]@{ key = $candidateKey; score = $score; nearestDenDistance = $nearestDenDistance; districtDistance = $districtDistance; landmarkRank = $landmarkRank }
+    }
+    $spacingQualifiedCandidates = @($rankedDenCandidates | Where-Object { $_.nearestDenDistance -ge $safeZoneMinimumSpacingCells })
+    $selectionPool = if ($spacingQualifiedCandidates.Count -gt 0) { $spacingQualifiedCandidates } else { @($rankedDenCandidates) }
+    $selectedDen = @($selectionPool | Sort-Object @{ Expression = 'score'; Descending = $true }, @{ Expression = 'key'; Descending = $false } | Select-Object -First 1)[0]
+    if ($null -eq $selectedDen) { continue }
+    $denCells[$selectedDen.key] = @{ Name = Get-DistrictDenName $districtIndex $isDifficultDistrict; District = $districtIndex; Difficult = $isDifficultDistrict }
+    $safeZonePlacementDiagnostics.Add([pscustomobject]@{
+        district = $zone.Name
+        x = [int](($selectedDen.key -split ',')[0])
+        y = [int](($selectedDen.key -split ',')[1])
+        distanceFromDistrictCenter = [Math]::Round($selectedDen.districtDistance, 3)
+        nearestSafeZoneDistance = [Math]::Round($selectedDen.nearestDenDistance, 3)
+        meetsMinimumSpacing = $selectedDen.nearestDenDistance -ge $safeZoneMinimumSpacingCells
+        targetSpacingCells = $safeZoneMinimumSpacingCells
+        landmarkRank = $selectedDen.landmarkRank
+        repairedFromDisconnectedCell = $null
+    })
 }
 
 if ($metroEnabled) {
@@ -2843,6 +3070,9 @@ foreach ($key in $roadCells.Keys) {
         }
     }
 }
+
+Repair-DisconnectedSafeZoneEntrances
+Repair-MetroAccessPaths
 
 # Mark remaining dead ends with a question mark.
 foreach ($key in $roadCells.Keys) {

@@ -134,6 +134,166 @@ function Preview:CreateMapPane(parent, mapContext)
         end
     end
 
+    local pickerTitle = vgui.Create("DLabel", pane)
+    pickerTitle:Dock(TOP)
+    pickerTitle:DockMargin(6, 5, 6, 3)
+    pickerTitle:SetFont("DermaDefaultBold")
+    pickerTitle:SetTextColor(palette.text)
+    pickerTitle:SetText("RECIPE FINDER")
+    pickerTitle:SetTall(16)
+
+    local environmentFilter = vgui.Create("DComboBox", pane)
+    environmentFilter:Dock(TOP)
+    environmentFilter:DockMargin(6, 0, 6, 3)
+    environmentFilter:SetTall(22)
+    environmentFilter:SetValue("Any environment")
+    environmentFilter:AddChoice("Any environment", "")
+
+    local topologyFilter = vgui.Create("DComboBox", pane)
+    topologyFilter:Dock(TOP)
+    topologyFilter:DockMargin(6, 0, 6, 3)
+    topologyFilter:SetTall(22)
+    topologyFilter:SetValue("Any layout")
+    topologyFilter:AddChoice("Any layout", "")
+
+    local landmarkFilter = vgui.Create("DComboBox", pane)
+    landmarkFilter:Dock(TOP)
+    landmarkFilter:DockMargin(6, 0, 6, 3)
+    landmarkFilter:SetTall(22)
+    landmarkFilter:SetValue("Any landmark")
+    landmarkFilter:AddChoice("Any landmark", "")
+    local selectedEnvironment = ""
+    local selectedTopology = ""
+    local selectedLandmark = ""
+
+    local resultSummary = vgui.Create("DLabel", pane)
+    resultSummary:Dock(TOP)
+    resultSummary:DockMargin(6, 1, 6, 3)
+    resultSummary:SetFont("DermaDefault")
+    resultSummary:SetTextColor(palette.muted)
+    resultSummary:SetTall(18)
+
+    local searchActions = vgui.Create("DPanel", pane)
+    searchActions:Dock(TOP)
+    searchActions:DockMargin(6, 0, 6, 4)
+    searchActions:SetTall(24)
+    searchActions.Paint = function() end
+
+    local resetFiltersButton = vgui.Create("DButton", searchActions)
+    resetFiltersButton:Dock(RIGHT)
+    resetFiltersButton:SetWide(64)
+    resetFiltersButton:SetText("Reset")
+
+    local findCellsButton = vgui.Create("DButton", searchActions)
+    findCellsButton:Dock(FILL)
+    findCellsButton:DockMargin(0, 0, 4, 0)
+    findCellsButton:SetText("Find Cells")
+
+    local resultList = vgui.Create("DScrollPanel", pane)
+    resultList:Dock(TOP)
+    resultList:DockMargin(6, 0, 6, 4)
+    resultList:SetTall(112)
+
+    local function populateFilter(combo, values, defaultLabel)
+        combo:Clear()
+        combo:SetValue(defaultLabel)
+        combo:AddChoice(defaultLabel, "")
+        for _, value in ipairs(values) do
+            combo:AddChoice(value, value)
+        end
+    end
+
+    local function rebuildRecipeResults()
+        resultList:Clear()
+        if not ZM_World or not ZM_World:IsLoaded() then
+            resultSummary:SetText("World data is unavailable")
+            return
+        end
+        local matches = ZM_World:FindCells({
+            profile = selectedEnvironment ~= "" and selectedEnvironment or nil,
+            topology = selectedTopology ~= "" and selectedTopology or nil,
+            landmark = selectedLandmark ~= "" and selectedLandmark or nil
+        }) or {}
+        table.sort(matches, function(left, right)
+            if left.y == right.y then return left.x < right.x end
+            return left.y < right.y
+        end)
+        resultSummary:SetText(string.format("%d matching logical cell(s)", #matches))
+        for _, cell in ipairs(matches) do
+            local landmarks = ZM_World:GetLandmarks(cell) or {}
+            local button = vgui.Create("DButton", resultList)
+            button:Dock(TOP)
+            button:DockMargin(0, 0, 0, 3)
+            button:SetTall(34)
+            button:SetText("")
+            button.Paint = function(panel, width, height)
+                local color = panel:IsHovered() and palette.raised or palette.panel
+                surface.SetDrawColor(color.r, color.g, color.b, 255)
+                surface.DrawRect(0, 0, width, height)
+                surface.SetDrawColor(palette.border.r, palette.border.g, palette.border.b, 255)
+                surface.DrawOutlinedRect(0, 0, width, height, 1)
+                local worldX, worldY = ZM_World:GetWorldCoordinates(cell)
+                draw.SimpleText(string.format("%d, %d  %s", worldX or cell.x, worldY or cell.y, cell.topology or "unknown"), "DermaDefaultBold", 6, 4, palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+                local landmarkText = #landmarks > 0 and table.concat(landmarks, ", ") or (cell.profile or "")
+                draw.SimpleText(landmarkText, "DermaDefault", 6, 18, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+            end
+            button:SetTooltip(string.format("%s\n%s", ZM_World:GetMapPath(cell) or "Map unavailable", #landmarks > 0 and table.concat(landmarks, ", ") or "No named landmark"))
+            button.DoClick = function()
+                xInput:SetText("")
+                yInput:SetText("")
+                mapContext.selectCell(cell)
+                mapContext.focusCell(cell)
+            end
+        end
+    end
+
+    environmentFilter.OnSelect = function(_, _, _, data)
+        selectedEnvironment = data or ""
+    end
+    topologyFilter.OnSelect = function(_, _, _, data)
+        selectedTopology = data or ""
+    end
+    landmarkFilter.OnSelect = function(_, _, _, data)
+        selectedLandmark = data or ""
+    end
+    findCellsButton.DoClick = rebuildRecipeResults
+    resetFiltersButton.DoClick = function()
+        environmentFilter:ChooseOptionID(1)
+        topologyFilter:ChooseOptionID(1)
+        landmarkFilter:ChooseOptionID(1)
+        selectedEnvironment = ""
+        selectedTopology = ""
+        selectedLandmark = ""
+        rebuildRecipeResults()
+    end
+
+    if ZM_World and ZM_World:IsLoaded() then
+        local environments = {}
+        for _, cell in ipairs(ZM_World.Data.cells or {}) do
+            if cell.profile and cell.profile ~= "" then environments[cell.profile] = true end
+        end
+        local environmentValues = {}
+        for value in pairs(environments) do table.insert(environmentValues, value) end
+        table.sort(environmentValues)
+        populateFilter(environmentFilter, environmentValues, "Any environment")
+
+        local topologies = {}
+        local landmarks = {}
+        for _, cell in ipairs(ZM_World.Data.cells or {}) do
+            if cell.topology and cell.topology ~= "" then topologies[cell.topology] = true end
+            for _, landmark in ipairs(ZM_World:GetLandmarks(cell) or {}) do landmarks[landmark] = true end
+        end
+        local topologyValues = {}
+        local landmarkValues = {}
+        for value in pairs(topologies) do table.insert(topologyValues, value) end
+        for value in pairs(landmarks) do table.insert(landmarkValues, value) end
+        table.sort(topologyValues)
+        table.sort(landmarkValues)
+        populateFilter(topologyFilter, topologyValues, "Any layout")
+        populateFilter(landmarkFilter, landmarkValues, "Any landmark")
+        resultSummary:SetText("Choose filters, then find cells")
+    end
+
     local function resolveCoordinateCell()
         local worldX = tonumber(xInput:GetValue())
         local worldY = tonumber(yInput:GetValue())

@@ -189,7 +189,7 @@ The initial budgets are `250` portal clusters and `900` portals. They are config
 
 Place exactly one `zn_world_profile` point entity in a launcher map and set its `world_profile` keyvalue. It is a dedicated ZombieSim entity, so other `info_target` or map-logic entities are ignored. Add [zombiesim.fgd](zombiesim.fgd) to the Hammer game configuration to expose it in the entity browser.
 
-The built-in values are `city`, which loads `data_static/zombiesim_world.json`, and `preview`, which loads `data_static/zombiesim_world_preview.json`. The included `zn_start` and `zn_preview` launcher maps use those values. A custom profile such as `coast` loads `data_static/zombiesim_world_coast.json`; profile names may only use lowercase letters, digits, `_`, and `-`. Its optional `start_delay` property is a non-negative number of seconds to wait before a first-time player changes level to the world-origin safe room, allowing an opening intro to play. The default is `0`.
+The built-in values are `city`, which loads `data_static/zombiesim_world.json`, and `preview`, which loads `data_static/zombiesim_world_preview.json`. The authored `zn_city_start` and `zn_preview_start` launcher VMFs live in `celltemplates/launchers`; their compiled distributable BSPs are staged under `content/maps`. Generated recipe and safe-room maps use `zz_<profile>_` basenames directly under `garrysmod/maps`, keeping them out of the gamemode's `^zn_` launcher-map list while distinguishing profiles. Launcher intermediate compiler artifacts belong in `generated/launcher_build`, not under `content`. A custom profile such as `coast` loads `data_static/zombiesim_world_coast.json`; profile names may only use lowercase letters, digits, `_`, and `-`. Its optional `start_delay` property is a non-negative number of seconds to wait before a first-time player changes level to the world-origin safe room, allowing an opening intro to play. The default is `0`.
 
 The selected profile is retained when changing level to a city recipe or standalone safe-room map, where no selector entity is needed. A map containing conflicting `zn_world_profile` values is rejected so it cannot load ambiguous city data.
 
@@ -209,7 +209,7 @@ Use `-Profile` to refresh one or more named profiles, or `-AllProfiles` to refre
 .\bin\build_launcher_thumbnails.ps1 -AllProfiles
 ```
 
-Pass `-CellThumbnails` to additionally create the Garry's Mod map-browser thumbnail for every rendered recipe map in the selected profile. These thumbnails reuse the existing local cell-material images and are written below `content/maps/thumb/<profile>/<map>.png`, matching the staged map path such as `content/maps/preview/<map>.bsp`.
+Pass `-CellThumbnails` to additionally create the Garry's Mod map-browser thumbnail for every rendered recipe map in the selected profile. These thumbnails reuse the existing local cell-material images and are written to `content/maps/thumb/<map>.png`, matching the flat staged BSP basename. Recipe names include the profile so different worlds do not collide.
 
 ```powershell
 .\bin\build_cell_map_materials.ps1 -WorldProfile preview
@@ -409,6 +409,12 @@ Road settings determine how far the road network grows and how tangled it become
 | `maximumJunctionDegree` | Most connections allowed at one ordinary-road cell, from `2` to `4`. | `3` prevents four-way cross junctions. | `4` allows full intersections. |
 
 After generating local roads, the generator checks every district center for a route to the origin road network. An isolated district receives a direct ordinary-road connection that respects `maximumJunctionDegree` and avoids highway cells. This guarantee also applies when highways and metro are disabled.
+
+Run `bin/analyze_world_reachability.ps1` after generating a matching manifest and template plan to audit the origin-connected road/highway graph, cells without external recipe entrances, unreachable settlements/landmarks, and the number of recipe BSPs used exclusively by disconnected or no-entrance cells. It writes a report under `generated/reachability`. The audit is diagnostic only: do not prune recipe BSPs while logical cells still reference them in the runtime index. A cell with a usable local entrance is not classified as a no-entrance dead cell merely because it is not in the origin road component.
+
+`mapGeneration.safeZones.minimumSpacingCells` sets the preferred Euclidean spacing between den entrances. Placement considers only reachable local-road candidates, tries the most constrained districts first, and maximizes separation before district-center and supported-landmark preferences. If a district has no candidate at the target distance, it falls back to its best available reachable location; the manifest records the target, actual minimum separation, and per-district fallback status.
+
+For `bridge-ramp-*` recipes, the center remains a road cross-junction and the ramp occupies the first tile along the bridge direction; bridge road continues beyond it, rather than capping perpendicular ordinary-road approaches with deadends. Carpark bridge-ramp variants retain their separately-planned carpark junction. Run `bin/test_phase_c2_layouts.ps1 -WorldProfile preview` after planner changes; also inspect regenerated recipes and the developer zoo in Hammer before shipping a visual change.
 
 ### `highways`
 
@@ -692,7 +698,7 @@ These tables shorten recipe filenames so they remain readable and practical in G
 | `transportFeatures` | A bridge or on-ramp receives a compact transport segment. |
 | `landmarks` | `petrol-station` becomes `ps`. |
 
-`format` is the literal filename pattern: `zn_<environment>_<topology>-<orientation>[-<transport>]-d<density>_<landmarks>.vmf`. The bracketed transport segment is removed when a cell has no bridge or ramp feature. Macro layouts append `-m<width><height>-<template>-p<x>-<y>-q<quarter-turn>`; for example, `m22-c2a-p0-3-q0` means the `commercial_2a` 2x2 prefab anchored at `(0,3)` with zero rotation. Keep every code short, lowercase, and unique within its group. Changing this pattern or its abbreviations changes VMF names; rebuild and update any compile or map-loading references afterwards.
+`format` is the literal filename pattern: `zz_<worldProfile>_<environment>_<topology>-<orientation>[-<transport>]-d<density>_<landmarks>.vmf`. The `zz_<worldProfile>_` prefix is reserved for profile-specific generated recipe maps; standalone safe rooms use `zz_<worldProfile>_den_…`. The bracketed transport segment is removed when a cell has no bridge or ramp feature. Macro layouts append `-m<width><height>-<template>-p<x>-<y>-q<quarter-turn>`; for example, `m22-c2a-p0-3-q0` means the `commercial_2a` 2x2 prefab anchored at `(0,3)` with zero rotation. Keep every code short, lowercase, and unique within its group. Changing this pattern or its abbreviations changes VMF names; rebuild and update any compile or map-loading references afterwards.
 
 ### Complete Filename Reference
 

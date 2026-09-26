@@ -30,8 +30,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'ps_progress_utils.psm1') -Force
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+Write-ZMProgress -Activity 'Building city release maps' -Status 'Resolving required recipe list and staging paths.' -PercentComplete 2 -Step 'setup'
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
 $profileSettings = $worldGenerationProfile.Config
 if (-not $PSBoundParameters.ContainsKey('CleanStagedCity')) { $CleanStagedCity = $true }
@@ -63,6 +65,7 @@ $navmeshGameDirectory = if ([string]::IsNullOrWhiteSpace($GameDirectory)) {
     $GameDirectory
 }
 $navmeshMapDirectory = Join-Path (Join-Path $navmeshGameDirectory 'maps') $worldGenerationProfile.Name
+$gameMapDirectory = Join-Path $navmeshGameDirectory 'maps'
 if ([string]::IsNullOrWhiteSpace($ContentMaterialDirectory)) {
     $ContentMaterialDirectory = Join-Path $projectRoot (Join-Path 'content/materials/worlds' $worldGenerationProfile.Name)
 }
@@ -129,7 +132,7 @@ if (-not $SkipCompile) {
         foreach ($artifact in @(Get-ChildItem -LiteralPath $BuildDirectory -File)) {
             if ($artifact.Extension.ToLowerInvariant() -notin @('.bsp', '.lin', '.log', '.prt')) { continue }
             $mapName = [System.IO.Path]::GetFileNameWithoutExtension($artifact.Name)
-            if ($mapName -notlike 'zn_*' -or $requiredBuildMapNames.ContainsKey($mapName.ToLowerInvariant())) { continue }
+            if (($mapName -notlike 'zn_*' -and $mapName -notlike 'zz_*') -or $requiredBuildMapNames.ContainsKey($mapName.ToLowerInvariant())) { continue }
             Remove-Item -LiteralPath $artifact.FullName -Force
             $prunedBuildArtifacts++
         }
@@ -187,15 +190,28 @@ foreach ($bspName in $requiredBspNames) {
 if ($CleanStagedCity -and (Test-Path -LiteralPath $ContentMapDirectory)) {
     $stagedMapNames = @($requiredBspNames | ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_).ToLowerInvariant() })
     foreach ($stagedMapFile in (Get-ChildItem -LiteralPath $ContentMapDirectory -File | Where-Object { $_.Extension -in @('.bsp', '.nav') })) {
-        if ([System.IO.Path]::GetFileNameWithoutExtension($stagedMapFile.Name).ToLowerInvariant() -notin $stagedMapNames) {
+        $stagedMapName = [System.IO.Path]::GetFileNameWithoutExtension($stagedMapFile.Name).ToLowerInvariant()
+        $isCurrentProfileMap = $stagedMapName -like "zz_$($worldGenerationProfile.Name)_*"
+        if ($isCurrentProfileMap -and $stagedMapName -notin $stagedMapNames) {
             Remove-Item -LiteralPath $stagedMapFile.FullName -Force
         }
     }
 }
 [System.IO.Directory]::CreateDirectory($ContentMapDirectory) | Out-Null
 [System.IO.Directory]::CreateDirectory($navmeshMapDirectory) | Out-Null
+[System.IO.Directory]::CreateDirectory($gameMapDirectory) | Out-Null
+if ($CleanStagedCity) {
+    foreach ($stagedProfileMap in (Get-ChildItem -LiteralPath $gameMapDirectory -File | Where-Object {
+        $_.Extension -in @('.bsp', '.nav') -and $_.BaseName -like "zz_$($worldGenerationProfile.Name)_*"
+    })) {
+        if ([System.IO.Path]::GetExtension($stagedProfileMap.Name) -eq '.bsp' -and [System.IO.Path]::GetFileNameWithoutExtension($stagedProfileMap.Name).ToLowerInvariant() -in @($requiredBspNames | ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_).ToLowerInvariant() })) { continue }
+        if ([System.IO.Path]::GetExtension($stagedProfileMap.Name) -eq '.nav') { continue }
+        Remove-Item -LiteralPath $stagedProfileMap.FullName -Force
+    }
+}
 foreach ($bspName in $requiredBspNames) {
     Copy-Item -LiteralPath (Join-Path $BuildDirectory $bspName) -Destination (Join-Path $ContentMapDirectory $bspName) -Force
+    Copy-Item -LiteralPath (Join-Path $BuildDirectory $bspName) -Destination (Join-Path $gameMapDirectory $bspName) -Force
 }
 & (Join-Path $PSScriptRoot 'stage_world_navmeshes.ps1') -PlanData $PlanData -SourceDirectory $navmeshMapDirectory -DestinationDirectory $ContentMapDirectory -WorldProfile $worldGenerationProfile.Name -SettingsPath $SettingsPath
 

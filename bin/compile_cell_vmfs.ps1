@@ -24,6 +24,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'ps_progress_utils.psm1') -Force
+Write-ZMProgress -Activity 'Compiling cell recipes' -Status 'Preparing compiler profile and queued map list.' -PercentComplete 1 -Step 'setup'
 
 function Get-SettingsValue {
     param([hashtable]$Settings, [string]$Name, [object]$Fallback)

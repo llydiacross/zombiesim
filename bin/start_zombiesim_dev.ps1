@@ -2,7 +2,7 @@
 param(
     [ValidateSet('preview', 'city')]
     [string] $WorldProfile = 'preview',
-    [string] $Map = 'zn_preview',
+    [string] $Map = 'zn_preview_start',
     [string] $GarrysModRoot = ''
 )
 

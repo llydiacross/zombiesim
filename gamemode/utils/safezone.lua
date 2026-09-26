@@ -64,7 +64,7 @@ function SafeZones:GetMap(id)
 		return nil
 	end
 
-	return ZM_World.Data.world.mapDirectory .. "/" .. safeZone.map
+	return ZM_World:GetMapTransitionPath(safeZone.map)
 end
 
 // Returns the reusable safe-room transition map at the generated world origin.

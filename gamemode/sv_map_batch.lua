@@ -20,6 +20,10 @@ local function isValidMapPath(mapName)
     return type(mapName) == "string" and mapName:match("^[%w_/%-]+$") ~= nil
 end
 
+local function getGameMapPath(mapName)
+    return "maps/" .. mapName .. ".bsp"
+end
+
 local function getActiveProfile()
     return ZM_World and ZM_World.ActiveProfile or "unknown"
 end
@@ -87,7 +91,7 @@ function MapBatch:BuildQueue(includeSafeZones)
 
     local data = ZM_World:GetData()
     local mapDirectory = data and data.world and data.world.mapDirectory
-    if not isValidMapPath(mapDirectory) then
+    if mapDirectory ~= "" and not isValidMapPath(mapDirectory) then
         return nil, "World data has an invalid map directory."
     end
 
@@ -98,7 +102,7 @@ function MapBatch:BuildQueue(includeSafeZones)
             return
         end
 
-        local path = mapDirectory .. "/" .. mapName
+        local path = mapDirectory == "" and mapName or (mapDirectory .. "/" .. mapName)
         local key = string.lower(path)
         if not queued[key] then
             queued[key] = true
@@ -125,18 +129,24 @@ function MapBatch:GetNavmeshStatus()
     local mapName = game.GetMap()
     local data = ZM_World and ZM_World:GetData() or nil
     local mapDirectory = data and data.world and data.world.mapDirectory or ""
-    local mapPath = "maps/" .. mapName
-    if isValidMapPath(mapDirectory) then
-        mapPath = "maps/" .. mapDirectory .. "/" .. mapName
+    local mapPath = getGameMapPath(mapName)
+    local mapBasenamePath = string.gsub(mapPath, "%.bsp$", "")
+    local mapDirectoryValid = mapDirectory == "" or isValidMapPath(mapDirectory)
+    if mapDirectory ~= "" and mapDirectoryValid then
+        mapPath = "maps/" .. mapDirectory .. "/" .. mapName .. ".bsp"
     end
     local status = {
         map = mapName,
         profile = getActiveProfile(),
         runtimeRevision = getRuntimeRevision(),
-        bspExists = file.Exists(mapPath .. ".bsp", "GAME"),
-        navFileExists = file.Exists(mapPath .. ".nav", "GAME"),
+        bspExists = file.Exists(mapPath, "GAME"),
+        navFileExists = file.Exists(mapBasenamePath .. ".nav", "GAME"),
         checkedAt = os.time()
     }
+    if not mapDirectoryValid then
+        status.error = "world data has an invalid map directory"
+        return status
+    end
 
     if type(navmesh) ~= "table" or type(navmesh.GetNavAreaCount) ~= "function" or
         type(navmesh.IsGenerating) ~= "function" or type(navmesh.IsLoaded) ~= "function" then
@@ -176,6 +186,8 @@ function MapBatch:WriteNavmeshValidation(state)
         runtimeRevision = state.runtimeRevision,
         active = state.active == true,
         completed = state.completed or 0,
+        failedCount = #(state.failedMaps or {}),
+        failedMaps = state.failedMaps or {},
         requiredMaps = state.queue or {},
         maps = state.navmeshResults or {},
         updatedAt = os.time()
@@ -274,6 +286,39 @@ function MapBatch:Fail(state, message)
     self:Notify("[ZombieSim] " .. state.operation .. " batch failed on " .. tostring(self:GetCurrentMap(state)) .. ": " .. message)
 end
 
+function MapBatch:SkipFailedNavmesh(state, message)
+    local mapName = self:GetCurrentMap(state)
+    state.navmeshResults = state.navmeshResults or {}
+    state.navmeshResults[mapName] = {
+        map = mapName,
+        profile = state.profile,
+        status = "skipped",
+        error = message,
+        failedAt = os.time()
+    }
+    state.failedMaps = state.failedMaps or {}
+    table.insert(state.failedMaps, { map = mapName, error = message, failedAt = os.time() })
+    state.completed = state.index
+    state.index = state.index + 1
+    state.phase = "queued"
+    state.error = nil
+    state.generatedNavmesh = nil
+    self:SaveState(state)
+    self:WriteNavmeshValidation(state)
+    self:Notify("[ZombieSim] Skipping navmesh for " .. tostring(mapName) .. ": " .. message)
+    if state.index > #state.queue then
+        state.active = false
+        state.finishedAt = os.time()
+        state.phase = "completed-with-skips"
+        self:SaveState(state)
+        self:WriteNavmeshValidation(state)
+        self:Notify("[ZombieSim] navmeshes batch completed " .. state.completed .. " maps; skipped " .. #state.failedMaps .. ".")
+        return
+    end
+    self:SaveState(state)
+    self:GoToCurrent(state)
+end
+
 function MapBatch:AddNavmeshSpawnSeed()
     if type(navmesh) ~= "table" or type(navmesh.AddWalkableSeed) ~= "function" or
         type(navmesh.GetPlayerSpawnName) ~= "function" then
@@ -306,13 +351,13 @@ end
 
 function MapBatch:StartNavmeshGeneration(state)
     if type(navmesh) ~= "table" or type(navmesh.BeginGeneration) ~= "function" then
-        self:Fail(state, "navmesh.BeginGeneration is unavailable")
+        self:SkipFailedNavmesh(state, "navmesh.BeginGeneration is unavailable")
         return
     end
 
     local seedPosition, seedError = self:AddNavmeshSpawnSeed()
     if not seedPosition then
-        self:Fail(state, seedError)
+        self:SkipFailedNavmesh(state, seedError)
         return
     end
 
@@ -328,7 +373,7 @@ function MapBatch:StartNavmeshGeneration(state)
     self:SaveState(state)
     local started, startError = pcall(navmesh.BeginGeneration)
     if not started then
-        self:Fail(state, "navmesh generation could not start: " .. tostring(startError))
+        self:SkipFailedNavmesh(state, "navmesh generation could not start: " .. tostring(startError))
         return
     end
 
@@ -348,7 +393,7 @@ function MapBatch:PollNavmeshGeneration()
 
     local status = self:GetNavmeshStatus()
     if status.error then
-        self:Fail(state, status.error)
+        self:SkipFailedNavmesh(state, status.error)
         return
     end
     if status.generating then
@@ -364,15 +409,15 @@ function MapBatch:PollNavmeshGeneration()
         return
     end
     if elapsedSeconds > navmeshGenerationTimeoutSeconds then
-        self:Fail(state, "navmesh generation timed out after " .. navmeshGenerationTimeoutSeconds .. " seconds")
+        self:SkipFailedNavmesh(state, "navmesh generation timed out after " .. navmeshGenerationTimeoutSeconds .. " seconds")
         return
     end
     if status.areaCount <= 0 then
-        self:Fail(state, "navmesh generation did not start or produced no usable nav areas")
+        self:SkipFailedNavmesh(state, "navmesh generation did not start or produced no usable nav areas")
         return
     end
     if type(navmesh.Save) ~= "function" then
-        self:Fail(state, "navmesh.Save is unavailable")
+        self:SkipFailedNavmesh(state, "navmesh.Save is unavailable")
         return
     end
 
@@ -385,7 +430,7 @@ function MapBatch:PollNavmeshGeneration()
     self:SaveState(state)
     local saved, saveError = pcall(navmesh.Save)
     if not saved then
-        self:Fail(state, "navmesh save failed: " .. tostring(saveError))
+        self:SkipFailedNavmesh(state, "navmesh save failed: " .. tostring(saveError))
         return
     end
 
@@ -408,13 +453,13 @@ function MapBatch:VerifySavedNavmesh()
 
     local status = self:GetNavmeshStatus()
     if status.error then
-        self:Fail(state, status.error)
+        self:SkipFailedNavmesh(state, status.error)
         return
     end
 
     local generated = state.generatedNavmesh
     if type(generated) ~= "table" or generated.map ~= status.map or (tonumber(generated.areaCount) or 0) <= 0 then
-        self:Fail(state, "navmesh generation result was lost before save verification")
+        self:SkipFailedNavmesh(state, "navmesh generation result was lost before save verification")
         return
     end
 
@@ -427,14 +472,19 @@ function MapBatch:VerifySavedNavmesh()
     else
         local exported, exportPath = self:ExportNavmeshWireframe(status)
         if not exported then
-            self:Fail(state, "navmesh wireframe export failed: " .. tostring(exportPath))
-            return
+            status.wireframeExportError = tostring(exportPath)
+        else
+            status.wireframeExportPath = exportPath
         end
-        status.wireframeExportPath = exportPath
     end
     self:WriteNavmeshStatus(status)
     state.navmeshResults = state.navmeshResults or {}
     state.navmeshResults[mapName] = status
+    for index = #(state.failedMaps or {}), 1, -1 do
+        if state.failedMaps[index].map == mapName then
+            table.remove(state.failedMaps, index)
+        end
+    end
     state.generatedNavmesh = nil
     self:WriteNavmeshValidation(state)
     if status.persistenceVerified then

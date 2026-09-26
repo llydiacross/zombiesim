@@ -26,7 +26,7 @@ if ([string]::IsNullOrWhiteSpace($PlanData) -or -not (Test-Path -LiteralPath $Pl
 }
 if ([string]::IsNullOrWhiteSpace($SourceDirectory)) {
     $gameRoot = Split-Path -Parent (Split-Path -Parent $projectRoot)
-    $SourceDirectory = Join-Path (Join-Path $gameRoot 'maps') $worldGenerationProfile.Name
+    $SourceDirectory = Join-Path $gameRoot 'maps'
 }
 if ([string]::IsNullOrWhiteSpace($DestinationDirectory)) {
     $DestinationDirectory = Join-Path $projectRoot $profileSettings.releaseMapDirectory
@@ -59,7 +59,7 @@ foreach ($mapName in $mapNames) {
 if ($CleanStagedCity) {
     foreach ($stagedNavmesh in Get-ChildItem -LiteralPath $DestinationDirectory -Filter '*.nav' -File) {
         $mapName = [System.IO.Path]::GetFileNameWithoutExtension($stagedNavmesh.Name).ToLowerInvariant()
-        if (-not $requiredMapNames.ContainsKey($mapName)) {
+        if ($mapName -like "zz_$($worldGenerationProfile.Name)_*" -and -not $requiredMapNames.ContainsKey($mapName)) {
             Remove-Item -LiteralPath $stagedNavmesh.FullName -Force
         }
     }

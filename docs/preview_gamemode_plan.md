@@ -2,11 +2,12 @@
 
 ## Purpose
 
-`zn_preview` is the test-focused ZombieSim profile. It must remain a normal playable world: players load the preview runtime index, spawn through the usual safe-zone flow, and use the same cell transition logic as the city profile. Preview adds controlled developer tools around that gameplay loop; it does not fork the core rules or bypass the world manifest.
+`zn_preview_start` is the test-focused ZombieSim profile launcher. It must remain a normal playable world: players load the preview runtime index, spawn through the usual safe-zone flow, and use the same cell transition logic as the city profile. Preview adds controlled developer tools around that gameplay loop; it does not fork the core rules or bypass the world manifest.
 
 The initial preview experience has two visible additions:
 
 - A preview-tools pane in the world map for selecting and jumping to any logical cell.
+- A recipe finder in that pane for filtering preview cells by environment profile, road topology, and landmark, then selecting/focusing the logical cell before teleport.
 - A radial quick menu on Tab that opens Inventory, Scoreboard, or Options instead of the default scoreboard.
 - A preview admin console for controlled player-attribute and player-record inspection/editing.
 
@@ -24,7 +25,7 @@ The initial preview experience has two visible additions:
 
 ### Profile Gate
 
-- Treat preview mode as `ZM_World.ActiveProfile == "preview"`, selected by `zn_preview` or a `zn_world_profile` entity.
+- Treat preview mode as `ZM_World.ActiveProfile == "preview"`, selected by `zn_preview_start` or a `zn_world_profile` entity.
 - Create preview UI only after the active world data is loaded.
 - Never show preview tools in the `city` profile, including after a player moves between a den and a cell map.
 - Keep server authority separate from the UI gate. A manually invoked client console command or forged network request must not unlock preview actions in city.
@@ -57,7 +58,7 @@ The initial preview experience has two visible additions:
 
 ### User Flow
 
-1. A preview operator loads `zn_preview` on an enabled single-human test server and opens the existing world map with `zombiesim_map`.
+1. A preview operator loads `zn_preview_start` on an enabled single-human test server and opens the existing world map with `zombiesim_map`.
 2. The map retains its existing layer, places, inspector, render-mode, selection, and waypoint features.
 3. A third sidebar tab, `PREVIEW`, appears only for preview admins.
 4. Selecting a cell on the map updates the cell inspector and the preview pane's destination summary.
@@ -190,7 +191,7 @@ Open the console from the preview map pane and a preview-only console command. I
 - Build additive SQLite migrations for profile-scoped attributes, record revisions, update timestamps, and persistent preview audit events. Copy legacy attributes into `city`; use an explicit preview baseline on first preview load.
 - Refactor persistence through typed repository services with checked query results, compare-and-swap revisions, transaction-backed audit writes, and live-state synchronization only after commit.
 - Add a shared client UI coordinator for exclusive modal ownership, cursor state, and cleanup after profile/map reload.
-- Validate `zn_preview` selects the preview runtime index and capability state, while `zn_start` exposes neither preview controls nor preview data.
+- Validate `zn_preview_start` selects the preview runtime index and capability state, while `zn_city_start` exposes neither preview controls nor preview data.
 
 ### Phase 1: Read-Only Preview Map Pane
 
@@ -241,7 +242,7 @@ Open the console from the preview map pane and a preview-only console command. I
 
 ## Acceptance Criteria
 
-- `zn_preview` reaches the same opening spawn flow as before and loads `zombiesim_world_preview.json`.
+- `zn_preview_start` reaches the same opening spawn flow as before and loads `zombiesim_world_preview.json`.
 - Preview admins can select any valid logical cell from the world map and request a confirmed transition to its resolved map.
 - A teleport to a cell sharing a recipe BSP still preserves the selected logical coordinates, rather than treating the BSP name as cell identity.
 - Teleport is rejected without mutation unless the requester is the sole human player, the target is an ordinary staged city-cell BSP, preview tools are enabled, and map-batch maintenance is idle.

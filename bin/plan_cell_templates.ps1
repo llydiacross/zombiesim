@@ -15,7 +15,9 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'ps_progress_utils.psm1') -Force
 $projectRoot = Split-Path -Parent $PSScriptRoot
+Write-ZMProgress -Activity 'Planning cell templates' -Status 'Loading map manifest and template catalog.' -PercentComplete 2 -Step 'setup'
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
 $generatorSettings = $worldGenerationProfile.Settings
 $profileSettings = $worldGenerationProfile.Config
@@ -1573,8 +1575,11 @@ function Get-CellTilePlacements {
         $transportTemplate = Get-TransportFeatureTemplate $TransportFeature
         $usesMotorwayDeadEnd = $Topology -eq 'motorway-deadend' -and ($TransportFeature -in @('bridge-vertical', 'bridge-horizontal') -or $TransportFeature -like 'onramp-*')
         $usesMotorwayCornerOnrampInterchange = $Topology -eq 'motorway-corner' -and $TransportFeature -like 'onramp-*'
+        $usesRoadBridgeRamp = $TransportFeature -like 'bridge-ramp-*'
         $centerCandidates = if ($usesMotorwayCornerOnrampInterchange) {
             @($plannerSettings.topologyTemplates['motorway-crossjunction'], (Get-GenericTopologyTemplate $Topology), (Get-LinearTopologyTemplate $Topology), $TerrainTemplate)
+        } elseif ($usesRoadBridgeRamp) {
+            @($plannerSettings.topologyTemplates['road-crossjunction'], (Get-GenericTopologyTemplate 'road-crossjunction'), (Get-LinearTopologyTemplate $Topology), $TerrainTemplate)
         } else {
             @($transportTemplate, (Get-GenericTopologyTemplate $Topology), (Get-LinearTopologyTemplate $Topology), $TerrainTemplate)
         }
@@ -1583,8 +1588,8 @@ function Get-CellTilePlacements {
             tileX = $center
             tileY = $center
             template = $centerTemplate
-            rotationYaw = if ($usesMotorwayCornerOnrampInterchange) { 0 } elseif ($Topology -eq 'motorway-deadend' -and $null -eq $transportTemplate) { Get-MotorwayDeadEndRotation $Orientation } elseif ($null -eq $transportTemplate) { Get-LayoutRotation $Topology $Orientation } else { Get-TransportFeatureRotation $TransportFeature }
-            role = if ($usesMotorwayCornerOnrampInterchange) { 'motorway_onramp_interchange' } elseif ($null -eq $transportTemplate) { 'road_center' } else { $TransportFeature }
+            rotationYaw = if ($usesMotorwayCornerOnrampInterchange -or $usesRoadBridgeRamp) { 0 } elseif ($Topology -eq 'motorway-deadend' -and $null -eq $transportTemplate) { Get-MotorwayDeadEndRotation $Orientation } elseif ($null -eq $transportTemplate) { Get-LayoutRotation $Topology $Orientation } else { Get-TransportFeatureRotation $TransportFeature }
+            role = if ($usesMotorwayCornerOnrampInterchange) { 'motorway_onramp_interchange' } elseif ($usesRoadBridgeRamp) { 'road_center' } elseif ($null -eq $transportTemplate) { 'road_center' } else { $TransportFeature }
         }
 
         if ($usesMotorwayCornerOnrampInterchange) {
@@ -1659,13 +1664,11 @@ function Get-CellTilePlacements {
         if ($TransportFeature -like 'bridge-ramp-*') {
             $bridgeDirection = $TransportFeature.Substring('bridge-ramp-'.Length, 1).ToUpperInvariant()
             $bridgeRoadTemplate = Resolve-Template @($plannerSettings.transportTemplates.bridgeRoad, $plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
-            $bridgeRampDeadEndTemplate = Resolve-Template @($plannerSettings.transportTemplates.roadDeadEnd, $plannerSettings.topologyTemplates['road-deadend'], $bridgeRoadTemplate, $TerrainTemplate) $AvailableTemplates
-            $ordinaryApproachDirection = @{ N = 'E'; E = 'S'; S = 'W'; W = 'N' }[$bridgeDirection]
-            $bridgeRampDeadEndCoordinate = Get-DirectionalAdjacentCoordinate $ordinaryApproachDirection $center
-            $bridgeRampDeadEndDirection = $ordinaryApproachDirection
-            $bridgeRampDeadEndOrientation = $generatorSettings.directions.names[$bridgeRampDeadEndDirection]
+            $bridgeRampCoordinate = Get-DirectionalAdjacentCoordinate $bridgeDirection $center
+            $bridgeRampTemplate = Resolve-Template @((Get-TransportFeatureTemplate $TransportFeature), $plannerSettings.transportTemplates['bridge-ramp'], $TerrainTemplate) $AvailableTemplates
             $rotationYaw = Get-DirectionalTileRotation $bridgeDirection
             foreach ($coordinate in @(Get-DirectionalTileCoordinates $bridgeDirection $center $TileGridSize)) {
+                if ($coordinate.tileX -eq $bridgeRampCoordinate.tileX -and $coordinate.tileY -eq $bridgeRampCoordinate.tileY) { continue }
                 $placements["$($coordinate.tileX),$($coordinate.tileY)"] = [pscustomobject]@{
                     tileX = $coordinate.tileX
                     tileY = $coordinate.tileY
@@ -1674,12 +1677,12 @@ function Get-CellTilePlacements {
                     role = 'bridge_road'
                 }
             }
-            $placements["$($bridgeRampDeadEndCoordinate.tileX),$($bridgeRampDeadEndCoordinate.tileY)"] = [pscustomobject]@{
-                tileX = $bridgeRampDeadEndCoordinate.tileX
-                tileY = $bridgeRampDeadEndCoordinate.tileY
-                template = $bridgeRampDeadEndTemplate
-                rotationYaw = Get-LayoutRotation 'road-deadend' $bridgeRampDeadEndOrientation
-                role = 'road'
+            $placements["$($bridgeRampCoordinate.tileX),$($bridgeRampCoordinate.tileY)"] = [pscustomobject]@{
+                tileX = $bridgeRampCoordinate.tileX
+                tileY = $bridgeRampCoordinate.tileY
+                template = $bridgeRampTemplate
+                rotationYaw = Get-TransportFeatureRotation $TransportFeature
+                role = 'bridge_ramp'
             }
         }
     }
@@ -2290,18 +2293,23 @@ function Get-CellFilename {
 
     $filename = [string]$filenameAbbreviations.format
     if ([string]::IsNullOrWhiteSpace($filename)) { throw 'cellPlanning.filenameAbbreviations.format must not be empty.' }
-    $filename = $filename.Replace('<environment>', [string]$Codes.environment)
-    $filename = $filename.Replace('<topology>', [string]$Codes.topology)
-    $filename = $filename.Replace('<orientation>', [string]$Codes.orientation)
-    $filename = if ([string]::IsNullOrWhiteSpace($Codes.transport)) {
-        $filename.Replace('[-<transport>]', '')
-    } else {
-        $filename.Replace('[-<transport>]', "-$($Codes.transport)")
+    $recipeIdentity = @(
+        [string]$Codes.environment,
+        [string]$Codes.topology,
+        [string]$Codes.orientation,
+        [string]$Codes.transport,
+        [string]$Codes.density,
+        (@($Codes.landmarks) -join '+'),
+        [string]$Codes.macro
+    ) -join '|'
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $hashBytes = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($recipeIdentity))
+    } finally {
+        $sha256.Dispose()
     }
-    $filename = $filename.Replace('d<density>', [string]$Codes.density)
-    $filename = $filename.Replace('<landmarks>', (@($Codes.landmarks) -join '+'))
-    if ([string]::IsNullOrWhiteSpace([string]$Codes.macro)) { return $filename }
-    return ('{0}-{1}{2}' -f [System.IO.Path]::GetFileNameWithoutExtension($filename), [string]$Codes.macro, [System.IO.Path]::GetExtension($filename))
+    $recipeHash = ([System.BitConverter]::ToString($hashBytes).Replace('-', '').ToLowerInvariant()).Substring(0, 12)
+    return $filename.Replace('<worldProfile>', $worldGenerationProfile.Name).Replace('<recipeHash>', $recipeHash)
 }
 
 function Get-CarparkCoverageFilename {
@@ -2447,7 +2455,7 @@ function Get-SafeZoneMapFilename {
 
     $biomeCode = [string]$safeZoneSettings.biomeCodes[$Biome]
     $landmarkSuffix = if ([string]::IsNullOrWhiteSpace($LandmarkVariant)) { '' } else { "_$LandmarkVariant" }
-    return "zn_den_${biomeCode}${landmarkSuffix}.vmf"
+    return 'zz_{0}_den_{1}{2}.vmf' -f $worldGenerationProfile.Name, $biomeCode, $landmarkSuffix
 }
 
 $carparkCoverage = Get-CarparkCoveragePlan @($map.cells)

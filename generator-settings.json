@@ -3,6 +3,7 @@
   "paths": {
     "templateDirectory": "tiletemplates",
     "baseCellTemplate": "celltemplates/template_border_s.vmf",
+    "launcherTemplateDirectory": "celltemplates/launchers",
     "scriptOutputDirectory": "bin",
     "safeZoneTemplateDirectory": "celltemplates/safezones"
   },
@@ -15,10 +16,10 @@
         "exportLayers": true,
         "cellDirectory": "generated/src",
         "buildDirectory": "generated/build",
-        "releaseMapDirectory": "content/maps/city",
+        "releaseMapDirectory": "content/maps",
         "runtimeWorldData": "content/data_static/zombiesim_world.json",
         "thumbnail": {
-          "map": "zn_start",
+          "map": "zn_city_start",
           "source": "backgrounds/1.jpg",
           "title": "CITY CAMPAIGN",
           "showLogo": true
@@ -30,10 +31,10 @@
         "exportLayers": true,
         "cellDirectory": "generated/src_preview",
         "buildDirectory": "generated/build_preview",
-        "releaseMapDirectory": "content/maps/preview",
+        "releaseMapDirectory": "content/maps",
         "runtimeWorldData": "content/data_static/zombiesim_world_preview.json",
         "thumbnail": {
-          "map": "zn_preview",
+          "map": "zn_preview_start",
           "source": "bin/preview_grid_24x24_seed_1337.png",
           "title": "PREVIEW CITY",
           "showLogo": false
@@ -199,6 +200,12 @@
       "minimumDensity": 0.55,
       "districtCenterDensity": 0.15,
       "placementMode": "random"
+    },
+    "safeZones": {
+      "minimumSpacingCells": 8,
+      "spacingWeight": 2.0,
+      "districtCenterWeight": 1.0,
+      "landmarkPreferenceWeight": 3.0
     },
     "population": {
       "base": 25000,
@@ -435,7 +442,7 @@
       "The Epicenter": "buildings/tile_epicenter_*_3x.vmf"
     },
     "filenameAbbreviations": {
-      "format": "zn_<environment>_<topology>-<orientation>[-<transport>]-d<density>_<landmarks>.vmf",
+      "format": "zz_<worldProfile>_<recipeHash>.vmf",
       "environmentProfiles": { "grassland": "gr", "sandy": "sa", "dirt": "di", "settlement": "st", "commercial": "co", "financial": "fi", "radioactive": "ra", "destroyed": "dx", "safe_zone": "sz", "fortified": "fo", "military": "mi", "medical": "md", "emergency_services": "es", "religious": "rl", "service_station": "ss", "recreation": "rc", "parkland": "pk" },
       "topologies": { "open": "o", "road-straight": "rs", "road-corner": "rc", "road-tjunction": "rt", "road-crossjunction": "rx", "road-deadend": "rd", "road-isolated": "ri", "motorway-straight": "ms", "motorway-corner": "mc", "motorway-tjunction": "mt", "motorway-crossjunction": "mx", "motorway-deadend": "md", "motorway-isolated": "mi" },
       "orientations": { "none": "n", "all": "a", "vertical": "v", "horizontal": "h", "north": "n", "east": "e", "south": "s", "west": "w", "north-east": "ne", "east-south": "es", "south-west": "sw", "north-west": "nw", "missing-north": "mn", "missing-east": "me", "missing-south": "ms", "missing-west": "mw" },

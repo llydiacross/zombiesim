@@ -17,7 +17,9 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'ps_progress_utils.psm1') -Force
 $projectRoot = Split-Path -Parent $PSScriptRoot
+Write-ZMProgress -Activity 'Building cell VMFs' -Status 'Loading recipe plan and source template inventory.' -PercentComplete 2 -Step 'setup'
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
 $generatorSettings = $worldGenerationProfile.Settings
 $profileSettings = $worldGenerationProfile.Config
@@ -622,6 +624,38 @@ function Convert-NorthGateOffset {
     }
 }
 
+function Set-CellPlayerStart {
+    param(
+        [string]$Vmf,
+        [object]$Recipe,
+        [int]$TileGridSize,
+        [int]$TileWidth
+    )
+
+    $playerStartIndex = $Vmf.IndexOf('"classname" "info_player_start"', [System.StringComparison]::Ordinal)
+    if ($playerStartIndex -lt 0) { throw 'Base cell template must contain an info_player_start entity.' }
+
+    $centerTile = [int][Math]::Floor($TileGridSize / 2)
+    $terrainTiles = @($Recipe.tilePlacements | Where-Object { $_.role -eq 'terrain' } | Sort-Object `
+        @{ Expression = { [Math]::Abs([int]$_.tileX - $centerTile) + [Math]::Abs([int]$_.tileY - $centerTile) } },
+        @{ Expression = { [int]$_.tileY } },
+        @{ Expression = { [int]$_.tileX } })
+    if ($terrainTiles.Count -eq 0) { throw "Recipe '$($Recipe.cellTemplateFilename)' has no unobstructed terrain tile for the player start." }
+
+    $spawnTile = $terrainTiles[0]
+    $spawnX = [int](([int]$spawnTile.tileX - $centerTile) * $TileWidth)
+    $spawnY = [int](($centerTile - [int]$spawnTile.tileY) * $TileWidth)
+    $originPropertyIndex = $Vmf.IndexOf('"origin"', $playerStartIndex, [System.StringComparison]::Ordinal)
+    if ($originPropertyIndex -lt 0) { throw 'Base cell info_player_start must define an origin.' }
+    $originMatch = [regex]::Match($Vmf.Substring($originPropertyIndex), '^"origin"\s+"(?<origin>-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?)"')
+    if (-not $originMatch.Success) { throw 'Base cell info_player_start must define a numeric origin.' }
+    $sourceCoordinates = @($originMatch.Groups['origin'].Value -split '\s+')
+    $spawnOrigin = '{0} {1} {2}' -f $spawnX, $spawnY, $sourceCoordinates[2]
+    $updatedOrigin = '"origin" "{0}"' -f $spawnOrigin
+    $absoluteLength = $originMatch.Length
+    return $Vmf.Substring(0, $originPropertyIndex) + $updatedOrigin + $Vmf.Substring($originPropertyIndex + $absoluteLength)
+}
+
 function New-CellVmf {
     param(
         [object]$Recipe,
@@ -641,6 +675,7 @@ function New-CellVmf {
     $baseVmf = Get-Content -Raw $BaseTemplatePath
     $baseVmf = Remove-TemplateCubemaps $baseVmf
     $baseVmf = Set-VmfLightingProfile $baseVmf (Get-RecipeLightingProfile $Recipe)
+    $baseVmf = Set-CellPlayerStart $baseVmf $Recipe $TileGridSize $TileWidth
     $cameraMatch = [regex]::Match($baseVmf, '(?m)^cameras\r?$')
     if (-not $cameraMatch.Success) {
         throw "Base cell template must contain a cameras block: $BaseTemplatePath"
@@ -834,16 +869,24 @@ $cubemapProbeReport = [System.Collections.Generic.List[string]]::new()
 if ($PruneStaleGenerated) {
     foreach ($existingVmf in (Get-ChildItem -Path $CellDirectory -Filter '*.vmf' -File)) {
         if ($requiredRecipeNames.ContainsKey($existingVmf.Name.ToLowerInvariant()) -or -not (Test-GeneratedCellVmf $existingVmf.FullName)) {
-            continue
+            if ($requiredRecipeNames.ContainsKey($existingVmf.Name.ToLowerInvariant()) -or $existingVmf.Name -notlike 'zn_*.vmf') { continue }
         }
         if (-not $WhatIf) {
             Remove-Item -LiteralPath $existingVmf.FullName
         }
         $pruned++
     }
+    foreach ($existingVmx in (Get-ChildItem -Path $CellDirectory -Filter 'zn_*.vmx' -File)) {
+        $matchingVmf = [System.IO.Path]::ChangeExtension($existingVmx.Name, '.vmf')
+        if ($requiredRecipeNames.ContainsKey($matchingVmf.ToLowerInvariant())) { continue }
+        if (-not $WhatIf) {
+            Remove-Item -LiteralPath $existingVmx.FullName
+        }
+        $pruned++
+    }
 }
 if ($RefreshGenerated -or $Force -or $PruneStaleGenerated) {
-    foreach ($existingDenMap in (Get-ChildItem -Path $CellDirectory -Filter 'zn_den_*' -File)) {
+    foreach ($existingDenMap in (Get-ChildItem -Path $CellDirectory -File | Where-Object { $_.Name -like 'zn_den_*' -or $_.Name -like 'zz_den_*' })) {
         if ($safeZoneMapNames.ContainsKey([System.IO.Path]::ChangeExtension($existingDenMap.Name, '.vmf').ToLowerInvariant())) {
             continue
         }

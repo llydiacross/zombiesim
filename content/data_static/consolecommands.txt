@@ -1,2 +1,2 @@
-# request: manual-20260911-001653-5d5078e9
-changelevel zn_preview
+# request: manual-20260926-043446-15c215b4
+zombiesim_map_batch_retry

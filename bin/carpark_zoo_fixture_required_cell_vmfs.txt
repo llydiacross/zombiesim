@@ -1,7 +1,0 @@
-zn_fo_rs-h-d1_n-m22-b1b-p0-3-q3-cp.vmf
-zn_fo_rs-h-d2_n-m22-b1b-p3-3-q3-cp.vmf
-zn_mi_rs-v-d1_n-m22-b1b-p0-3-q0-cp.vmf
-zn_mi_rs-v-d2_n-m22-b1b-p3-3-q2-cp.vmf
-zn_ra_rs-v-d3_n-m22-b1b-p0-0-q0-cp.vmf
-zn_service-station_rs-h-bre-d3_n-m22-b1b-p1-0-q1-cp.vmf
-zn_service-station_rs-h-d3_n-m22-b1b-p1-0-q1-cp.vmf

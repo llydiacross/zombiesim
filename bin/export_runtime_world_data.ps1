@@ -128,8 +128,7 @@ $profileSettings = $worldGenerationProfile.Config
 $atmosphereSettings = Get-AtmosphereProfiles $generatorSettings
 $atmosphereProfiles = $atmosphereSettings.Profiles
 $atmosphereProfileIndexById = $atmosphereSettings.IndexById
-$mapDirectory = Split-Path -Leaf ([string]$profileSettings.releaseMapDirectory)
-if ([string]::IsNullOrWhiteSpace($mapDirectory)) { throw 'The runtime map directory cannot be empty.' }
+$mapDirectory = ''
 if ([string]::IsNullOrWhiteSpace($MapData)) {
     $mapFilePattern = "$($profileSettings.filePrefix)_grid_*.json"
     $MapData = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter $mapFilePattern -File |

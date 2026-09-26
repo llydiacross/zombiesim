@@ -199,33 +199,35 @@ foreach ($requestedProfile in $Profile) {
             throw "Cell map materials for profile '$profileName' were not found: $cellMaterialDirectory. Run build_cell_map_materials.ps1 first."
         }
 
-        $releaseMapDirectory = [string]$worldGenerationProfile.Config.releaseMapDirectory
-        $mapSubdirectory = $releaseMapDirectory -replace '^[\\/]*content[\\/]+maps[\\/]*', ''
-        if ([string]::IsNullOrWhiteSpace($mapSubdirectory) -or $mapSubdirectory -eq $releaseMapDirectory) {
-            throw "World-generation profile '$profileName' must stage recipe maps below content/maps to generate GMod thumbnails."
-        }
-        $cellThumbnailDirectory = Join-Path $thumbnailDirectory $mapSubdirectory
+        $cellThumbnailDirectory = $thumbnailDirectory
         New-Item -ItemType Directory -Path $cellThumbnailDirectory -Force | Out-Null
 
         $cellMaterialPaths = @(Get-ChildItem -LiteralPath $cellMaterialDirectory -Filter '*.png' -File | Sort-Object Name)
         if ($cellMaterialPaths.Count -eq 0) {
             throw "Cell map materials for profile '$profileName' are empty: $cellMaterialDirectory"
         }
+        $expectedCellThumbnails = @{}
         foreach ($cellMaterialPath in $cellMaterialPaths) {
             $mapName = [System.IO.Path]::GetFileNameWithoutExtension($cellMaterialPath.Name)
             if ($mapName -notmatch '^[a-z0-9_+\-]+$') {
                 throw "Cell map material '$($cellMaterialPath.Name)' has an invalid GMod map name."
             }
-            $thumbnailKey = ((Join-Path $mapSubdirectory $mapName) -replace '\\', '/').ToLowerInvariant()
+            $thumbnailKey = $mapName.ToLowerInvariant()
             if ($targetMaps.ContainsKey($thumbnailKey)) {
                 throw "GMod thumbnail '$thumbnailKey' is produced by both '$($targetMaps[$thumbnailKey])' and '$profileName'."
             }
 
             $targetMaps[$thumbnailKey] = $profileName
+            $expectedCellThumbnails["$mapName.png"] = $true
             $outputPath = Join-Path $cellThumbnailDirectory "$mapName.png"
             New-CellMapThumbnail -SourcePath $cellMaterialPath.FullName -OutputPath $outputPath
             $outputPaths.Add($outputPath)
             $cellThumbnailCount++
+        }
+        foreach ($existingThumbnail in (Get-ChildItem -LiteralPath $cellThumbnailDirectory -Filter '*.png' -File)) {
+            if ($existingThumbnail.Name -notlike "zz_$($profileName)_*.png") { continue }
+            if ($expectedCellThumbnails.ContainsKey($existingThumbnail.Name)) { continue }
+            Remove-Item -LiteralPath $existingThumbnail.FullName -Force
         }
     }
 }

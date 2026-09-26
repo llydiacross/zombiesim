@@ -80,7 +80,7 @@ The first version should sample valid Garry's Mod nav areas near the ticket's de
 
 ### Navmesh Readiness Gate
 
-Before Phase C, use one staged `zn_preview` city-cell map to prove that the game can load a matching `.nav` asset and that `navmesh.GetAllNavAreas()` returns usable areas. Record the map, nav generation command, generated asset location, and load result in the Alpha 2 test log. Do not implement a broad auto-spawn loop until this one-map proof passes.
+Before Phase C, use one staged preview city-cell map to prove that the game can load a matching `.nav` asset and that `navmesh.GetAllNavAreas()` returns usable areas. Record the map, nav generation command, generated asset location, and load result in the Alpha 2 test log. Do not implement a broad auto-spawn loop until this one-map proof passes.
 
 For Alpha 2 completion, define and validate how matching nav assets are generated and staged for every preview map that can materialize zombies. A missing or invalid navmesh is an explicit no-spawn condition, not a reason to fall back to per-NPC world pathfinding.
 
@@ -105,7 +105,7 @@ This API-driven sequence is the execution path. It avoids blind `game.ConsoleCom
 
 ### One-Map Proof
 
-1. Build and stage the current preview profile with the normal preview pipeline, then launch `zn_preview` on a local server with the development command bridge available.
+1. Build and stage the current preview profile with the normal preview pipeline, then launch `zn_preview_start` on a local server with the development command bridge available.
 2. Select one ordinary staged city-cell map through `zombiesim_generate_navmeshes <mapName>`. Do not use a launcher or safe-zone map for the proof.
 3. Let the batch change level and wait for it to call the server navmesh generation and save APIs automatically.
 4. Run `zombiesim_navmesh_status`. It passes only when the loaded map and active profile match the requested target, the matching `.nav` file is visible to the game, and `navmesh.GetNavAreaCount()` reports at least one usable area.
@@ -203,7 +203,7 @@ Implement the detailed contract in [walker_checkpoint_persistence_plan.md](walke
 4. During restore, reconcile imported materialized tickets as despawned before enabling the controller. Do not reconstruct pre-transition NextBots; preserve killed tickets and horde movement state as the native source of truth.
 5. Run the C++ build and test presets from `bin/walker-simulator` after every native contract change. Core coverage includes killed-ticket checkpoint round-trip, corrupt checkpoint rejection, and deterministic continued simulation; worker lifecycle handling is exercised through the API v3 live validation.
 6. Run `zombiesim_walker_smoke` after rebuilding the optional module, then validate live worker startup with `zombiesim_walker_status`, `zombiesim_walker_cell`, and `zombiesim_walker_noise`.
-7. In `zn_preview`, first prove the staged navmesh on one selected city-cell map. Then test no-navmesh handling, one zombie, a small group, cap saturation, failed spawn placement, forced cleanup, death, active-cell refresh, profile switch, and game shutdown.
+7. In `zn_preview_start`, first prove the staged navmesh on one selected city-cell map. Then test no-navmesh handling, one zombie, a small group, cap saturation, failed spawn placement, forced cleanup, death, active-cell refresh, profile switch, and game shutdown.
 8. Prove one killed zombie remains removed after both `changelevel` and a local server restart, while horde location/progress and attractors resume from the persisted checkpoint. Confirm imported materialized tickets become despawned before the controller creates new entities.
 9. Verify that each test records the native tick, graph hash, state hash, population, horde count, ticket counts, active NPC count, controller error count, checkpoint byte length, save/restore result, and checkpoint error in the test log.
 10. Review all open issues in `docs/alpha_2_test_log.md`; fix release blockers, document accepted limitations, and link reproduction evidence before calling Alpha 2 complete.

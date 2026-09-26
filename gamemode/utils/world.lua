@@ -13,12 +13,10 @@ World.DataProfiles = {
 	preview = "data_static/zombiesim_world_preview.json"
 }
 World.LauncherMapProfiles = {
-	zn_start = "city",
-	zn_preview = "preview"
+	zn_city_start = "city",
+	zn_preview_start = "preview"
 }
 World.MapDirectoryProfiles = {
-	city = "city",
-	preview = "preview"
 }
 World.CustomProfileDataPrefix = "data_static/zombiesim_world_"
 // Re-including this module during a Lua refresh must not discard a live world index.
@@ -225,14 +223,21 @@ function World:GetMapDataProfile()
 		return nil
 	end
 
-	local mapPath = string.lower(game.GetMap())
-	local mapDirectory = string.match(mapPath, "^([^/\\]+)[/\\]")
-	if mapDirectory and self.MapDirectoryProfiles[mapDirectory] then
-		return self.MapDirectoryProfiles[mapDirectory]
+	local mapName = mapBasename(game.GetMap())
+	return self.LauncherMapProfiles[mapName] or self:GetUniqueProfileForMap(mapName)
+end
+
+// Resolves a runtime map basename to its Source transition path; an empty mapDirectory means maps/ root.
+function World:GetMapTransitionPath(mapName)
+	if type(mapName) ~= "string" or mapName == "" then
+		return nil
 	end
 
-	local mapName = mapBasename(mapPath)
-	return self.LauncherMapProfiles[mapName] or self:GetUniqueProfileForMap(mapName)
+	local mapDirectory = self.Data and self.Data.world and self.Data.world.mapDirectory or ""
+	if mapDirectory == "" then
+		return mapName
+	end
+	return mapDirectory .. "/" .. mapName
 end
 
 // Returns the current map marker's non-negative opening delay in seconds.
@@ -620,7 +625,7 @@ function World:GetMapPath(reference, y)
 		return nil
 	end
 
-	return self.Data.world.mapDirectory .. "/" .. cell.map
+	return self:GetMapTransitionPath(cell.map)
 end
 
 // Resolves a cell's shared terrain/tag record from its compact environment id.
@@ -686,7 +691,7 @@ function World:GetSafeZoneMap(reference, y)
 		return nil
 	end
 
-	return self.Data.world.mapDirectory .. "/" .. safeZone.map
+	return self:GetMapTransitionPath(safeZone.map)
 end
 
 // Returns the reusable safe-room transition map anchored at the generated world origin.
@@ -696,7 +701,7 @@ function World:GetOriginSafeZoneMap()
 		return nil
 	end
 
-	return self.Data.world.mapDirectory .. "/" .. safeZone.map
+	return self:GetMapTransitionPath(safeZone.map)
 end
 
 // Returns the safe-zone record at a player's persisted logical CellX/CellY.
@@ -723,7 +728,7 @@ function World:GetPlayerSafeZoneMap(player)
 		return nil
 	end
 
-	return self.Data.world.mapDirectory .. "/" .. safeZone.map
+	return self:GetMapTransitionPath(safeZone.map)
 end
 
 // Returns the standalone safe room the player is currently in, not the city entrance they can access.
@@ -743,7 +748,7 @@ function World:GetPlayerCurrentSafeZoneMap(player)
 		return nil
 	end
 
-	return self.Data.world.mapDirectory .. "/" .. safeZone.map
+	return self:GetMapTransitionPath(safeZone.map)
 end
 
 // Returns landmark names on a cell. The returned table is empty when none exist.
@@ -897,7 +902,7 @@ function World:GetTransitionMap(reference, yOrDirection, directionOrMode, reques
 	return self:GetMapPath(target), target, exit, mode
 end
 
-// Searches cells using optional map, terrain, profile, atmosphere, district, landmark, metroLine,
+// Searches cells using optional map, terrain, profile, topology, atmosphere, district, landmark, metroLine,
 // safeZone, deadZone, building, metroStop, limit, and predicate criteria.
 function World:FindCells(criteria)
 	if not self:IsLoaded() then
@@ -916,6 +921,7 @@ function World:FindCells(criteria)
 			(criteria.map == nil or cell.map == criteria.map) and
 			(criteria.terrain == nil or environment.terrain == criteria.terrain) and
 			(criteria.profile == nil or cell.profile == criteria.profile) and
+			(criteria.topology == nil or cell.topology == criteria.topology) and
 			(criteria.atmosphere == nil or atmosphere == criteria.atmosphere) and
 			(criteria.district == nil or district.name == criteria.district) and
 			(criteria.deadZone == nil or cell.deadZone == criteria.deadZone) and
