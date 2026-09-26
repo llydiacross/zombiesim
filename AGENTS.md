@@ -2,6 +2,12 @@
 
 ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua gameplay code with a PowerShell pipeline that generates and compiles reusable Source VMF recipe maps.
 
+## Active Task Tracker
+
+- `todo-alpha-2.7.md` is the authoritative tracker for current Alpha 2.7 work.
+- `docs/todo-alpha-2.6.md`, older roadmaps, test logs, and prior agent notes are historical context unless an item is explicitly promoted into the active tracker.
+- When the active milestone changes, update this guide and the root tracker together; do not infer current work from historical phase labels.
+
 ## Read First
 
 - [readme.md](readme.md) contains the supported build, staging, in-game, and Walker simulator command sequences.
