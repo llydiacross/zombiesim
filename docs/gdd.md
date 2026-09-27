@@ -20,6 +20,8 @@ A gmod gameemode based on the game Dead Frontier. The game is a top down third p
 
 # The Survivor
 
+The launcher presents three survivor slots for each world profile. Creating a survivor selects a citizen appearance and profession, distributes ten starting points, and begins at that profile's origin safe zone. Selecting a different slot changes the saved progression, inventory, credits and location independently; the currently loaded survivor cannot be deleted. Existing saves are intended to become slot 1 and require an appearance choice before deployment. The menu's geographic globe is fictional presentation, not a real-world mapping of the generated city. In-engine migration and presentation acceptance for Alpha 2.8.5 remain outstanding.
+
  - The Survivor is made up on stats. Here are the base RPG style stats. The stats are as follows:
    - Strength: Affects melee damage and carry weight
    - Agility: Affects movement speed and dodge chance

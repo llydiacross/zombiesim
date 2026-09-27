@@ -16,7 +16,9 @@ function Credits:Get(target)
 end
 
 function Credits:Load(target)
-    local balance, loadError = ZM_GetPlayerCredits(target:SteamID(), profileFor(target))
+    local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+    if not characterKey then return false, keyError end
+    local balance, loadError = ZM_GetPlayerCredits(characterKey, profileFor(target))
     target.Credits = balance or 0
     self:Sync(target)
     if balance == nil then return false, loadError end
@@ -42,7 +44,9 @@ function Credits:Step(target, delta, reason, ref)
     if balance > StaticData.MaximumCredits then
         return nil, "Credits cannot exceed " .. StaticData.MaximumCredits .. "."
     end
-    return { kind = "credits", steamid = target:SteamID(), expected = current, balance = balance, reason = reason, ref = ref }
+    local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+    if not characterKey then return nil, "Cannot change credits without an active character: " .. tostring(keyError) end
+    return { kind = "credits", steamid = characterKey, expected = current, balance = balance, reason = reason, ref = ref }
 end
 
 // Applies a saved step to the in-memory balance.
@@ -72,24 +76,31 @@ local function runCreditCommand(caller, command, arguments)
     local target = IsValid(caller) and caller or firstHuman()
     if not target then return false, "no target player" end
     local ok, message = true, nil
+    local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+    if not characterKey then
+        ok = false
+        message = "no active character: " .. tostring(keyError)
+        ZM_Util.Print(caller, "[ZombieSim] " .. command .. ": " .. message)
+        return false, message
+    end
     if command == "zn_grant_credits" then
         local amount = tonumber(arguments[1])
         local reason = arguments[2] and string.sub(arguments[2], 1, 48) or "admin grant"
         ok, message = Credits:Grant(target, amount, "grant: " .. reason)
         message = ok and ("balance is now " .. message) or message
     elseif command == "zn_dev_reset_credits" then
-        ok, message = ZM_DeletePlayerCredits(target:SteamID(), profileFor(target))
+        ok, message = ZM_DeletePlayerCredits(characterKey, profileFor(target))
         if ok then
             target.Credits = 0
             Credits:Sync(target)
             message = "deleted this profile's credits, ledger, and mastercraft attempts"
         end
     end
-    local ledger = ZM_GetCreditLedger(target:SteamID(), profileFor(target), 10) or {}
+    local ledger = characterKey and ZM_GetCreditLedger(characterKey, profileFor(target), 10) or {}
     local output = "[ZombieSim] " .. command .. ": " .. tostring(message or (ok and "ok" or "failed")) .. " (credits " .. Credits:Get(target) .. ")"
     ZM_Util.Print(caller, output)
     if ZM_DevConsole and ZM_DevConsole.Report then
-        ZM_DevConsole:Report("credits", { command = command, ok = ok, message = message, credits = Credits:Get(target), stored = ZM_GetPlayerCredits(target:SteamID(), profileFor(target)), ledger = ledger })
+        ZM_DevConsole:Report("credits", { command = command, ok = ok, message = message, credits = Credits:Get(target), stored = characterKey and ZM_GetPlayerCredits(characterKey, profileFor(target)), ledger = ledger })
     end
     if not ok then return false, tostring(message) end
     return true

@@ -646,6 +646,12 @@ local commitWriters = {
 function ZM_CommitWrites(profile, steps)
     profile = getPlayerDataProfile(profile)
     if not profile then return false, "Invalid commit profile" end
+    for index, step in ipairs(steps or {}) do
+        if type(step) ~= "table" then return false, "write step " .. index .. " must be a table" end
+        if step.kind ~= "tradeStock" and (type(step.steamid) ~= "string" or step.steamid == "") then
+            return false, "write step " .. index .. " has no character persistence key"
+        end
+    end
     return inTransaction(function()
         for index, step in ipairs(steps or {}) do
             local writer = commitWriters[step.kind]

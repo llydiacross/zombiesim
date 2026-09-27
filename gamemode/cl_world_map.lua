@@ -1754,6 +1754,7 @@ local function createCellInspector(parent)
 end
 
 function WorldMap:Open()
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     self:LoadPersistentState()
     if IsValid(self.Frame) then
         self.Frame:MakePopup()

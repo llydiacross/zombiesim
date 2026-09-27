@@ -15,6 +15,20 @@ function Util.ProfileFor(target)
     return target.ZM_InventoryProfile or ZM_World.ActiveProfile
 end
 
+// Persistence identity for a character-aware player, with a SteamID fallback for isolated test stubs.
+function Util.CharacterKeyFor(target)
+    if type(target) ~= "table" and not IsValid(target) then
+        return nil, "Invalid character owner"
+    end
+    if type(target.GetCharacterKey) == "function" then
+        return target:GetCharacterKey()
+    end
+    if type(target.SteamID) == "function" then
+        return target:SteamID()
+    end
+    return nil, "Character owner has no persistence identity"
+end
+
 // True for a real player entity (test stubs return false from IsPlayer).
 function Util.IsPlayerEntity(target)
     return IsValid(target) and target.IsPlayer ~= nil and target:IsPlayer() == true

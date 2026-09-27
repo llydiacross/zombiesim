@@ -205,18 +205,32 @@ local function collectPersistenceReport(steamId)
         return nil, "Persistence report requires a SteamID or an active human player"
     end
 
-    local cityData, cityDataError = ZM_GetPlayerData(steamId, "city")
-    local previewData, previewDataError = ZM_GetPlayerData(steamId, "preview")
-    local cityAttributes, cityAttributesError = ZM_GetPlayerAttributes(steamId, "city")
-    local previewAttributes, previewAttributesError = ZM_GetPlayerAttributes(steamId, "preview")
+    local cityKey, cityKeyError = ZM_CharacterService:GetCharacterKeyForSteamID(steamId, "city")
+    local previewKey, previewKeyError = ZM_CharacterService:GetCharacterKeyForSteamID(steamId, "preview")
+    local cityData, cityDataError
+    local previewData, previewDataError
+    local cityAttributes, cityAttributesError
+    local previewAttributes, previewAttributesError
+    if cityKey then
+        cityData, cityDataError = ZM_GetPlayerData(cityKey, "city")
+        cityAttributes, cityAttributesError = ZM_GetPlayerAttributes(cityKey, "city")
+    else
+        cityDataError, cityAttributesError = cityKeyError, cityKeyError
+    end
+    if previewKey then
+        previewData, previewDataError = ZM_GetPlayerData(previewKey, "preview")
+        previewAttributes, previewAttributesError = ZM_GetPlayerAttributes(previewKey, "preview")
+    else
+        previewDataError, previewAttributesError = previewKeyError, previewKeyError
+    end
     local activePlayer = findPlayer(steamId)
     return {
         steamId = steamId,
         map = game.GetMap(),
         activeProfile = ZM_World and ZM_World.ActiveProfile or nil,
         selectedProfile = GetConVar("zombiesim_world_profile") and GetConVar("zombiesim_world_profile"):GetString() or nil,
-        city = { playerData = cityData, attributes = cityAttributes, error = cityDataError or cityAttributesError },
-        preview = { playerData = previewData, attributes = previewAttributes, error = previewDataError or previewAttributesError },
+        city = { characterId = cityKey, playerData = cityData, attributes = cityAttributes, error = cityDataError or cityAttributesError },
+        preview = { characterId = previewKey, playerData = previewData, attributes = previewAttributes, error = previewDataError or previewAttributesError },
         runtime = runtimeSnapshot(activePlayer)
     }
 end

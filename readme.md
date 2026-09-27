@@ -1,5 +1,17 @@
 # Z-Nation
 
+## Launcher characters
+
+On `zn_preview_start` or `zn_city_start`, the optional Volt/Walker briefings precede the character menu. Load an existing slot or create one of three profile-specific survivors: choose a name, citizen model/appearance, profession, and spend exactly ten starting attribute points. A migrated slot-1 survivor requires an appearance before deployment. Deleting a slot requires typing its name. Options in the launcher use the same settings controls as the in-game radial menu; Exit disconnects. Keyboard navigation supports Up/Down, Enter and Escape. Deployment only begins after the server accepts a selected slot.
+
+The main menu draws an original procedural globe at the authored `menu_globe` marker. Each slot's origin dot uses the profile's geographic anchor in `content/data_static/launcher_scene.json`; selecting a slot turns the globe to that dot. The profile anchors are fictional presentation coordinates, **not** a real-world geolocation of generated cells. `zombiesim_globe_quality 0` uses fewer globe triangles. No external imagery or copied textures are packaged.
+
+Credits uses the same maintained JSON file for its crawl. It hides the menu and cuts to `credits_camera`, then cycles through the four named dancers; Escape, Enter, Space, or click returns to the menu. The server supplies camera poses, dancer entity indexes, and credits-area visibility; credits fog is confined to the credits view. For camera tuning, `zombiesim_credits_shot gman` (or `alyx`, `barney`, `kleiner`; empty to unlock) and `zombiesim_credits_debug 1` expose the shot and obstruction trace. Admins can run `zombiesim_launcher_flexes` to inspect available model flex controllers. The dancing, flex replication, camera clearance, and presentation still require live-client verification.
+
+For admin development sessions, `zombiesim_dev_autoload_character 1` (or slot 2/3) attempts to deploy that existing, appearance-complete slot after the dependency briefings; `0` disables autoload. It does not create a character. Run `zn_test_characters` in an admin console for server-side character storage and validation checks. Player models/hands, menu camera framing, first-run briefings, and cross-map transitions still require verification in a running client.
+
+Character persistence uses a profile-specific three-slot roster. Existing per-profile player data is assigned to slot 1 at first startup, retaining the original player-owned table layouts while replacing the owner key with an immutable character ID. Garry's Mod blocks Lua from reading `sv.db`, so startup requires a verified logical SQLite export (every schema statement and row, checked by row count) at `garrysmod/data/zombiesim/backups/sv_db_alpha_2_8_5_backup.json`; if backup or migration fails, character spawning is blocked rather than saving under the wrong identity. Back up your installed database separately before testing this milestone, then check the server's migration row counts and verify an existing save in-game. The migration and suite have **not** yet been exercised against the installed database.
+
 Please read the [GDD](docs/gdd.md) for an overview of the game's design and mechanics.
 
 Work in progress
@@ -65,6 +77,20 @@ Run a complete clean preview build, including fresh BSPs, visibility, lighting, 
 ```
 
 ## Export To Garry's Mod
+
+### Launcher maps (independent of world generation)
+
+The two authored launchers are `celltemplates\launchers\zn_preview_start.vmf` and `zn_city_start.vmf`. Their menu room camera is `menu_camera` at `(0, -160, 112)`, facing north (+Y); the `menu_globe` marker is at `(96, 32, 112)`, to the camera's right, leaving the left of the view for menu options. Both `point_camera` entities (`menu_camera` and `credits_camera`) start off; they are scene pose markers, not active monitor feeds. The dance rigs in the credits area remain unchanged. Check camera framing, globe size, lighting and dance visibility in Hammer and in a running client; a successful compile alone does not verify the view.
+
+Run the focused parity check and compile each small launcher independently, without regenerating or compiling any world recipes:
+
+```powershell
+.\bin\test_launcher_parity.ps1
+.\bin\build_launchers.ps1 -WorldProfile preview
+.\bin\build_launchers.ps1 -WorldProfile city
+```
+
+Each build copies the current VMF into `generated\launcher_build`, runs VBSP/VVIS/VRAD, fails on a leak or nonzero compiler exit, and copies the resulting BSP to both `content\maps` and Garry's Mod `garrysmod\maps` (which otherwise can shadow the content copy). The script verifies SHA-256 equality of the built and staged files. Reload each launcher map after staging. Hammer `.vmx` backups are not build inputs and are not modified.
 
 This workspace is already installed inside Garry's Mod under `garrysmod/gamemodes/zombiesim`. The export commands stage the selected compiled BSPs, generated map materials, and matching runtime-world JSON into this gamemode's `content` directory. Use the profile-wide command instead of copying individual BSPs so map files, satellite materials, and runtime references stay synchronized.
 
@@ -461,6 +487,8 @@ Through the bridge these add `reports.enemySpawn`, `reports.enemyKills`, and `re
 # World Loot Spots
 
 `ZM_LootSpots` (server) turns matching map props from `entity_loot.json` into loot spots when a player loads into a city cell. Spot state is saved per profile and cell in SQLite; a cell re-rolls on the next load after 5 minutes with nobody in it. Press E near a highlighted prop to search it, then accept or decline the offered item (declining keeps the same item on the spot).
+
+Rules cover every whole, container-like mounted model (HL2, CSS, PHX): vehicles and train cars, barrels and fuel cans, vending units and coolers, crates and boxes, ammo cans and footlockers, lockers, cabinets, desks, fridges, kitchen units, shelving, laundry machines, trash cans and dumpsters, electrical boxes, and cash sources such as registers, luggage, and money pallets. Each rule maps to a semantic group: `lootCash` holds cash bundles and `lootMedicalSupplies` holds bandages and painkillers. Gibs, fragments, scenery, loose pickup-sized junk, and PHX building blocks are deliberately excluded. A rule only applies when a template places the model as `prop_physics`/`prop_dynamic` (or their `_override` variants); `prop_static` cannot be looted.
 
 ZombieSim disables Garry's Mod's default `+use` physics-prop pickup globally. Pressing E can still activate ZombieSim interactions, doors, buttons, and transition gates, but cannot carry barrels, crates, or other physics props.
 

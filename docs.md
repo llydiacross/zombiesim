@@ -2,6 +2,12 @@
 
 This guide explains the city generator in normal game-making language. You do not need to be a programmer to adjust the safe settings. The main file is [generator-settings.json](generator-settings.json).
 
+## Launcher maps and survivor slots
+
+The `zn_preview_start` and `zn_city_start` launcher VMFs in [celltemplates/launchers](celltemplates/launchers) are hand-authored, not generated city recipes. Build them independently with `.\bin\test_launcher_parity.ps1` and `.\bin\build_launchers.ps1 -WorldProfile preview` (then `city`). This compiles and stages only the selected launcher into both `content/maps` and the engine's `garrysmod/maps`; do not run a world build for launcher-only edits. Both maps provide a `menu_camera`, a `menu_globe` position, a `credits_camera`, and four named dancer ragdolls.
+
+The launcher holds players until a profile-scoped survivor slot is selected. The server keeps three slots per profile and migrates existing per-profile progress to slot 1 on first startup, after taking a database backup. Slot 1 needs an appearance choice before first deployment. [launcher_scene.json](content/data_static/launcher_scene.json) contains fictional geographic anchors and credits crawl text; editing it does not require recompiling maps. Read [readme.md](readme.md) for menu controls, test commands, and the current live-verification warning.
+
 The generator creates a city plan, turns that plan into reusable 5-by-5 cell recipes, then creates VMF files for Hammer. It does not change the hand-authored tile templates in `tiletemplates`.
 
 ## Start Here

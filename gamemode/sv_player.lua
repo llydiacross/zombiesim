@@ -1,15 +1,6 @@
 // Server-only Player persistence, network synchronization, stamina, and XP behavior.
 local ply = FindMetaTable("Player")
-local playerBioDirectory = "zombiesim/player_bios"
 local maxPlayerBioLength = 280
-
-local function getPlayerBioPath(playerEntity)
-    local steamId = playerEntity:SteamID64()
-    if steamId == nil or steamId == "" or steamId == "0" then
-        return nil
-    end
-    return playerBioDirectory .. "/" .. steamId .. ".txt"
-end
 
 local function normalizePlayerBio(bio)
     bio = string.Trim(tostring(bio or ""))
@@ -18,28 +9,27 @@ local function normalizePlayerBio(bio)
     return string.sub(bio, 1, maxPlayerBioLength)
 end
 
-// Loads a survivor bio from the server DATA folder and replicates it for the scoreboard.
+// Loads the active character's survivor bio and replicates it for the scoreboard.
 function ply:LoadBio()
-    local bioPath = getPlayerBioPath(self)
-    if not bioPath then
+    local characterKey, keyError = self:GetCharacterKey()
+    if not characterKey then
         self:SetNWString("PlayerBio", "")
-        return false
+        return false, keyError
     end
 
-    self:SetNWString("PlayerBio", normalizePlayerBio(file.Read(bioPath, "DATA") or ""))
+    local bio, bioError = ZM_CharacterService:GetBio(characterKey)
+    if bio == nil then return false, bioError end
+    self:SetNWString("PlayerBio", normalizePlayerBio(bio))
     return true
 end
 
-// Persists a compact public bio outside profile-scoped progression data.
+// Persists the public bio under the active character.
 function ply:SaveBio(bio)
-    local bioPath = getPlayerBioPath(self)
-    if not bioPath then
-        return false
-    end
-
+    local characterKey, keyError = self:GetCharacterKey()
+    if not characterKey then return false, keyError end
     local normalizedBio = normalizePlayerBio(bio)
-    file.CreateDir(playerBioDirectory)
-    file.Write(bioPath, normalizedBio)
+    local saved, saveError = ZM_CharacterService:SetBio(characterKey, normalizedBio)
+    if not saved then return false, saveError end
     self:SetNWString("PlayerBio", normalizedBio)
     return true
 end
@@ -68,7 +58,9 @@ end
 // Loads all attribute values, falling back to a zeroed record for a new player.
 function ply:FetchAttributes()
 
-    local attr, attributeError = ZM_GetPlayerAttributes(self:SteamID(), ZM_World.ActiveProfile)
+    local characterKey, keyError = self:GetCharacterKey()
+    if not characterKey then return false, keyError end
+    local attr, attributeError = ZM_GetPlayerAttributes(characterKey, ZM_World.ActiveProfile)
     if attributeError then
         return false, attributeError
     end
@@ -141,6 +133,8 @@ end
 
 // Persists every player record. Health and survival values are sampled immediately before the write.
 function ply:Save(source)
+    local characterKey, keyError = self:GetCharacterKey()
+    if not characterKey then return false, "Cannot save without an active character: " .. tostring(keyError) end
     if self.ZM_PersistentStateLoaded ~= true then
         return false, "Player persistent state has not been loaded"
     end
@@ -151,7 +145,7 @@ function ply:Save(source)
             return false, "could not save ammunition state: " .. tostring(syncError)
         end
     end
-    local attributesSaved, attributesError = ZM_SetPlayerAttributes(self:SteamID(), ZM_World.ActiveProfile, self.Attributes)
+    local attributesSaved, attributesError = ZM_SetPlayerAttributes(characterKey, ZM_World.ActiveProfile, self.Attributes)
     self.SavedHealth = math.max(self:Health(), 0)
     self.Stamina = math.Clamp(self.Stamina or 100, 0, self:GetMaxStamina())
     self.Hunger = math.Clamp(self.Hunger or 100, 0, 100)
@@ -165,16 +159,21 @@ end
 
 // Saves only the attributes table when an attribute changes.
 function ply:UpdateAttributes()
-    return ZM_SetPlayerAttributes(self:SteamID(), ZM_World.ActiveProfile, self.Attributes)
+    local characterKey, keyError = self:GetCharacterKey()
+    if not characterKey then return false, "Cannot save attributes without an active character: " .. tostring(keyError) end
+    if self.ZM_PersistentStateLoaded ~= true then return false, "Player persistent state has not been loaded" end
+    return ZM_SetPlayerAttributes(characterKey, ZM_World.ActiveProfile, self.Attributes)
 end
 
 // Saves only the core player-data row when progression, cell, or survival values change.
 function ply:UpdatePlayerData(source)
+    local characterKey, keyError = self:GetCharacterKey()
+    if not characterKey then return false, "Cannot save player data without an active character: " .. tostring(keyError) end
     if self.ZM_PersistentStateLoaded ~= true then
         return false, "Player persistent state has not been loaded"
     end
 
-    return ZM_SetPlayerData(self:SteamID(), ZM_World.ActiveProfile, {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, CurrentSafeZoneId = self.CurrentSafeZoneId, SkillPoints = self.SkillPoints, Cash = self.Cash, Health = self.SavedHealth, Stamina = self.Stamina, Hunger = self.Hunger, Thirst = self.Thirst, Job = self.Job}, source or "runtime update")
+    return ZM_SetPlayerData(characterKey, ZM_World.ActiveProfile, {XP = self.XP, Level = self.Level, MaxLevel = self.MaxLevel, Difficulty = self.Difficulty, CellX = self.CellX, CellY = self.CellY, CurrentSafeZoneId = self.CurrentSafeZoneId, SkillPoints = self.SkillPoints, Cash = self.Cash, Health = self.SavedHealth, Stamina = self.Stamina, Hunger = self.Hunger, Thirst = self.Thirst, Job = self.Job}, source or "runtime update")
 end
 
 // Records the standalone safe room the player is currently in without changing their city cell.
@@ -311,7 +310,9 @@ end
 // Loads core progression and logical world position, defaulting a first-time player to the world origin.
 function ply:FetchPlayerData()
 
-    local data, playerDataError = ZM_GetPlayerData(self:SteamID(), ZM_World.ActiveProfile)
+    local characterKey, keyError = self:GetCharacterKey()
+    if not characterKey then return nil, keyError end
+    local data, playerDataError = ZM_GetPlayerData(characterKey, ZM_World.ActiveProfile)
     if playerDataError then
         return nil, playerDataError
     end
@@ -431,7 +432,7 @@ hook.Add("SetupMove", "ZM.StaminaMovement", function(ply, move)
 
     ply.ZM_IsSprinting = bit.band(move:GetButtons(), IN_SPEED) ~= 0
 
-    if ply.Stamina > 0 then return end
+    if ply.ZM_PersistentStateLoaded ~= true or (tonumber(ply.Stamina) or 0) > 0 then return end
 
     move:SetMaxSpeed(ply:GetWalkSpeed())
     move:SetMaxClientSpeed(ply:GetWalkSpeed())
@@ -444,7 +445,7 @@ hook.Add("Think", "ZM.Stamina", function()
     local baseSprintDrain = 80
 
     for _, ply in ipairs(player.GetAll()) do
-        if IsValid(ply) and ply:Alive() then
+        if IsValid(ply) and ply:Alive() and ply.ZM_PersistentStateLoaded == true then
             local maxStamina = ply:GetMaxStamina()
             local isSprinting = ply:KeyDown(IN_SPEED)
             local agility = ply:GetStat("Agility")
@@ -474,7 +475,7 @@ hook.Add("Think", "ZM.Survival", function()
     nextSurvivalUpdateAt = CurTime() + 1
 
     for _, ply in ipairs(player.GetAll()) do
-        if not IsValid(ply) or not ply:Alive() then continue end
+        if not IsValid(ply) or not ply:Alive() or ply.ZM_PersistentStateLoaded ~= true then continue end
 
         ply.Hunger = math.Clamp((tonumber(ply.Hunger) or 100) - (1 / 600), 0, 100)
         ply.Thirst = math.Clamp((tonumber(ply.Thirst) or 100) - (1 / 400), 0, 100)
@@ -497,6 +498,7 @@ hook.Add("Think", "ZM.RadiationDamage", function()
 
     for _, ply in ipairs(player.GetAll()) do
         if not IsValid(ply) then continue end
+        if ply.ZM_PersistentStateLoaded ~= true then continue end
         if not ply:Alive() then
             ply.RadiationCellId = nil
             ply.RadiationEnteredAt = nil

@@ -139,6 +139,8 @@ function Trade:CheckAccess(target, npc)
     if not target.ZM_Inventory then
         return false, "Your inventory is not loaded."
     end
+    local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+    if not characterKey then return false, "No active character: " .. tostring(keyError) end
     if not StaticData:GetTrade() then
         return false, "Trade data is not loaded."
     end
@@ -162,7 +164,7 @@ function Trade:CheckRequestId(target, requestId)
     if type(requestId) ~= "string" or not string.match(requestId, "^[%w_-]+$") or #requestId > 40 then
         return nil, "Invalid request id."
     end
-    local existing, readError = ZM_GetTradeRequest(target:SteamID(), profileFor(target), requestId)
+    local existing, readError = ZM_GetTradeRequest(ZM_Util.CharacterKeyFor(target), profileFor(target), requestId)
     if existing == nil then return nil, "Could not check the request: " .. tostring(readError) end
     if existing then return nil, "That request was already completed." end
     return requestId
@@ -225,7 +227,7 @@ function Trade:Buy(target, npc, request)
         if cashOf(target) < total then
             return false, "That costs " .. total .. " cash; you have " .. cashOf(target) .. "."
         end
-        currencyStep = { kind = "cash", steamid = target:SteamID(), cash = cashOf(target) - total }
+        currencyStep = { kind = "cash", steamid = ZM_Util.CharacterKeyFor(target), cash = cashOf(target) - total }
     end
     local now = os.time()
     local ok, result = Service:Mutate(target, function(draft)
@@ -243,7 +245,7 @@ function Trade:Buy(target, npc, request)
         return {
             currencyStep,
             { kind = "tradeStock", safeZoneId = context.den.id, traderId = context.traderId, day = context.day, offerKey = offer.key, stock = offer.stock, expected = offer.sold, units = units },
-            { kind = "tradeLedger", steamid = target:SteamID(), requestId = requestId, safeZoneId = context.den.id, traderId = context.traderId, day = context.day, tradeKind = "buy",
+            { kind = "tradeLedger", steamid = ZM_Util.CharacterKeyFor(target), requestId = requestId, safeZoneId = context.den.id, traderId = context.traderId, day = context.day, tradeKind = "buy",
                 itemId = offer.item, count = units * offer.bundle, cash = offer.currency == "cash" and total or 0, credits = offer.currency == "credits" and total or 0 }
         }
     end })
@@ -323,7 +325,8 @@ function Trade:Sell(target, npc, request)
     end
     local requestId, idError = self:CheckRequestId(target, request.requestId)
     if not requestId then return false, idError end
-    local soldToday, soldError = ZM_GetTradeSaleTotal(target:SteamID(), context.profile, context.day)
+    local characterKey = ZM_Util.CharacterKeyFor(target)
+    local soldToday, soldError = ZM_GetTradeSaleTotal(characterKey, context.profile, context.day)
     if not soldToday then return false, "Could not read today's sales: " .. tostring(soldError) end
     if soldToday + price > trade.dailySaleCashLimit then
         return false, "Traders will pay you at most " .. math.max(0, trade.dailySaleCashLimit - soldToday) .. " more cash today."
@@ -336,8 +339,8 @@ function Trade:Sell(target, npc, request)
         return Service.Ops.RemoveInstance(draft, instanceId, count)
     end, { extraSteps = function()
         return {
-            { kind = "cash", steamid = target:SteamID(), cash = cash },
-            { kind = "tradeLedger", steamid = target:SteamID(), requestId = requestId, safeZoneId = context.den.id, traderId = context.traderId, day = context.day, tradeKind = "sell",
+            { kind = "cash", steamid = characterKey, cash = cash },
+            { kind = "tradeLedger", steamid = characterKey, requestId = requestId, safeZoneId = context.den.id, traderId = context.traderId, day = context.day, tradeKind = "sell",
                 itemId = itemId, count = count, cash = price, credits = 0, saleLimit = trade.dailySaleCashLimit }
         }
     end })
@@ -366,7 +369,7 @@ function Trade:BuildState(target, npc)
     state.buys = context.trader.buysList
     state.maximumPurchaseUnits = trade.maximumPurchaseUnits
     state.saleLimit = trade.dailySaleCashLimit
-    state.soldToday = ZM_GetTradeSaleTotal(target:SteamID(), context.profile, context.day) or 0
+    state.soldToday = ZM_GetTradeSaleTotal(ZM_Util.CharacterKeyFor(target), context.profile, context.day) or 0
     local offers, offersError = self:BuildOffers(context.profile, context.den, context.traderId, context.day)
     if not offers then
         state.available, state.reason = false, offersError
@@ -464,8 +467,13 @@ local function runTradeCommand(caller, command, arguments)
         // zn_trade_sell <instanceId|itemId> [count] [requestId]
         ok, message = Trade:Sell(target, npc, { ref = arguments[1], count = tonumber(arguments[2]), requestId = arguments[3] or newRequestId() })
     elseif command == "zn_dev_reset_trade" then
-        ok, message = ZM_DeleteTradeData(target:SteamID(), profileFor(target), true)
-        message = ok and "deleted this player's trade ledger and the profile's den stock" or message
+        local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+        if not characterKey then
+            ok, message = false, "no active character: " .. tostring(keyError)
+        else
+            ok, message = ZM_DeleteTradeData(characterKey, profileFor(target), true)
+            message = ok and "deleted this character's trade ledger and the profile's den stock" or message
+        end
     elseif command == "zn_dev_trade_danger" then
         local value = arguments[1]
         if value == nil or value == "off" then
@@ -486,9 +494,10 @@ local function runTradeCommand(caller, command, arguments)
         local state = Trade:BuildState(target, npc)
         state.command, state.ok, state.message = command, ok, message
         state.dangerOverride = Trade.DangerOverride
-        state.storedCash = (ZM_GetPlayerData(target:SteamID(), profileFor(target)) or {}).Cash
-        state.storedCredits = ZM_GetPlayerCredits(target:SteamID(), profileFor(target))
-        state.ledger = ZM_GetTradeLedger(target:SteamID(), profileFor(target), 5)
+        local characterKey = ZM_Util.CharacterKeyFor(target)
+        state.storedCash = characterKey and (ZM_GetPlayerData(characterKey, profileFor(target)) or {}).Cash or nil
+        state.storedCredits = characterKey and ZM_GetPlayerCredits(characterKey, profileFor(target)) or nil
+        state.ledger = characterKey and ZM_GetTradeLedger(characterKey, profileFor(target), 5) or {}
         state.sellables = nil
         ZM_DevConsole:Report("trade", state)
     end

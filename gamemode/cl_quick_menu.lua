@@ -112,14 +112,7 @@ function ZM_PreviewCheats:Request(action)
     net.SendToServer()
 end
 
-function ZM_Options:Open()
-    local frame = openFrame(self, "OPTIONS", 480, 550)
-    if frame.OptionsBuilt then return end
-    frame.OptionsBuilt = true
-    local panel = vgui.Create("DPanel", frame)
-    panel:Dock(FILL)
-    panel:DockMargin(12, 36, 12, 12)
-    panel.Paint = function() end
+function ZM_Options:BuildPanel(panel)
     local labels = vgui.Create("DCheckBoxLabel", panel)
     labels:Dock(TOP)
     labels:DockMargin(4, 4, 4, 8)
@@ -230,7 +223,7 @@ function ZM_Options:Open()
 
     local displayedActiveCap
     local displayedPopulationPerZombie
-    frame.Think = function()
+    panel.Think = function()
         local settings = self.WalkerSettings or {}
         activeCap:SetEnabled(settings.canEdit == true)
         populationPerZombie:SetEnabled(settings.canEdit == true)
@@ -247,6 +240,17 @@ function ZM_Options:Open()
         end
     end
     self:RequestWalkerSettings()
+end
+
+function ZM_Options:Open()
+    local frame = openFrame(self, "OPTIONS", 480, 550)
+    if frame.OptionsBuilt then return end
+    frame.OptionsBuilt = true
+    local panel = vgui.Create("DPanel", frame)
+    panel:Dock(FILL)
+    panel:DockMargin(12, 36, 12, 12)
+    panel.Paint = function() end
+    self:BuildPanel(panel)
 end
 
 function ZM_PreviewCheats:Open()
@@ -377,6 +381,7 @@ function QuickMenu:Close(activate)
 end
 
 function QuickMenu:Open(heldByScoreboard)
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     if self.IsHoldingScoreboard or IsValid(self.Panel) then
         return
     end

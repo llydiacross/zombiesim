@@ -310,6 +310,7 @@ When in the shoulder mode, the players crosshair should be the indicator for wha
 - Phase B gates camera/transition-dependent work; Phase A gates all work. HUD work may proceed independently after its runtime audit, while weapon effects require the Phase D weapon/ammo mapping and dismemberment requires the existing damage/death contract.
 - Do not replace existing HUD, loot, inventory, map transition, or world-coordinate services when a focused extension will satisfy the feature.
 - Avoid persistent data changes unless required and explicitly designed. Any new persistence field needs migration, profile scoping, reconnect behavior, and regression coverage.
+- Alpha 2.8.5 lands first and moves player persistence to per-character slots. Any Alpha 2.9 persistence must use the character key (`ply:GetCharacterKey()`), not `SteamID()` alone.
 - Every dynamic system needs explicit ownership, bounds, cleanup, and failure behavior. Client visuals never grant resources, suppress authoritative damage, or decide a transition destination.
 - Mark a phase complete only after its stated acceptance checks pass; clearly label any static-only verification or live blocker.
 

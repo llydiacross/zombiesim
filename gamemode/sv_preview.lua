@@ -484,11 +484,13 @@ local function playerBySteamId(steamId)
 end
 
 local function recordForSteamId(steamId)
-    local attributes, attributesError = ZM_GetPlayerAttributes(steamId, "preview")
+    local characterKey, characterKeyError = ZM_CharacterService:GetCharacterKeyForSteamID(steamId, "preview")
+    if not characterKey then return nil, characterKeyError end
+    local attributes, attributesError = ZM_GetPlayerAttributes(characterKey, "preview")
     if attributesError then
         return nil, attributesError
     end
-    local playerData, playerDataError = ZM_GetPlayerData(steamId, "preview")
+    local playerData, playerDataError = ZM_GetPlayerData(characterKey, "preview")
     if playerDataError then
         return nil, playerDataError
     end
@@ -501,7 +503,7 @@ local function recordForSteamId(steamId)
             attributes[field] = 0
         end
     end
-    return { steamId = steamId, attributes = attributes, playerData = playerData, online = IsValid(playerBySteamId(steamId)) }
+    return { steamId = steamId, characterId = characterKey, attributes = attributes, playerData = playerData, online = IsValid(playerBySteamId(steamId)) }
 end
 
 local function boundedInteger(value, minimum, maximum)
@@ -577,6 +579,8 @@ local function applyLiveRecord(record)
     if not target or ZM_World.ActiveProfile ~= "preview" then
         return
     end
+    local characterKey = target:GetCharacterKey()
+    if characterKey ~= record.characterId then return end
     for _, field in ipairs(attributeFields) do
         target.Attributes[field] = tonumber(record.attributes[field]) or 0
     end
@@ -617,18 +621,17 @@ net.Receive("ZM.RequestPreviewData", function(_, playerEntity)
             sendPreviewData(playerEntity, "list", { ok = false, message = "Search requires an exact SteamID" })
             return
         end
-        local where = " WHERE profile = 'preview'"
+        local where = " WHERE a.profile = 'preview'"
         if search ~= "" then
-            where = where .. " AND steamid = " .. sql.SQLStr(search)
+            where = where .. " AND c.steamid = " .. sql.SQLStr(search)
         end
-        local rows = sql.Query("SELECT steamid, Level, CellX, CellY, UpdatedAt FROM player_data" .. where .. " ORDER BY steamid LIMIT 50") or {}
-        local playerRows = {}
-        for _, row in ipairs(rows) do
-            if validSteamId(row.steamid) then
-                table.insert(playerRows, row)
-            end
+        local rows = sql.Query("SELECT c.steamid AS steamid, c.slot AS slot, c.name AS name, pd.Level, pd.CellX, pd.CellY, pd.UpdatedAt FROM active_characters a JOIN characters c ON c.steamid = a.steamid AND c.profile = a.profile AND c.slot = a.slot JOIN player_data pd ON pd.steamid = c.characterId AND pd.profile = c.profile"
+            .. where .. " ORDER BY c.steamid LIMIT 50")
+        if rows == false then
+            sendPreviewData(playerEntity, "list", { ok = false, message = sql.LastError() or "Could not list preview characters" })
+            return
         end
-        sendPreviewData(playerEntity, "list", { ok = true, rows = playerRows })
+        sendPreviewData(playerEntity, "list", { ok = true, rows = rows or {} })
         return
     end
 
@@ -663,9 +666,9 @@ net.Receive("ZM.RequestPreviewData", function(_, playerEntity)
 
     local saved, saveError
     if request.action == "attributes" then
-        saved, saveError = ZM_SetPlayerAttributes(steamId, "preview", values)
+        saved, saveError = ZM_SetPlayerAttributes(record.characterId, "preview", values)
     else
-        saved, saveError = ZM_SetPlayerData(steamId, "preview", values, "preview data editor")
+        saved, saveError = ZM_SetPlayerData(record.characterId, "preview", values, "preview data editor")
     end
     if not saved then
         sendPreviewData(playerEntity, request.action, { ok = false, message = saveError or "Could not save preview record" })

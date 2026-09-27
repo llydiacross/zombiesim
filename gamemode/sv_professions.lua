@@ -82,14 +82,18 @@ function Pro:PlanDelivery(target, day)
     local stacks = {}
     for _, entry in ipairs(tier.items) do
         local span = entry.max - entry.min + 1
-        local roll = (tonumber(util.CRC(table.concat({ target:SteamID(), profileFor(target), day, entry.item }, "|"))) or 0) % span
+        local characterKey = ZM_Util.CharacterKeyFor(target)
+        if not characterKey then return nil, "no active character" end
+        local roll = (tonumber(util.CRC(table.concat({ characterKey, profileFor(target), day, entry.item }, "|"))) or 0) % span
         table.insert(stacks, { item = entry.item, count = entry.min + roll })
     end
     return stacks, job, tier
 end
 
 function Pro:GetClaim(target, day)
-    return ZM_GetProfessionClaim(target:SteamID(), profileFor(target), day or self:Day())
+    local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+    if not characterKey then return nil, keyError end
+    return ZM_GetProfessionClaim(characterKey, profileFor(target), day or self:Day())
 end
 
 // Grants today's delivery once. Items go to the backpack first, then the den stash; if they do not all fit,
@@ -138,7 +142,7 @@ function Pro:Claim(target, now)
         return true, stacks
     end, {
         extraSteps = function()
-            return { { kind = "professionClaim", steamid = target:SteamID(), day = day, job = job, claimedAt = createdAt, items = stacks } }
+            return { { kind = "professionClaim", steamid = ZM_Util.CharacterKeyFor(target), day = day, job = job, claimedAt = createdAt, items = stacks } }
         end
     })
 end
@@ -348,13 +352,13 @@ local function feeSteps(customer, provider, fee)
         local payer = isNpc(provider) and customer or provider
         local sign = isNpc(provider) and -1 or 1
         return function()
-            return { { kind = "cash", steamid = payer:SteamID(), cash = cashOf(payer) + sign * fee } }
+            return { { kind = "cash", steamid = ZM_Util.CharacterKeyFor(payer), cash = cashOf(payer) + sign * fee } }
         end
     end
     return function()
         return {
-            { kind = "cash", steamid = customer:SteamID(), cash = cashOf(customer) - fee },
-            { kind = "cash", steamid = provider:SteamID(), cash = cashOf(provider) + fee }
+            { kind = "cash", steamid = ZM_Util.CharacterKeyFor(customer), cash = cashOf(customer) - fee },
+            { kind = "cash", steamid = ZM_Util.CharacterKeyFor(provider), cash = cashOf(provider) + fee }
         }
     end
 end
@@ -745,9 +749,14 @@ local function runProfessionCommand(caller, command, arguments)
             message = "claim day is now " .. Pro:Day() .. " (offset " .. Pro.DayOffset .. ")"
         end
     elseif command == "zn_dev_reset_claims" then
-        ok, message = ZM_DeleteProfessionClaims(target:SteamID(), profileFor(target))
-        target.ZM_DeliveryDay = nil
-        message = ok and "cleared delivery claims for this profile" or message
+        local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+        if not characterKey then
+            ok, message = false, "no active character: " .. tostring(keyError)
+        else
+            ok, message = ZM_DeleteProfessionClaims(characterKey, profileFor(target))
+            if ok then target.ZM_DeliveryDay = nil end
+            message = ok and "cleared delivery claims for this character" or message
+        end
     elseif command == "zn_dev_set_health" then
         local health = tonumber(arguments[1])
         if not isWholeNumber(health, 1, target:GetMaxHealth()) then

@@ -74,16 +74,19 @@ local function applyFog(settings, scale)
 end
 
 hook.Add("SetupWorldFog", "ZM.Atmosphere.WorldFog", function()
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     local settings = Atmosphere:GetFogSettings()
     return settings and applyFog(settings) or false
 end)
 
 hook.Add("SetupSkyboxFog", "ZM.Atmosphere.SkyboxFog", function(scale)
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     local settings = Atmosphere:GetFogSettings()
     return settings and applyFog(settings, scale) or false
 end)
 
 hook.Add("RenderScreenspaceEffects", "ZM.Atmosphere.ColourCorrection", function()
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     local profile = Atmosphere:GetActiveProfile()
     local correction = profile and profile.colorCorrection
     if type(correction) ~= "table" then

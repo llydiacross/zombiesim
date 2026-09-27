@@ -31,7 +31,9 @@ end
 
 // Loads installed implants for the target's inventory profile. Rows with unknown definitions are kept (and ignored).
 function Svc:Load(target)
-    local rows, loadError = ZM_GetPlayerImplants(target:SteamID(), profileFor(target))
+    local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+    if not characterKey then return false, keyError end
+    local rows, loadError = ZM_GetPlayerImplants(characterKey, profileFor(target))
     if not rows then
         target.ZM_Implants = {}
         self:Refresh(target)
@@ -175,7 +177,7 @@ function Svc:Install(customer, ref, maxLevel, extraSteps, now)
             if not added then return false, "no room in the backpack for the removed implant: " .. tostring(addError) end
         end
         return true, { installed = installed[slot], replaced = replaced, slot = slot }
-    end, { extraSteps = combineSteps(self.RowsFor(installed), customer:SteamID(), extraSteps) })
+    end, { extraSteps = combineSteps(self.RowsFor(installed), ZM_Util.CharacterKeyFor(customer), extraSteps) })
     if not ok then return false, result end
     customer.ZM_Implants = installed
     self:Refresh(customer)
@@ -192,7 +194,7 @@ function Svc:Extract(customer, slot, extraSteps)
         local added, addError = Service.Ops.Add(draft, "backpack", backpackCopy(removed))
         if not added then return false, "no room in the backpack: " .. tostring(addError) end
         return true, { removed = removed, slot = slot }
-    end, { extraSteps = combineSteps(self.RowsFor(installed), customer:SteamID(), extraSteps) })
+    end, { extraSteps = combineSteps(self.RowsFor(installed), ZM_Util.CharacterKeyFor(customer), extraSteps) })
     if not ok then return false, result end
     customer.ZM_Implants = installed
     self:Refresh(customer)
@@ -201,7 +203,9 @@ end
 
 // Deletes every installed implant for the target's profile (character reset and development cleanup).
 function Svc:Clear(target)
-    local deleted, deleteError = ZM_DeletePlayerImplants(target:SteamID(), profileFor(target))
+    local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+    if not characterKey then return false, keyError end
+    local deleted, deleteError = ZM_DeletePlayerImplants(characterKey, profileFor(target))
     if not deleted then return false, deleteError end
     target.ZM_Implants = {}
     self:Refresh(target)

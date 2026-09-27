@@ -7,6 +7,8 @@ AddCSLuaFile( "sh_static_data.lua" )
 AddCSLuaFile( "sh_items.lua" )
 AddCSLuaFile( "sh_food.lua" )
 AddCSLuaFile( "sh_professions.lua" )
+AddCSLuaFile( "sh_characters.lua" )
+AddCSLuaFile( "sh_launcher_scene.lua" )
 AddCSLuaFile( "sh_implants.lua" )
 AddCSLuaFile( "cl_item_icons.lua" )
 AddCSLuaFile( "cl_inventory.lua" )
@@ -28,6 +30,8 @@ AddCSLuaFile( "cl_scoreboard.lua" )
 AddCSLuaFile( "cl_map_batch.lua" )
 AddCSLuaFile( "cl_preview.lua" )
 AddCSLuaFile( "cl_dependency_prompts.lua" )
+AddCSLuaFile( "cl_launcher_menu.lua" )
+AddCSLuaFile( "cl_launcher_scene.lua" )
 AddCSLuaFile( "cl_pause_log.lua" )
 AddCSLuaFile( "cl_quick_menu.lua" )
 AddCSLuaFile( "utils/world.lua" )
@@ -38,6 +42,28 @@ include( "utils/sql.lua" )
 include( "utils/server.lua" )
 include( "utils/test_harness.lua" )
 include( "shared.lua" )
+include( "sh_characters.lua" )
+include( "sh_launcher_scene.lua" )
+// Legacy unprofiled data must be assigned a profile before the character migration inspects owners.
+CreateConVar("zombiesim_world_profile", "city", FCVAR_ARCHIVE + FCVAR_REPLICATED, "Active ZombieSim world-data profile.")
+include( "sv_characters.lua" )
+local characterBackupReady, characterBackupError = ZM_CharacterService:BackupBeforeMigration()
+if not characterBackupReady then
+    local haltMessage = "[ZombieSim] Character migration stopped before changing sv.db: " .. tostring(characterBackupError)
+    ErrorNoHalt(haltMessage .. "\n")
+    file.CreateDir("zombiesim")
+    file.Write("zombiesim/startup_error.txt", os.date("%Y-%m-%d %H:%M:%S") .. " " .. haltMessage .. "\n")
+    hook.Add("PlayerInitialSpawn", "ZM.CharacterMigrationHalted", function(ply)
+        timer.Simple(2, function()
+            if IsValid(ply) then
+                ply:ChatPrint(haltMessage)
+                ply:PrintMessage(HUD_PRINTCONSOLE, haltMessage .. "\n")
+            end
+        end)
+    end)
+    return
+end
+include( "sv_characters_tests.lua" )
 include( "sv_static_data.lua" )
 include( "sv_static_data_tests.lua" )
 include( "sv_weapon_catalog_tests.lua" )
@@ -70,6 +96,7 @@ include( "sv_map_batch.lua" )
 include( "sv_preview.lua" )
 include( "sv_dev_console.lua" )
 include( "sv_dependency_prompts.lua" )
+include( "sv_launcher.lua" )
 include( "sv_walker_sim.lua" )
 include( "sv_walker_materialization.lua" )
 include( "sv_transitions.lua" )
@@ -83,6 +110,16 @@ local professionsReady, professionsError = ZM_CreateProfessionTables()
 local implantsReady, implantsError = ZM_CreateImplantTables()
 local creditsReady, creditsError = ZM_CreateCreditTables()
 local tradeReady, tradeError = ZM_TradeService:Init()
+local charactersReady, charactersError = false, "character migration prerequisites are not ready"
+if attributesReady and playerDataReady and playerItemsReady and professionsReady and implantsReady and creditsReady and tradeReady then
+    local mapProfile = ZM_World.LauncherMapProfiles[game.GetMap()] or GetConVar("zombiesim_world_profile"):GetString()
+    local legacyReady, legacyError = ZM_EnsureProfiledPlayerData(mapProfile)
+    if legacyReady then
+        charactersReady, charactersError = ZM_CharacterService:Migrate()
+    else
+        charactersError = legacyError
+    end
+end
 if not attributesReady then
     ErrorNoHalt("[ZombieSim] Could not prepare player attributes: " .. tostring(attributesError) .. "\n")
 end
@@ -107,6 +144,9 @@ end
 if not tradeReady then
     ErrorNoHalt("[ZombieSim] Could not prepare den trading: " .. tostring(tradeError) .. "\n")
 end
+if not charactersReady then
+    ErrorNoHalt("[ZombieSim] Could not prepare character persistence: " .. tostring(charactersError) .. "\n")
+end
 
 // Clients use these lightweight signals to refresh their local Player extension fields.
 util.AddNetworkString("ZM.RefreshPlayerAttributes")
@@ -120,11 +160,13 @@ net.Receive("ZM.UpdatePlayerBio", function(_, ply)
         return
     end
 
-    ply:SaveBio(net.ReadString())
+    local saved, saveError = ply:SaveBio(net.ReadString())
+    if not saved then
+        ErrorNoHalt("[ZombieSim] Could not save player bio: " .. tostring(saveError) .. "\n")
+    end
 end)
 
 // Persists the selected city or preview data profile while the session moves into safe-room maps.
-CreateConVar("zombiesim_world_profile", "city", FCVAR_ARCHIVE + FCVAR_REPLICATED, "Active ZombieSim world-data profile.")
 
 concommand.Add("zombiesim_reset_player", function(ply)
     if not IsValid(ply) or not ply:IsAdmin() then
@@ -358,28 +400,61 @@ local function isCurrentProfileLauncher(profile)
 end
 
 function GM:NewPlayer(ply)
-    ply.SkillPoints = 10 // give the player 10 skill points to start with
+    ply.SkillPoints = ZM_CharacterRules.StartingPoints
+end
+
+function GM:PlayerSetModel(ply)
+    if ply.ZM_LauncherState and ply.ZM_LauncherState ~= "character_selected"
+        and ply.ZM_LauncherState ~= "deploying" then return end
+    local character = ZM_CharacterService:GetActiveCharacter(ply)
+    if not character or tonumber(character.appearanceRequired) ~= 0 then return end
+    local appearance = ZM_CharacterService.ValidateAppearance({
+        model = character.model, skin = tonumber(character.skin),
+        bodygroups = util.JSONToTable(character.bodygroups or "") or {},
+        playerColour = util.JSONToTable(character.playerColour or "") or { 1, 1, 1 }
+    })
+    if not appearance then return end
+    ply:SetModel(appearance.model)
+    ply:SetSkin(appearance.skin)
+    for group, value in pairs(appearance.bodygroups) do ply:SetBodygroup(tonumber(group), value) end
+    ply:SetPlayerColor(Vector(appearance.playerColour[1], appearance.playerColour[2], appearance.playerColour[3]))
+    local hands = ply:GetHands()
+    if IsValid(hands) then self:PlayerSetHandsModel(ply, hands) end
+end
+
+function GM:PlayerSetHandsModel(ply, hands)
+    local modelName = player_manager.TranslateToPlayerModelName(ply:GetModel())
+    local info = player_manager.TranslatePlayerHands(modelName)
+    if not info then return end
+    hands:SetModel(info.model)
+    hands:SetSkin(info.skin or 0)
+    hands:SetBodyGroups(info.body)
 end
 
 function GM:ContinuePlayerSpawnMapTransition(ply, profile, previouslyConnected)
     if ZM_MapBatch and ZM_MapBatch:IsActive() then
-        return
+        return false
     end
 
     // Preview always enters its saved city cell; city retains its safe-room start.
     if profile == "preview" then
-        self:EnsurePlayerWorldMap(ply)
+        return self:EnsurePlayerWorldMap(ply)
     elseif not previouslyConnected and isCurrentProfileLauncher(profile) then
-        self:EnterOriginSafeZone(ply)
+        return self:EnterOriginSafeZone(ply)
     else
-        self:EnsurePlayerWorldMap(ply)
+        return self:EnsurePlayerWorldMap(ply)
     end
 end
 
 // Restores persistent state, applies new-player defaults, and synchronizes the spawned player.
 function GM:PlayerSpawn( ply )
-
     ply.ZM_PersistentStateLoaded = false
+    if not charactersReady then
+        ply:StripWeapons()
+        ply:Freeze(true)
+        ErrorNoHalt("[ZombieSim] Spawn blocked: character persistence is unavailable: " .. tostring(charactersError) .. "\n")
+        return
+    end
 
     // PlayerSpawn can run before InitPostEntity after a level change.
     local loaded, loadError = ZM_World:LoadMapProfile()
@@ -390,36 +465,86 @@ function GM:PlayerSpawn( ply )
 
     // A first-time player receives the starting skills and origin safe-room transition.
     local profile = ZM_World.ActiveProfile
+    ply.ZM_InventoryProfile = profile
     local profiled, profileError = ZM_EnsureProfiledPlayerData(profile)
     if not profiled then
         ErrorNoHalt("[ZombieSim] Could not prepare player data for profile '" .. tostring(profile) .. "': " .. tostring(profileError) .. "\n")
         return
     end
+    local launcher = isCurrentProfileLauncher(profile)
+    ply.ZM_CharacterKeyCache = nil
+    ply.ZM_CharacterId = nil
+    ply.ZM_CharacterSlot = nil
+    if launcher then
+        ply.ZM_LauncherState = "dependency_prompts"
+        ply:StripWeapons()
+        ply:Freeze(true)
+        ply:GodEnable()
+        if ZM_DependencyPrompts then ZM_DependencyPrompts:HoldLauncherTransition(ply, profile, false) end
+        return
+    end
+    local active, activeError = ZM_CharacterService:GetActiveCharacter(ply)
+    if activeError then
+        ply:StripWeapons()
+        ply:Freeze(true)
+        ErrorNoHalt("[ZombieSim] Could not resolve active character: " .. tostring(activeError) .. "\n")
+        return
+    end
+    if not active then
+        ply:StripWeapons()
+        ply:Freeze(true)
+        ErrorNoHalt("[ZombieSim] Non-launcher spawn without a selected character\n")
+        local destination = ZM_World.LauncherMapProfiles and (profile == "preview" and "zn_preview_start" or "zn_city_start")
+        if destination and not self.PlayerWorldMapTransitionQueued then
+            self.PlayerWorldMapTransitionQueued = true
+            game.ConsoleCommand("changelevel " .. destination .. "\n")
+        end
+        return
+    end
+    if tonumber(active.appearanceRequired) ~= 0 then
+        ply:StripWeapons()
+        ply:Freeze(true)
+        if not self.PlayerWorldMapTransitionQueued then
+            self.PlayerWorldMapTransitionQueued = true
+            game.ConsoleCommand("changelevel " .. (profile == "preview" and "zn_preview_start" or "zn_city_start") .. "\n")
+        end
+        return
+    end
+    ply.ZM_LauncherState = nil
+    ply:Freeze(false)
+    ply:GodDisable()
+    local ready, readyError = self:LoadSelectedCharacter(ply, profile)
+    if not ready then ErrorNoHalt("[ZombieSim] Could not hydrate active character: " .. tostring(readyError) .. "\n") end
+end
+
+function GM:LoadSelectedCharacter(ply, profile)
+    if ply.ZM_PersistentStateLoaded then return false, "Character already loaded" end
     // fetch the player attributes and data from the database
     local attributesLoaded, attributesError = ply:FetchAttributes()
     if not attributesLoaded then
-        ErrorNoHalt("[ZombieSim] Could not load player attributes: " .. tostring(attributesError) .. "\n")
-        return
+        return false, attributesError
     end
     local previouslyConnected, playerDataError = ply:FetchPlayerData()
     if previouslyConnected == nil then
-        ErrorNoHalt("[ZombieSim] Could not load player data: " .. tostring(playerDataError) .. "\n")
-        return
+        return false, playerDataError
     end
     ply.PreviouslyConnected = previouslyConnected
     ply.ZM_PersistentStateLoaded = true
     ply.ZM_InventoryProfile = profile
     local inventoryLoaded, inventoryError = ZM_InventoryService:Load(ply)
     if not inventoryLoaded then
-        ErrorNoHalt("[ZombieSim] Could not load player inventory: " .. tostring(inventoryError) .. "\n")
+        ply.ZM_PersistentStateLoaded = false
+        return false, inventoryError
     end
     local implantsLoaded, implantsError = ZM_ImplantService:Load(ply)
     if not implantsLoaded then
-        ErrorNoHalt("[ZombieSim] Could not load player implants: " .. tostring(implantsError) .. "\n")
+        ply.ZM_PersistentStateLoaded = false
+        return false, implantsError
     end
     local creditsLoaded, creditsError = ZM_CreditService:Load(ply)
     if not creditsLoaded then
-        ErrorNoHalt("[ZombieSim] Could not load player credits: " .. tostring(creditsError) .. "\n")
+        ply.ZM_PersistentStateLoaded = false
+        return false, creditsError
     end
     self:ReconcilePlayerOriginCell(ply)
     ply:SetHealth(math.max(ply.SavedHealth, 1))
@@ -441,6 +566,7 @@ function GM:PlayerSpawn( ply )
     // tell the client to set the player attributes and data
     ply:SendPlayerAttributes()
     ply:SendPlayerData()
+    self:PlayerSetModel(ply)
     self:SendPlayerAtmosphereProfile(ply)
     ZM_Preview:SendCapabilities(ply)
     ZM_Preview:ApplyCheatState(ply)
@@ -452,10 +578,12 @@ function GM:PlayerSpawn( ply )
     ZM_LootSpots:OnPlayerReady(ply)
 
     if ZM_DependencyPrompts and ZM_DependencyPrompts:HoldLauncherTransition(ply, profile, previouslyConnected) then
-        return
+        return true, previouslyConnected
     end
-
-    self:ContinuePlayerSpawnMapTransition(ply, profile, previouslyConnected)
+    if not isCurrentProfileLauncher(profile) then
+        self:ContinuePlayerSpawnMapTransition(ply, profile, previouslyConnected)
+    end
+    return true, previouslyConnected
 end
 
 // Persist progress that may have changed since the last explicit update.

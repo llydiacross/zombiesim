@@ -1,5 +1,5 @@
 ENT.Type = "anim"
-ENT.Base = "base_gmodentity"
+ENT.Base = "base_anim"
 ENT.PrintName = "ZombieSim Mastercrafting Station"
 ENT.Category = "ZombieSim"
 ENT.Spawnable = true

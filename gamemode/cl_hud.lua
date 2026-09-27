@@ -248,6 +248,7 @@ local function getSmoothedCompassHeading(player)
 end
 
 local function drawPlayerCompass()
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     local player = LocalPlayer()
     if not IsValid(player) or not ZM_World or not ZM_World:IsLoaded() then
         return
@@ -450,6 +451,7 @@ local function drawBossMinimapMarker(mapX, mapY, mapWidth, mapHeight, markerX, m
 end
 
 local function drawPlayerMinimap()
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     local player = LocalPlayer()
     if not IsValid(player) then return end
 
@@ -636,6 +638,7 @@ local staminaBarHeight = 5
 
 // Draws queued notifications above the player (and above the stamina bar), removing expired ones.
 hook.Add("HUDPaint", "ZM.PlayerNotifications", function()
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     local ply = LocalPlayer()
     if not IsValid(ply) then return end
     local now = CurTime()
@@ -671,6 +674,7 @@ end)
 
 // Draws stamina above the player only while sprinting or recovering.
 hook.Add("HUDPaint", "ZM.StaminaBar", function()
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     local ply = LocalPlayer()
     if not IsValid(ply) or not ply:Alive() then return end
 

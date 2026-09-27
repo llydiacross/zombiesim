@@ -22,7 +22,7 @@ end
 local profileFor = ZM_Util.ProfileFor
 
 local function loadWeaponSlots(target)
-    local rows, loadError = ZM_GetEquippedWeaponSlots(target:SteamID(), profileFor(target))
+    local rows, loadError = ZM_GetEquippedWeaponSlots(ZM_Util.CharacterKeyFor(target), profileFor(target))
     if not rows then return nil, loadError end
     local slots = {}
     for _, row in ipairs(rows) do
@@ -35,7 +35,7 @@ local function loadWeaponSlots(target)
 end
 
 local function saveWeaponSlots(target)
-    return ZM_ReplaceEquippedWeaponSlots(target:SteamID(), profileFor(target), target.ZM_WeaponSlots or {})
+    return ZM_ReplaceEquippedWeaponSlots(ZM_Util.CharacterKeyFor(target), profileFor(target), target.ZM_WeaponSlots or {})
 end
 
 local isWholeNumber = ZM_Util.IsWholeNumber
@@ -335,7 +335,7 @@ function Service:LoadDenStash(target)
     local denId = self:CurrentDenId(target)
     target.ZM_Inventory.stash = {}
     if not denId or not self:CanAccessStash(target) then return true end
-    local rows, loadError = ZM_GetDenStashItems(target:SteamID(), profileFor(target), denId)
+    local rows, loadError = ZM_GetDenStashItems(ZM_Util.CharacterKeyFor(target), profileFor(target), denId)
     if not rows then return false, loadError end
     local stashRows = {}
     for _, row in ipairs(rows) do
@@ -428,7 +428,9 @@ end
 
 function Service:Load(target)
     target.ZM_Inventory = nil
-    local rows, loadError = ZM_GetPlayerItems(target:SteamID(), profileFor(target))
+    local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+    if not characterKey then return false, keyError end
+    local rows, loadError = ZM_GetPlayerItems(characterKey, profileFor(target))
     if not rows then
         return false, loadError
     end
@@ -498,7 +500,7 @@ function Service:NormalizeWeaponSlots(target)
         end
     end
     if changed then
-        ZM_ReplacePlayerItems(target:SteamID(), profileFor(target), playerItemRows(target.ZM_Inventory))
+        ZM_ReplacePlayerItems(ZM_Util.CharacterKeyFor(target), profileFor(target), playerItemRows(target.ZM_Inventory))
         saveWeaponSlots(target)
     end
 end
@@ -526,6 +528,8 @@ function Service:Mutate(target, mutator, options)
     if not IsValid(target) or not target.ZM_Inventory then
         return false, "inventory is not loaded"
     end
+    local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+    if not characterKey then return false, "cannot save inventory without an active character: " .. tostring(keyError) end
     target.ZM_Inventory.equipped = target.ZM_Inventory.equipped or {}
     local draft = table.Copy(target.ZM_Inventory)
     local ok, result = mutator(draft)
@@ -536,9 +540,9 @@ function Service:Mutate(target, mutator, options)
     local denId = self:CurrentDenId(target)
     local stashRows = Service.ToRows({ backpack = {}, stash = draft.stash, equipped = {} })
     for _, row in ipairs(stashRows) do row.container = "stash" end
-    local steps = { { kind = "playerItems", steamid = target:SteamID(), rows = playerRows } }
+    local steps = { { kind = "playerItems", steamid = characterKey, rows = playerRows } }
     if denId and self:CanAccessStash(target) then
-        table.insert(steps, { kind = "denStash", steamid = target:SteamID(), safeZoneId = denId, rows = stashRows })
+        table.insert(steps, { kind = "denStash", steamid = characterKey, safeZoneId = denId, rows = stashRows })
     end
     if options and options.extraSteps then
         local extra, extraError = options.extraSteps(draft, result)
@@ -562,6 +566,8 @@ function Service:MutatePlayerItems(target, mutator)
     if not IsValid(target) or not target.ZM_Inventory then
         return false, "inventory is not loaded"
     end
+    local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+    if not characterKey then return false, "cannot save inventory without an active character: " .. tostring(keyError) end
     target.ZM_Inventory.equipped = target.ZM_Inventory.equipped or {}
     local draft = table.Copy(target.ZM_Inventory)
     local ok, result = mutator(draft)
@@ -569,7 +575,7 @@ function Service:MutatePlayerItems(target, mutator)
         return false, result
     end
     draft.stash = target.ZM_Inventory.stash
-    local saved, saveError = ZM_ReplacePlayerItems(target:SteamID(), profileFor(target), playerItemRows(draft))
+    local saved, saveError = ZM_ReplacePlayerItems(characterKey, profileFor(target), playerItemRows(draft))
     if not saved then
         return false, "could not save inventory: " .. tostring(saveError)
     end
@@ -800,7 +806,7 @@ function Service:EquipWeaponInSlot(target, reference, slot)
         local destination = target.ZM_Inventory.equipped[slot]
         target.ZM_Inventory.equipped[currentSlot] = destination
         target.ZM_Inventory.equipped[slot] = instance
-        local saved, saveError = ZM_ReplacePlayerItems(target:SteamID(), profileFor(target), playerItemRows(target.ZM_Inventory))
+        local saved, saveError = ZM_ReplacePlayerItems(ZM_Util.CharacterKeyFor(target), profileFor(target), playerItemRows(target.ZM_Inventory))
         if not saved then return false, "could not save inventory: " .. tostring(saveError) end
         target.ZM_WeaponSlots[currentSlot], target.ZM_WeaponSlots[slot] = target.ZM_WeaponSlots[slot], target.ZM_WeaponSlots[currentSlot]
         for index = 1, 3 do
@@ -1040,7 +1046,7 @@ end
 
 // Deletes every item for the target in the active profile (used by a character reset).
 function Service:Clear(target)
-    local deleted, deleteError = ZM_DeletePlayerItems(target:SteamID(), profileFor(target))
+    local deleted, deleteError = ZM_DeletePlayerItems(ZM_Util.CharacterKeyFor(target), profileFor(target))
     if not deleted then
         return false, deleteError
     end

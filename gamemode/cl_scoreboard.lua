@@ -181,6 +181,7 @@ local function getCurrentSafeZoneName(playerEntity)
 end
 
 function Scoreboard:Open()
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     local frame = openScoreboardOverlay(self)
     if frame.ScoreboardBuilt then
         return

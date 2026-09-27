@@ -240,6 +240,7 @@ end)
 
 // Positions the camera with a hull trace so walls cannot clip through the view.
 hook.Add("CalcView", "ZM.CustomThirdPersonView", function(ply, pos, angles, fov)
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     if not IsValid(ply) or not ply:Alive() then return end
 
     local view = {}

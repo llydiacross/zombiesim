@@ -26,6 +26,10 @@ local function setLauncherBlackout(enabled)
             return
         end
 
+        function DependencyPrompts:SetLauncherBlackout(enabled)
+            setLauncherBlackout(enabled)
+        end
+
         local blackout = vgui.Create("DPanel", vgui.GetWorldPanel())
         blackout:Dock(FILL)
         blackout:SetZPos(-32768)
@@ -463,67 +467,6 @@ concommand.Add("zombiesim_dev_dependency_prompt_status", function()
     ))
 end)
 
-local function createLauncherBeginPrompt()
-    print("[ZombieSim] Launcher is waiting for player input: press BEGIN to deploy.")
-    local palette = ZM_DermaSkin.Palette
-    local frame = vgui.Create("DFrame")
-    frame:SetSkin("ZombieSim")
-    frame:SetTitle("Z-NATION LAUNCHER")
-    frame:SetSize(math.min(460, ScrW() - 32), math.min(240, ScrH() - 32))
-    frame:Center()
-    frame:ShowCloseButton(false)
-    frame:SetDraggable(false)
-    frame:MakePopup()
-    frame:SetSizable(false)
-    DependencyPrompts.ActivePrompt = frame
-    if ZM_UI then
-        ZM_UI:OpenExclusive(frame)
-    end
-
-    frame.OnKeyCodePressed = function() end
-
-    local content = vgui.Create("DPanel", frame)
-    content:Dock(FILL)
-    content:DockMargin(18, 38, 18, 18)
-    content.Paint = function() end
-
-    local heading = vgui.Create("DLabel", content)
-    heading:Dock(TOP)
-    heading:SetTall(72)
-    heading:SetFont("ZM_DependencyBriefingTitle")
-    heading:SetText("READY TO DEPLOY")
-    heading:SetTextColor(palette.text)
-    heading:SetContentAlignment(5)
-
-    local divider = vgui.Create("DPanel", content)
-    divider:Dock(TOP)
-    divider:SetTall(2)
-    divider:DockMargin(54, 0, 54, 24)
-    divider.Paint = function(_, width, height)
-        surface.SetDrawColor(palette.redBright.r, palette.redBright.g, palette.redBright.b, 255)
-        surface.DrawRect(0, 0, width, height)
-    end
-
-    local begin = vgui.Create("DButton", content)
-    begin:Dock(BOTTOM)
-    begin:SetTall(54)
-    begin:SetText("BEGIN")
-    begin.DoClick = function()
-        print("[ZombieSim] Launcher deployment input received; continuing.")
-        DependencyPrompts:SendLauncherReady()
-        frame:Remove()
-    end
-
-    frame.OnRemove = function()
-        if DependencyPrompts.ActivePrompt == frame then
-            DependencyPrompts.ActivePrompt = nil
-        end
-        if ZM_UI then
-            ZM_UI:UnregisterTransient(frame)
-        end
-    end
-end
-
 function DependencyPrompts:ShowNextPrompt()
     if hasOpenPrompt() or not self.Status then
         return
@@ -547,7 +490,7 @@ function DependencyPrompts:ShowNextPrompt()
             end)
             return
         end
-        createLauncherBeginPrompt()
+        self:SendLauncherReady()
         return
     end
 end
@@ -559,7 +502,7 @@ net.Receive("ZM.DependencyStatus", function()
         waitingForReady = net.ReadBool(),
         transitionId = net.ReadUInt(32)
     }
-    setLauncherBlackout(DependencyPrompts.Status.isLauncher)
+    setLauncherBlackout(DependencyPrompts.Status.isLauncher and not (ZM_LauncherMenu and ZM_LauncherMenu.Active))
     DependencyPrompts:ShowNextPrompt()
 end)
 

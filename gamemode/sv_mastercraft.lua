@@ -77,7 +77,9 @@ function Svc:IneligibleReason(target, instance)
     if instance.mastercraft then
         return "This weapon is already a mastercraft."
     end
-    local attempt, attemptError = ZM_GetMastercraftAttempt(target:SteamID(), profileFor(target), instance.instanceId)
+    local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+    if not characterKey then return false, keyError end
+    local attempt, attemptError = ZM_GetMastercraftAttempt(characterKey, profileFor(target), instance.instanceId)
     if attempt == nil then
         return "Could not check earlier attempts: " .. tostring(attemptError)
     end
@@ -174,7 +176,7 @@ function Svc:PerformMastercraft(target, request, options)
     end, { extraSteps = function()
         return {
             creditStep,
-            { kind = "mastercraftAttempt", steamid = target:SteamID(), instanceId = request.instanceId, itemId = request.itemId, level = request.level, credits = request.cost, ultra = ultra, attributes = attributes, attemptedAt = now }
+            { kind = "mastercraftAttempt", steamid = ZM_Util.CharacterKeyFor(target), instanceId = request.instanceId, itemId = request.itemId, level = request.level, credits = request.cost, ultra = ultra, attributes = attributes, attemptedAt = now }
         }
     end })
     if not ok then return false, result end
@@ -190,7 +192,7 @@ end
 function Svc:PerformJobChange(target, request)
     local creditStep, creditError = Credits:Step(target, -request.cost, "job change", request.job)
     if not creditStep then return false, creditError end
-    local saved, saveError = ZM_CommitWrites(profileFor(target), { { kind = "job", steamid = target:SteamID(), job = request.job }, creditStep })
+    local saved, saveError = ZM_CommitWrites(profileFor(target), { { kind = "job", steamid = ZM_Util.CharacterKeyFor(target), job = request.job }, creditStep })
     if not saved then return false, "Could not change the job: " .. tostring(saveError) end
     Credits:Apply(target, creditStep)
     ZM_ProfessionService:ApplyJob(target, request.job)
@@ -314,9 +316,10 @@ local function runStationCommand(caller, command, arguments)
     if ZM_DevConsole and ZM_DevConsole.Report then
         local state = Svc:BuildState(target)
         state.command, state.ok, state.message = command, ok, message
-        state.storedCredits = ZM_GetPlayerCredits(target:SteamID(), profileFor(target))
-        state.storedJob = (ZM_GetPlayerData(target:SteamID(), profileFor(target)) or {}).Job
-        state.ledger = ZM_GetCreditLedger(target:SteamID(), profileFor(target), 5)
+        local characterKey = ZM_Util.CharacterKeyFor(target)
+        state.storedCredits = characterKey and ZM_GetPlayerCredits(characterKey, profileFor(target)) or nil
+        state.storedJob = characterKey and (ZM_GetPlayerData(characterKey, profileFor(target)) or {}).Job or nil
+        state.ledger = characterKey and ZM_GetCreditLedger(characterKey, profileFor(target), 5) or {}
         local station = Svc:FindStation(target)
         state.station = IsValid(station) and { entIndex = station:EntIndex(), model = station:GetModel(), hasPhysics = IsValid(station:GetPhysicsObject()) } or nil
         ZM_DevConsole:Report("mastercraft", state)

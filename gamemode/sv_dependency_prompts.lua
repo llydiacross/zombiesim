@@ -65,9 +65,9 @@ function DependencyPrompts:ResumeLauncherTransition(playerEntity, transitionId)
     if not IsValid(playerEntity) or not isLauncherMap() then
         return
     end
-    if GAMEMODE and GAMEMODE.ContinuePlayerSpawnMapTransition then
-        GAMEMODE:ContinuePlayerSpawnMapTransition(playerEntity, pending.profile, pending.previouslyConnected)
-    end
+    playerEntity.ZM_LauncherState = "menu"
+    if ZM_Launcher then ZM_Launcher:SendStatus(playerEntity) end
+    if ZM_Launcher then ZM_Launcher:TryAutoload(playerEntity) end
 end
 
 net.Receive("ZM.RequestDependencyStatus", function(_, playerEntity)

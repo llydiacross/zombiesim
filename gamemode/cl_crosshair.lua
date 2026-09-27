@@ -60,6 +60,7 @@ end
 // Draws a health-colored ring. Sprinting animates its radius; low health pulses alpha.
 // In the locked camera a white cross also marks the mouse aim cursor the player turns toward.
 hook.Add("HUDPaint", "ZM.CustomCrosshair", function()
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     local ply = LocalPlayer()
     if not IsValid(ply) or not ply:Alive() then return end
 
