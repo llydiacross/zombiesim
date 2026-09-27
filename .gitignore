@@ -21,6 +21,9 @@ content/data_static/zombiesim_world_preview.json
 # Developer-only pipeline outputs (regenerate with the bin/ scripts)
 generated/
 celltemplates/dev/
+!celltemplates/dev/
+celltemplates/dev/*
+!celltemplates/dev/zz_preview_loot_fixture.vmf
 bin/*_grid_*_seed_*.json
 bin/*_grid_*_seed_*.png
 bin/*_seed_*_required_cell_vmfs.txt

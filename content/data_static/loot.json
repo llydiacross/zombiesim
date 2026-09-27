@@ -72,6 +72,21 @@
         "itemLabGrownMeat": { "minWeight": 0.2, "maxWeight": 1.5 }
       }
     },
+    "lootVendingDrinks": {
+      "items": {
+        "itemSodaCan": { "minWeight": 65, "maxWeight": 55, "maxCount": 2 },
+        "itemBottledWater": { "minWeight": 35, "maxWeight": 45, "maxCount": 2 }
+      }
+    },
+    "lootMilitarySupplies": {
+      "include": ["lootGenericWeapons"]
+    },
+    "lootGeneralCrate": {
+      "include": ["lootGenericFood", "lootGenericMaterials"],
+      "items": {
+        "itemBandage": { "minWeight": 8, "maxWeight": 6, "maxCount": 2 }
+      }
+    },
     "lootBarrelOil": {
       "items": {
         "itemOil": { "minWeight": 1, "minCount": 1, "maxCount": 4 }

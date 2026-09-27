@@ -183,7 +183,7 @@ Use the visibility-budget check after changing structural tile geometry. With `-
 .\bin\check_vis_budgets.ps1 -WorldProfile preview -RefreshPortalData
 ```
 
-The initial budgets are `250` portal clusters and `900` portals. They are configured under `compilation.visibilityBudget` in [generator-settings.json](generator-settings.json), can be overridden for one run with `-MaxPortalClusters` and `-MaxPortals`, and write `vis-budget-report.json` beside the preview BSPs. For every over-budget recipe, the report also ranks its instanced tiles by their aggregate non-`func_detail` brush-solid count and shows each tile's detail-solid, entity, and prop counts. This is a diagnostic lead rather than a portal attribution: open sightlines between tiles can also create high VVIS cost. The command exits nonzero for over-budget, missing, or invalid portal files.
+The configured budgets are `500` portal clusters and `900` portals. The cluster threshold was raised from 250 to 500 as a project diagnostic budget; it is not an engine limit. They are configured under `compilation.visibilityBudget` in [generator-settings.json](generator-settings.json), can be overridden for one run with `-MaxPortalClusters` and `-MaxPortals`, and write `vis-budget-report.json` beside the preview BSPs. For every over-budget recipe, the report also ranks its instanced tiles by their aggregate non-`func_detail` brush-solid count and shows each tile's detail-solid, entity, and prop counts. This is a diagnostic lead rather than a portal attribution: open sightlines between tiles can also create high VVIS cost. The command exits nonzero for over-budget, missing, or invalid portal files.
 
 ## Selecting City Data In Hammer
 

@@ -70,6 +70,31 @@ test("entity_rules_match_by_runtime_class_and_model", function(check)
     check(ZM_StaticData:GetEntityLootRule("prop_physics", "models/not_lootable.mdl") == nil, "unlisted models are not lootable")
 end)
 
+test("semantic_container_rules_limit_loot_to_intended_families", function(check)
+    local vending = ZM_StaticData:GetEntityLootRule("prop_dynamic", "models/props/cs_office/vending_machine.mdl")
+    check(vending ~= nil and #vending.entries > 0, "the explicit vending model has drink loot")
+    for _, entry in ipairs(vending and vending.entries or {}) do
+        local item = ZM_StaticData:GetItem(entry.item)
+        check(item and item.food and item.food.hydration > 0, "vending loot contains hydrating food only")
+    end
+
+    local ammo = ZM_StaticData:GetEntityLootRule("prop_physics", "models/items/ammocrate_pistol.mdl")
+    check(ammo ~= nil and #ammo.entries > 0, "the explicit ammo crate has military loot")
+    for _, entry in ipairs(ammo and ammo.entries or {}) do
+        local item = ZM_StaticData:GetItem(entry.item)
+        check(item and (item.lootCategory == "weapons" or item.lootCategory == "ammo"), "military containers yield only weapons or ammunition")
+    end
+
+    local crate = ZM_StaticData:GetEntityLootRule("prop_physics", "models/props_junk/wood_crate001a.mdl")
+    check(crate ~= nil and #crate.entries > 0, "the ordinary crate has general supplies")
+    for _, entry in ipairs(crate and crate.entries or {}) do
+        local item = ZM_StaticData:GetItem(entry.item)
+        check(item and (item.food or item.medical or item.lootCategory == "medical" or item.lootCategory == "materials"), "ordinary crates exclude weapons, cash, and implants")
+    end
+
+    check(ZM_StaticData:GetEntityLootRule("prop_physics", "models/props_junk/cardboard_box004a.mdl") == nil, "an unsupported generic prop does not fall through to loot")
+end)
+
 test("activation_generates_and_persists_spots", function(check)
     local rule = certainRule()
     local never = { activationChance = 0, entries = rule.entries }

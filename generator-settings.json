@@ -117,7 +117,7 @@
     "activeProfile": "stock-gmod",
     "progressRefreshMilliseconds": 1000,
     "visibilityBudget": {
-      "maxPortalClusters": 250,
+      "maxPortalClusters": 500,
       "maxPortals": 900
     },
     "stageTimeoutSeconds": {

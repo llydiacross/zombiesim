@@ -179,7 +179,7 @@ if ([string]::IsNullOrWhiteSpace($ReportPath)) {
     $ReportPath = Join-Path $BuildDirectory 'vis-budget-report.json'
 }
 if ($MaxPortalClusters -lt 1) {
-    $MaxPortalClusters = Get-BudgetValue $worldGenerationProfile.Settings 'maxPortalClusters' 250
+    $MaxPortalClusters = Get-BudgetValue $worldGenerationProfile.Settings 'maxPortalClusters' 500
 }
 if ($MaxPortals -lt 1) {
     $MaxPortals = Get-BudgetValue $worldGenerationProfile.Settings 'maxPortals' 900

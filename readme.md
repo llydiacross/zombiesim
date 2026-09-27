@@ -224,6 +224,15 @@ Get-ChildItem -LiteralPath $gmodRoot -Recurse -Filter '*_dir.vpk' | Select-Objec
 
 For bulk item and world-loot work, use the VPK listing to build a metadata-only candidate catalog, then curate item semantics and stable IDs. Map authored loot-container classes/models to explicit loot groups in `content/data_static/entity_loot.json`; for example, vending machines should favor drinks, while military/ammo containers should favor weapons and ammunition. Do not infer loot solely from a generic prop class or make unknown props produce generic loot. See Phase K in `todo-alpha-2.8.md` for the planned cataloging and validation pipeline.
 
+Regenerate and validate the metadata-only candidate catalog without extracting any archive content:
+
+```powershell
+.\bin\build_mounted_asset_catalog.ps1
+.\bin\test_mounted_asset_catalog.ps1
+```
+
+The catalog is written to `generated/asset_catalog/mounted_asset_catalog.json`. The builder lists `*_dir.vpk` archives under the installed `garrysmod` and `sourceengine` trees and paths configured in `garrysmod/cfg/mount.cfg`; disabled addon archives are reported as unmounted. It retains one canonical record per virtual model path, its source archive(s), family/tags, mounted status, and whether an authored item uses it as an icon or world model. Item and loot data remain curated in `content/data_static/`; catalog output and reports are generated artifacts.
+
 # Static Data (Items, Loot, Enemies, Bosses, Economy)
 
 `ZM_StaticData` loads these files from `content/data_static/` in both realms. A load that has any error keeps the previous registry.
@@ -463,6 +472,10 @@ zn_dev_scavenge <modelSubstring> [limit]   // development: search and accept mat
 ```
 
 Barrels are scavenged for resources. Blue plastic (`props_borealis/bluebarrel001`) and wooden (`props_c17/woodbarrel001`) barrels give `itemBarrelWater`; oil drums, warning barrels, `de_train/barrel`, and barrel pallets give `itemOil`. Rules match `prop_physics`, `prop_physics_multiplayer`, `prop_physics_override`, and `prop_dynamic` by normalized model path; other barrel models, broken barrel gibs, and `prop_static` are not loot spots.
+
+Semantic container rules are also model-specific: the CSS and HL2 vending machines roll bottled water or soda; ammunition crates and the listed CSS military crates roll weapons/ammunition only; and the listed wooden crates roll food, medical supplies, or materials. No generic prop-class rule grants fallback loot, so unsupported models remain non-lootable.
+
+`celltemplates/dev/zz_preview_loot_fixture.vmf` is a developer-only physical-prop fixture for these five representative models. It is intentionally excluded from the preview/city template plan and must not be staged as a gameplay map.
 
 Through the bridge these add `reports.lootSpots`, `reports.lootSpotTests`, and `reports.scavengeProbe`. The bridge-only `zombiesim_dev_teleport_cell <gridX> <gridY>` moves the first player to a raw grid cell through the normal world transition.
 
