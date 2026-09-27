@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "denServiceVersion": 1,
+  "mastercraft": {
+    "baseCredits": 5,
+    "creditsPerLevel": 0.5,
+    "ultraChance": 0.01
+  },
+  "jobChange": {
+    "credits": 25
+  }
+}

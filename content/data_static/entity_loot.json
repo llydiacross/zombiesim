@@ -5,8 +5,17 @@
     { "model": "models/props_vehicles/car002a.mdl", "lootGroups": ["lootGenericCarLoot"], "activationChance": 0.35 },
     { "model": "models/props_vehicles/car002b_physics.mdl", "lootGroups": ["lootGenericCarLoot"], "activationChance": 0.35 },
     { "model": "models/props_vehicles/car005a.mdl", "lootGroups": ["lootGenericCarLoot"], "activationChance": 0.35 },
-    { "model": "models/props/de_train/barrel.mdl", "lootGroups": ["lootGenericMedical"], "activationChance": 0.15 },
-    { "classes": ["prop_dynamic"], "model": "models/props_junk/trashdumpster01a.mdl", "lootGroups": ["lootGenericMedical"], "activationChance": 0.4 },
-    { "classes": ["prop_dynamic"], "model": "models/props_lab/scrapyarddumpster.mdl", "lootGroups": ["lootGenericWeapons"], "activationChance": 0.3 }
+    { "model": "models/props/de_train/barrel.mdl", "lootGroups": ["lootBarrelOil"], "activationChance": 0.35 },
+    { "model": "models/props/de_train/pallet_barrels.mdl", "lootGroups": ["lootBarrelOil"], "activationChance": 0.5 },
+    { "model": "models/props/cs_assault/barrelwarning.mdl", "lootGroups": ["lootBarrelOil"], "activationChance": 0.35 },
+    { "model": "models/props_silo/barrelwarning.mdl", "lootGroups": ["lootBarrelOil"], "activationChance": 0.35 },
+    { "model": "models/props_c17/oildrum001.mdl", "lootGroups": ["lootBarrelOil"], "activationChance": 0.35 },
+    { "model": "models/props_c17/oildrum001_explosive.mdl", "lootGroups": ["lootBarrelOil"], "activationChance": 0.35 },
+    { "model": "models/props_phx/oildrum001.mdl", "lootGroups": ["lootBarrelOil"], "activationChance": 0.35 },
+    { "model": "models/props_phx/oildrum001_explosive.mdl", "lootGroups": ["lootBarrelOil"], "activationChance": 0.35 },
+    { "model": "models/props_borealis/bluebarrel001.mdl", "lootGroups": ["lootBarrelWater"], "activationChance": 0.35 },
+    { "model": "models/props_c17/woodbarrel001.mdl", "lootGroups": ["lootBarrelWater"], "activationChance": 0.35 },
+    { "classes": ["prop_dynamic"], "model": "models/props_junk/trashdumpster01a.mdl", "lootGroups": ["lootGenericMedical", "lootGenericFood"], "activationChance": 0.4 },
+    { "classes": ["prop_dynamic"], "model": "models/props_lab/scrapyarddumpster.mdl", "lootGroups": ["lootGenericWeapons", "lootGenericMaterials"], "activationChance": 0.3 }
   ]
 }

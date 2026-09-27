@@ -182,6 +182,17 @@ Each recipe must define:
 - a profession may grant daily resources, but it does not silently bypass item-level or station-level rules
 - service roles such as chef, scientist, and doctor are explicit and can only use the approved processing flow
 
+### Phase F decisions
+
+- the day boundary is midnight UTC on the server clock; missed days are not accrued offline
+- claims are keyed by profile and day, not job, so a same-day job change grants nothing
+- a delivery that does not fit is refused and retried every 60 s with one notice per day; counts are deterministic per player, profile, and day
+- deliveries are banded by player level; jobs are assigned by admin/dev command only
+- profession stat bonuses are derived at runtime and never persisted
+- services: the customer supplies the items and pays a whole-number cash fee; self-service costs 0 and has no prompt; the provider's level caps the item level they can work
+- research is instant at service time; `craftTime` applies only at the workbench, which refuses service recipes
+- cooked food keeps the raw food's freshness fraction
+
 ## Implants, Credits, and Mastercrafting
 
 ### Implants
@@ -190,6 +201,16 @@ Each recipe must define:
 - maximum equipped implants is three
 - effects are aggregated through a single server-owned modifier service
 - activation and caps are defined, not inferred from UI state
+
+### Phase G decisions
+
+- implants are items that a Doctor installs in the den; installed implants live in `player_implants`, not in inventory slots
+- there are three typed slots (Neural, Ocular, Dermal), one implant per slot; a replaced or extracted implant returns to the backpack, and extraction needs a free backpack slot
+- the provider's level must be at least the implant's level; the backpack, implant rows, and fee are saved in one transaction
+- implants survive death; a character reset clears them
+- an effect's value is interpolated between the authored `[min, max]` by instance level; each implant has a per-effect limit, and the sum of installed implants is clamped to a per-effect cap
+- loot effects multiply entry weights by `1 + bonus` for the matching item `lootCategory`, only for the searcher's loot-spot rolls and the killer's enemy drops; they never change boss loot, activation or drop chance, or counts, and never boost the implants category
+- `xpGain` scales positive XP awards; `moveSpeed` scales walk and run speed; `healthRegen` is HP per minute
 
 ### Credits
 
@@ -204,6 +225,14 @@ Each recipe must define:
 - UI cannot determine the outcome or bypass server validation
 - the no-repeat-attempt rule is enforced through persistence, not client state
 
+### Phase H decisions
+
+- Credits are stored in `player_credits` (steamid+profile), whole numbers from 0 to 1,000,000. Every change appends a `credit_ledger` row in the same transaction, and a change only lands if the stored balance still equals the expected one. Credits survive death and character resets. In Alpha 2.8 they come only from admin grants.
+- Den service prices are static data (`den_service_definitions.json`): mastercraft `baseCredits + ceil(level x creditsPerLevel)`, a flat job-change price, and `ultraChance` (at most 0.25).
+- A mastercraft upgrades an ordinary backpack weapon in place: same instance id and level, `mastercraft = true`, and each attribute re-rolled within one point of the maximum. An Ultra Mastercraft has every attribute at the maximum. The credits are spent whatever the roll. `mastercraft_attempts` (steamid+profile+instanceId) records the attempt in the same transaction as the item and the credits, and blocks a repeat.
+- Station requests are quoted under a single-use, 60 s token. A confirmation consumes it and re-validates ownership, container, den, station range, balance, and price. The client never sends prices, attributes, or outcomes.
+- The station's only extra service is a paid job change (the job and the credits are saved together). Skill-point reset and appearance changes are deferred.
+
 ## Trading Contract
 
 Trading is intentionally constrained in this phase.
@@ -213,6 +242,13 @@ Trading is intentionally constrained in this phase.
 - no real-money credit store path is included in this phase
 - offer generation must be deterministic enough for test fixtures and reproducible validation
 
+### Phase I decisions
+
+- Traders and their offers are static data (`trade_definitions.json`). Traders are den NPCs (`zn_den_npc`) placed in Hammer; the `trader` keyvalue names the table.
+- A den's daily stock is shared by all players in it and resets at midnight UTC. It is regenerated from a seed of profile, den, trader, day, offer key, and item; only the units sold are stored. Offers are gated by the den entrance cell's danger, and a trader with `essentialAmmo` always stocks the common ammunition at its minimum level.
+- Ordinary goods cost `ceil(value x buyMultiplier)` cash (shipped 1.5); mastercraft weapons and implants cost fixed credits. Traders pay `floor(value x sellMultiplier)` cash (shipped 0.4) for backpack items in the categories they buy, up to a daily cash limit per player. Cash and implants are never bought; equipped weapons and spoiled food are refused.
+- Each buy or sell is one transaction: items, cash or credits, a compare-and-set stock change, and a ledger row with a unique client request id. The server rebuilds the offer and refuses a stale day, price, currency, or stock.
+- Den NPCs can be professionals: their profession, service level (the item-level cap), and fixed fee come from keyvalues and are resolved against the registry. They accept at once, hold no inventory or cash, never claim deliveries, and their fee is taken from the customer and credited to no one.
 ## Canonical First-Batch Decision Set
 
 The Phase B implementation will not begin with a full weapon catalog. The first playable batch is only a constrained set chosen to cover the essential weapon archetypes, ammo families, and server-side validation paths.

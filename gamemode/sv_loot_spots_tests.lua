@@ -55,9 +55,9 @@ local function cleanup()
     ZM_DeleteLootCells(otherProfile)
 end
 
-local tests = {}
+local suite = ZM_TestHarness.NewSuite()
 local function test(name, body)
-    table.insert(tests, { name = name, body = body })
+    suite:Add(name, body)
 end
 
 test("entity_rules_match_by_runtime_class_and_model", function(check)
@@ -190,67 +190,13 @@ end)
 
 function Spots:RunTests()
     local previousCell = self.Cell
-    local summary = { passed = 0, failed = 0, cases = {}, ranAt = os.time() }
-    for _, definition in ipairs(tests) do
-        cleanup()
-        self.Cell = nil
-        local result = { name = definition.name, failures = {} }
-        local function check(condition, message)
-            if not condition then
-                table.insert(result.failures, message)
-            end
-        end
-        local ok, err = pcall(definition.body, check)
-        if not ok then
-            table.insert(result.failures, "error: " .. tostring(err))
-        end
-        result.passed = #result.failures == 0
-        summary[result.passed and "passed" or "failed"] = summary[result.passed and "passed" or "failed"] + 1
-        table.insert(summary.cases, result)
-    end
-    cleanup()
+    local summary = suite:Run({ before = function() cleanup() self.Cell = nil end, after = cleanup })
     self.Cell = previousCell
     return summary
 end
 
-local function runAndRecord(caller)
-    local summary = Spots:RunTests()
-    file.CreateDir("zombiesim")
-    file.Write("zombiesim/loot_spot_tests.json", util.TableToJSON(summary, true) or "{}")
-    local lines = {}
-    for _, result in ipairs(summary.cases) do
-        table.insert(lines, (result.passed and "PASS " or "FAIL ") .. result.name)
-        for _, failure in ipairs(result.failures) do
-            table.insert(lines, "     " .. failure)
-        end
-    end
-    table.insert(lines, string.format("Loot spot tests: %d passed, %d failed.", summary.passed, summary.failed))
-    for _, line in ipairs(lines) do
-        if IsValid(caller) then
-            caller:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. line .. "\n")
-        else
-            print("[ZombieSim] " .. line)
-        end
-    end
-    if ZM_DevConsole and ZM_DevConsole.Report then
-        ZM_DevConsole:Report("lootSpotTests", summary)
-    end
-    if summary.failed > 0 then
-        return false, "loot spot tests failed"
-    end
-    return true
-end
-
-concommand.Add("zn_test_loot_spots", function(caller)
-    if IsValid(caller) and not caller:IsAdmin() then
-        caller:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] zn_test_loot_spots must be run by an in-game admin.\n")
-        return
-    end
-    runAndRecord(caller)
-end, nil, "Runs the world loot spot tests against throwaway profiles.")
-
-ZM_DevConsole = ZM_DevConsole or {}
-ZM_DevConsole.DirectCommands = ZM_DevConsole.DirectCommands or {}
-ZM_DevConsole.DirectCommands.zn_test_loot_spots = function()
-    return runAndRecord(nil)
-end
+ZM_TestHarness.Register({
+    command = "zn_test_loot_spots", label = "Loot spot", file = "loot_spot_tests.json", report = "lootSpotTests",
+    help = "Runs the world loot spot tests against throwaway profiles.",
+    run = function() return Spots:RunTests() end
+})

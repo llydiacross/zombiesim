@@ -141,11 +141,7 @@ local function printSummary(ply, summary)
     end
     table.insert(lines, string.format("Static data fixture tests: %d passed, %d failed.", summary.passed, summary.failed))
     for _, line in ipairs(lines) do
-        if IsValid(ply) then
-            ply:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. line .. "\n")
-        else
-            print("[ZombieSim] " .. line)
-        end
+        ZM_Util.Reply(ply, line)
     end
 end
 
@@ -161,10 +157,7 @@ local function runAndRecord(ply)
 end
 
 concommand.Add("zn_test_static_data", function(ply)
-    if IsValid(ply) and not ply:IsAdmin() then
-        ply:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] zn_test_static_data must be run by an in-game admin.\n")
-        return
-    end
+    if not ZM_Util.RequireAdmin(ply, "zn_test_static_data") then return end
     runAndRecord(ply)
 end, nil, "Runs the static-data loader fixture tests in tests/static_data/.")
 

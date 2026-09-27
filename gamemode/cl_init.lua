@@ -14,8 +14,12 @@ include( "cl_scoreboard.lua" )
 include( "cl_world_map.lua" )
 include( "cl_map_batch.lua" )
 include( "cl_quick_menu.lua" )
+include( "cl_item_icons.lua" )
 include( "cl_inventory.lua" )
 include( "cl_crafting.lua" )
+include( "cl_mastercraft.lua" )
+include( "cl_professions.lua" )
+include( "cl_trading.lua" )
 include( "cl_loot_popup.lua" )
 
 // The server has updated NWInts; mirror them into the local Player extension table.

@@ -125,29 +125,40 @@ The detailed contract is kept in [docs/alpha_2.8_phase_a_design_contract.md](doc
 
 ### Phase B: CSS Weapon Catalog and First Playable Batch
 
-- Asset audit complete: the relevant CSS content is packaged inside the game data files and is not available as unpacked traditional CSS SWEP classes. The runtime must map each CSS-inspired weapon family to a local ZombieSim weapon base and local SWEP implementation instead of loading stock CSS classes directly.
-- Inventory CSS weapon assets actually available in the installed GMod content and verify model/viewmodel paths and animations locally.
-- Select a small representative batch across pistol, SMG, rifle, shotgun, and sniper categories. Map each item ID to an explicit SWEP class, models, supported attributes, ammo type, firing mode, requirements, and loot groups.
-- Establish rarity/progression from documented gameplay power, availability, and intended unlock level. Treat real-world analogues as flavor/balance inputs, not authoritative rarity facts.
-- Add item definitions, SWEP classes or explicit base configurations, and validated loot entries incrementally. Include the rare level-15+ automatic 9mm pistol as a separate item/behavior, not a hidden mode change on the ordinary pistol.
+- Asset audit complete: the relevant CSS content is packaged inside the installed GMod VPK, not as unpacked CSS SWEP classes. The eight selected view/world model paths were confirmed in the game VPK; runtime classes remain local ZombieSim SWEPs.
+- First batch implemented across pistol, SMG, rifle, shotgun, and sniper categories. Each item ID now maps to a local SWEP class, CSS model pair, ammo ID reserved for Phase C, firing mode, rarity, level band, and loot group.
+- Rarity/progression uses intended in-game power, availability, and unlock level; real-world analogues are flavor/balance inputs only.
+- The level-15+ automatic 9mm pistol is a separate item and local SWEP. All eight classes inherit the ZombieSim hitscan base; the M3 supports multiple pellets.
+- Offline GLua syntax and item/loot JSON checks pass. Live `zn_test_inventory` passed 26 cases; after preserving the prior generic handgun/melee ordering, `zn_test_static_data` passed all 11 cases.
+- After reloading the preview map, `zn_test_weapon_catalog` passed all 8 mappings, including local SWEP registration, inheritance, model paths, automatic flags, and mounted model validity.
+- **Live behavior pending:** test actual representative grant/equip/fire/reload and persistence/restore through the client. The catalog test does not verify viewmodel animations, sound, aiming, impact, or a user's inventory lifecycle.
 - Verify each weapon's hold type, reload/fire animation, sound, muzzle/impact behavior, top-down aiming, and damage in a live client.
-- **Acceptance:** static validation catches missing assets/classes and invalid attributes; generation tests cover deterministic levels/attributes and eligibility; every first-batch weapon grants, equips, fires, reloads, persists, and restores correctly in game.
+- **Acceptance:** static validation catches missing assets/classes and invalid attributes; deterministic inventory/eligibility tests pass; a current game session validates the local SWEP/model mappings; and at least one representative weapon grants, equips, fires, reloads, persists, and restores correctly in game.
 
 #### Phase B checkpoint: registry and validation gate
 
-- The CSS weapon family is a design reference only; the live class remains a ZombieSim base-layer SWEP.
-- The first-batch registry must define item id, CSS family, local weapon base class, ammo id, firing mode, rarity, and validation state.
-- No direct CSS class names are accepted in the runtime registry; the registry records the mapping from CSS-inspired content to the local SWEP architecture.
-- The next step is a registry document and validation checklist before any bulk content import begins.
+- The first-batch registry is documented in `docs/alpha_2.8_phase_b_registry.md` and reconciled with the implemented item IDs, classes, CSS model paths, ammo IDs, firing modes, rarity, and level bands.
+- No direct CSS class names are used at runtime; all eight item definitions map to local ZombieSim SWEPs.
+- Static fixtures and catalog runtime validation pass after the loot-order correction and preview-map reload. The runtime diagnostic now records current health, resolved cell, radiation intensity, and exposure time for focused environmental checks.
+- **Phase B implementation gate achieved:** a representative USP completed live grant, item-instance equip, empty start, inventory reload, firing, map-boundary synchronization, and restore without duplicating rounds. The remaining animation/sound/aim/impact review is a gameplay-polish pass across the catalog, not a blocker for the ammunition lifecycle.
 
 ### Phase C: Ammunition and Firing-Mode System
 
+- **Phase C standard-ammunition gate achieved.** Ammo IDs now resolve to real stackable inventory items; loaded rounds persist on weapon instances.
 - Add stackable ammo item definitions for the Phase B weapons, with explicit weapon-to-ammo mappings (for example 9mm, 5.56mm, shotgun shells, and sniper/high-caliber ammunition as needed by the chosen batch).
 - Implement server-owned clip/reserve state and transition synchronization between active weapon state and inventory. Cover initial spawn, cell/den entry and exit, death, disconnect/reconnect, weapon swap, and failed save. Select one canonical state at each boundary to prevent duplicate or lost rounds.
 - Implement reload validation and consumption. Define empty-clip, partial reload, interrupted reload, ammo-capacity, weapon removal, and no-ammo behavior.
 - Implement semi-automatic and automatic fire metadata with server cadence and per-shot consumption. Special explosive/AP ammo selection is a follow-up within this phase only after standard ammo invariants pass; define whether a special round replaces or supplements the standard round.
 - Add focused tests for synchronization idempotence and replay resistance before enabling ammo for the full CSS catalog.
 - **Acceptance:** automated tests prove exact ammo conservation over firing/reload/map-transition cycles, invalid requests cannot create shots or ammo, and automatic weapons respect cadence. Live tests cover each mode, reload, empty ammo, and transition synchronization.
+
+#### Phase C checkpoint: standard ammunition complete
+
+- Added `ammo9mm`, `ammo556`, `ammo762`, `ammoShells`, and `ammo50Bmg`, with static validation requiring every bullet weapon to map to an existing generic stackable ammo item.
+- Reserve rounds remain backpack items. Reload completion atomically removes only the mapped ammo and persists the new per-instance clip; firing changes the live server clip, then weapon switches, saves, transitions, disconnect, and orderly shutdown synchronize it.
+- New weapons begin empty. Partial/full reload, no-ammo, mismatched-ammo, failed-persistence rollback, replayed synchronization, SQLite clip restore, and exact round conservation are covered by the inventory regression suite.
+- Live validation exercised semi-auto reload/fire and an automatic 9mm round at its scaled 0.117-second cadence. A map reload reconciled deferred live clip state without recreating reserve rounds. Temporary test weapons/ammo were removed afterward and the original player inventory was restored.
+- Special AP/explosive selection remains explicitly optional under the Phase A contract and is not hidden behavior on standard ammunition.
 
 ### Phase D: Scavenged Resources and Food Vertical Slice
 
@@ -158,6 +169,15 @@ The detailed contract is kept in [docs/alpha_2.8_phase_a_design_contract.md](doc
 - Expand the food catalog by tier only after the data/effect loop is validated; balance value and spoilage with explicit ranges rather than item-by-item implicit exceptions.
 - **Acceptance:** tests cover model matching, food effect bounds, spoilage before/after save-load and offline time, stack compatibility, and consumption rollback; live scavenging and eating works end-to-end.
 
+#### Phase D checkpoint: resources and food slice complete
+
+- Added `itemOil` and `itemBarrelWater`. `entity_loot.json` maps blue plastic/wooden barrels to water and oil drums, warning barrels, `de_train/barrel` (previously medical), and barrel pallets to oil across the four physics/dynamic prop classes; `barrels_map_only_to_their_resource` covers every mapping plus unsupported models, gibs, `prop_static`, and `prop_ragdoll`.
+- Added the validated `food` schema with tier-bounded effects and shelf life (`ZM_StaticData.FoodTiers`) and the shared `ZM_Food` module: timestamp freshness with fresh/stale/spoiled bands, band-aware stacking that keeps the oldest timestamp, and `FoodItem` consumption with bounded effects that apply only after the removal persists.
+- Representative slice (rotten food, canned beans, preserved meat, lab-grown meat) validated first; the catalog then expanded by tier: mouldy scraps (0); orange, watermelon, milk, soda, bottled water, barrel water (1); canned soup (2); military ration (3); canned hot dogs, sealed factory meal (4). `lootGenericFood` weights scale down with tier and is included in car and dumpster loot.
+- Static: GLua syntax 84/0, `zn_validate_static` 0 errors/0 warnings, static-data 12/12, inventory 33/33 (five food cases: bands and bounds, band stacking, save/load/stash/offline freshness, exactly-once eating with headroom refusal, spoiled penalty and failed-save rollback), loot 12/12, loot spots 9/9, script validation 56/56.
+- Live: scavenged oil from three `de_train/barrel` spots and preserved meat from a car with `zn_dev_scavenge`; ate beans and preserved meat, drank water with thirst capped at 100 and persisted; oil was refused as unusable; `createdAt` survived a map reload. Test items were removed afterward.
+- Remaining: in-client visual check of the food tooltip and band marker. Known pre-existing issue: a declined spot keeps state `declined`, so re-searching and accepting it fails with "There is nothing left here."
+
 ### Phase E: Validated Recipes and Atomic Den Crafting
 
 - Add a versioned recipe registry under `content/data_static/` with validation for IDs, ingredients, quantities, output, requirements, duration, station tags, and optional quality rules. Invalid reloads must retain the last known-good registry.
@@ -167,6 +187,17 @@ The detailed contract is kept in [docs/alpha_2.8_phase_a_design_contract.md](doc
 - Replace the current empty crafting panel with a server-fed recipe list, requirement/cost states, progress, and actionable failure feedback. Keep free-world crafting rejected.
 - **Acceptance:** fixture tests cover schema failures and recipe resolution; transaction tests verify ingredients/results roll back together; exploit tests cover request replay/range/station checks; live den tests craft food and ammunition and test cancellation/full inventory.
 
+#### Phase E checkpoint: den crafting complete
+
+- Added `recipe_definitions.json` (`recipeVersion` 1) validated by `ZM_StaticData`: id pattern, category, station tag, craft time, level/stat/job requirements, ingredient/result stacks, weapon and mastercraft exclusions, self-loops, and food `freshness` (`new`/`inherit`). New materials `itemScrapMetal`, `itemCloth`, `itemGunpowder` (`lootGenericMaterials`, in car and scrapyard dumpster loot) and cooked `itemBeanStew`. Five workbench recipes: boiled water, bean stew, cloth bandage (Medicine 1), 9mm ammunition, and shotgun shells (level 4, WeaponCrafting 2).
+- `ZM_CraftingService` gates on alive/den/station range/requirements/ingredients, runs one timed job per player, and swaps each batch's ingredients for results in one `Service:Mutate`. `ZM_ReplacePlayerAndDenStashItems` writes backpack and stash in a single SQL transaction (`ZM_ReplaceDenStashItems` is now transactional too). Ingredients are not reserved at start: cancelling costs nothing and finished batches are kept.
+- The crafting window is server-fed: recipes by category, requirement and have/need states, results, a batch count, progress, cancel, and failure messages.
+- Static: GLua syntax 86/0, `zn_validate_static` 0 errors/0 warnings, static-data 13/13 (new `recipes_are_validated` fixture with 16 schema failures and shipped-recipe expectations), crafting 10/10, inventory 33/33, loot 12/12, loot spots 9/9, script validation 58/58, weapon catalog passed.
+- Live (den `zz_preview_den_gr`, temporary workbench from `zn_dev_goto_station`): the crafting report showed `inDen=false` while the player was on a world cell; in the den, 2 batches of 9mm turned 4 scrap + 2 gunpowder into 40 `ammo9mm`; boiled water and bean stew crafted (oil taken from the oldest stack); cancelling kept the ingredients; shotgun shells were refused at level 1 and a 3-batch boiled water request was refused for missing barrel water. Test items were removed afterward. The full-inventory and interruption paths are covered by the automated tests only.
+- Remaining: in-client check of the crafting window, and authoring a `zn_crafting_station` (and `zn_den_stash`) into the den safe-zone VMFs in Hammer.
+- Fix: `zn_crafting_station` used a nonexistent model (`FurnitureWorkbench001a`), so it spawned as an ERROR with no physics and could not be used. It now uses `models/props_c17/furnituretable001a.mdl`, and both den entities log an error when their model yields no physics. Live: the spawned bench has physics and a trace from the player's eyes hits it.
+- Future (not scheduled to a phase): split crafting into dedicated stations — ammunition at its own station, food at a cooker, and so on. Until then every recipe uses the workbench.
+
 ### Phase F: Profession Foundation and Daily Den Deliveries
 
 - Reconcile canonical job IDs and current persisted `Job` behavior with Farmer, Doctor, Mechanic, Hunter, Scavenger, Chef, Police Officer, Army Soldier, and Scientist. Define starting bonuses and profession skills without conflating job identity with level/stat values.
@@ -175,12 +206,51 @@ The detailed contract is kept in [docs/alpha_2.8_phase_a_design_contract.md](doc
 - Implement chef cooking as a station service: the food owner supplies items, the chef's level/skill gates the service, and the operation atomically exchanges the agreed fee/inputs for a cooked result. Apply the same explicit ownership/payment/ingredient rules to scientist research and medical services.
 - **Acceptance:** tests cover reward bands, exact-once claims, profile isolation, job changes, full capacity, and failed saves; live den checks verify daily delivery and a player-to-professional service flow.
 
+#### Phase F checkpoint: professions and deliveries
+
+- Decisions (user): the day boundary is midnight UTC on the server clock; rewards are banded by player level; jobs are set only by admin/dev command; services use the full customer→professional flow, where the customer supplies the items and pays a cash fee, and self-service is allowed at fee 0.
+- Added `profession_definitions.json` (`professionVersion` 1) with Civilian (the default) plus the nine professions, aliases (Medic, Police, Soldier), stat bonuses (at most 5 per attribute, 6 total), services, and level-banded deliveries. Farmer, Doctor, Mechanic, Hunter, Scavenger, and Chef have deliveries; Police Officer and Army Soldier have stat bonuses only; Scientist has research only. `ZM_StaticData` validates the professions, recipe jobs (the hard-coded job list is gone), `cooksInto`, `medical`, and service recipes. There are 17 new items (produce, game bird, spices, four medical tiers, mechanic parts) and two Scientist research recipes.
+- `ply:GetStat` adds the profession bonus at runtime; stored stats are unchanged, and stamina now reads through `GetStat`. `GetJobRole` returns the canonical id.
+- `ZM_ProfessionService`:
+  - A delivery is granted with a `profession_claims` row (primary key steamid+profile+day) in the same transaction as the items. `ZM_CommitWrites` and `Service:Mutate(..., { extraSteps })` let one save cover the items, the stash, the cash, and the claim.
+  - Claims are keyed by day, not job, so a same-day job change gives nothing. Missed days are not accrued. A delivery that does not fit is refused, retried every 60 s, and notified once per day.
+  - The cook, treat, and research services check the den, range, job, provider level, fee, and cash. They exchange the inputs, results, and fee in one transaction. Offers expire after 60 s and are cancelled on death, disconnect, or job change.
+  - The client has a Services window (`zn_services`, and a button in the crafting window) and an accept/decline prompt.
+- Static: GLua syntax 91/0, `zn_validate_static` 0 errors/0 warnings, static-data 15/15 (new `professions_are_validated` and `cooking_and_medical_items_are_validated` fixtures plus service-recipe cases), professions 12/12, crafting 10/10, inventory 33/33, loot 12/12, loot spots 9/9, enemies 10/10, script validation 62/62, weapon catalog passed.
+- Live (den `zz_preview_den_gr`, one client):
+  - As a Farmer, the first claim delivered 4 potatoes and 2 carrots, and a repeat was refused.
+  - `zn_dev_advance_day 1` allowed exactly one new claim; offset 0 restored the day.
+  - Self-service as Chef cooked 2 potatoes into baked potatoes; as Scientist, researched 2 painkillers; as Doctor at 40 HP, treated twice for +23 HP each (15 × 1.5).
+  - Test items, claims, health, and the Civilian job were restored afterward.
+- Follow-up: den NPCs that act as professionals are scheduled in Phase I, alongside the NPC traders.
+- Remaining: in-client check of the Services window, and a two-player offer/accept/fee flow (only one client was available, so the two-player path is covered by the automated tests only).
+
 ### Phase G: Implants and Loot/Character Modifiers
 
 - Define implant definitions, acquisition tables, three-slot equipment state, persistence, removal/replacement rules, and effect caps. Keep implants out of ordinary inventory slots if the finalized contract treats them as persistent character enhancements.
 - Implement one server-owned modifier aggregation service for loot odds, movement, XP, regeneration, and other approved effects. Define stacking and caps per effect; replicate only read-only summaries to clients.
 - Add a small implant test set and controlled rare boss/high-danger acquisition sources. Loot modifiers may change only their documented loot probabilities and must not bypass activation, eligibility, or boss policies.
 - **Acceptance:** tests cover slots, equip/remove, persistence, profile isolation, stacking/caps, and deterministic effect application; live play confirms UI summaries match authoritative effects.
+
+#### Phase G checkpoint: implants and modifiers
+
+- Decisions (user): implants are inventory items that a Doctor installs in the den; there are three typed slots (Neural, Ocular, Dermal), and each implant fits one type; a removed or replaced implant goes back to the customer's backpack. Implants survive death (assumed, because they are permanent enhancements); a character reset clears them.
+- Decisions (implementation):
+  - An effect's value is interpolated between the authored `[min, max]` by the instance level across the item's `minLevel..maxLevel`.
+  - Effects from all installed implants add up per effect, and each sum is clamped to a cap in `ZM_StaticData.ImplantEffects`. There is also a per-implant limit.
+  - Loot effects multiply entry weights by `1 + bonus` for entries whose item `lootCategory` matches. They apply only to the searcher's loot-spot rolls and the killer's enemy drops. They never apply to boss loot, activation chance, drop chance, or counts, and the implants category is never boosted.
+  - `xpGain` scales positive XP awards (rounded). `moveSpeed` scales walk/run speed from a stored base. `healthRegen` is HP per minute on a 1 s tick that carries fractions.
+- Data: `implant` and `lootCategory` item fields. Every item gets a derived `lootCategory` (weapons, ammo, medical, food, cash, materials, implants, other); the bandage and cash bundle set it explicitly. Six implants (two per slot, levels 1–50), a `lootImplants` group (weight 0–0.05 by danger) in the generic zombie and car loot, boss-only implant entries in `lootBossRewards`, and the Doctor `implant`/`extract` services.
+- `ZM_ImplantService` stores installed implants in `player_implants` (steamid+profile+slot), not in the inventory. Install and extract run in one `Service:Mutate` with a `playerImplants` commit step plus any fee, so the backpack, implant rows, and cash change together. The provider's level must be at least the implant's level; extraction needs a free backpack slot. The Services window shows the slots and capped effects; `zn_implants` reports them and `zn_dev_clear_implants` deletes them.
+- Static: GLua syntax 94/0, `zn_validate_static` 0 errors/0 warnings (61 items, 6 implants), static-data 16/16 (new `implants_and_loot_categories_are_validated` fixture and shipped loot-category/implant expectations), implants 9/9, professions 12/12, crafting 10/10, inventory 33/33, loot 12/12, loot spots 9/9, enemies 10/10, bosses 5/5, weapon catalog passed.
+- Live (den `zz_preview_den_gr`, one client, as Doctor, self-service):
+  - Installed a level-1 Regeneration Mesh; at 50 HP, health rose to 51 after one minute (1 HP/min).
+  - After a map reload the implant was still installed.
+  - Installing the Myofiber Weave replaced it and returned the mesh to the backpack. Walk/run speed went from 200/320 to 206/329.6, and back to 200/320 after extraction.
+  - The first live run found that float-stored speeds made the base recapture drift; the comparison now uses a tolerance.
+  - Test items, the job, and health were restored afterward.
+- Known gap: `ZM_Bosses:OnBossKilled` is not called anywhere yet, so boss rewards (including the boss implant entries) are not delivered. This predates Phase G.
+- Remaining: an in-client look at the implant panel and the install/extract choices in the Services window; the death→respawn speed reapply path (covered by the `PlayerSpawn` hook, not yet exercised live); a two-player paid install.
 
 ### Phase H: Credits and Mastercrafting Service
 
@@ -190,13 +260,53 @@ The detailed contract is kept in [docs/alpha_2.8_phase_a_design_contract.md](doc
 - Add skill-point reset and appearance/job changes only if the credit contract and existing progression/appearance APIs support them; otherwise document them as deferred, not implicit station features.
 - **Acceptance:** tests cover cost deduction, failed-save rollback, replay, attribute bounds/distributions, ultra-mastercraft probability, and item identity; live tests complete an ordinary and a controlled test mastercraft attempt.
 
+#### Phase H checkpoint: credits and mastercrafting (static only)
+
+- Decisions (user): a mastercraft upgrades an existing ordinary weapon in place; the price is credits only and scales with weapon level; credits come from admin/dev grants only for now (no boss credits); the station also sells a job change. Skill-point reset and appearance changes are deferred because there is no spending or appearance API.
+- Decisions (implementation):
+  - Credits are stored in their own `player_credits` table, so the whole-row player_data save cannot overwrite them. They are whole numbers from 0 to 1,000,000 per profile, and every change writes a `credit_ledger` row. Credits survive death and a character reset (assumed).
+  - A credit step only updates the row if the stored balance still equals the expected one. A stale in-memory balance therefore fails the whole transaction.
+  - Prices are in `den_service_definitions.json`: mastercraft `5 + ceil(level x 0.5)`, job change 25, ultra chance 1%.
+  - A mastercraft needs an ordinary weapon with attributes in the backpack (not equipped or stashed), in a den, within 128 units of `zn_mastercraft_station`. The weapon keeps its instance id and level. It is saved in one `Service:Mutate` with the credit step and a `mastercraft_attempts` row, and that table's primary key blocks a second attempt on the same instance. Ultra means every attribute is at the maximum; it is worth 5x and shown as "(Ultra MC)".
+  - Requests are quoted under a single-use, 60 s token. A confirmation consumes the token, re-checks everything, and refuses a changed price. The client sends only the action and the id.
+  - A job change saves the `job` and credit steps together, then applies the job through `ZM_ProfessionService:ApplyJob`, which also cancels open offers.
+- Static: GLua syntax 101/0. The new `zn_test_mastercraft` suite (9 cases: cost formula, credit bounds/ledger/profile isolation, stale-balance refusal, in-place mastercraft, failed-save rollback, quote replay/expiry/price change, eligibility gates, Ultra rate and forced Ultra, paid job change), the `den_services_are_validated` fixture, and the shipped den-service expectations are written but **have not run yet**, because Garry's Mod was not running.
+- Remaining:
+  - Reload `zz_preview_den_gr`, then run `zn_validate_static`, `zn_test_static_data`, `zn_test_mastercraft`, and the other suites.
+  - Live: `zn_grant_credits 100`, `zn_dev_goto_mastercraft` (confirm the Combine interface model has physics), an ordinary mastercraft and a controlled one with `zn_station_confirm current <seed>`, and a paid job change.
+  - The in-client station window, the confirm dialog, and the Ultra message.
+
 ### Phase I: Offline Den Trading Prototype
 
 - Scope initial trading to deterministic AI/predefined offers in preview/local play. Keep player-to-player trade and online service authority outside this phase; do not add real-money credit purchasing.
 - Define stock, offer refresh, cash/credit pricing, den danger availability, purchase/sale limits, and a low-level essential-ammo floor so progression does not make basic supplies inaccessible in safer dens.
 - Implement buys/sells through atomic server-side inventory and currency transactions. Protect against stale offers, repeated requests, full inventory, stock races, map transitions, and persistence errors.
 - Build den trading UI that distinguishes cash and credits and shows level, quality, ammo compatibility, stock, and total cost. Keep offer generation deterministic for fixture tests.
+- **Den NPC professionals** (requested after Phase F). Add one placeable den NPC entity that can be a trader, a professional, or both, and that Hammer or the dev tools can place around the den.
+  - **Entity settings:** a profession id resolved through `ZM_Professions`, a service level, and a fee table set per NPC. Validate these against the profession registry; an NPC with an unknown profession offers nothing.
+  - **Services flow:** add a provider abstraction to `ZM_ProfessionService` so `CheckService` and `PerformService` accept either a player or an NPC.
+    - A nearby NPC appears in the Services window's provider list, which currently says "No professionals nearby" when there are none.
+    - NPCs accept automatically. There is no offer prompt and no provider-side inventory or cash row: the fee is taken from the customer and nobody is credited.
+    - The NPC's configured level stands in for the player level cap.
+    - Keep the same den, range, alive, and item-level checks, and the same single-transaction save.
+  - **Scope:** NPCs never claim daily deliveries and never hold persistent inventory.
+  - **Acceptance:** tests cover each service against an NPC provider (fee, rollback, level cap, unknown profession, out of range). Live, an NPC Chef, Doctor, and Scientist placed in `zz_preview_den_gr` each complete a service.
 - **Acceptance:** tests cover price bounds, stock, purchase/sale rollback, full inventory, duplicate requests, and profile isolation; live preview checks trade across at least two den danger tiers.
+
+#### Phase I checkpoint: den trading and NPC professionals (static only)
+
+- Decisions (user): stock is shared by everyone in a den and resets at midnight UTC; cash buys ordinary goods and credits buy only rare offers (mastercraft weapons and implants); selling always pays cash; traders sell at 1.5x item value and buy at 0.4x; NPCs are placed only as Hammer point entities configured by keyvalues (a temporary dev spawn command exists for testing).
+- Decisions (implementation):
+  - `content/data_static/trade_definitions.json` holds the multipliers, a 20-unit purchase cap, a 2,500 cash daily sale limit per player, the NPC service fees, the essential-ammo floor (10 x 30 rounds of 9mm, shells, 5.56, 7.62), and three trader tables (`general`, `quartermaster`, `clinic`). The validator rejects cash offers, cash/implant buying, mastercraft or implant offers without credits, mastercraft offers of non-weapons, ammo floors that no weapon uses, and a sell multiplier at or above the buy multiplier.
+  - Daily stock, level, and attributes are seeded from profile, den, trader, UTC day, offer key, and item (not danger), and only the units sold are stored (`trade_stock`). Offer keys are the 1-based offer index, so reordering a trader's offers changes that day's stock. Only weapons scale with danger (up to halfway through their level range); other goods are offered at their minimum level.
+  - A buy or sell is one `Service:Mutate` plus the currency step, a compare-and-set `tradeStock` step (it fails if the sold count changed), and a `trade_ledger` row whose unique request id blocks replays. The sale limit is checked before the save and again inside the transaction. The server rebuilds the offer and refuses a stale day, price, currency, or stock; after a map change the NPC reference is gone and the request is refused.
+  - Den NPCs (`zn_den_npc`, `sv_den_npcs.lua`) are providers in `ZM_ProfessionService`: they skip the offer prompt, charge their configured fee (the fee must match what the client saw), hold no inventory or cash, and their `service_level` caps item levels. The Services window lists them as `n:<entIndex>` providers; players are `p:<userId>`.
+- Static: GLua syntax 108/0. The `zn_test_trading` suite (14 cases: shipped data, deterministic shared stock and sold-out, price multipliers, danger gating and the essential-ammo floor, cash buy with ledger and replay, credit buy, stale day/price/currency/stock, full-backpack and failed-save rollback, sales and the daily limit, unsellable items, den/range/trader checks, NPC settings, NPC Chef/Doctor/Scientist services, NPC refusals and rollback), the `trade_is_validated` fixture, and the shipped trade expectations are written but **have not run yet**, because Garry's Mod was not running.
+- Remaining:
+  - Reload `zz_preview_den_gr`, then run `zn_validate_static`, `zn_test_static_data`, `zn_test_trading`, `zn_test_professions`, and the unrun Phase H suites.
+  - Live: `zn_dev_spawn_den_npc Chef 10 -`, `Doctor`, and `Scientist`, each completing a service through `zn_service ... - npc`; `zn_dev_spawn_den_npc none 1 general`, then `zn_trade`, `zn_trade_buy ammo:ammo9mm 1 r1`, a replay of `r1`, and `zn_trade_sell`; repeat with `zn_dev_trade_danger 0.8` for a second danger tier (only one preview den exists).
+  - Place Chef, Doctor, Scientist, and trader NPCs in the `zz_preview_den_gr` VMF in Hammer and recompile.
+  - The in-client trading window, the NPC entries in the Services window, and the NPC name labels.
 
 ### Phase J: Integration, Walker Regression, and Release
 
@@ -206,6 +316,33 @@ The detailed contract is kept in [docs/alpha_2.8_phase_a_design_contract.md](doc
 - **Do the Walker regression last**, after gameplay and data changes are settled: regenerate the current preview world, refresh plans and VMFs, restage the required maps, rerun the documented navmesh pipeline, then verify Walker operation in game. Inspect the exact generated reports/artifacts; do not trust stale preview files.
 - Run one deliberate end-to-end session and record static versus live results separately. Only stage/validate production after preview acceptance is clear.
 - **Acceptance:** automated checks pass; live checks pass or have explicit blockers; preview artifacts match current sources; known limitations and follow-ups are recorded before marking Alpha 2.8 complete.
+
+#### Phase J checkpoint: integration (2026-09-27)
+
+- Refactor before integration: repeated server helpers moved to `ZM_Util` (`gamemode/utils/server.lua`) and every `zn_test_*` suite except the static-data and weapon-catalog ones moved to `ZM_TestHarness` (`gamemode/utils/test_harness.lua`).
+- Static: GLua syntax 110/0.
+- Live, automated (preview, `zz_preview_den_gr`): `zn_validate_static` passes. All 12 suites pass: static data 18, weapon catalog, inventory 33, loot 12, loot spots 9, enemies 10, bosses 5, crafting 10, implants 9, professions 12, mastercraft 9, trading 14. This is the first live run of the Phase H and I suites. It found three problems, now fixed:
+  - `bad_trade.json` set `sellMultiplier` out of range, so the "below buyMultiplier" rule never ran. The fixture now uses 1 and 1.
+  - A mastercraft confirmation with the wrong token kept the pending quote, so the next confirmation spent it. Any confirmation attempt now discards the quote, as the contract states.
+  - Two trading test fixtures were wrong: a crowbar below its minimum level, and too little cash for the full-backpack case.
+- Live, manual through the bridge:
+  - Trading: a trader NPC sold and bought, and replayed request ids for both were refused. Offers differ correctly between the Safe (0.2) and Deadly (0.8) tiers (Military Ration only when Deadly, crowbar level 12 vs 18). The essential-ammo floor is present in both. In-game trading-window buys and sells also saved with ledger rows, and cash matched in memory and SQL.
+  - NPC services: Chef cook (potato to baked potato), Doctor treat (health 50 to 73), and Scientist research (herbs and water to 2 painkillers). The fees came to exactly 35 cash.
+  - Credits and mastercraft: `zn_grant_credits`, a station with physics, a seeded mastercraft (6 credits, "(MC)"), a refused second attempt, and a paid job change (25). The ledger balances match.
+  - Persistence: after `changelevel` of the den, the inventory (instance ids and the mastercraft flag), credits, and job were identical.
+- Not exercised live: firing and reload ammo sync, death loss, a cross-map cell transition, craft interruption in a real session, and food spoilage over real time. The suites cover the service logic, but these still need a hands-on session. Visual checks of every Alpha 2.8 window are deferred to the end, as agreed.
+- Walker regression: the preview world, plan, and VMFs were regenerated (163 recipes, 6 stale files pruned). The portal preflight reports 66 of 168 maps over the 250-cluster budget; this is a diagnostic, not a compile failure, and there is no earlier baseline to compare against.
+
+### Phase K: Mounted Asset Catalog and Semantic World Loot
+
+- Document the installed Garry's Mod asset layout for future contributors: the Steam library's `GarrysMod\garrysmod` content directory, `garrysmod_dir.vpk` and other mounted VPKs (notably the bundled HL2/CSS archives under `GarrysMod\sourceengine`), enabled addons/mounted games, and `bin\vpk.exe`. Use `vpk.exe l <archive>` to inspect virtual paths; do not extract or copy Valve-owned game assets into addon content.
+- Item icons already render the item's mounted `iconModel`/`worldModel` as a spawn icon (see `readme.md`, Item Icons). Catalog-generated items should set a reviewed `iconModel` rather than authoring PNG thumbnails.
+- Build a repeatable metadata-only catalog of item-candidate assets from the installed/mounted VPKs. Record the virtual model path, source archive, asset family/tags, and whether the asset is mounted and suitable for an item. Filter out non-item assets and duplicate aliases rather than turning every model file into a gameplay item.
+- Use the catalog to add stable, curated item definitions with meaningful names, categories, stack/level/value bounds, and mounted model references. Keep authored item data in `content/data_static/`; keep catalog scans and reports under `generated/`.
+- Map explicitly supported world container classes and model families to semantic loot groups using `content/data_static/entity_loot.json` and the existing loot registry. Vending machines should favor drinks; ammo boxes and military containers should favor weapons/ammunition; ordinary crates should use an appropriate general-supplies group. Add more families only with reviewed contents and bounded loot policies.
+- Keep loot deterministic, danger/level-aware, and server-authoritative. Unknown or unsupported props must not fall through to generic loot; verify that model/class matching cannot turn arbitrary props into valuable drops.
+- Add fixture coverage for candidate deduplication, missing/unmounted models, class/model-to-group mappings, and category-specific loot eligibility. Check representative placed containers in a live preview session.
+- **Acceptance:** the catalog can be regenerated from installed assets without committing extracted game files; all generated item references resolve to mounted assets; representative vending, ammo/military, and ordinary crate props yield only their intended loot families; unsupported props yield no loot; static and live checks pass.
 
 ## Cross-Phase Rules
 

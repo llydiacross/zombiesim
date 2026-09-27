@@ -402,10 +402,7 @@ function Materializer:Shutdown()
 end
 
 concommand.Add("zombiesim_walker_materializer_status", function(ply)
-    if IsValid(ply) and not ply:IsAdmin() then
-        ply:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] zombiesim_walker_materializer_status must be run by an in-game admin.\n")
-        return
-    end
+    if not ZM_Util.RequireAdmin(ply, "zombiesim_walker_materializer_status") then return end
     local status = Materializer:GetStatus()
     writeStatus(status)
     if ZM_DevConsole then
@@ -423,10 +420,7 @@ concommand.Add("zombiesim_walker_materializer_status", function(ply)
 end)
 
 concommand.Add("zombiesim_walker_materializer_request", function(ply, _, arguments)
-    if IsValid(ply) and not ply:IsAdmin() then
-        ply:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] zombiesim_walker_materializer_request must be run by an in-game admin.\n")
-        return
-    end
+    if not ZM_Util.RequireAdmin(ply, "zombiesim_walker_materializer_request") then return end
     local count = tonumber(arguments[1]) or 1
     if #arguments > 1 or count ~= math.floor(count) or count < 1 or count > getRequestLimit() then
         print("[ZombieSim] Usage: zombiesim_walker_materializer_request [count]")

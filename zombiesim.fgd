@@ -41,6 +41,22 @@
     model(studio) : "World model" : "models/props_c17/cashregister01a.mdl"
 ]
 
+@PointClass base(Targetname, Angles) studio("models/Humans/Group01/male_07.mdl") = zn_den_npc : "ZombieSim Den NPC"
+[
+    npc_name(string) : "Display name" : "" : "The name shown above the NPC and in the Services and trading windows. Empty uses the trader's or profession's name."
+    profession(string) : "Profession" : "" : "A profession id from data_static (for example Chef, Doctor, Scientist). Empty for a trader who offers no services."
+    service_level(integer) : "Service level" : 1 : "The profession level the NPC works at (1 to the level cap)."
+    fees(string) : "Service fees" : "" : "Optional per-service cash fees, for example 'cook=5 treat=10'. Empty uses npcServiceFees from trade_definitions.json."
+    trader(choices) : "Trade table" : "" : "The trader table from trade_definitions.json, or none." =
+    [
+        "" : "None"
+        "general" : "General goods"
+        "quartermaster" : "Quartermaster"
+        "clinic" : "Clinic"
+    ]
+    model(studio) : "World model" : "models/Humans/Group01/male_07.mdl"
+]
+
 @SolidClass base(Targetname) = trigger_multiple : "ZombieSim Transition Gate"
 [
     zm_transition_direction(choices) : "World exit direction" : "north" : "The cardinal world edge this gate travels through." =

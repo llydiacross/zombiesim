@@ -145,6 +145,12 @@ function ply:Save(source)
         return false, "Player persistent state has not been loaded"
     end
 
+    if ZM_AmmoService and self.ZM_Inventory then
+        local synced, syncError = ZM_AmmoService:SyncAll(self)
+        if not synced then
+            return false, "could not save ammunition state: " .. tostring(syncError)
+        end
+    end
     local attributesSaved, attributesError = ZM_SetPlayerAttributes(self:SteamID(), ZM_World.ActiveProfile, self.Attributes)
     self.SavedHealth = math.max(self:Health(), 0)
     self.Stamina = math.Clamp(self.Stamina or 100, 0, self:GetMaxStamina())
@@ -286,6 +292,10 @@ function ply:ResetForWorldOrigin()
         if not cleared then
             ErrorNoHalt("[ZombieSim] Could not clear inventory during reset: " .. tostring(clearError) .. "\n")
         end
+        local implantsCleared, implantsError = ZM_ImplantService:Clear(self)
+        if not implantsCleared then
+            ErrorNoHalt("[ZombieSim] Could not clear implants during reset: " .. tostring(implantsError) .. "\n")
+        end
     end
     self:SetNetworkAttributes()
     self:SetNetworkPlayerData()
@@ -410,6 +420,11 @@ function ply:SetNetworkPlayerData()
     self:SetNWString("Job", self.Job or "Civilian")
 end
 
+// ZombieSim reserves +use for interactions and never allows Source's physics-prop carry behavior.
+hook.Add("AllowPlayerPickup", "ZM.DisableUsePickup", function()
+    return false
+end)
+
 // Prevents sprint input from moving an exhausted living player faster than walking speed.
 hook.Add("SetupMove", "ZM.StaminaMovement", function(ply, move)
     if not IsValid(ply) or not ply:Alive() then return end
@@ -432,8 +447,8 @@ hook.Add("Think", "ZM.Stamina", function()
         if IsValid(ply) and ply:Alive() then
             local maxStamina = ply:GetMaxStamina()
             local isSprinting = ply:KeyDown(IN_SPEED)
-            local agility = tonumber(ply.Attributes and ply.Attributes.Agility) or 0
-            local strength = tonumber(ply.Attributes and ply.Attributes.Strength) or 0
+            local agility = ply:GetStat("Agility")
+            local strength = ply:GetStat("Strength")
             local stamina = tonumber(ply.Stamina) or maxStamina
             local staminaRate = baseSprintDrain / (1 + agility * 0.05 + strength * 0.03)
             local recoveryRate = 5 * (1 + agility * 0.05)
@@ -474,34 +489,57 @@ hook.Add("Think", "ZM.Survival", function()
     end
 end)
 
-// Applies ambient radiation after 120 seconds in the same cell; standalone safe rooms remain protected.
+// Applies one ambient-radiation tick per exposure interval; standalone safe rooms remain protected.
 local nextRadiationDamageAt = 0
 hook.Add("Think", "ZM.RadiationDamage", function()
     if CurTime() < nextRadiationDamageAt then return end
     nextRadiationDamageAt = CurTime() + 1
 
     for _, ply in ipairs(player.GetAll()) do
-        if not IsValid(ply) or not ply:Alive() then continue end
+        if not IsValid(ply) then continue end
+        if not ply:Alive() then
+            ply.RadiationCellId = nil
+            ply.RadiationEnteredAt = nil
+            ply.RadiationNextDamageAt = nil
+            continue
+        end
 
         local inSafeZone = type(ply.CurrentSafeZoneId) == "string" and ply.CurrentSafeZoneId ~= ""
         local intensity = inSafeZone and 0 or ply:GetRadiationIntensity()
         intensity = tonumber(intensity) or 0
         ply:SetNWFloat("RadiationIntensity", intensity)
-        if intensity <= 0 then continue end
+        if intensity <= 0 then
+            ply.RadiationCellId = nil
+            ply.RadiationEnteredAt = nil
+            ply.RadiationNextDamageAt = nil
+            continue
+        end
 
         local cell = ply:GetWorldCell()
         local cellId = cell and cell.id or nil
+        local highIntensity = intensity >= 0.75
+        local damageInterval = highIntensity and 60 or 120
         if ply.RadiationCellId ~= cellId then
             ply.RadiationCellId = cellId
             ply.RadiationEnteredAt = CurTime()
+            ply.RadiationNextDamageAt = CurTime() + damageInterval
             continue
         end
-        if not ply.RadiationEnteredAt or CurTime() - ply.RadiationEnteredAt < 120 then continue end
+        if not ply.RadiationNextDamageAt then
+            ply.RadiationEnteredAt = CurTime()
+            ply.RadiationNextDamageAt = CurTime() + damageInterval
+            continue
+        end
+        if CurTime() < ply.RadiationNextDamageAt then continue end
 
-        local damagePerTick = intensity >= 0.75 and math.random(1, 3) == 1 and 2 or 1
+        local damagePerTick = highIntensity and 2 or 1
+        ply.RadiationNextDamageAt = CurTime() + damageInterval
+        local healthFloor = ply:GetRadiationHealthFloor()
+        local appliedDamage = math.min(damagePerTick, math.max(ply:Health() - healthFloor, 0))
+        if appliedDamage <= 0 then continue end
 
         local damageInfo = DamageInfo()
-        damageInfo:SetDamage(damagePerTick)
+        damageInfo:SetDamage(appliedDamage)
         damageInfo:SetDamageType(DMG_RADIATION)
         damageInfo:SetAttacker(game.GetWorld())
         damageInfo:SetInflictor(game.GetWorld())
@@ -510,7 +548,11 @@ hook.Add("Think", "ZM.RadiationDamage", function()
 end)
 
 // Adds XP and levels repeatedly if one award crosses several level thresholds.
+// Implant xpGain scales positive awards (see ZM_ImplantService:ScaleXP).
 function ply:AddXP(amount)
+    if ZM_ImplantService then
+        amount = ZM_ImplantService:ScaleXP(self, amount)
+    end
     self.XP = self.XP + amount
     while( self:CanLevelUp() ) do
         self:LevelUp()

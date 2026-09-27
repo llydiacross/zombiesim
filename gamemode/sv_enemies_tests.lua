@@ -60,9 +60,9 @@ local function stubKiller()
     }
 end
 
-local tests = {}
+local suite = ZM_TestHarness.NewSuite()
 local function test(name, body)
-    table.insert(tests, { name = name, body = body })
+    suite:Add(name, body)
 end
 
 test("eligibility_follows_danger_bounds", function(check)
@@ -219,67 +219,12 @@ test("live_registry_selects_shipped_enemies", function(check)
 end)
 
 function Enemies:RunTests()
-    local summary = { passed = 0, failed = 0, cases = {}, ranAt = os.time() }
-    for _, definition in ipairs(tests) do
-        local result = { name = definition.name, failures = {} }
-        local function check(condition, message)
-            if not condition then
-                table.insert(result.failures, message)
-            end
-        end
-        local ok, err = pcall(definition.body, check)
-        if not ok then
-            table.insert(result.failures, "error: " .. tostring(err))
-        end
-        result.passed = #result.failures == 0
-        summary[result.passed and "passed" or "failed"] = summary[result.passed and "passed" or "failed"] + 1
-        table.insert(summary.cases, result)
-    end
+    local summary = suite:Run()
     return summary
 end
 
-local function runAndRecord(caller)
-    local summary = Enemies:RunTests()
-    file.CreateDir("zombiesim")
-    file.Write("zombiesim/enemy_tests.json", util.TableToJSON(summary, true) or "{}")
-    for _, result in ipairs(summary.cases) do
-        local lines = { (result.passed and "PASS " or "FAIL ") .. result.name }
-        for _, failure in ipairs(result.failures) do
-            table.insert(lines, "     " .. failure)
-        end
-        for _, line in ipairs(lines) do
-            if IsValid(caller) then
-                caller:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. line .. "\n")
-            else
-                print("[ZombieSim] " .. line)
-            end
-        end
-    end
-    local summaryLine = string.format("Enemy tests: %d passed, %d failed.", summary.passed, summary.failed)
-    if IsValid(caller) then
-        caller:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. summaryLine .. "\n")
-    else
-        print("[ZombieSim] " .. summaryLine)
-    end
-    if ZM_DevConsole and ZM_DevConsole.Report then
-        ZM_DevConsole:Report("enemyTests", summary)
-    end
-    if summary.failed > 0 then
-        return false, "enemy tests failed"
-    end
-    return true
-end
-
-concommand.Add("zn_test_enemies", function(caller)
-    if IsValid(caller) and not caller:IsAdmin() then
-        caller:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] zn_test_enemies must be run by an in-game admin.\n")
-        return
-    end
-    runAndRecord(caller)
-end, nil, "Runs the enemy selection, scaling, and kill-reward tests.")
-
-ZM_DevConsole = ZM_DevConsole or {}
-ZM_DevConsole.DirectCommands = ZM_DevConsole.DirectCommands or {}
-ZM_DevConsole.DirectCommands.zn_test_enemies = function()
-    return runAndRecord(nil)
-end
+ZM_TestHarness.Register({
+    command = "zn_test_enemies", label = "Enemy", file = "enemy_tests.json", report = "enemyTests",
+    help = "Runs the enemy selection, scaling, and kill-reward tests.",
+    run = function() return Enemies:RunTests() end
+})

@@ -5,6 +5,11 @@ node_modules/
 
 *.flp
 
+# Sounds until we figure out how to get lfs to work on this system
+*.wav
+# Playlist
+*.fpl
+
 # Reproducible Source compiler intermediates and logs
 generated/build/
 generated/build_preview/

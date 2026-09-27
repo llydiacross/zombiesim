@@ -20,8 +20,8 @@ local function withWorld(check, body)
     check(ok, "error: " .. tostring(err))
 end
 
-local tests = {}
-local function test(name, body) table.insert(tests, { name = name, body = body }) end
+local suite = ZM_TestHarness.NewSuite()
+local function test(name, body) suite:Add(name, body) end
 
 test("eligibility_uses_danger_and_environment_tags", function(check)
     withWorld(check, function()
@@ -78,32 +78,11 @@ test("boss_reward_policy_has_a_rewardable_result", function(check)
 end)
 
 function Bosses:RunTests()
-    local summary = { passed = 0, failed = 0, cases = {}, ranAt = os.time() }
-    for _, definition in ipairs(tests) do
-        local result = { name = definition.name, failures = {} }
-        local function check(condition, message) if not condition then table.insert(result.failures, message) end end
-        local ok, err = pcall(definition.body, check)
-        if not ok then table.insert(result.failures, "error: " .. tostring(err)) end
-        if #result.failures == 0 then summary.passed = summary.passed + 1 else summary.failed = summary.failed + 1 end
-        table.insert(summary.cases, result)
-    end
-    return summary
+    return suite:Run()
 end
 
-concommand.Add("zn_test_bosses", function(caller)
-    if IsValid(caller) and not caller:IsAdmin() then return end
-    local summary = Bosses:RunTests()
-    print(string.format("[ZombieSim] Boss tests: %d passed, %d failed.", summary.passed, summary.failed))
-end)
-
-ZM_DevConsole.DirectCommands.zn_test_bosses = function()
-    local summary = Bosses:RunTests()
-    local failures = {}
-    for _, result in ipairs(summary.cases) do
-        for _, message in ipairs(result.failures) do
-            table.insert(failures, result.name .. ": " .. message)
-        end
-    end
-    local detail = #failures > 0 and ("; " .. table.concat(failures, " | ")) or ""
-    return summary.failed == 0, string.format("%d/%d boss tests passed%s", summary.passed, summary.passed + summary.failed, detail)
-end
+ZM_TestHarness.Register({
+    command = "zn_test_bosses", label = "Boss", file = "boss_tests.json", report = "bossTests",
+    help = "Runs the boss eligibility and lifecycle tests.",
+    run = function() return Bosses:RunTests() end
+})

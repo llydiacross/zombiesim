@@ -58,10 +58,7 @@ local function getNative()
 end
 
 local function isAdminOrServer(ply, command)
-    if IsValid(ply) and not ply:IsAdmin() then
-        ply:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. command .. " must be run by an in-game admin.\n")
-        return false
-    end
+    if not ZM_Util.RequireAdmin(ply, command) then return false end
     return true
 end
 

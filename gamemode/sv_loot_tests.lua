@@ -22,9 +22,9 @@ local function share(entries, danger, itemId, samples, seed)
     return hits / samples
 end
 
-local tests = {}
+local suite = ZM_TestHarness.NewSuite()
 local function test(name, body)
-    table.insert(tests, { name = name, body = body })
+    suite:Add(name, body)
 end
 
 test("weights_interpolate_between_endpoints", function(check)
@@ -209,64 +209,45 @@ test("sample_report_matches_weights", function(check)
     check(Loot:SampleGroup("lootDoesNotExist", 0, 10, 1) == nil, "unknown groups cannot be sampled")
 end)
 
-function Loot:RunTests()
-    local summary = { passed = 0, failed = 0, cases = {}, ranAt = os.time() }
-    for _, definition in ipairs(tests) do
-        local result = { name = definition.name, failures = {} }
-        local function check(condition, message)
-            if not condition then
-                table.insert(result.failures, message)
+// Every supported barrel yields only its intended resource; other props and static barrels are never barrel loot.
+Loot.BarrelResources = {
+    itemOil = {
+        "models/props/de_train/barrel.mdl", "models/props/de_train/pallet_barrels.mdl",
+        "models/props/cs_assault/barrelwarning.mdl", "models/props_silo/barrelwarning.mdl",
+        "models/props_c17/oildrum001.mdl", "models/props_c17/oildrum001_explosive.mdl",
+        "models/props_phx/oildrum001.mdl", "models/props_phx/oildrum001_explosive.mdl"
+    },
+    itemBarrelWater = { "models/props_borealis/bluebarrel001.mdl", "models/props_c17/woodbarrel001.mdl" }
+}
+
+test("barrels_map_only_to_their_resource", function(check)
+    for resource, models in pairs(Loot.BarrelResources) do
+        for _, model in ipairs(models) do
+            for _, className in ipairs({ "prop_physics", "prop_physics_override", "prop_physics_multiplayer", "prop_dynamic_override" }) do
+                local rule = ZM_StaticData:GetEntityLootRule(className, string.upper(model))
+                check(rule ~= nil, className .. " " .. model .. " should be lootable")
+                if rule then
+                    check(#rule.entries == 1 and rule.entries[1].item == resource, model .. " must only yield " .. resource)
+                    local rolled = Loot:RollEntityLoot(rule, { seed = 7, danger = 0.5 })
+                    check(rolled and rolled.itemId == resource, model .. " should roll " .. resource)
+                end
             end
+            check(ZM_StaticData:GetEntityLootRule("prop_static", model) == nil, "static " .. model .. " must not be lootable")
         end
-        local ok, err = pcall(definition.body, check)
-        if not ok then
-            table.insert(result.failures, "error: " .. tostring(err))
-        end
-        result.passed = #result.failures == 0
-        summary[result.passed and "passed" or "failed"] = summary[result.passed and "passed" or "failed"] + 1
-        table.insert(summary.cases, result)
     end
+    for _, model in ipairs({ "models/props_c17/oildrum_crush.mdl", "models/props_phx/empty_barrel.mdl", "models/props_borealis/bluebarrel001_chunk01.mdl", "models/props_c17/furniturecouch001a.mdl", "models/props/de_inferno/wine_barrel.mdl" }) do
+        check(ZM_StaticData:GetEntityLootRule("prop_physics", model) == nil, model .. " is not a supported barrel")
+    end
+    check(ZM_StaticData:GetEntityLootRule("prop_ragdoll", "models/props_c17/oildrum001.mdl") == nil, "unsupported entity classes are not lootable")
+end)
+
+function Loot:RunTests()
+    local summary = suite:Run()
     return summary
 end
 
-local function runAndRecord(caller)
-    local summary = Loot:RunTests()
-    file.CreateDir("zombiesim")
-    file.Write("zombiesim/loot_tests.json", util.TableToJSON(summary, true) or "{}")
-    local lines = {}
-    for _, result in ipairs(summary.cases) do
-        table.insert(lines, (result.passed and "PASS " or "FAIL ") .. result.name)
-        for _, failure in ipairs(result.failures) do
-            table.insert(lines, "     " .. failure)
-        end
-    end
-    table.insert(lines, string.format("Loot tests: %d passed, %d failed.", summary.passed, summary.failed))
-    for _, line in ipairs(lines) do
-        if IsValid(caller) then
-            caller:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. line .. "\n")
-        else
-            print("[ZombieSim] " .. line)
-        end
-    end
-    if ZM_DevConsole and ZM_DevConsole.Report then
-        ZM_DevConsole:Report("lootTests", summary)
-    end
-    if summary.failed > 0 then
-        return false, "loot tests failed"
-    end
-    return true
-end
-
-concommand.Add("zn_test_loot", function(caller)
-    if IsValid(caller) and not caller:IsAdmin() then
-        caller:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] zn_test_loot must be run by an in-game admin.\n")
-        return
-    end
-    runAndRecord(caller)
-end, nil, "Runs the loot roll engine tests.")
-
-ZM_DevConsole = ZM_DevConsole or {}
-ZM_DevConsole.DirectCommands = ZM_DevConsole.DirectCommands or {}
-ZM_DevConsole.DirectCommands.zn_test_loot = function()
-    return runAndRecord(nil)
-end
+ZM_TestHarness.Register({
+    command = "zn_test_loot", label = "Loot", file = "loot_tests.json", report = "lootTests",
+    help = "Runs the loot roll engine tests.",
+    run = function() return Loot:RunTests() end
+})

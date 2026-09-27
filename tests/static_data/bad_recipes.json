@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "recipes": {
+    "makeThing": { "name": "Bad Id", "category": "Materials", "station": "workbench", "craftTime": 1, "ingredients": [ { "item": "itemOil", "count": 1 } ], "results": [ { "item": "itemCloth", "count": 1 } ] },
+    "recipeBadStation": { "name": "Bad Station", "category": "Materials", "station": "kitchen", "craftTime": 1, "ingredients": [ { "item": "itemOil", "count": 1 } ], "results": [ { "item": "itemCloth", "count": 1 } ] },
+    "recipeBadCategory": { "name": "Bad Category", "category": "Magic", "station": "workbench", "craftTime": 1, "ingredients": [ { "item": "itemOil", "count": 1 } ], "results": [ { "item": "itemCloth", "count": 1 } ] },
+    "recipeUnknownItem": { "name": "Unknown Item", "category": "Materials", "station": "workbench", "craftTime": 1, "ingredients": [ { "item": "itemNope", "count": 1 } ], "results": [ { "item": "itemCloth", "count": 1 } ] },
+    "recipeWeaponIngredient": { "name": "Weapon Ingredient", "category": "Weapons", "station": "workbench", "craftTime": 1, "ingredients": [ { "item": "weaponMeleeCrowbar", "count": 1 } ], "results": [ { "item": "itemScrapMetal", "count": 3 } ] },
+    "recipeSelfLoop": { "name": "Self Loop", "category": "Materials", "station": "workbench", "craftTime": 1, "ingredients": [ { "item": "itemCloth", "count": 1 } ], "results": [ { "item": "itemCloth", "count": 2 } ] },
+    "recipeMastercraftResult": { "name": "Mastercraft", "category": "Weapons", "station": "workbench", "craftTime": 1, "ingredients": [ { "item": "itemScrapMetal", "count": 10 } ], "results": [ { "item": "weaponMeleeCrowbar", "count": 1, "mastercraft": true } ] },
+    "recipeZeroCount": { "name": "Zero Count", "category": "Materials", "station": "workbench", "craftTime": 1, "ingredients": [ { "item": "itemOil", "count": 0 } ], "results": [ { "item": "itemCloth", "count": 1 } ] },
+    "recipeNoIngredients": { "name": "No Ingredients", "category": "Materials", "station": "workbench", "craftTime": 1, "ingredients": [], "results": [ { "item": "itemCloth", "count": 1 } ] },
+    "recipeMissingFreshness": { "name": "Missing Freshness", "category": "Food", "station": "workbench", "craftTime": 1, "ingredients": [ { "item": "itemCannedBeans", "count": 2 } ], "results": [ { "item": "itemBeanStew", "count": 1 } ] },
+    "recipeInheritNoFood": { "name": "Inherit No Food", "category": "Food", "station": "workbench", "craftTime": 1, "ingredients": [ { "item": "itemOil", "count": 1 } ], "results": [ { "item": "itemBottledWater", "count": 1 } ], "freshness": "inherit" },
+    "recipeFreshnessOnNonFood": { "name": "Freshness On Ammo", "category": "Ammunition", "station": "workbench", "craftTime": 1, "ingredients": [ { "item": "itemGunpowder", "count": 1 } ], "results": [ { "item": "ammo9mm", "count": 5 } ], "freshness": "new" },
+    "recipeBadStat": { "name": "Bad Stat", "category": "Medical", "station": "workbench", "craftTime": 1, "statRequirements": { "Medical": 1 }, "ingredients": [ { "item": "itemCloth", "count": 2 } ], "results": [ { "item": "itemBandage", "count": 1 } ] },
+    "recipeBadJob": { "name": "Bad Job", "category": "Medical", "station": "workbench", "craftTime": 1, "jobs": ["Wizard"], "ingredients": [ { "item": "itemCloth", "count": 2 } ], "results": [ { "item": "itemBandage", "count": 1 } ] },
+    "recipeServiceNoJobs": { "name": "Service No Jobs", "category": "Medical", "service": true, "craftTime": 1, "ingredients": [ { "item": "itemCloth", "count": 2 } ], "results": [ { "item": "itemBandage", "count": 1 } ] },
+    "recipeServiceWrongJob": { "name": "Service Wrong Job", "category": "Medical", "service": true, "station": "workbench", "jobs": ["Doctor"], "craftTime": 1, "ingredients": [ { "item": "itemCloth", "count": 2 } ], "results": [ { "item": "itemBandage", "count": 1 } ] },
+    "recipeRenamedDuration": { "name": "Renamed Duration", "category": "Materials", "station": "workbench", "duration": 1, "ingredients": [ { "item": "itemOil", "count": 1 } ], "results": [ { "item": "itemCloth", "count": 1 } ] }
+  }
+}

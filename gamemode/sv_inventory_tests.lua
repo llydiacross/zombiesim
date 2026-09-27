@@ -35,7 +35,7 @@ end
 
 local function instance(itemId, count, extra)
     local definition = Items:GetDefinition(itemId)
-    local result = { instanceId = newId(), itemId = itemId, count = count or 1, level = definition and definition.minLevel or 1, mastercraft = false, createdAt = 0 }
+    local result = { instanceId = newId(), itemId = itemId, count = count or 1, level = definition and definition.minLevel or 1, mastercraft = false, clip = 0, createdAt = 0 }
     for key, value in pairs(extra or {}) do
         result[key] = value
     end
@@ -66,9 +66,9 @@ local function cleanup()
     sql.Query("DELETE FROM player_data WHERE steamid = " .. sql.SQLStr(testSteamId))
 end
 
-local tests = {}
+local suite = ZM_TestHarness.NewSuite()
 local function test(name, body)
-    table.insert(tests, { name = name, body = body })
+    suite:Add(name, body)
 end
 
 test("stackables_merge_up_to_max_stack", function(check)
@@ -403,7 +403,80 @@ test("rolled_attributes_apply_to_a_spawned_weapon", function(check)
     check(math.abs(weapon:GetDamageScale() - scales.Damage) < 1e-4, "damage scale should be applied")
     check(math.abs(weapon:GetReloadScale() - scales.ReloadSpeed) < 1e-4, "reload scale should be applied")
     check(weapon:GetItemInstanceId() == instance.instanceId, "the weapon should remember its instance")
-    check(weapon:GetMaxClip() > weapon.BaseClipSize and weapon:Clip1() == weapon:GetMaxClip(), "a mastercraft clip should exceed the base and start full")
+    check(weapon:GetMaxClip() > weapon.BaseClipSize and weapon:Clip1() == 0, "a mastercraft clip should exceed the base and restore its persisted empty clip")
+    weapon:Remove()
+end)
+
+test("reload_conserves_inventory_ammo_and_persists_clip", function(check)
+    local target = stubPlayer()
+    local weaponInstance = Generation:CreateInstance("weaponUsp9mm", { seed = 17, level = 1 })
+    weaponInstance.clip = 4
+    target.ZM_Inventory.equipped[1] = weaponInstance
+    target.ZM_WeaponSlots = { [1] = { instanceId = weaponInstance.instanceId, selected = true } }
+    check(Ops.Add(target.ZM_Inventory, "backpack", instance("ammo9mm", 3)), "ammo should fit in the backpack")
+    check(ZM_ReplacePlayerItems(testSteamId, testProfile, Service.ToRows(target.ZM_Inventory)), "initial ammo state should persist")
+
+    local weapon = ents.Create("weapon_zn_usp_9mm")
+    check(IsValid(weapon), "weapon_zn_usp_9mm should be registered")
+    if not IsValid(weapon) then return end
+    weapon:Spawn()
+    Items:ApplyInstanceToWeapon(weapon, weaponInstance)
+    check(weapon:Clip1() == 4, "the persisted clip should restore")
+
+    local before = weapon:Clip1() + Service:Count(target, "ammo9mm", "backpack")
+    local reloaded, loaded = ZM_AmmoService:CompleteReload(target, weapon)
+    check(reloaded and loaded == 3, "partial reload should load all 3 available rounds")
+    check(weapon:Clip1() == 7, "clip should contain the prior 4 plus 3 rounds")
+    check(Service:Count(target, "ammo9mm", "backpack") == 0, "reload should consume reserve rounds")
+    check(target.ZM_Inventory.equipped[1].clip == 7, "reload should persist the new clip atomically")
+    check(weapon:Clip1() + Service:Count(target, "ammo9mm", "backpack") == before, "reload must conserve total rounds")
+
+    weapon:SetClip1(2)
+    check(ZM_AmmoService:SyncWeapon(target, weapon), "fired clip should sync at a boundary")
+    check(target.ZM_Inventory.equipped[1].clip == 2, "boundary sync should persist the live clip")
+    local rows = ZM_GetPlayerItems(testSteamId, testProfile)
+    local stored
+    for _, row in ipairs(rows or {}) do
+        if row.instanceId == weaponInstance.instanceId then stored = row break end
+    end
+    check(stored and tonumber(stored.clip) == 2, "SQLite should store the synchronized clip")
+
+    local emptyReload = ZM_AmmoService:CompleteReload(target, weapon)
+    check(not emptyReload and weapon:Clip1() == 2, "reload without reserve ammo must not change the clip")
+    check(Ops.Add(target.ZM_Inventory, "backpack", instance("ammo556", 5)), "mismatched ammunition should fit in the backpack")
+    local mismatchedReload = ZM_AmmoService:CompleteReload(target, weapon)
+    check(not mismatchedReload and weapon:Clip1() == 2, "mismatched ammunition must not reload a 9mm weapon")
+    check(Service:Count(target, "ammo556", "backpack") == 5, "a rejected reload must not consume mismatched ammunition")
+    weapon:Remove()
+end)
+
+test("ammo_sync_is_idempotent_and_failed_reload_changes_nothing", function(check)
+    local target = stubPlayer()
+    local weaponInstance = Generation:CreateInstance("weaponUsp9mm", { seed = 23, level = 1 })
+    weaponInstance.clip = 5
+    target.ZM_Inventory.equipped[1] = weaponInstance
+    target.ZM_WeaponSlots = { [1] = { instanceId = weaponInstance.instanceId, selected = true } }
+    Ops.Add(target.ZM_Inventory, "backpack", instance("ammo9mm", 10))
+    check(ZM_ReplacePlayerItems(testSteamId, testProfile, Service.ToRows(target.ZM_Inventory)), "initial idempotence state should persist")
+
+    local weapon = ents.Create("weapon_zn_usp_9mm")
+    check(IsValid(weapon), "weapon_zn_usp_9mm should be registered")
+    if not IsValid(weapon) then return end
+    weapon:Spawn()
+    Items:ApplyInstanceToWeapon(weapon, weaponInstance)
+    weapon:SetClip1(3)
+    check(ZM_AmmoService:SyncWeapon(target, weapon), "first clip sync should succeed")
+    local firstRows = ZM_GetPlayerItems(testSteamId, testProfile)
+    check(ZM_AmmoService:SyncWeapon(target, weapon), "replayed clip sync should succeed")
+    check(deepEqual(firstRows, ZM_GetPlayerItems(testSteamId, testProfile)), "replayed sync must not change persisted rounds")
+
+    target.ZM_InventoryProfile = "INVALID PROFILE"
+    local before = table.Copy(target.ZM_Inventory)
+    local reloaded = ZM_AmmoService:CompleteReload(target, weapon)
+    check(not reloaded, "reload should fail when its inventory transaction cannot persist")
+    check(weapon:Clip1() == 3, "failed reload must keep the live clip")
+    check(deepEqual(target.ZM_Inventory, before), "failed reload must keep reserve and persisted clip unchanged")
+    target.ZM_InventoryProfile = testProfile
     weapon:Remove()
 end)
 
@@ -482,66 +555,144 @@ test("client_actions_are_validated_by_the_server", function(check)
     check(not act({ action = "use", instanceId = instanceId }), "dead players cannot act")
 end)
 
-function Service:RunTests()
-    local summary = { passed = 0, failed = 0, cases = {}, ranAt = os.time() }
-    for _, entry in ipairs(tests) do
-        cleanup()
-        local result = { name = entry.name, failures = {} }
-        local function check(condition, message)
-            if not condition then
-                table.insert(result.failures, message)
+local Food = ZM_Food
+local testDen = "zn_test_den"
+
+local function foodUser(values)
+    local user = bandageUser(values.health or 50, 0)
+    user.Hunger = values.hunger or 50
+    user.Thirst = values.thirst or 50
+    user.Stamina = values.stamina or 10
+    return user
+end
+
+local function shelfSeconds(itemId)
+    return Items:GetDefinition(itemId).food.shelfLifeHours * 3600
+end
+
+test("food_freshness_bands_and_bounded_effects", function(check)
+    local now = 2000000000
+    local beans = instance("itemCannedBeans", 1, { createdAt = now })
+    local authored = Items:GetDefinition("itemCannedBeans").food
+    local fresh = Food:GetEffects(beans, now)
+    check(fresh.band == "fresh" and fresh.nutrition == authored.nutrition and fresh.stamina == authored.stamina, "new beans apply their authored effects")
+    local stale = Food:GetEffects(beans, now + shelfSeconds("itemCannedBeans") * 0.6)
+    check(stale.band == "stale" and stale.nutrition == 15, "stale beans give 60% nutrition, got " .. tostring(stale.nutrition))
+    local spoiled = Food:GetEffects(beans, now + shelfSeconds("itemCannedBeans"))
+    check(spoiled.band == "spoiled" and spoiled.nutrition == 6 and spoiled.health == Food.SpoiledHealthPenalty, "spoiled beans lose value and cost health")
+    check(Food:GetBand(beans, now - 1000) == "fresh", "a timestamp in the future is treated as brand new")
+    local rotten = Food:GetEffects(instance("itemRottenFood", 1, { createdAt = now }), now)
+    check(rotten.band == "spoiled" and rotten.health == Items:GetDefinition("itemRottenFood").food.health, "rotten food is always spoiled and keeps its authored penalty")
+
+    for itemId, definition in pairs(ZM_StaticData:GetRegistry().items) do
+        if definition.food then
+            local tier = ZM_StaticData.FoodTiers[definition.food.tier]
+            check(tier ~= nil, itemId .. " must use a defined food tier")
+            for _, age in ipairs({ 0, 0.3, 0.7, 1.5 }) do
+                local effects = Food:GetEffects(instance(itemId, 1, { createdAt = now }), now + age * (definition.food.shelfLifeHours or 1) * 3600)
+                for effect, bounds in pairs(Food.EffectBounds) do
+                    check(effects[effect] >= bounds[1] and effects[effect] <= bounds[2], itemId .. " " .. effect .. " is out of bounds")
+                end
             end
         end
-        local ok, err = pcall(entry.body, check)
-        if not ok then
-            table.insert(result.failures, "error: " .. tostring(err))
-        end
-        result.passed = #result.failures == 0
-        summary[result.passed and "passed" or "failed"] = summary[result.passed and "passed" or "failed"] + 1
-        table.insert(summary.cases, result)
     end
+end)
+
+test("food_stacks_only_within_band_and_keeps_oldest_timestamp", function(check)
+    local now = os.time()
+    local inventory = Service.NewInventory()
+    check(Ops.Add(inventory, "backpack", instance("itemCannedBeans", 1, { createdAt = now - 3600 })), "first tin should fit")
+    check(Ops.Add(inventory, "backpack", instance("itemCannedBeans", 1, { createdAt = now - 60 })), "second fresh tin should merge")
+    check(inventory.backpack[1].count == 2 and inventory.backpack[1].createdAt == now - 3600, "a merged fresh stack keeps the oldest timestamp")
+    local old = now - shelfSeconds("itemCannedBeans") * 0.8
+    local staleTin = instance("itemCannedBeans", 1, { createdAt = old })
+    check(Ops.Add(inventory, "backpack", staleTin), "a stale tin should fit")
+    check(inventory.backpack[2] and inventory.backpack[2].createdAt == old, "a stale tin must not merge into a fresh stack")
+    check(Ops.Move(inventory, staleTin.instanceId, "backpack", 1, 1, newId), "moving the stale tin onto the fresh stack swaps them")
+    check(inventory.backpack[1].instanceId == staleTin.instanceId and inventory.backpack[2].count == 2, "incompatible freshness swaps rather than merging")
+    check(Ops.Move(inventory, inventory.backpack[2].instanceId, "backpack", 5, 1, newId), "splitting a food stack should work")
+    check(inventory.backpack[5].createdAt == now - 3600 and inventory.backpack[2].createdAt == now - 3600, "a split keeps the source timestamp")
+    check(Ops.Add(inventory, "backpack", instance("itemRottenFood", 1, { createdAt = now })) and Ops.Add(inventory, "backpack", instance("itemRottenFood", 1, { createdAt = now - 99999 })), "rotten food should fit")
+    check(Ops.Count(inventory, "itemRottenFood") == 2 and table.Count(inventory.backpack) == 4, "non-perishable rotten food stacks regardless of age")
+end)
+
+test("food_freshness_survives_save_load_stash_and_offline_time", function(check)
+    local now = os.time()
+    local createdAt = now - 10 * 3600
+    local target = stubPlayer()
+    Ops.Add(target.ZM_Inventory, "backpack", instance("itemPreservedMeat", 2, { createdAt = createdAt }))
+    check(ZM_ReplacePlayerItems(testSteamId, testProfile, Service.ToRows(target.ZM_Inventory)), "food should persist")
+    local loaded = Service.FromRows(ZM_GetPlayerItems(testSteamId, testProfile))
+    check(loaded.backpack[1] and loaded.backpack[1].createdAt == createdAt, "a save/load round trip keeps the timestamp")
+    check(Food:GetBand(loaded.backpack[1], now) == "fresh", "10 hours old preserved meat is fresh")
+    local shelf = shelfSeconds("itemPreservedMeat")
+    check(Food:GetBand(loaded.backpack[1], createdAt + shelf * 0.75) == "stale", "offline time ages food deterministically")
+    check(Food:GetBand(loaded.backpack[1], createdAt + shelf + 1) == "spoiled", "food spoils after its shelf life even while offline")
+
+    local stashRows = Service.ToRows({ backpack = {}, stash = loaded.backpack, equipped = {} })
+    for _, row in ipairs(stashRows) do row.container = "stash" end
+    check(ZM_ReplaceDenStashItems(testSteamId, testProfile, testDen, stashRows), "a stash deposit should persist")
+    local stashed = ZM_GetDenStashItems(testSteamId, testProfile, testDen)
+    check(stashed and stashed[1] and tonumber(stashed[1].createdAt) == createdAt, "a den deposit keeps the timestamp")
+    ZM_ReplaceDenStashItems(testSteamId, testProfile, testDen, {})
+end)
+
+test("eating_applies_bounded_effects_exactly_once", function(check)
+    local user = foodUser({ hunger = 50, thirst = 50, stamina = 10, health = 50 })
+    Service:GiveItem(user, "itemCannedBeans", 2)
+    local used, message = Service:UseItem(user, "itemCannedBeans")
+    check(used, "hungry players can eat beans: " .. tostring(message))
+    check(user.Hunger == 75 and user.Thirst == 55 and user.health == 52 and user.Stamina == 20, string.format("beans should apply +25/+5/+2/+10, got %s/%s/%s/%s", user.Hunger, user.Thirst, user.health, user.Stamina))
+    check(Service:Count(user, "itemCannedBeans") == 1, "exactly one tin should be consumed")
+    check(not Service:UseItem(user, "itemCannedBeans"), "a repeated request inside the cooldown is refused")
+    check(Service:Count(user, "itemCannedBeans") == 1, "a refused repeat must not consume food")
+
     cleanup()
+    local full = foodUser({ hunger = 100, thirst = 100, stamina = 100, health = 100 })
+    Service:GiveItem(full, "itemCannedBeans", 1)
+    local refused, reason = Service:UseItem(full, "itemCannedBeans")
+    check(not refused and reason == "You are not hungry or thirsty.", "sated players are refused")
+    check(Service:Count(full, "itemCannedBeans") == 1, "refused food is not consumed")
+    full.ZM_NextItemUseAt = nil
+    full.Hunger, full.Thirst = 99.5, 99.9
+    local drifted, driftReason = Service:UseItem(full, "itemCannedBeans")
+    check(not drifted and driftReason == "You are not hungry or thirsty.", "survival drift below one point does not make food useful")
+
+    cleanup()
+    local nearlyFull = foodUser({ hunger = 95, thirst = 100, stamina = 100, health = 100 })
+    Service:GiveItem(nearlyFull, "itemLabGrownMeat", 1)
+    check(Service:UseItem(nearlyFull, "itemLabGrownMeat") and nearlyFull.Hunger == 100, "hunger is capped at 100")
+end)
+
+test("spoiled_food_costs_health_and_failed_save_grants_nothing", function(check)
+    local user = foodUser({ hunger = 40, health = 60 })
+    Service:GiveItem(user, "itemCannedBeans", 1)
+    user.ZM_Inventory.backpack[1].createdAt = os.time() - shelfSeconds("itemCannedBeans") - 60
+    check(Service:UseItem(user, "itemCannedBeans"), "spoiled food can still be eaten")
+    check(user.Hunger == 46 and user.health == 50, string.format("spoiled beans give +6 food and -10 health, got %s/%s", user.Hunger, user.health))
+
+    cleanup()
+    local failing = foodUser({ hunger = 30, thirst = 30 })
+    Service:GiveItem(failing, "itemBarrelWater", 1)
+    failing.ZM_InventoryProfile = "INVALID PROFILE"
+    check(not Service:UseItem(failing, "itemBarrelWater"), "drinking must fail when the removal cannot be saved")
+    check(failing.Thirst == 30 and failing.health == 50, "no effect is granted when the removal was not saved")
+    check(Service:Count(failing, "itemBarrelWater") == 1, "the water must remain")
+    failing.ZM_InventoryProfile = testProfile
+    failing.ZM_NextItemUseAt = nil
+    Service:GiveItem(failing, "itemOil", 2)
+    local drank, oilReason = Service:UseItem(failing, "itemOil")
+    check(not drank and oilReason == "That item cannot be used.", "resources that are not food cannot be consumed")
+    check(Service:Count(failing, "itemOil") == 2, "refused resources stay in the backpack")
+end)
+
+function Service:RunTests()
+    local summary = suite:Run({ before = cleanup, after = cleanup })
     return summary
 end
 
-local function runAndRecord(caller)
-    local summary = Service:RunTests()
-    file.CreateDir("zombiesim")
-    file.Write("zombiesim/inventory_tests.json", util.TableToJSON(summary, true) or "{}")
-    local lines = {}
-    for _, result in ipairs(summary.cases) do
-        table.insert(lines, (result.passed and "PASS " or "FAIL ") .. result.name)
-        for _, failure in ipairs(result.failures) do
-            table.insert(lines, "     " .. failure)
-        end
-    end
-    table.insert(lines, string.format("Inventory tests: %d passed, %d failed.", summary.passed, summary.failed))
-    for _, line in ipairs(lines) do
-        if IsValid(caller) then
-            caller:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. line .. "\n")
-        else
-            print("[ZombieSim] " .. line)
-        end
-    end
-    if ZM_DevConsole and ZM_DevConsole.Report then
-        ZM_DevConsole:Report("inventoryTests", summary)
-    end
-    if summary.failed > 0 then
-        return false, "inventory tests failed"
-    end
-    return true
-end
-
-concommand.Add("zn_test_inventory", function(caller)
-    if IsValid(caller) and not caller:IsAdmin() then
-        caller:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] zn_test_inventory must be run by an in-game admin.\n")
-        return
-    end
-    runAndRecord(caller)
-end, nil, "Runs inventory operation and persistence tests against a throwaway SteamID and profile.")
-
-ZM_DevConsole = ZM_DevConsole or {}
-ZM_DevConsole.DirectCommands = ZM_DevConsole.DirectCommands or {}
-ZM_DevConsole.DirectCommands.zn_test_inventory = function()
-    return runAndRecord(nil)
-end
+ZM_TestHarness.Register({
+    command = "zn_test_inventory", label = "Inventory", file = "inventory_tests.json", report = "inventoryTests",
+    help = "Runs inventory operation and persistence tests against a throwaway SteamID and profile.",
+    run = function() return Service:RunTests() end
+})

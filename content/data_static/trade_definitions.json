@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "tradeVersion": 1,
+  "buyMultiplier": 1.5,
+  "sellMultiplier": 0.4,
+  "maximumPurchaseUnits": 20,
+  "dailySaleCashLimit": 2500,
+  "npcServiceFees": { "cook": 5, "treat": 10, "research": 20, "implant": 150, "extract": 75 },
+  "essentialAmmo": { "items": [ "ammo9mm", "ammoShells", "ammo556", "ammo762" ], "bundle": 30, "stock": 10 },
+  "traders": {
+    "general": {
+      "name": "General Trader",
+      "buys": [ "food", "medical", "materials", "ammo", "weapons" ],
+      "essentialAmmo": true,
+      "offers": [
+        { "item": "itemBottledWater", "minStock": 4, "maxStock": 10 },
+        { "item": "itemCannedBeans", "minStock": 4, "maxStock": 10 },
+        { "item": "itemCannedSoup", "minStock": 2, "maxStock": 6 },
+        { "item": "itemPotato", "minStock": 3, "maxStock": 8, "maxDanger": 0.6 },
+        { "item": "itemCarrot", "minStock": 3, "maxStock": 8, "maxDanger": 0.6 },
+        { "item": "itemMilitaryRation", "minStock": 0, "maxStock": 3, "minDanger": 0.3 },
+        { "item": "itemBandage", "minStock": 3, "maxStock": 6 },
+        { "item": "itemPainkillers", "minStock": 2, "maxStock": 5 },
+        { "item": "itemCloth", "bundle": 5, "minStock": 2, "maxStock": 5 },
+        { "item": "itemScrapMetal", "bundle": 5, "minStock": 2, "maxStock": 5 },
+        { "item": "itemScrews", "bundle": 10, "minStock": 1, "maxStock": 4 },
+        { "item": "itemGlue", "minStock": 2, "maxStock": 5 },
+        { "item": "itemGunpowder", "minStock": 0, "maxStock": 4, "minDanger": 0.2 },
+        { "item": "weaponMeleeCrowbar", "minStock": 1, "maxStock": 2 }
+      ]
+    },
+    "quartermaster": {
+      "name": "Quartermaster",
+      "buys": [ "ammo", "weapons" ],
+      "essentialAmmo": true,
+      "offers": [
+        { "item": "weaponHandgun9mm", "minStock": 1, "maxStock": 2, "maxDanger": 0.6 },
+        { "item": "weaponUsp9mm", "minStock": 0, "maxStock": 2, "maxDanger": 0.5 },
+        { "item": "weaponShotgunM3", "minStock": 0, "maxStock": 2, "minDanger": 0.2 },
+        { "item": "weaponMp5", "minStock": 0, "maxStock": 2, "minDanger": 0.3 },
+        { "item": "weaponM4a1", "minStock": 0, "maxStock": 1, "minDanger": 0.5 },
+        { "item": "weaponAk47", "minStock": 0, "maxStock": 1, "minDanger": 0.5 },
+        { "item": "weaponScout", "minStock": 0, "maxStock": 1, "minDanger": 0.6 },
+        { "item": "weaponAwp", "minStock": 0, "maxStock": 1, "minDanger": 0.8 },
+        { "item": "ammo50Bmg", "bundle": 10, "minStock": 0, "maxStock": 3, "minDanger": 0.7 },
+        { "item": "weaponHandgun9mm", "mastercraft": true, "credits": 30, "minStock": 0, "maxStock": 1, "maxDanger": 0.5 },
+        { "item": "weaponMp5", "mastercraft": true, "credits": 45, "minStock": 0, "maxStock": 1, "minDanger": 0.4 },
+        { "item": "weaponAk47", "mastercraft": true, "credits": 60, "minStock": 0, "maxStock": 1, "minDanger": 0.7 }
+      ]
+    },
+    "clinic": {
+      "name": "Clinic Supplier",
+      "buys": [ "medical", "food" ],
+      "essentialAmmo": false,
+      "offers": [
+        { "item": "itemBandage", "minStock": 4, "maxStock": 8 },
+        { "item": "itemPainkillers", "minStock": 3, "maxStock": 6 },
+        { "item": "itemMorphine", "minStock": 0, "maxStock": 3, "minDanger": 0.3 },
+        { "item": "itemSurgicalKit", "minStock": 0, "maxStock": 2, "minDanger": 0.6 },
+        { "item": "itemAgentX", "minStock": 0, "maxStock": 1, "minDanger": 0.9 },
+        { "item": "itemImplantFortuneChip", "credits": 60, "minStock": 0, "maxStock": 1, "minDanger": 0.4 },
+        { "item": "itemImplantRegenMesh", "credits": 80, "minStock": 0, "maxStock": 1, "minDanger": 0.5 }
+      ]
+    }
+  }
+}

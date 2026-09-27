@@ -7,13 +7,18 @@ ENT.AdminOnly = false
 
 function ENT:Initialize()
     if SERVER then
-        self:SetModel("models/props_c17/FurnitureWorkbench001a.mdl")
+        self:SetModel("models/props_c17/furnituretable001a.mdl")
         self:PhysicsInit(SOLID_VPHYSICS)
         self:SetMoveType(MOVETYPE_VPHYSICS)
         self:SetSolid(SOLID_VPHYSICS)
         self:SetUseType(SIMPLE_USE)
         local physics = self:GetPhysicsObject()
-        if IsValid(physics) then physics:Wake() end
+        if IsValid(physics) then
+            physics:Wake()
+        else
+            // A missing model has no collision, so traces (and +use) pass straight through it.
+            ErrorNoHalt("[ZombieSim] " .. self:GetClass() .. " has no physics; model '" .. self:GetModel() .. "' may be missing.\n")
+        end
     end
 end
 

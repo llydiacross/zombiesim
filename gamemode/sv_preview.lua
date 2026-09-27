@@ -319,6 +319,78 @@ local function refillPlayer(playerEntity)
     return true
 end
 
+local function runPreviewRefill(playerEntity)
+    if not IsValid(playerEntity) then
+        return false, "no target player"
+    end
+    if not Preview:HasServerCapability(playerEntity, Preview.Capabilities.operator) then
+        return false, "Preview refill requires an active admin preview session"
+    end
+
+    return refillPlayer(playerEntity)
+end
+
+local function restorePreviewPlayer(playerEntity)
+    if not IsValid(playerEntity) then
+        return false, "no target player"
+    end
+    if not Preview:HasServerCapability(playerEntity, Preview.Capabilities.operator) then
+        return false, "Preview restoration requires an active admin preview session"
+    end
+
+    local safeZone = ZM_World:GetOriginSafeZone()
+    local cell = safeZone and ZM_World:GetCellById(safeZone.cell) or nil
+    if not safeZone or not cell then
+        return false, "The preview origin safe room is unavailable"
+    end
+    local worldX, worldY = ZM_World:GetWorldCoordinates(cell)
+    if not worldX or not worldY then
+        return false, "The preview origin coordinates are unavailable"
+    end
+
+    local positioned, positionError = playerEntity:SetWorldCell(worldX, worldY)
+    if not positioned then
+        return false, positionError or "Could not move the player to the preview origin"
+    end
+    local entered, enterError = playerEntity:SetCurrentSafeZone(safeZone.id)
+    if not entered then
+        return false, enterError or "Could not enter the preview origin safe room"
+    end
+    local refilled, refillError = refillPlayer(playerEntity)
+    if not refilled then
+        return false, refillError
+    end
+
+    local transitionQueued = GAMEMODE and GAMEMODE.EnsurePlayerWorldMap
+        and GAMEMODE:EnsurePlayerWorldMap(playerEntity)
+    if not transitionQueued then
+        return false, "Could not queue the preview origin safe-room transition"
+    end
+    if not playerEntity:Alive() then
+        playerEntity:Spawn()
+    end
+    return true
+end
+
+concommand.Add("zombiesim_preview_refill", function(caller)
+    local target = IsValid(caller) and caller or ZM_Util.FirstHuman()
+    local ok, errorMessage = runPreviewRefill(target)
+    if IsValid(caller) then
+        caller:PrintMessage(HUD_PRINTCONSOLE, ok and "[ZombieSim] Preview survival restored.\n" or ("[ZombieSim] " .. tostring(errorMessage) .. "\n"))
+    elseif not ok then
+        print("[ZombieSim] " .. tostring(errorMessage))
+    end
+end, nil, "Restore health and survival reserves for a preview admin.")
+
+ZM_DevConsole = ZM_DevConsole or {}
+ZM_DevConsole.DirectCommands = ZM_DevConsole.DirectCommands or {}
+ZM_DevConsole.DirectCommands.zombiesim_preview_refill = function()
+    return runPreviewRefill(ZM_Util.FirstHuman())
+end
+ZM_DevConsole.DirectCommands.zombiesim_preview_restore = function()
+    return restorePreviewPlayer(ZM_Util.FirstHuman())
+end
+
 local function movePlayerToNeighbour(playerEntity, direction)
     if getHumanPlayerCount() ~= 1 then
         return false, "Cell movement requires exactly one human player"

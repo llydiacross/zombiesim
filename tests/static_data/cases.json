@@ -6,6 +6,22 @@
       "expectValues": [
         { "path": "items.weaponMeleeCrowbar.weaponClass", "value": "weapon_zn_melee_crowbar" },
         { "path": "items.weaponHandgun9mm.weaponClass", "value": "weapon_zn_handgun_9mm" },
+        { "path": "items.weaponHandgun9mm.ammoId", "value": "ammo9mm" },
+        { "path": "items.ammo9mm.maxStack", "value": 250 },
+        { "path": "items.ammo9mm.iconModel", "value": "models/items/boxsrounds.mdl" },
+        { "path": "items.itemCashBundle.iconModel", "value": "models/props/cs_assault/money.mdl" },
+        { "path": "items.weaponUsp9mm.iconModel", "value": "models/weapons/w_pist_usp.mdl" },
+        { "path": "items.itemCannedBeans.food.tier", "value": 2 },
+        { "path": "items.itemCannedBeans.food.shelfLifeHours", "value": 720 },
+        { "path": "items.itemRottenFood.food.stamina", "value": 0 },
+        { "path": "lootGroups.lootBarrelOil.entries.1.item", "value": "itemOil" },
+        { "path": "lootGroups.lootBarrelWater.entries.1.item", "value": "itemBarrelWater" },
+        { "path": "recipeVersion", "value": 1 },
+        { "path": "recipes.recipeAmmo9mm.station", "value": "workbench" },
+        { "path": "recipes.recipeAmmo9mm.results.1.count", "value": 20 },
+        { "path": "recipes.recipeAmmoShells.statRequirements.WeaponCrafting", "value": 2 },
+        { "path": "recipes.recipeBeanStew.freshness", "value": "inherit" },
+        { "path": "recipes.recipeClothBandage.levelRequirement", "value": 1 },
         { "path": "items.weaponMeleeCrowbar.minAttributes", "value": 2 },
         { "path": "items.weaponMeleeCrowbar.maxAttributes", "value": 32 },
         { "path": "lootGroups.lootGenericWeapons.entries.1.item", "value": "weaponHandgun9mm" },
@@ -19,7 +35,36 @@
         { "path": "lootGroups.lootGenericMedical.entries.1.minCount", "value": 1 },
         { "path": "lootGroups.lootGenericMedical.entries.1.maxCount", "value": 3 },
         { "path": "defaultSpawnGroup", "value": "cellGenericEnemies" },
-        { "path": "spawnGroups.cellGenericEnemies.enemies.2.maxSpawnWeight", "value": 0.75 }
+        { "path": "professionVersion", "value": 1 },
+        { "path": "professionAliases.Medic", "value": "Doctor" },
+        { "path": "professions.Farmer.statBonuses.Farming", "value": 3 },
+        { "path": "professions.Doctor.services.treat", "value": true },
+        { "path": "professions.Doctor.deliveries.2.minLevel", "value": 10 },
+        { "path": "items.itemPotato.food.cooksInto", "value": "itemBakedPotato" },
+        { "path": "items.itemPainkillers.medical.health", "value": 15 },
+        { "path": "recipes.recipeResearchPainkillers.service", "value": true },
+        { "path": "recipes.recipeResearchPainkillers.jobs.Scientist", "value": true },
+        { "path": "spawnGroups.cellGenericEnemies.enemies.2.maxSpawnWeight", "value": 0.75 },
+        { "path": "items.itemImplantRegenMesh.implant.slot", "value": "Dermal" },
+        { "path": "items.itemImplantCortexBooster.implant.effects.xpGain.2", "value": 0.25 },
+        { "path": "items.itemImplantRegenMesh.lootCategory", "value": "implants" },
+        { "path": "items.ammo9mm.lootCategory", "value": "ammo" },
+        { "path": "items.weaponHandgun9mm.lootCategory", "value": "weapons" },
+        { "path": "items.itemBandage.lootCategory", "value": "medical" },
+        { "path": "items.itemCashBundle.lootCategory", "value": "cash" },
+        { "path": "items.itemPotato.lootCategory", "value": "food" },
+        { "path": "professions.Doctor.services.implant", "value": true },
+        { "path": "professions.Doctor.services.extract", "value": true },
+        { "path": "denServiceVersion", "value": 1 },
+        { "path": "denServices.mastercraft.baseCredits", "value": 5 },
+        { "path": "denServices.mastercraft.ultraChance", "value": 0.01 },
+        { "path": "denServices.jobChange.credits", "value": 25 },
+        { "path": "tradeVersion", "value": 1 },
+        { "path": "trade.buyMultiplier", "value": 1.5 },
+        { "path": "trade.sellMultiplier", "value": 0.4 },
+        { "path": "trade.npcServiceFees.cook", "value": 5 },
+        { "path": "trade.traders.general.name", "value": "General Trader" },
+        { "path": "trade.traders.quartermaster.offers.10.credits", "value": 30 }
       ]
     },
     {
@@ -76,7 +121,78 @@
         { "file": "item_definitions.json", "path": "items.itemBandage.mastercrafted", "message": "was removed" },
         { "file": "item_definitions.json", "path": "items.itemBandage.statRequirements.Medical", "message": "did you mean Medicine" },
         { "file": "item_definitions.json", "path": "items.itemVest.entityClass", "message": "not implemented yet" },
-        { "file": "item_definitions.json", "path": "items.weaponhandgun", "message": "must start with 'weapon' followed by an uppercase letter" }
+        { "file": "item_definitions.json", "path": "items.weaponhandgun", "message": "must start with 'weapon' followed by an uppercase letter" },
+        { "file": "item_definitions.json", "path": "items.itemVest.iconModel", "message": "must be a normalized models/ .mdl path" }
+      ]
+    },
+    {
+      "name": "food_tiers_bound_effects_and_shelf_life",
+      "files": { "items": "bad_food_items.json" },
+      "expectErrors": [
+        { "file": "item_definitions.json", "path": "items.itemOverfedBeans.food.nutrition", "message": "must be at most 35" },
+        { "file": "item_definitions.json", "path": "items.itemForeverBeans.food.shelfLifeHours", "message": "is required" },
+        { "file": "item_definitions.json", "path": "items.itemAgedRot.food.shelfLifeHours", "message": "already spoiled" },
+        { "file": "item_definitions.json", "path": "items.itemEmptyRot.food", "message": "must restore at least one" },
+        { "file": "item_definitions.json", "path": "items.itemFriedAir.food.preparation", "message": "must be raw, preserved, or cooked" },
+        { "file": "item_definitions.json", "path": "items.itemFriedAir.food.tier", "message": "must be at most 5" },
+        { "file": "item_definitions.json", "path": "items.itemGenericFood.food", "message": "only usable entity items can be food" }
+      ]
+    },
+    {
+      "name": "recipes_are_validated",
+      "files": { "recipes": "bad_recipes.json" },
+      "expectErrors": [
+        { "file": "recipe_definitions.json", "path": "recipeVersion", "message": "is required" },
+        { "file": "recipe_definitions.json", "path": "recipes.makeThing", "message": "must be camelCase and start with 'recipe'" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeBadStation.station", "message": "free-world crafting is not supported" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeBadCategory.category", "message": "must be one of" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeUnknownItem.ingredients[1].item", "message": "references unknown item 'itemNope'" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeWeaponIngredient.ingredients[1].item", "message": "weapons cannot be ingredients" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeSelfLoop.results[1].item", "message": "cannot produce its own input" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeMastercraftResult.results[1].mastercraft", "message": "mastercraft results are not craftable" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeZeroCount.ingredients[1].count", "message": "must be at least 1" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeNoIngredients.ingredients", "message": "must be a non-empty array" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeMissingFreshness.freshness", "message": "is required" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeInheritNoFood.freshness", "message": "inherit needs at least one food ingredient" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeFreshnessOnNonFood.freshness", "message": "only applies to recipes that produce food" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeBadStat.statRequirements.Medical", "message": "did you mean Medicine?" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeBadJob.jobs[1]", "message": "is not a known profession id" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeServiceNoJobs.jobs", "message": "is required for service recipes" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeServiceWrongJob.station", "message": "not at a station" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeServiceWrongJob.jobs[1]", "message": "does not offer the research service" },
+        { "file": "recipe_definitions.json", "path": "recipes.recipeRenamedDuration.duration", "message": "was renamed to craftTime" }
+      ]
+    },
+    {
+      "name": "professions_are_validated",
+      "files": { "professions": "bad_professions.json" },
+      "expectErrors": [
+        { "file": "profession_definitions.json", "path": "professionVersion", "message": "is required" },
+        { "file": "profession_definitions.json", "path": "professions", "message": "must define the Civilian fallback profession" },
+        { "file": "profession_definitions.json", "path": "professions.lowercase", "message": "PascalCase" },
+        { "file": "profession_definitions.json", "path": "professions.Farmer.statBonuses.Medical", "message": "is not a player attribute" },
+        { "file": "profession_definitions.json", "path": "professions.Farmer.statBonuses", "message": "at most 6 points" },
+        { "file": "profession_definitions.json", "path": "professions.Farmer.services[1]", "message": "must be one of" },
+        { "file": "profession_definitions.json", "path": "professions.Farmer.deliveries[1].minLevel", "message": "must start at level 1" },
+        { "file": "profession_definitions.json", "path": "professions.Farmer.deliveries[1].items[1].item", "message": "references unknown item 'itemNope'" },
+        { "file": "profession_definitions.json", "path": "professions.Farmer.deliveries[2].minLevel", "message": "ascending minLevel" },
+        { "file": "profession_definitions.json", "path": "professions.Farmer.deliveries[2].items[1].item", "message": "weapons cannot be daily deliveries" },
+        { "file": "profession_definitions.json", "path": "professions.Farmer.deliveries[2].items[2].max", "message": "must not be below min" },
+        { "file": "profession_definitions.json", "path": "professions.Farmer.aliases[1]", "message": "already an alias of Doctor" },
+        { "file": "profession_definitions.json", "path": "professions.Farmer.aliases[2]", "message": "already a profession id" }
+      ]
+    },
+    {
+      "name": "cooking_and_medical_items_are_validated",
+      "files": { "items": "bad_profession_items.json" },
+      "expectErrors": [
+        { "file": "item_definitions.json", "path": "items.itemBadCookRaw.food.cooksInto", "message": "must reference a cooked food item" },
+        { "file": "item_definitions.json", "path": "items.itemBadCookUnknown.food.cooksInto", "message": "references unknown item 'itemNope'" },
+        { "file": "item_definitions.json", "path": "items.itemBadCookTier.food.cooksInto", "message": "must not lower the food tier" },
+        { "file": "item_definitions.json", "path": "items.itemCookedCooks.food.cooksInto", "message": "only raw food can be cooked" },
+        { "file": "item_definitions.json", "path": "items.itemMedicalGeneric.medical", "message": "only usable entity items can be medical" },
+        { "file": "item_definitions.json", "path": "items.itemMedicalTooMuch.medical.health", "message": "must be at most 100" },
+        { "file": "item_definitions.json", "path": "items.itemMedicalFood.medical", "message": "cannot be both food and medical" }
       ]
     },
     {
@@ -131,6 +247,48 @@
         { "file": "boss_spawns.json", "path": "bosses.bossWrong.enemy", "message": "must set boss: true" },
         { "file": "boss_spawns.json", "path": "bosses.bossNoLoot.lootGroups", "message": "is required" },
         { "file": "boss_spawns.json", "path": "bosses.bossOld.entityDefinition", "message": "was renamed to enemy" }
+      ]
+    },
+    {
+      "name": "implants_and_loot_categories_are_validated",
+      "files": { "items": "bad_implant_items.json" },
+      "expectErrors": [
+        { "file": "item_definitions.json", "path": "items.itemImplantBadSlot.implant.slot", "message": "must be one of Neural, Ocular, Dermal" },
+        { "file": "item_definitions.json", "path": "items.itemImplantUnknownEffect.implant.effects.flight", "message": "is not an implant effect" },
+        { "file": "item_definitions.json", "path": "items.itemImplantTooStrong.implant.effects.lootAmmo", "message": "must be at most 0.5 per implant" },
+        { "file": "item_definitions.json", "path": "items.itemImplantDecreasing.implant.effects.healthRegen", "message": "must not decrease with level" },
+        { "file": "item_definitions.json", "path": "items.itemImplantNoEffects.implant.effects", "message": "at least one effect" },
+        { "file": "item_definitions.json", "path": "items.itemImplantStacks.maxStack", "message": "must be 1 for implants" },
+        { "file": "item_definitions.json", "path": "items.itemImplantUsable.implant", "message": "implants must be generic items" },
+        { "file": "item_definitions.json", "path": "items.itemImplantWithCategory.lootCategory", "message": "implants always use the implants category" },
+        { "file": "item_definitions.json", "path": "items.itemFakeImplantCategory.lootCategory", "message": "only implant items can use the implants category" },
+        { "file": "item_definitions.json", "path": "items.itemUnknownCategory.lootCategory", "message": "must be one of" }
+      ]
+    },
+    {
+      "name": "den_services_are_validated",
+      "files": { "denServices": "bad_den_services.json" },
+      "expectErrors": [
+        { "file": "den_service_definitions.json", "path": "denServiceVersion", "message": "is required" },
+        { "file": "den_service_definitions.json", "path": "mastercraft.ultraChance", "message": "must be at most 0.25" },
+        { "file": "den_service_definitions.json", "path": "mastercraft", "message": "must cost at least 1 credit" },
+        { "file": "den_service_definitions.json", "path": "jobChange.credits", "message": "must be at least 1" }
+      ]
+    },
+    {
+      "name": "trade_is_validated",
+      "files": { "trade": "bad_trade.json" },
+      "expectErrors": [
+        { "file": "trade_definitions.json", "path": "tradeVersion", "message": "is required" },
+        { "file": "trade_definitions.json", "path": "sellMultiplier", "message": "must be below buyMultiplier" },
+        { "file": "trade_definitions.json", "path": "npcServiceFees.juggle", "message": "must be one of" },
+        { "file": "trade_definitions.json", "path": "essentialAmmo.items[1]", "message": "is not ammunition used by any weapon" },
+        { "file": "trade_definitions.json", "path": "traders.badShop.buys[1]", "message": "traders cannot buy cash" },
+        { "file": "trade_definitions.json", "path": "traders.badShop.offers[1].credits", "message": "mastercrafts and implants are priced in credits" },
+        { "file": "trade_definitions.json", "path": "traders.badShop.offers[2].mastercraft", "message": "only items with a weapon type" },
+        { "file": "trade_definitions.json", "path": "traders.badShop.offers[3].item", "message": "cash cannot be sold by a trader" },
+        { "file": "trade_definitions.json", "path": "traders.badShop.offers[4].maxStock", "message": "must not be below minStock" },
+        { "file": "trade_definitions.json", "path": "traders.badShop.offers[5].item", "message": "references unknown item" }
       ]
     }
   ]

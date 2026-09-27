@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "buyMultiplier": 1,
+  "sellMultiplier": 1,
+  "maximumPurchaseUnits": 20,
+  "dailySaleCashLimit": 100,
+  "npcServiceFees": { "juggle": 5 },
+  "essentialAmmo": { "items": [ "itemBandage" ], "bundle": 10, "stock": 5 },
+  "traders": {
+    "badShop": {
+      "name": "Bad Shop",
+      "buys": [ "cash", "food" ],
+      "offers": [
+        { "item": "weaponHandgun9mm", "mastercraft": true, "minStock": 1, "maxStock": 1 },
+        { "item": "itemBandage", "mastercraft": true, "credits": 5, "minStock": 1, "maxStock": 1 },
+        { "item": "itemCashBundle", "minStock": 1, "maxStock": 2 },
+        { "item": "itemBandage", "minStock": 5, "maxStock": 2 },
+        { "item": "itemNotReal", "minStock": 1, "maxStock": 1 }
+      ]
+    }
+  }
+}

@@ -5,8 +5,15 @@ AddCSLuaFile( "sh_compass.lua" )
 AddCSLuaFile( "sh_preview.lua" )
 AddCSLuaFile( "sh_static_data.lua" )
 AddCSLuaFile( "sh_items.lua" )
+AddCSLuaFile( "sh_food.lua" )
+AddCSLuaFile( "sh_professions.lua" )
+AddCSLuaFile( "sh_implants.lua" )
+AddCSLuaFile( "cl_item_icons.lua" )
 AddCSLuaFile( "cl_inventory.lua" )
 AddCSLuaFile( "cl_crafting.lua" )
+AddCSLuaFile( "cl_mastercraft.lua" )
+AddCSLuaFile( "cl_trading.lua" )
+AddCSLuaFile( "cl_professions.lua" )
 AddCSLuaFile( "cl_loot_popup.lua" )
 AddCSLuaFile( "cl_init.lua" )
 AddCSLuaFile( "cl_skin.lua" )
@@ -28,13 +35,29 @@ AddCSLuaFile( "utils/safezone.lua" )
 
 // These are server-only utilities; shared.lua loads code needed by both realms.
 include( "utils/sql.lua" )
+include( "utils/server.lua" )
+include( "utils/test_harness.lua" )
 include( "shared.lua" )
 include( "sv_static_data.lua" )
 include( "sv_static_data_tests.lua" )
+include( "sv_weapon_catalog_tests.lua" )
 include( "sv_player.lua" )
 include( "sv_item_generation.lua" )
 include( "sv_inventory.lua" )
+include( "sv_ammo.lua" )
+include( "sv_crafting.lua" )
+include( "sv_implants.lua" )
+include( "sv_professions.lua" )
+include( "sv_credits.lua" )
+include( "sv_mastercraft.lua" )
+include( "sv_den_npcs.lua" )
+include( "sv_trading.lua" )
 include( "sv_inventory_tests.lua" )
+include( "sv_crafting_tests.lua" )
+include( "sv_professions_tests.lua" )
+include( "sv_implants_tests.lua" )
+include( "sv_mastercraft_tests.lua" )
+include( "sv_trading_tests.lua" )
 include( "sv_loot.lua" )
 include( "sv_loot_tests.lua" )
 include( "sv_enemies.lua" )
@@ -56,6 +79,10 @@ local attributesReady, attributesError = ZM_CreatePlayerAttributesTable()
 local playerDataReady, playerDataError = ZM_CreatePlayerDataTable()
 local playerItemsReady, playerItemsError = ZM_CreatePlayerItemsTable()
 local lootSpotsReady, lootSpotsError = ZM_CreateLootSpotTables()
+local professionsReady, professionsError = ZM_CreateProfessionTables()
+local implantsReady, implantsError = ZM_CreateImplantTables()
+local creditsReady, creditsError = ZM_CreateCreditTables()
+local tradeReady, tradeError = ZM_TradeService:Init()
 if not attributesReady then
     ErrorNoHalt("[ZombieSim] Could not prepare player attributes: " .. tostring(attributesError) .. "\n")
 end
@@ -67,6 +94,18 @@ if not playerItemsReady then
 end
 if not lootSpotsReady then
     ErrorNoHalt("[ZombieSim] Could not prepare loot spots: " .. tostring(lootSpotsError) .. "\n")
+end
+if not professionsReady then
+    ErrorNoHalt("[ZombieSim] Could not prepare profession claims: " .. tostring(professionsError) .. "\n")
+end
+if not implantsReady then
+    ErrorNoHalt("[ZombieSim] Could not prepare player implants: " .. tostring(implantsError) .. "\n")
+end
+if not creditsReady then
+    ErrorNoHalt("[ZombieSim] Could not prepare credits: " .. tostring(creditsError) .. "\n")
+end
+if not tradeReady then
+    ErrorNoHalt("[ZombieSim] Could not prepare den trading: " .. tostring(tradeError) .. "\n")
 end
 
 // Clients use these lightweight signals to refresh their local Player extension fields.
@@ -242,6 +281,13 @@ function GM:EnterOriginSafeZone(ply)
             return
         end
 
+        if ZM_AmmoService and ply.ZM_Inventory then
+            local synced, syncError = ZM_AmmoService:SyncAll(ply)
+            if not synced then
+                ErrorNoHalt("[ZombieSim] Could not persist ammunition before entering the origin safe room: " .. tostring(syncError) .. "\n")
+                return
+            end
+        end
         game.ConsoleCommand("changelevel " .. destination .. "\n")
     end
 
@@ -293,6 +339,13 @@ function GM:EnsurePlayerWorldMap(ply, entryLandmark)
         return false
     end
 
+    if ZM_AmmoService and ply.ZM_Inventory then
+        local synced, syncError = ZM_AmmoService:SyncAll(ply)
+        if not synced then
+            ErrorNoHalt("[ZombieSim] Could not persist ammunition before map transition: " .. tostring(syncError) .. "\n")
+            return false
+        end
+    end
     self.PlayerWorldMapTransitionQueued = true
     local landmark = type(entryLandmark) == "string" and string.match(entryLandmark, "^[A-Z]+_ENTRANCE$") or nil
     game.ConsoleCommand("changelevel " .. expectedMap .. (landmark and " " .. landmark or "") .. "\n")
@@ -360,6 +413,14 @@ function GM:PlayerSpawn( ply )
     if not inventoryLoaded then
         ErrorNoHalt("[ZombieSim] Could not load player inventory: " .. tostring(inventoryError) .. "\n")
     end
+    local implantsLoaded, implantsError = ZM_ImplantService:Load(ply)
+    if not implantsLoaded then
+        ErrorNoHalt("[ZombieSim] Could not load player implants: " .. tostring(implantsError) .. "\n")
+    end
+    local creditsLoaded, creditsError = ZM_CreditService:Load(ply)
+    if not creditsLoaded then
+        ErrorNoHalt("[ZombieSim] Could not load player credits: " .. tostring(creditsError) .. "\n")
+    end
     self:ReconcilePlayerOriginCell(ply)
     ply:SetHealth(math.max(ply.SavedHealth, 1))
     ply.Stamina = math.Clamp(tonumber(ply.Stamina) or ply:GetMaxStamina(), 0, ply:GetMaxStamina())
@@ -399,6 +460,12 @@ end
 
 // Persist progress that may have changed since the last explicit update.
 function GM:PlayerDisconnected( ply )
+    if ZM_AmmoService and ply.ZM_Inventory then
+        local synced, syncError = ZM_AmmoService:SyncAll(ply)
+        if not synced then
+            ErrorNoHalt("[ZombieSim] Could not persist ammunition on disconnect: " .. tostring(syncError) .. "\n")
+        end
+    end
     // Preview editor and teleport writes are immediate; disconnect teardown can expose cleared fields.
     if ZM_World.ActiveProfile ~= "preview" then
         ply:Save("player disconnect")
@@ -410,8 +477,13 @@ end
 function GM:ShutDown()
     for _, ply in ipairs(player.GetAll()) do
         if IsValid(ply) then
+            if ZM_AmmoService and ply.ZM_Inventory then
+                local synced, syncError = ZM_AmmoService:SyncAll(ply)
+                if not synced then
+                    ErrorNoHalt("[ZombieSim] Could not persist ammunition during shutdown: " .. tostring(syncError) .. "\n")
+                end
+            end
             ply.ZM_PersistentStateLoaded = false
         end
     end
 end
-

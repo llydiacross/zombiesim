@@ -13,11 +13,32 @@ function StaticData:ValidateRuntimeReferences(registry, report)
 
     for _, itemId in ipairs(table.GetKeys(registry.items)) do
         local item = registry.items[itemId]
-        if item.weaponClass and not weapons.GetStored(item.weaponClass) then
+        local storedWeapon = item.weaponClass and weapons.GetStored(item.weaponClass) or nil
+        if item.weaponClass and not storedWeapon then
             warn("item_definitions.json", "items." .. itemId, "SWEP '" .. item.weaponClass .. "' is not registered")
         end
-        if not file.Exists("materials/items/" .. item.thumbnail .. ".png", "GAME") then
-            warn("item_definitions.json", "items." .. itemId .. ".thumbnail", "materials/items/" .. item.thumbnail .. ".png does not exist")
+        if item.viewModel and not util.IsValidModel(item.viewModel) then
+            warn("item_definitions.json", "items." .. itemId .. ".viewModel", item.viewModel .. " is not a valid mounted model")
+        end
+        if item.worldModel and not util.IsValidModel(item.worldModel) then
+            warn("item_definitions.json", "items." .. itemId .. ".worldModel", item.worldModel .. " is not a valid mounted model")
+        end
+        if storedWeapon then
+            if item.viewModel and storedWeapon.ViewModel ~= item.viewModel then
+                warn("item_definitions.json", "items." .. itemId .. ".viewModel", "does not match SWEP '" .. item.weaponClass .. "'")
+            end
+            if item.worldModel and storedWeapon.WorldModel ~= item.worldModel then
+                warn("item_definitions.json", "items." .. itemId .. ".worldModel", "does not match SWEP '" .. item.weaponClass .. "'")
+            end
+            local expectsAutomatic = item.firingMode == "automatic"
+            local isAutomatic = storedWeapon.Primary and storedWeapon.Primary.Automatic == true
+            if item.firingMode and expectsAutomatic ~= isAutomatic then
+                warn("item_definitions.json", "items." .. itemId .. ".firingMode", "does not match SWEP '" .. item.weaponClass .. "'")
+            end
+        end
+        // An authored materials/items/<thumbnail>.png is an optional override; the model spawn icon is the default.
+        if not util.IsValidModel(item.iconModel) then
+            warn("item_definitions.json", "items." .. itemId .. ".iconModel", item.iconModel .. " is not a valid mounted model")
         end
     end
     for _, rule in ipairs(registry.entityLoot.rules) do
@@ -26,6 +47,12 @@ function StaticData:ValidateRuntimeReferences(registry, report)
         end
     end
     local npcList = list.Get("NPC")
+    for _, recipeId in ipairs(table.GetKeys(registry.recipes or {})) do
+        local stationClass = StaticData.CraftingStations[registry.recipes[recipeId].station]
+        if stationClass and not scripted_ents.GetStored(stationClass) then
+            warn("recipe_definitions.json", "recipes." .. recipeId .. ".station", "station entity '" .. stationClass .. "' is not registered")
+        end
+    end
     for _, enemyId in ipairs(table.GetKeys(registry.enemies)) do
         local enemy = registry.enemies[enemyId]
         if not scripted_ents.GetStored(enemy.entity) and not npcList[enemy.entity] then
@@ -50,20 +77,13 @@ function StaticData:ValidateRuntimeReferences(registry, report)
 end
 
 local function canRunCommand(ply, command)
-    if IsValid(ply) and not ply:IsAdmin() then
-        ply:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. command .. " must be run by an in-game admin.\n")
-        return false
-    end
+    if not ZM_Util.RequireAdmin(ply, command) then return false end
     return true
 end
 
 local function printLines(ply, lines)
     for _, line in ipairs(lines) do
-        if IsValid(ply) then
-            ply:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. line .. "\n")
-        else
-            print("[ZombieSim] " .. line)
-        end
+        ZM_Util.Reply(ply, line)
     end
 end
 

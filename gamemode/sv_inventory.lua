@@ -19,9 +19,7 @@ function Service.NewInventory()
     return { backpack = {}, stash = {}, equipped = {} }
 end
 
-local function profileFor(target)
-    return target.ZM_InventoryProfile or ZM_World.ActiveProfile
-end
+local profileFor = ZM_Util.ProfileFor
 
 local function loadWeaponSlots(target)
     local rows, loadError = ZM_GetEquippedWeaponSlots(target:SteamID(), profileFor(target))
@@ -40,9 +38,7 @@ local function saveWeaponSlots(target)
     return ZM_ReplaceEquippedWeaponSlots(target:SteamID(), profileFor(target), target.ZM_WeaponSlots or {})
 end
 
-local function isWholeNumber(value, minimum, maximum)
-    return type(value) == "number" and value == math.floor(value) and value >= minimum and (maximum == nil or value <= maximum)
-end
+local isWholeNumber = ZM_Util.IsWholeNumber
 
 // Pure container operations. They mutate the inventory they are given, so callers pass a draft copy.
 local Ops = {}
@@ -117,6 +113,9 @@ function Ops.Add(inventory, container, instance)
 
     for _, merge in ipairs(merges) do
         slots[merge.slot].count = slots[merge.slot].count + merge.amount
+        if definition.food then
+            slots[merge.slot].createdAt = ZM_Food.MergedCreatedAt(slots[merge.slot], instance)
+        end
     end
     if newSlot then
         local placed = table.Copy(instance)
@@ -227,6 +226,9 @@ function Ops.Move(inventory, instanceId, toContainer, toSlot, count, newInstance
             return false, "the target stack only has room for " .. space
         end
         target.count = target.count + count
+        if Items:GetDefinition(target.itemId).food then
+            target.createdAt = ZM_Food.MergedCreatedAt(target, instance)
+        end
         instance.count = instance.count - count
         if instance.count == 0 then
             inventory[fromContainer][fromSlot] = nil
@@ -254,6 +256,7 @@ function Service.ToRows(inventory)
                 level = instance.level,
                 mastercraft = instance.mastercraft == true,
                 attributes = instance.attributes,
+                clip = tonumber(instance.clip) or 0,
                 createdAt = instance.createdAt or 0
             })
         end
@@ -297,6 +300,7 @@ function Service.FromRows(rows)
                 level = tonumber(row.level) or 1,
                 mastercraft = tonumber(row.mastercraft) == 1 or row.mastercraft == true,
                 attributes = readAttributes(row.attributes),
+                clip = tonumber(row.clip) or 0,
                 createdAt = tonumber(row.createdAt) or 0
             }
             if not Items:GetDefinition(instance.itemId) then
@@ -381,7 +385,7 @@ function Service:Send(target)
         end
     end
     local bankCash = math.max(0, tonumber(target.Cash) or 0)
-    local snapshot = { capacity = Items.ContainerCapacity, canAccessStash = self:CanAccessStash(target), cash = bankCash + bundleCash, bankCash = bankCash, bundleCash = bundleCash, equipped = {}, weaponSlots = target.ZM_WeaponSlots or {}, equippedItems = {} }
+    local snapshot = { serverTime = os.time(), capacity = Items.ContainerCapacity, canAccessStash = self:CanAccessStash(target), cash = bankCash + bundleCash, bankCash = bankCash, bundleCash = bundleCash, equipped = {}, weaponSlots = target.ZM_WeaponSlots or {}, equippedItems = {} }
     local equippedIds = {}
     for slot = 1, 3 do
         local loadout = snapshot.weaponSlots[slot]
@@ -394,7 +398,7 @@ function Service:Send(target)
     for container, slots in pairs(target.ZM_Inventory) do
         if container == "equipped" then
             for slot, instance in SortedPairs(slots) do
-                table.insert(snapshot.equippedItems, { slot = slot, instanceId = instance.instanceId, itemId = instance.itemId, count = instance.count, level = instance.level, mastercraft = instance.mastercraft == true, attributes = instance.attributes })
+                table.insert(snapshot.equippedItems, { slot = slot, instanceId = instance.instanceId, itemId = instance.itemId, count = instance.count, level = instance.level, mastercraft = instance.mastercraft == true, attributes = instance.attributes, clip = tonumber(instance.clip) or 0 })
             end
             continue
         end
@@ -409,6 +413,8 @@ function Service:Send(target)
                     level = instance.level,
                     mastercraft = instance.mastercraft == true,
                     attributes = instance.attributes,
+                    clip = tonumber(instance.clip) or 0,
+                    createdAt = tonumber(instance.createdAt) or 0,
                     missingDefinition = instance.missingDefinition == true
                 })
             end
@@ -515,7 +521,8 @@ function Service:RestoreEquippedWeapons(target)
 end
 
 // Applies a mutation to a copy, persists it in one transaction, and only then replaces the live inventory.
-function Service:Mutate(target, mutator)
+// options.extraSteps(draft, result) may return more ZM_CommitWrites steps (cash, claims) saved in that transaction.
+function Service:Mutate(target, mutator, options)
     if not IsValid(target) or not target.ZM_Inventory then
         return false, "inventory is not loaded"
     end
@@ -529,15 +536,45 @@ function Service:Mutate(target, mutator)
     local denId = self:CurrentDenId(target)
     local stashRows = Service.ToRows({ backpack = {}, stash = draft.stash, equipped = {} })
     for _, row in ipairs(stashRows) do row.container = "stash" end
-    local saved, saveError = ZM_ReplacePlayerItems(target:SteamID(), profileFor(target), playerRows)
+    local steps = { { kind = "playerItems", steamid = target:SteamID(), rows = playerRows } }
+    if denId and self:CanAccessStash(target) then
+        table.insert(steps, { kind = "denStash", steamid = target:SteamID(), safeZoneId = denId, rows = stashRows })
+    end
+    if options and options.extraSteps then
+        local extra, extraError = options.extraSteps(draft, result)
+        if not extra then
+            return false, extraError
+        end
+        table.Add(steps, extra)
+    end
+    local saved, saveError = ZM_CommitWrites(profileFor(target), steps)
     if not saved then
         return false, "could not save inventory: " .. tostring(saveError)
     end
-    if denId and self:CanAccessStash(target) then
-        local savedStash, stashError = ZM_ReplaceDenStashItems(target:SteamID(), profileFor(target), denId, stashRows)
-        if not savedStash then return false, "could not save den stash: " .. tostring(stashError) end
-    end
     target.ZM_Inventory = draft
+    self:ReconcileEquippedWeapons(target)
+    self:Send(target)
+    return true, result
+end
+
+// Applies a mutation limited to backpack/equipped state without rewriting the current den stash.
+function Service:MutatePlayerItems(target, mutator)
+    if not IsValid(target) or not target.ZM_Inventory then
+        return false, "inventory is not loaded"
+    end
+    target.ZM_Inventory.equipped = target.ZM_Inventory.equipped or {}
+    local draft = table.Copy(target.ZM_Inventory)
+    local ok, result = mutator(draft)
+    if not ok then
+        return false, result
+    end
+    draft.stash = target.ZM_Inventory.stash
+    local saved, saveError = ZM_ReplacePlayerItems(target:SteamID(), profileFor(target), playerItemRows(draft))
+    if not saved then
+        return false, "could not save inventory: " .. tostring(saveError)
+    end
+    target.ZM_Inventory.backpack = draft.backpack
+    target.ZM_Inventory.equipped = draft.equipped
     self:ReconcileEquippedWeapons(target)
     self:Send(target)
     return true, result
@@ -654,7 +691,13 @@ function Service:UseItem(target, reference, targetPly)
     end
     local used = itemClass:OnUse(target, itemData, targetPly)
     if used then
-        return true
+        if definition.food and target.UpdatePlayerData then
+            local saved, saveError = target:UpdatePlayerData("food consumed")
+            if not saved then
+                print("[ZombieSim] Could not save survival stats after eating for " .. target:SteamID() .. ": " .. tostring(saveError))
+            end
+        end
+        return true, itemData.appliedEffects and ("Consumed: " .. ZM_Food:DescribeEffects(itemData.appliedEffects) .. ".") or nil
     end
     local restore = table.Copy(itemData.instance)
     restore.instanceId = Service.NewInstanceId()
@@ -666,6 +709,10 @@ end
 // Gives the SWEP for a backpack weapon instance with its rolled attributes applied.
 function Service:EquipWeapon(target, reference, preferredSlot)
     target.ZM_Inventory.equipped = target.ZM_Inventory.equipped or {}
+    local backpackInstance = self:FindBackpackInstance(target, reference)
+    if backpackInstance then
+        reference = backpackInstance.instanceId
+    end
     local container, sourceSlot, instance = Ops.FindInstance(target.ZM_Inventory, reference)
     if not instance then
         return false, "That item is not in your backpack."
@@ -682,8 +729,8 @@ function Service:EquipWeapon(target, reference, preferredSlot)
         return false, "Weapon '" .. definition.weaponClass .. "' is not installed."
     end
     target.ZM_WeaponSlots = target.ZM_WeaponSlots or {}
-    local selectedSlot = tonumber(preferredSlot)
-    if not selectedSlot or selectedSlot < 1 or selectedSlot > 3 then
+    local selectedSlot = container == "equipped" and sourceSlot or tonumber(preferredSlot)
+    if container ~= "equipped" and (not selectedSlot or selectedSlot < 1 or selectedSlot > 3) then
         selectedSlot = 1
         for slot = 1, 3 do
             if not target.ZM_WeaponSlots[slot] or not target.ZM_WeaponSlots[slot].instanceId then selectedSlot = slot break end
@@ -779,7 +826,13 @@ function Service:EquipWeaponInSlot(target, reference, slot)
     return true, "Equipped in weapon slot " .. slot .. "."
 end
 
-hook.Add("PlayerSwitchWeapon", "ZM.Inventory.PersistSelectedWeapon", function(target, _, weapon)
+hook.Add("PlayerSwitchWeapon", "ZM.Inventory.PersistSelectedWeapon", function(target, oldWeapon, weapon)
+    if ZM_AmmoService and IsValid(oldWeapon) and oldWeapon.GetItemInstanceId and oldWeapon:GetItemInstanceId() ~= "" then
+        local synced, syncError = ZM_AmmoService:SyncWeapon(target, oldWeapon)
+        if not synced then
+            ErrorNoHalt("[ZombieSim] Could not persist switched weapon ammunition: " .. tostring(syncError) .. "\n")
+        end
+    end
     if not IsValid(target) or not target.ZM_WeaponSlots or not IsValid(weapon) or not weapon.GetItemInstanceId then return end
     local instanceId = weapon:GetItemInstanceId()
     if not instanceId then return end
@@ -801,6 +854,12 @@ end)
 function Service:UnequipWeapon(target, instanceId)
     for _, weapon in ipairs(target:GetWeapons()) do
         if weapon.GetItemInstanceId and weapon:GetItemInstanceId() == instanceId then
+            if ZM_AmmoService then
+                local synced, syncError = ZM_AmmoService:SyncWeapon(target, weapon)
+                if not synced then
+                    return false, "could not save weapon ammunition: " .. tostring(syncError)
+                end
+            end
             local previousSlots = table.Copy(target.ZM_WeaponSlots or {})
             for slot = 1, 3 do
                 if target.ZM_WeaponSlots and target.ZM_WeaponSlots[slot] and target.ZM_WeaponSlots[slot].instanceId == instanceId then
@@ -1048,9 +1107,17 @@ function ply:SendInventory()
 end
 
 hook.Add("PlayerDeath", "ZM.Inventory.LoseBackpackOnDeath", function(victim)
-    if not IsValid(victim) or not victim.ZM_Inventory or next(victim.ZM_Inventory.backpack) == nil then
+    if not IsValid(victim) or not victim.ZM_Inventory then
         return
     end
+    if ZM_AmmoService then
+        local synced, syncError = ZM_AmmoService:SyncAll(victim)
+        if not synced then
+            ErrorNoHalt("[ZombieSim] Could not persist weapon ammunition before death loss for " .. victim:SteamID() .. ": " .. tostring(syncError) .. "\n")
+            return
+        end
+    end
+    if next(victim.ZM_Inventory.backpack) == nil then return end
     local lost, result = Service:LoseBackpack(victim)
     if lost then
         victim:ChatPrint("[ZombieSim] You died and lost everything in your backpack.")
@@ -1060,36 +1127,11 @@ hook.Add("PlayerDeath", "ZM.Inventory.LoseBackpackOnDeath", function(victim)
 end)
 
 // Admin commands. From the server console or the dev bridge they act on the first connected human.
-local function firstHuman()
-    for _, candidate in ipairs(player.GetHumans()) do
-        if IsValid(candidate) then
-            return candidate
-        end
-    end
-end
+local firstHuman = ZM_Util.FirstHuman
 
-local function resolveTarget(caller, command)
-    if IsValid(caller) then
-        if not caller:IsAdmin() then
-            caller:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. command .. " must be run by an in-game admin.\n")
-            return nil
-        end
-        return caller
-    end
-    local target = firstHuman()
-    if not target then
-        print("[ZombieSim] " .. command .. " needs a connected player.")
-    end
-    return target
-end
+local resolveTarget = ZM_Util.ResolveCommandTarget
 
-local function reply(caller, message)
-    if IsValid(caller) then
-        caller:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. message .. "\n")
-    else
-        print("[ZombieSim] " .. message)
-    end
-end
+local reply = ZM_Util.Reply
 
 local function describeInventory(target)
     local inventory = target.ZM_Inventory
@@ -1109,7 +1151,12 @@ local function describeInventory(target)
                 end
                 attributes = " [" .. table.concat(parts, ", ") .. "]"
             end
-            table.insert(lines, string.format("    %2d  %s x%d  L%d  %s%s%s", slot, Items:GetDisplayName(instance), instance.count, instance.level, instance.instanceId, attributes, instance.missingDefinition and "  (unknown item)" or ""))
+            local freshness = ""
+            local band = ZM_Food:GetBand(instance)
+            if band then
+                freshness = "  " .. ZM_Food.Bands[band].label
+            end
+            table.insert(lines, string.format("    %2d  %s x%d  L%d  %s%s%s%s", slot, Items:GetDisplayName(instance), instance.count, instance.level, instance.instanceId, attributes, freshness, instance.missingDefinition and "  (unknown item)" or ""))
         end
     end
     return lines
@@ -1167,20 +1214,11 @@ local function runInventoryCommand(caller, command, arguments)
     return true
 end
 
-ZM_DevConsole = ZM_DevConsole or {}
-ZM_DevConsole.DirectCommands = ZM_DevConsole.DirectCommands or {}
-for command, help in pairs({
+ZM_Util.RegisterCommands({
     zn_inventory = "Prints the target player's backpack and stash.",
     zn_give_item = "zn_give_item <itemId> [count] [level] [mastercraft 0/1]: adds items to the backpack (weapons roll level and attributes when level is omitted).",
     zn_use_item = "zn_use_item <instanceId|itemId>: uses one unit of a backpack item.",
     zn_equip_item = "zn_equip_item <instanceId|itemId>: equips a backpack weapon with its rolled attributes.",
     zn_remove_item = "zn_remove_item <itemId> [count] [container]: removes items (backpack by default).",
     zn_move_item = "zn_move_item <instanceId> <backpack|stash> [slot] [count]: moves or splits a stack."
-}) do
-    concommand.Add(command, function(caller, _, arguments)
-        runInventoryCommand(caller, command, arguments)
-    end, nil, help)
-    ZM_DevConsole.DirectCommands[command] = function(argumentString)
-        return runInventoryCommand(nil, command, string.Explode("%s+", argumentString or "", true))
-    end
-end
+}, runInventoryCommand)

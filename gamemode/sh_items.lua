@@ -6,6 +6,7 @@ local Items = ZM_Items
 Items.Containers = { backpack = true, stash = true, equipped = true }
 Items.ContainerCapacity = { backpack = 20, stash = 60, equipped = 3 }
 Items.DefaultJob = "Civilian"
+Items.MaximumWeaponClip = 64
 
 local ply = FindMetaTable("Player")
 
@@ -13,15 +14,28 @@ function ply:GetLevel()
     return math.floor(tonumber(self.Level) or self:GetNWInt("Level", 1))
 end
 
-// Returns a player attribute value such as Strength or Medicine (0 when unknown).
-function ply:GetStat(name)
+// Returns a player's allocated attribute points, without profession bonuses (0 when unknown).
+function ply:GetBaseStat(name)
     local attributes = self.Attributes
     return tonumber(attributes and attributes[name]) or 0
 end
 
-function ply:GetJobRole()
+// Returns an effective attribute value such as Strength or Medicine: allocated points plus the profession bonus.
+function ply:GetStat(name)
+    local bonus = ZM_Professions and ZM_Professions:GetStatBonus(self:GetJobRole(), name) or 0
+    return self:GetBaseStat(name) + bonus
+end
+
+// Raw stored job name (may be an alias or an unknown legacy value).
+function ply:GetStoredJob()
     local job = self.Job or self:GetNWString("Job", "")
     return job ~= "" and job or Items.DefaultJob
+end
+
+// Canonical profession id for the stored job; aliases resolve and unknown jobs fall back to Civilian.
+function ply:GetJobRole()
+    local job = self:GetStoredJob()
+    return ZM_Professions and ZM_Professions:Resolve(job) or job
 end
 
 function Items:GetDefinition(itemId)
@@ -29,13 +43,15 @@ function Items:GetDefinition(itemId)
 end
 
 // Stackable instances share an item id and level and carry no per-instance attributes or mastercraft.
-function Items:CanStack(first, second)
+// Perishable food additionally requires the same freshness band at `now` (default: current time).
+function Items:CanStack(first, second, now)
     local definition = self:GetDefinition(first.itemId)
     return definition ~= nil and definition.maxStack > 1
         and first.itemId == second.itemId
         and first.level == second.level
         and not first.mastercraft and not second.mastercraft
         and first.attributes == nil and second.attributes == nil
+        and (not definition.food or not ZM_Food or ZM_Food:CanStack(first, second, now))
 end
 
 // Validates an instance against its definition. Returns true or false plus a reason.
@@ -80,6 +96,13 @@ function Items:ValidateInstance(instance)
                 return false, "attribute '" .. name .. "' must be a whole number from " .. definition.minAttributes .. " to " .. definition.maxAttributes
             end
         end
+    end
+    local clip = tonumber(instance.clip) or 0
+    if clip ~= math.floor(clip) or clip < 0 or clip > self.MaximumWeaponClip then
+        return false, "clip must be a whole number from 0 to " .. self.MaximumWeaponClip
+    end
+    if clip > 0 and definition.type ~= "bullet_weapon" then
+        return false, "only bullet weapons can store loaded rounds"
     end
     return true
 end
@@ -143,10 +166,20 @@ function Items:GetInstanceValue(instance)
         end
         value = value * (1 + levelProgress) * (1 + attributeProgress)
         if instance.mastercraft then
-            value = value * 3
+            value = value * (self:IsUltraMastercraft(instance) and 5 or 3)
         end
     end
     return math.Round(value, 2)
+end
+
+// An Ultra Mastercraft is a mastercraft whose every attribute is at the item's maximum.
+function Items:IsUltraMastercraft(instance)
+    local definition = instance and instance.mastercraft and self:GetDefinition(instance.itemId)
+    if not definition or not definition.attributes or type(instance.attributes) ~= "table" then return false end
+    for _, name in ipairs(definition.attributes) do
+        if instance.attributes[name] ~= definition.maxAttributes then return false end
+    end
+    return true
 end
 
 // Checks level and stat requirements for using an item. Returns true or false plus a player-facing reason.
@@ -173,7 +206,7 @@ function Items:GetDisplayName(instance)
     local definition = self:GetDefinition(instance.itemId)
     local name = definition and definition.name or instance.itemId
     if instance.mastercraft then
-        name = name .. " (MC)"
+        name = name .. (self:IsUltraMastercraft(instance) and " (Ultra MC)" or " (MC)")
     end
     return name
 end
@@ -204,7 +237,17 @@ function Items:NewItemClass()
 end
 
 function Items:GetItemClass(itemId)
-    return ZM_EntityClasses[itemId] or GenericItem
+    if ZM_EntityClasses[itemId] then
+        return ZM_EntityClasses[itemId]
+    end
+    local definition = self:GetDefinition(itemId)
+    if definition and definition.food and ZM_EntityClasses.FoodItem then
+        return ZM_EntityClasses.FoodItem
+    end
+    if definition and definition.medical and ZM_EntityClasses.MedicalItem then
+        return ZM_EntityClasses.MedicalItem
+    end
+    return GenericItem
 end
 
 // Server: copies an instance's attribute multipliers onto a ZombieSim weapon's networked scale variables.
@@ -218,6 +261,6 @@ function Items:ApplyInstanceToWeapon(weapon, instance)
     weapon:SetClipScale(scales.ClipSize)
     weapon:SetItemInstanceId(instance.instanceId)
     if weapon.OnItemInstanceApplied then
-        weapon:OnItemInstanceApplied()
+        weapon:OnItemInstanceApplied(instance)
     end
 end

@@ -9,12 +9,23 @@ local function clampDanger(danger)
     return math.Clamp(tonumber(danger) or 0, 0, 1)
 end
 
+// Weight multiplier for an entry from loot bonuses by category ({ weapons = 0.2 } makes weapons 1.2x). Implant items
+// are never boosted, so an implant can not make other implants more likely.
+function Loot.GetBonusMultiplier(entry, bonuses)
+    if not bonuses then return 1 end
+    local definition = ZM_StaticData:GetItem(entry.item)
+    local category = definition and definition.lootCategory
+    if not category or category == "implants" then return 1 end
+    return 1 + math.max(tonumber(bonuses[category]) or 0, 0)
+end
+
 // Interpolated weight per entry; entries whose weight is not above 0 are excluded. Returns the list and total.
-function Loot.GetWeights(entries, danger)
+// bonuses (optional) scales weights by item loot category; see GetBonusMultiplier.
+function Loot.GetWeights(entries, danger, bonuses)
     danger = clampDanger(danger)
     local weights, total = {}, 0
     for _, entry in ipairs(entries or {}) do
-        local weight = Lerp(danger, entry.minWeight or 0, entry.maxWeight or entry.minWeight or 0)
+        local weight = Lerp(danger, entry.minWeight or 0, entry.maxWeight or entry.minWeight or 0) * Loot.GetBonusMultiplier(entry, bonuses)
         if weight > 0 then
             table.insert(weights, { entry = entry, weight = weight })
             total = total + weight
@@ -24,8 +35,8 @@ function Loot.GetWeights(entries, danger)
 end
 
 // Weighted pick of one entry. A single positive-weight entry is always picked; returns nil when nothing can roll.
-function Loot.PickEntry(entries, danger, rng)
-    local weights, total = Loot.GetWeights(entries, danger)
+function Loot.PickEntry(entries, danger, rng, bonuses)
+    local weights, total = Loot.GetWeights(entries, danger, bonuses)
     if total <= 0 then
         return nil
     end
@@ -48,12 +59,13 @@ function Loot.RollCount(entry, danger, rng)
     return rng:Int(minimum, upper)
 end
 
-// Rolls one item instance from entries. Options: danger, playerLevel, rng, seed. Returns instance, entry or nil, reason.
+// Rolls one item instance from entries. Options: danger, playerLevel, rng, seed, and lootBonuses (the finder's implant
+// loot bonuses by category). Returns instance, entry or nil, reason.
 function Loot:RollItem(entries, options)
     options = options or {}
     local rng = options.rng or Generation.NewRng(options.seed)
     local danger = clampDanger(options.danger)
-    local entry = self.PickEntry(entries, danger, rng)
+    local entry = self.PickEntry(entries, danger, rng, options.lootBonuses)
     if not entry then
         return nil, "nothing in this loot table can roll"
     end
@@ -132,6 +144,7 @@ function Loot:RollBossLoot(boss, options)
     local definition = ZM_Items:GetDefinition(entry.item)
     local rollOptions = table.Copy(options)
     rollOptions.rng = rng
+    rollOptions.lootBonuses = nil
     rollOptions.danger = 1
     rollOptions.level = definition.maxLevel
     rollOptions.mastercraft = definition.attributes ~= nil
@@ -174,19 +187,10 @@ function Loot:SampleGroup(groupId, danger, samples, seed)
     return { group = groupId, danger = clampDanger(danger), samples = samples, seed = seed, rows = rows, failures = failures }
 end
 
-local function reply(caller, message)
-    if IsValid(caller) then
-        caller:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. message .. "\n")
-    else
-        print("[ZombieSim] " .. message)
-    end
-end
+local reply = ZM_Util.Reply
 
 local function isAllowed(caller, command)
-    if IsValid(caller) and not caller:IsAdmin() then
-        reply(caller, command .. " must be run by an in-game admin.")
-        return false
-    end
+    if not ZM_Util.RequireAdmin(caller, command) then return false end
     return true
 end
 
@@ -216,7 +220,7 @@ end
 
 // Rolls a group for the target player (their level and cell danger unless a danger is given) and adds it to the backpack.
 local function runGiveLoot(caller, arguments)
-    local target = IsValid(caller) and caller or player.GetHumans()[1]
+    local target = IsValid(caller) and caller or ZM_Util.FirstHuman()
     if not IsValid(target) then
         reply(caller, "zn_give_loot needs a connected player.")
         return false, "no target player"

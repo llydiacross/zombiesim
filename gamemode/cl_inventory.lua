@@ -36,6 +36,7 @@ net.Receive("ZM.InventorySnapshot", function()
     snapshot.stash = snapshot.stash or {}
     snapshot.capacity = snapshot.capacity or {}
     snapshot.equipped = snapshot.equipped or {}
+    Inventory.ServerTimeOffset = (tonumber(snapshot.serverTime) or os.time()) - os.time()
     Inventory.Snapshot = snapshot
     Inventory.Loaded = true
     hook.Run("ZM.InventoryUpdated", snapshot)
@@ -53,6 +54,8 @@ net.Receive("ZM.DenEntity.Open", function()
         Inventory:Open()
     elseif class == "zn_crafting_station" and ZM_Crafting and ZM_Crafting.Open then
         ZM_Crafting:Open()
+    elseif class == "zn_mastercraft_station" and ZM_MastercraftUI and ZM_MastercraftUI.Open then
+        ZM_MastercraftUI:Open()
     end
 end)
 
@@ -80,14 +83,6 @@ function Inventory:IsEquipped(instanceId)
     return false
 end
 
-local thumbnailCache = {}
-local function getThumbnail(name)
-    if thumbnailCache[name] == nil then
-        thumbnailCache[name] = file.Exists("materials/items/" .. name .. ".png", "GAME") and Material("items/" .. name .. ".png", "smooth") or false
-    end
-    return thumbnailCache[name] or nil
-end
-
 local function abbreviate(name)
     local letters = {}
     for word in string.gmatch(name, "%w+") do
@@ -99,12 +94,58 @@ local function abbreviate(name)
     return table.concat(letters)
 end
 
+function Inventory:GetServerTime()
+    return os.time() + (self.ServerTimeOffset or 0)
+end
+
+local bandColors = {
+    fresh = Color(120, 210, 90),
+    stale = Color(225, 190, 70),
+    spoiled = Color(200, 80, 60)
+}
+
+local function formatDuration(seconds)
+    local hours = math.floor(seconds / 3600)
+    if hours >= 48 then
+        return math.floor(hours / 24) .. " days"
+    elseif hours >= 1 then
+        return hours .. " h"
+    end
+    return math.max(1, math.floor(seconds / 60)) .. " min"
+end
+
+local function describeFood(lines, instance)
+    local now = Inventory:GetServerTime()
+    local effects = ZM_Food:GetEffects(instance, now)
+    if not effects then
+        return
+    end
+    local definition = ZM_Items:GetDefinition(instance.itemId)
+    local tier = ZM_StaticData.FoodTiers[definition.food.tier]
+    table.insert(lines, string.format("%s %s food (tier %d)", tier and tier.label or "", definition.food.preparation, definition.food.tier))
+    local band = ZM_Food.Bands[effects.band]
+    local untilNext = ZM_Food:GetSecondsToNextBand(instance, now)
+    local nextLabel = effects.band == "fresh" and "stale" or "spoiled"
+    table.insert(lines, band.label .. (untilNext and (" - " .. nextLabel .. " in " .. formatDuration(untilNext)) or ""))
+    local summary = ZM_Food:DescribeEffects(effects)
+    if summary ~= "" then
+        table.insert(lines, "Each: " .. summary)
+    end
+end
+
 local function describe(instance)
     local definition = ZM_Items:GetDefinition(instance.itemId)
     if not definition then
         return "Unknown item (" .. tostring(instance.itemId) .. ")\nThis item no longer exists and is kept unchanged."
     end
     local lines = { ZM_Items:GetDisplayName(instance) .. (instance.count > 1 and (" x" .. instance.count) or ""), "Level " .. instance.level }
+    if definition.food then
+        describeFood(lines, instance)
+    end
+    if definition.type == "bullet_weapon" then
+        table.insert(lines, "Loaded: " .. tostring(tonumber(instance.clip) or 0))
+        table.insert(lines, "Ammo: " .. tostring(definition.ammoId))
+    end
     for name, score in SortedPairs(instance.attributes or {}) do
         table.insert(lines, "  " .. name .. ": " .. score)
     end
@@ -177,29 +218,42 @@ local function openContextMenu(instance, container)
     menu:Open()
 end
 
+// Background and fallback label; a model spawn icon, when attached, draws above this.
 local function paintTile(instance, width, height)
     local definition = ZM_Items:GetDefinition(instance.itemId)
     local palette = ZM_DermaSkin.Palette
     surface.SetDrawColor(palette.raised)
     surface.DrawRect(0, 0, width, height)
-    local material = definition and getThumbnail(definition.thumbnail)
-    if material then
-        surface.SetDrawColor(255, 255, 255, 255)
-        surface.SetMaterial(material)
-        surface.DrawTexturedRect(6, 6, width - 12, height - 12)
-    else
-        local label = definition and abbreviate(definition.name) or "?"
-        draw.SimpleText(label, "ZM_InventoryTile", width * 0.5, height * 0.5, definition and palette.text or palette.redBright, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+    if not definition then
+        draw.SimpleText("?", "ZM_InventoryTile", width * 0.5, height * 0.5, palette.redBright, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+    elseif not ZM_ItemIcons:DrawOverride(definition, 6, 6, math.min(width, height) - 12) and not definition.iconModel then
+        draw.SimpleText(abbreviate(definition.name), "ZM_InventoryTile", width * 0.5, height * 0.5, palette.text, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
     end
-    draw.SimpleText("L" .. instance.level, "ZM_InventorySmall", 4, 2, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+end
+
+// Level, count, equipped marker, and border, drawn above the spawn icon.
+local function paintTileOverlay(instance, width, height)
+    local palette = ZM_DermaSkin.Palette
+    draw.SimpleTextOutlined("L" .. instance.level, "ZM_InventorySmall", 4, 2, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP, 1, Color(0, 0, 0, 200))
     if instance.count > 1 then
         draw.SimpleTextOutlined("x" .. instance.count, "ZM_InventorySmall", width - 4, height - 2, palette.text, TEXT_ALIGN_RIGHT, TEXT_ALIGN_BOTTOM, 1, Color(0, 0, 0, 200))
     end
     if Inventory:IsEquipped(instance.instanceId) then
         draw.SimpleText("E", "ZM_InventorySmall", width - 4, 2, equippedColor, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
     end
+    local band = ZM_Food:GetBand(instance, Inventory:GetServerTime())
+    if band then
+        surface.SetDrawColor(bandColors[band])
+        surface.DrawRect(4, height - 8, 5, 5)
+    end
     surface.SetDrawColor(instance.mastercraft and gold or palette.border)
     surface.DrawOutlinedRect(0, 0, width, height, instance.mastercraft and 2 or 1)
+end
+
+local function decorateTile(tile, instance)
+    tile.Paint = function(_, width, height) paintTile(instance, width, height) end
+    tile.PaintOver = function(_, width, height) paintTileOverlay(instance, width, height) end
+    ZM_ItemIcons:Attach(tile, ZM_Items:GetDefinition(instance.itemId), 6)
 end
 
 local function buildContainer(parent, container, locked)
@@ -240,7 +294,7 @@ local function buildContainer(parent, container, locked)
             tile.Instance = instance
             tile.Container = container
             tile:SetTooltip(describe(instance))
-            tile.Paint = function(_, width, height) paintTile(instance, width, height) end
+            decorateTile(tile, instance)
             tile.DoDoubleClick = function()
                 if container == "backpack" then
                     primaryAction(instance)
@@ -351,7 +405,7 @@ function Inventory:Rebuild()
             tile.Instance = instance
             tile.Container = "equipped"
             tile.Slot = slot
-            tile.Paint = function(_, width, height) paintTile(instance, width, height) end
+            decorateTile(tile, instance)
             tile:Droppable(dragName)
             tile.DoClick = function() Inventory:SendAction({ action = "equip_slot", instanceId = instance.instanceId, slot = slot }) end
         end

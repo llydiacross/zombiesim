@@ -78,6 +78,18 @@ function ply:GetRadiationDamagePerSecond()
     return intensity * ZM_World:GetRadiationDamagePerSecondAtPeak()
 end
 
+// Radiation cannot reduce health below the tier unlocked by Strength.
+function ply:GetRadiationHealthFloor()
+    local strength = self:GetStat("Strength")
+    if strength >= 10 then
+        return 80
+    end
+    if strength >= 5 then
+        return 72
+    end
+    return 64
+end
+
 // Returns the compact world-data id for the player's current logical cell.
 function ply:GetWorldCellId()
     local cell = self:GetWorldCell()
@@ -178,8 +190,8 @@ ply.CanTravelToNeighbor = ply.CanTravelToNeighbour
 
 // Strength and agility increase the player's maximum stamina pool.
 function ply:GetMaxStamina()
-    local agility = tonumber(self.Attributes and self.Attributes.Agility) or 0
-    local strength = tonumber(self.Attributes and self.Attributes.Strength) or 0
+    local agility = self:GetStat("Agility")
+    local strength = self:GetStat("Strength")
 
     return 100 + agility * 5 + strength * 3
 end
@@ -209,4 +221,3 @@ function ply:GetLevelAimTrace(range)
         mask = MASK_SHOT
     })
 end
-

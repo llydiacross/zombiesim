@@ -5,14 +5,17 @@
       "name": "Bandage",
       "entityClass": "entity",
       "thumbnail": "itemBandage",
+      "iconModel": "models/items/healthkit.mdl",
       "value": 2,
-      "maxStack": 3
+      "maxStack": 3,
+      "lootCategory": "medical"
     },
     "weaponMeleeCrowbar": {
       "name": "Crowbar",
       "entityClass": "weapon",
       "type": "melee_weapon",
       "thumbnail": "weaponMeleeCrowbar",
+      "iconModel": "models/weapons/w_crowbar.mdl",
       "statRequirements": {
         "Strength": 5
       },
@@ -26,6 +29,9 @@
       "entityClass": "weapon",
       "type": "bullet_weapon",
       "thumbnail": "weaponHandgun9mm",
+      "iconModel": "models/weapons/w_pistol.mdl",
+      "ammoId": "ammo9mm",
+      "firingMode": "semi_auto",
       "minLevel": 1,
       "maxLevel": 20,
       "value": 150,
@@ -36,6 +42,13 @@
       "entityClass": "weapon",
       "type": "bullet_weapon",
       "thumbnail": "weaponUsp9mm",
+      "weaponClass": "weapon_zn_usp_9mm",
+      "cssFamily": "usp",
+      "viewModel": "models/weapons/cstrike/c_pist_usp.mdl",
+      "worldModel": "models/weapons/w_pist_usp.mdl",
+      "ammoId": "ammo9mm",
+      "firingMode": "semi_auto",
+      "rarity": "common",
       "minLevel": 1,
       "maxLevel": 12,
       "value": 180,
@@ -46,6 +59,13 @@
       "entityClass": "weapon",
       "type": "bullet_weapon",
       "thumbnail": "weaponAutoPistol9mm",
+      "weaponClass": "weapon_zn_auto_pistol_9mm",
+      "cssFamily": "glock18",
+      "viewModel": "models/weapons/cstrike/c_pist_glock18.mdl",
+      "worldModel": "models/weapons/w_pist_glock18.mdl",
+      "ammoId": "ammo9mm",
+      "firingMode": "automatic",
+      "rarity": "rare",
       "minLevel": 15,
       "maxLevel": 30,
       "value": 420,
@@ -56,6 +76,13 @@
       "entityClass": "weapon",
       "type": "bullet_weapon",
       "thumbnail": "weaponMp5",
+      "weaponClass": "weapon_zn_mp5",
+      "cssFamily": "mp5",
+      "viewModel": "models/weapons/cstrike/c_smg_mp5.mdl",
+      "worldModel": "models/weapons/w_smg_mp5.mdl",
+      "ammoId": "ammo9mm",
+      "firingMode": "automatic",
+      "rarity": "uncommon",
       "minLevel": 5,
       "maxLevel": 18,
       "value": 340,
@@ -66,6 +93,13 @@
       "entityClass": "weapon",
       "type": "bullet_weapon",
       "thumbnail": "weaponM4a1",
+      "weaponClass": "weapon_zn_m4a1",
+      "cssFamily": "m4a1",
+      "viewModel": "models/weapons/cstrike/c_rif_m4a1.mdl",
+      "worldModel": "models/weapons/w_rif_m4a1.mdl",
+      "ammoId": "ammo556",
+      "firingMode": "automatic",
+      "rarity": "uncommon",
       "minLevel": 8,
       "maxLevel": 24,
       "value": 520,
@@ -76,6 +110,13 @@
       "entityClass": "weapon",
       "type": "bullet_weapon",
       "thumbnail": "weaponAk47",
+      "weaponClass": "weapon_zn_ak47",
+      "cssFamily": "ak47",
+      "viewModel": "models/weapons/cstrike/c_rif_ak47.mdl",
+      "worldModel": "models/weapons/w_rif_ak47.mdl",
+      "ammoId": "ammo762",
+      "firingMode": "automatic",
+      "rarity": "uncommon",
       "minLevel": 8,
       "maxLevel": 24,
       "value": 540,
@@ -86,6 +127,13 @@
       "entityClass": "weapon",
       "type": "bullet_weapon",
       "thumbnail": "weaponShotgunM3",
+      "weaponClass": "weapon_zn_shotgun_m3",
+      "cssFamily": "m3",
+      "viewModel": "models/weapons/cstrike/c_shot_m3super90.mdl",
+      "worldModel": "models/weapons/w_shot_m3super90.mdl",
+      "ammoId": "ammoShells",
+      "firingMode": "semi_auto",
+      "rarity": "common",
       "minLevel": 4,
       "maxLevel": 16,
       "value": 300,
@@ -96,6 +144,13 @@
       "entityClass": "weapon",
       "type": "bullet_weapon",
       "thumbnail": "weaponScout",
+      "weaponClass": "weapon_zn_scout",
+      "cssFamily": "scout",
+      "viewModel": "models/weapons/cstrike/c_snip_scout.mdl",
+      "worldModel": "models/weapons/w_snip_scout.mdl",
+      "ammoId": "ammo762",
+      "firingMode": "semi_auto",
+      "rarity": "rare",
       "minLevel": 10,
       "maxLevel": 28,
       "value": 620,
@@ -106,15 +161,65 @@
       "entityClass": "weapon",
       "type": "bullet_weapon",
       "thumbnail": "weaponAwp",
+      "weaponClass": "weapon_zn_awp",
+      "cssFamily": "awp",
+      "viewModel": "models/weapons/cstrike/c_snip_awp.mdl",
+      "worldModel": "models/weapons/w_snip_awp.mdl",
+      "ammoId": "ammo50Bmg",
+      "firingMode": "semi_auto",
+      "rarity": "very_rare",
       "minLevel": 18,
       "maxLevel": 35,
       "value": 980,
       "maxStack": 1
     },
+    "ammo9mm": {
+      "name": "9mm Rounds",
+      "entityClass": "generic",
+      "thumbnail": "ammo9mm",
+      "iconModel": "models/items/boxsrounds.mdl",
+      "value": 1,
+      "maxStack": 250
+    },
+    "ammo556": {
+      "name": "5.56mm Rounds",
+      "entityClass": "generic",
+      "thumbnail": "ammo556",
+      "iconModel": "models/items/boxmrounds.mdl",
+      "value": 2,
+      "maxStack": 250
+    },
+    "ammo762": {
+      "name": "7.62mm Rounds",
+      "entityClass": "generic",
+      "thumbnail": "ammo762",
+      "iconModel": "models/props/de_prodigy/ammo_can_02.mdl",
+      "value": 3,
+      "maxStack": 250
+    },
+    "ammoShells": {
+      "name": "Shotgun Shells",
+      "entityClass": "generic",
+      "thumbnail": "ammoShells",
+      "iconModel": "models/items/boxbuckshot.mdl",
+      "value": 2,
+      "maxStack": 100
+    },
+    "ammo50Bmg": {
+      "name": ".50 BMG Rounds",
+      "entityClass": "generic",
+      "thumbnail": "ammo50Bmg",
+      "iconModel": "models/items/boxsniperrounds.mdl",
+      "value": 10,
+      "maxStack": 50,
+      "minLevel": 18,
+      "maxLevel": 35
+    },
     "itemBossJuice": {
       "name": "Boss Juice",
       "entityClass": "entity",
       "thumbnail": "itemBossJuice",
+      "iconModel": "models/healthvial.mdl",
       "value": 1000,
       "maxStack": 1,
       "minLevel": 30,
@@ -124,8 +229,356 @@
       "name": "Cash Bundle",
       "entityClass": "entity",
       "thumbnail": "itemCashBundle",
+      "iconModel": "models/props/cs_assault/money.mdl",
       "value": 1,
-      "maxStack": 2147483647
+      "maxStack": 2147483647,
+      "lootCategory": "cash"
+    },
+    "itemOil": {
+      "name": "Oil",
+      "entityClass": "generic",
+      "iconModel": "models/props_junk/metalgascan.mdl",
+      "value": 6,
+      "maxStack": 10
+    },
+    "itemScrapMetal": {
+      "name": "Scrap Metal",
+      "entityClass": "generic",
+      "iconModel": "models/gibs/metal_gib4.mdl",
+      "value": 4,
+      "maxStack": 20
+    },
+    "itemCloth": {
+      "name": "Cloth",
+      "entityClass": "generic",
+      "iconModel": "models/props_junk/garbage_bag001a.mdl",
+      "value": 3,
+      "maxStack": 20
+    },
+    "itemGunpowder": {
+      "name": "Gunpowder",
+      "entityClass": "generic",
+      "iconModel": "models/props_lab/box01a.mdl",
+      "value": 12,
+      "maxStack": 20
+    },
+    "itemBeanStew": {
+      "name": "Bean Stew",
+      "entityClass": "entity",
+      "iconModel": "models/props_c17/metalpot001a.mdl",
+      "value": 30,
+      "maxStack": 3,
+      "food": { "preparation": "cooked", "tier": 3, "nutrition": 40, "hydration": 15, "health": 8, "stamina": 25, "shelfLifeHours": 168 }
+    },
+    "itemBarrelWater": {
+      "name": "Barrel Water",
+      "entityClass": "entity",
+      "iconModel": "models/props_junk/garbage_plasticbottle003a.mdl",
+      "value": 3,
+      "maxStack": 5,
+      "food": { "preparation": "raw", "tier": 1, "hydration": 25, "health": -3, "shelfLifeHours": 168 }
+    },
+    "itemRottenFood": {
+      "name": "Rotten Food",
+      "entityClass": "entity",
+      "iconModel": "models/props_junk/garbage_takeoutcarton001a.mdl",
+      "value": 1,
+      "maxStack": 5,
+      "food": { "preparation": "raw", "tier": 0, "nutrition": 10, "health": -8 }
+    },
+    "itemCannedBeans": {
+      "name": "Tin of Beans",
+      "entityClass": "entity",
+      "iconModel": "models/props_junk/garbage_metalcan001a.mdl",
+      "value": 8,
+      "maxStack": 5,
+      "food": { "preparation": "preserved", "tier": 2, "nutrition": 25, "hydration": 5, "health": 2, "stamina": 10, "shelfLifeHours": 720 }
+    },
+    "itemPreservedMeat": {
+      "name": "Preserved Meat",
+      "entityClass": "entity",
+      "iconModel": "models/props_junk/garbage_metalcan002a.mdl",
+      "value": 25,
+      "maxStack": 5,
+      "food": { "preparation": "preserved", "tier": 3, "nutrition": 40, "health": 8, "stamina": 25, "shelfLifeHours": 1440 }
+    },
+    "itemLabGrownMeat": {
+      "name": "Lab-Grown Meat",
+      "entityClass": "entity",
+      "iconModel": "models/props_lab/jar01b.mdl",
+      "value": 120,
+      "maxStack": 3,
+      "food": { "preparation": "raw", "tier": 5, "nutrition": 65, "health": 25, "stamina": 60, "shelfLifeHours": 2160 }
+    },
+    "itemMouldyScraps": {
+      "name": "Mouldy Scraps",
+      "entityClass": "entity",
+      "iconModel": "models/props_junk/food_pile01.mdl",
+      "value": 1,
+      "maxStack": 5,
+      "food": { "preparation": "raw", "tier": 0, "nutrition": 6, "health": -5 }
+    },
+    "itemOrange": {
+      "name": "Orange",
+      "entityClass": "entity",
+      "iconModel": "models/props/cs_italy/orange.mdl",
+      "value": 3,
+      "maxStack": 5,
+      "food": { "preparation": "raw", "tier": 1, "nutrition": 8, "hydration": 10, "health": 2, "stamina": 5, "shelfLifeHours": 120 }
+    },
+    "itemWatermelon": {
+      "name": "Watermelon",
+      "entityClass": "entity",
+      "iconModel": "models/props_junk/watermelon01.mdl",
+      "value": 5,
+      "maxStack": 2,
+      "food": { "preparation": "raw", "tier": 1, "nutrition": 12, "hydration": 20, "health": 1, "stamina": 5, "shelfLifeHours": 72 }
+    },
+    "itemMilkCarton": {
+      "name": "Carton of Milk",
+      "entityClass": "entity",
+      "iconModel": "models/props_junk/garbage_milkcarton001a.mdl",
+      "value": 4,
+      "maxStack": 3,
+      "food": { "preparation": "raw", "tier": 1, "nutrition": 10, "hydration": 20, "health": 1, "shelfLifeHours": 24 }
+    },
+    "itemSodaCan": {
+      "name": "Can of Soda",
+      "entityClass": "entity",
+      "iconModel": "models/props_junk/popcan01a.mdl",
+      "value": 3,
+      "maxStack": 6,
+      "food": { "preparation": "preserved", "tier": 1, "nutrition": 5, "hydration": 20, "stamina": 15, "shelfLifeHours": 168 }
+    },
+    "itemBottledWater": {
+      "name": "Bottled Water",
+      "entityClass": "entity",
+      "iconModel": "models/props/cs_office/water_bottle.mdl",
+      "value": 5,
+      "maxStack": 5,
+      "food": { "preparation": "preserved", "tier": 1, "hydration": 35, "shelfLifeHours": 168 }
+    },
+    "itemCannedSoup": {
+      "name": "Tin of Soup",
+      "entityClass": "entity",
+      "iconModel": "models/props_phx2/garbage_metalcan001a.mdl",
+      "value": 9,
+      "maxStack": 5,
+      "food": { "preparation": "preserved", "tier": 2, "nutrition": 20, "hydration": 15, "health": 3, "stamina": 10, "shelfLifeHours": 720 }
+    },
+    "itemMilitaryRation": {
+      "name": "Military Ration",
+      "entityClass": "entity",
+      "iconModel": "models/props/cs_militia/food_stack.mdl",
+      "value": 35,
+      "maxStack": 3,
+      "food": { "preparation": "preserved", "tier": 3, "nutrition": 45, "hydration": 10, "health": 10, "stamina": 40, "shelfLifeHours": 1440 }
+    },
+    "itemCannedHotdogs": {
+      "name": "Canned Hot Dogs",
+      "entityClass": "entity",
+      "iconModel": "models/food/hotdog.mdl",
+      "value": 45,
+      "maxStack": 3,
+      "food": { "preparation": "preserved", "tier": 4, "nutrition": 45, "hydration": 5, "health": 10, "stamina": 35, "shelfLifeHours": 1800 }
+    },
+    "itemSealedFactoryMeal": {
+      "name": "Sealed Factory Meal",
+      "entityClass": "entity",
+      "iconModel": "models/food/burger.mdl",
+      "value": 60,
+      "maxStack": 3,
+      "food": { "preparation": "preserved", "tier": 4, "nutrition": 55, "hydration": 5, "health": 15, "stamina": 45, "shelfLifeHours": 2160 }
+    },
+    "itemPotato": {
+      "name": "Potato",
+      "entityClass": "entity",
+      "iconModel": "models/props_phx/misc/potato.mdl",
+      "value": 2,
+      "maxStack": 10,
+      "food": { "preparation": "raw", "tier": 1, "nutrition": 10, "health": -2, "stamina": 5, "shelfLifeHours": 168, "cooksInto": "itemBakedPotato" }
+    },
+    "itemBakedPotato": {
+      "name": "Baked Potato",
+      "entityClass": "entity",
+      "iconModel": "models/props_c17/metalpot002a.mdl",
+      "value": 6,
+      "maxStack": 10,
+      "food": { "preparation": "cooked", "tier": 2, "nutrition": 28, "hydration": 2, "health": 4, "stamina": 15, "shelfLifeHours": 120 }
+    },
+    "itemCarrot": {
+      "name": "Carrots",
+      "entityClass": "entity",
+      "iconModel": "models/props_junk/food_pile02.mdl",
+      "value": 2,
+      "maxStack": 10,
+      "food": { "preparation": "raw", "tier": 1, "nutrition": 9, "hydration": 5, "health": 2, "stamina": 5, "shelfLifeHours": 144 }
+    },
+    "itemTomato": {
+      "name": "Tomatoes",
+      "entityClass": "entity",
+      "iconModel": "models/props_junk/food_pile03.mdl",
+      "value": 4,
+      "maxStack": 10,
+      "food": { "preparation": "raw", "tier": 2, "nutrition": 15, "hydration": 12, "health": 3, "stamina": 5, "shelfLifeHours": 96 }
+    },
+    "itemBananas": {
+      "name": "Bananas",
+      "entityClass": "entity",
+      "iconModel": "models/props/cs_italy/bananna_bunch.mdl",
+      "value": 5,
+      "maxStack": 5,
+      "food": { "preparation": "raw", "tier": 2, "nutrition": 18, "hydration": 4, "health": 2, "stamina": 15, "shelfLifeHours": 96 }
+    },
+    "itemHerbs": {
+      "name": "Herbs",
+      "entityClass": "generic",
+      "iconModel": "models/props/cs_office/plant01.mdl",
+      "value": 4,
+      "maxStack": 20
+    },
+    "itemRawGameBird": {
+      "name": "Raw Game Bird",
+      "entityClass": "entity",
+      "iconModel": "models/pigeon.mdl",
+      "value": 6,
+      "maxStack": 5,
+      "food": { "preparation": "raw", "tier": 1, "nutrition": 12, "health": -8, "shelfLifeHours": 24, "cooksInto": "itemRoastBird" }
+    },
+    "itemRoastBird": {
+      "name": "Roast Bird",
+      "entityClass": "entity",
+      "iconModel": "models/props_interiors/pot01a.mdl",
+      "value": 18,
+      "maxStack": 5,
+      "food": { "preparation": "cooked", "tier": 3, "nutrition": 42, "hydration": 5, "health": 10, "stamina": 30, "shelfLifeHours": 168 }
+    },
+    "itemSpices": {
+      "name": "Spices",
+      "entityClass": "generic",
+      "iconModel": "models/props_junk/glassjug01.mdl",
+      "value": 6,
+      "maxStack": 20
+    },
+    "itemPainkillers": {
+      "name": "Painkillers",
+      "entityClass": "entity",
+      "iconModel": "models/props_lab/jar01a.mdl",
+      "value": 10,
+      "maxStack": 10,
+      "medical": { "health": 15 }
+    },
+    "itemMorphine": {
+      "name": "Morphine",
+      "entityClass": "entity",
+      "iconModel": "models/props_junk/glassbottle01a.mdl",
+      "value": 35,
+      "maxStack": 5,
+      "minLevel": 10,
+      "maxLevel": 300,
+      "medical": { "health": 50 }
+    },
+    "itemSurgicalKit": {
+      "name": "Surgical Kit",
+      "entityClass": "entity",
+      "iconModel": "models/props_c17/briefcase001a.mdl",
+      "value": 60,
+      "maxStack": 3,
+      "minLevel": 20,
+      "maxLevel": 300,
+      "medical": { "health": 70 }
+    },
+    "itemAgentX": {
+      "name": "Agent X",
+      "entityClass": "entity",
+      "iconModel": "models/props_junk/garbage_glassbottle003a.mdl",
+      "value": 150,
+      "maxStack": 2,
+      "minLevel": 40,
+      "maxLevel": 300,
+      "medical": { "health": 100 }
+    },
+    "itemCopperWire": {
+      "name": "Copper Wire",
+      "entityClass": "generic",
+      "iconModel": "models/props/de_prodigy/spoolwire.mdl",
+      "value": 8,
+      "maxStack": 20
+    },
+    "itemScrews": {
+      "name": "Screws",
+      "entityClass": "generic",
+      "iconModel": "models/props_lab/box01b.mdl",
+      "value": 3,
+      "maxStack": 50
+    },
+    "itemGlue": {
+      "name": "Glue",
+      "entityClass": "generic",
+      "iconModel": "models/props_junk/metal_paintcan001a.mdl",
+      "value": 5,
+      "maxStack": 20
+    },
+    "itemEngineParts": {
+      "name": "Engine Parts",
+      "entityClass": "generic",
+      "iconModel": "models/props_wasteland/gear01.mdl",
+      "value": 25,
+      "maxStack": 10
+    },
+    "itemImplantCortexBooster": {
+      "name": "Cortex Booster Implant",
+      "entityClass": "generic",
+      "iconModel": "models/props_lab/harddrive01.mdl",
+      "value": 1500,
+      "minLevel": 1,
+      "maxLevel": 50,
+      "implant": { "slot": "Neural", "effects": { "xpGain": [0.05, 0.25] } }
+    },
+    "itemImplantFortuneChip": {
+      "name": "Fortune Chip Implant",
+      "entityClass": "generic",
+      "iconModel": "models/items/battery.mdl",
+      "value": 1200,
+      "minLevel": 1,
+      "maxLevel": 50,
+      "implant": { "slot": "Neural", "effects": { "lootCash": [0.1, 0.4], "lootMaterials": [0.05, 0.2] } }
+    },
+    "itemImplantTargetingLens": {
+      "name": "Targeting Lens Implant",
+      "entityClass": "generic",
+      "iconModel": "models/gibs/scanner_gib01.mdl",
+      "value": 1500,
+      "minLevel": 1,
+      "maxLevel": 50,
+      "implant": { "slot": "Ocular", "effects": { "lootWeapons": [0.05, 0.3], "lootAmmo": [0.05, 0.2] } }
+    },
+    "itemImplantTriageLens": {
+      "name": "Triage Lens Implant",
+      "entityClass": "generic",
+      "iconModel": "models/gibs/shield_scanner_gib1.mdl",
+      "value": 1200,
+      "minLevel": 1,
+      "maxLevel": 50,
+      "implant": { "slot": "Ocular", "effects": { "lootMedical": [0.1, 0.35], "lootFood": [0.05, 0.2] } }
+    },
+    "itemImplantRegenMesh": {
+      "name": "Regeneration Mesh Implant",
+      "entityClass": "generic",
+      "iconModel": "models/gibs/manhack_gib01.mdl",
+      "value": 1500,
+      "minLevel": 1,
+      "maxLevel": 50,
+      "implant": { "slot": "Dermal", "effects": { "healthRegen": [1, 5] } }
+    },
+    "itemImplantMyofiberWeave": {
+      "name": "Myofiber Weave Implant",
+      "entityClass": "generic",
+      "iconModel": "models/props_combine/combine_mine01.mdl",
+      "value": 1500,
+      "minLevel": 1,
+      "maxLevel": 50,
+      "implant": { "slot": "Dermal", "effects": { "moveSpeed": [0.03, 0.1] } }
     }
   }
 }

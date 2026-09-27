@@ -1,4 +1,2 @@
-# request: drag-debug-4
-zn_equip_item 6ab8397f613d401dc1
-zn_move_item 6ab8397f613d401dc1 backpack 4
-zn_inventory
+# request: j-job-restore
+zn_set_job Civilian

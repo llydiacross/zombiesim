@@ -23,7 +23,8 @@
     },
     "itemVest": {
       "name": "Vest",
-      "entityClass": "armour"
+      "entityClass": "armour",
+      "iconModel": "props/vest.png"
     },
     "weaponhandgun": {
       "name": "Bad Id",

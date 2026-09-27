@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "recipeVersion": 1,
+  "recipes": {
+    "recipeBoiledWater": {
+      "name": "Boiled Water",
+      "category": "Food",
+      "station": "workbench",
+      "craftTime": 6,
+      "levelRequirement": 1,
+      "ingredients": [
+        { "item": "itemBarrelWater", "count": 2 },
+        { "item": "itemOil", "count": 1 }
+      ],
+      "results": [
+        { "item": "itemBottledWater", "count": 2 }
+      ],
+      "freshness": "new"
+    },
+    "recipeBeanStew": {
+      "name": "Bean Stew",
+      "category": "Food",
+      "station": "workbench",
+      "craftTime": 10,
+      "levelRequirement": 1,
+      "ingredients": [
+        { "item": "itemCannedBeans", "count": 2 },
+        { "item": "itemBarrelWater", "count": 1 },
+        { "item": "itemOil", "count": 1 }
+      ],
+      "results": [
+        { "item": "itemBeanStew", "count": 1 }
+      ],
+      "freshness": "inherit"
+    },
+    "recipeClothBandage": {
+      "name": "Cloth Bandage",
+      "category": "Medical",
+      "station": "workbench",
+      "craftTime": 4,
+      "levelRequirement": 1,
+      "statRequirements": { "Medicine": 1 },
+      "ingredients": [
+        { "item": "itemCloth", "count": 2 }
+      ],
+      "results": [
+        { "item": "itemBandage", "count": 1 }
+      ]
+    },
+    "recipeAmmo9mm": {
+      "name": "Hand-Loaded 9mm",
+      "category": "Ammunition",
+      "station": "workbench",
+      "craftTime": 8,
+      "levelRequirement": 1,
+      "ingredients": [
+        { "item": "itemScrapMetal", "count": 2 },
+        { "item": "itemGunpowder", "count": 1 }
+      ],
+      "results": [
+        { "item": "ammo9mm", "count": 20 }
+      ]
+    },
+    "recipeAmmoShells": {
+      "name": "Hand-Loaded Shotgun Shells",
+      "category": "Ammunition",
+      "station": "workbench",
+      "craftTime": 10,
+      "levelRequirement": 4,
+      "statRequirements": { "WeaponCrafting": 2 },
+      "ingredients": [
+        { "item": "itemScrapMetal", "count": 1 },
+        { "item": "itemGunpowder", "count": 2 }
+      ],
+      "results": [
+        { "item": "ammoShells", "count": 8 }
+      ]
+    },
+    "recipeResearchPainkillers": {
+      "name": "Painkillers",
+      "category": "Medical",
+      "service": true,
+      "jobs": [ "Scientist" ],
+      "craftTime": 8,
+      "levelRequirement": 1,
+      "ingredients": [
+        { "item": "itemHerbs", "count": 2 },
+        { "item": "itemBottledWater", "count": 1 }
+      ],
+      "results": [
+        { "item": "itemPainkillers", "count": 2 }
+      ]
+    },
+    "recipeResearchMorphine": {
+      "name": "Morphine",
+      "category": "Medical",
+      "service": true,
+      "jobs": [ "Scientist" ],
+      "craftTime": 15,
+      "levelRequirement": 15,
+      "ingredients": [
+        { "item": "itemPainkillers", "count": 3 },
+        { "item": "itemHerbs", "count": 2 },
+        { "item": "itemBottledWater", "count": 1 }
+      ],
+      "results": [
+        { "item": "itemMorphine", "count": 1 }
+      ]
+    }
+  }
+}

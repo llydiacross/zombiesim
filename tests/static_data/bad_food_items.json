@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "items": {
+    "itemGoodBeans": {
+      "name": "Good Beans",
+      "entityClass": "entity",
+      "maxStack": 5,
+      "food": { "preparation": "preserved", "tier": 2, "nutrition": 25, "shelfLifeHours": 720 }
+    },
+    "itemOverfedBeans": {
+      "name": "Overfed Beans",
+      "entityClass": "entity",
+      "food": { "preparation": "preserved", "tier": 2, "nutrition": 90, "shelfLifeHours": 720 }
+    },
+    "itemForeverBeans": {
+      "name": "Forever Beans",
+      "entityClass": "entity",
+      "food": { "preparation": "preserved", "tier": 2, "nutrition": 20 }
+    },
+    "itemAgedRot": {
+      "name": "Aged Rot",
+      "entityClass": "entity",
+      "food": { "preparation": "raw", "tier": 0, "nutrition": 5, "shelfLifeHours": 12 }
+    },
+    "itemEmptyRot": {
+      "name": "Empty Rot",
+      "entityClass": "entity",
+      "food": { "preparation": "raw", "tier": 0 }
+    },
+    "itemFriedAir": {
+      "name": "Fried Air",
+      "entityClass": "entity",
+      "food": { "preparation": "fried", "tier": 9, "nutrition": 10 }
+    },
+    "itemGenericFood": {
+      "name": "Generic Food",
+      "entityClass": "generic",
+      "food": { "preparation": "raw", "tier": 1, "nutrition": 10, "shelfLifeHours": 24 }
+    }
+  }
+}

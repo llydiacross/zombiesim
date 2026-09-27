@@ -11,15 +11,6 @@ surface.CreateFont("ZM_LootMarker", { font = "Trebuchet MS", size = 26, weight =
 surface.CreateFont("ZM_LootTitle", { font = "Trebuchet MS", size = 22, weight = 900, antialias = true })
 surface.CreateFont("ZM_LootLevel", { font = "Trebuchet MS", size = 15, weight = 700, antialias = true })
 
-local thumbnailCache = {}
-local function getThumbnail(name)
-    if thumbnailCache[name] == nil then
-        local path = "materials/items/" .. name .. ".png"
-        thumbnailCache[name] = file.Exists(path, "GAME") and Material("items/" .. name .. ".png", "smooth") or false
-    end
-    return thumbnailCache[name] or nil
-end
-
 local function describeAttributes(offer)
     local lines = {}
     for name, score in SortedPairs(offer.attributes or {}) do
@@ -129,22 +120,25 @@ function Popup:Show(offer)
     thumbnail:Dock(FILL)
     thumbnail:DockMargin(40, 12, 40, 4)
     thumbnail:SetTooltip(describeAttributes(offer))
-    local material = getThumbnail(offer.thumbnail or offer.itemId or "")
+    local definition = ZM_Items:GetDefinition(offer.itemId or "")
     thumbnail.Paint = function(panel, width, height)
         local size = math.min(width, height)
         local x, y = math.floor((width - size) * 0.5), math.floor((height - size) * 0.5)
         surface.SetDrawColor(ZM_DermaSkin.Palette.raised)
         surface.DrawRect(x, y, size, size)
-        surface.SetDrawColor(offer.mastercraft and gold or ZM_DermaSkin.Palette.border)
-        surface.DrawOutlinedRect(x, y, size, size, 2)
-        if material then
-            surface.SetDrawColor(255, 255, 255, 255)
-            surface.SetMaterial(material)
-            surface.DrawTexturedRect(x + 8, y + 8, size - 16, size - 16)
-        else
+        if not definition then
             draw.SimpleText("?", "ZM_LootMarker", width * 0.5, height * 0.5, ZM_DermaSkin.Palette.muted, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+        else
+            ZM_ItemIcons:DrawOverride(definition, x + 8, y + 8, size - 16)
         end
     end
+    thumbnail.PaintOver = function(panel, width, height)
+        local size = math.min(width, height)
+        local x, y = math.floor((width - size) * 0.5), math.floor((height - size) * 0.5)
+        surface.SetDrawColor(offer.mastercraft and gold or ZM_DermaSkin.Palette.border)
+        surface.DrawOutlinedRect(x, y, size, size, 2)
+    end
+    ZM_ItemIcons:Attach(thumbnail, definition, 8)
 end
 
 net.Receive("ZM.LootOffer", function()

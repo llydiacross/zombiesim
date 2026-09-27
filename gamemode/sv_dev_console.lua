@@ -6,7 +6,7 @@ DevConsole.DirectCommands = DevConsole.DirectCommands or {}
 
 // Bridge-only: game.ConsoleCommand blocks lua_run, so death-path tests need a direct kill.
 DevConsole.DirectCommands.zombiesim_dev_kill_player = function()
-    local target = player.GetHumans()[1]
+    local target = ZM_Util.FirstHuman()
     if not IsValid(target) or not target:Alive() then
         return false, "no living player to kill"
     end
@@ -17,7 +17,7 @@ end
 // Bridge-only: moves the first player to a raw grid cell through the normal world-map transition.
 DevConsole.DirectCommands.zombiesim_dev_teleport_cell = function(argumentString)
     local gridX, gridY = string.match(argumentString or "", "^(%-?%d+)%s+(%-?%d+)$")
-    local target = player.GetHumans()[1]
+    local target = ZM_Util.FirstHuman()
     local cell = gridX and ZM_World:GetCell(tonumber(gridX), tonumber(gridY)) or nil
     if not IsValid(target) or not cell then
         return false, "usage: zombiesim_dev_teleport_cell <gridX> <gridY> with a connected player"
@@ -34,7 +34,7 @@ DevConsole.DirectCommands.zombiesim_dev_teleport_cell = function(argumentString)
 end
 
 DevConsole.DirectCommands.zombiesim_dev_spawn_boss = function(argumentString)
-    local target = player.GetHumans()[1]
+    local target = ZM_Util.FirstHuman()
     local bossId = string.Trim(argumentString or "")
     if not IsValid(target) or bossId == "" then
         return false, "usage: zombiesim_dev_spawn_boss <bossId>"
@@ -45,7 +45,7 @@ DevConsole.DirectCommands.zombiesim_dev_spawn_boss = function(argumentString)
 end
 
 DevConsole.DirectCommands.zombiesim_dev_kill_boss = function()
-    local target = player.GetHumans()[1]
+    local target = ZM_Util.FirstHuman()
     if not IsValid(target) then return false, "no connected player" end
     local profileState = ZM_Bosses.Profiles[ZM_World.ActiveProfile]
     for _, instance in pairs(profileState and profileState.active or {}) do
@@ -165,17 +165,37 @@ local function runtimeSnapshot(playerEntity)
         return nil
     end
 
+    local cell, cellError = playerEntity:GetWorldCell()
+    local radiationIntensity = cell and ZM_World:GetRadiationIntensity(cell) or nil
+    local radiationElapsedSeconds = type(playerEntity.RadiationEnteredAt) == "number"
+        and math.max(CurTime() - playerEntity.RadiationEnteredAt, 0)
+        or nil
+
     return {
         persistentStateLoaded = playerEntity.ZM_PersistentStateLoaded == true,
         previouslyConnected = playerEntity.PreviouslyConnected == true,
         cellX = playerEntity.CellX,
         cellY = playerEntity.CellY,
         currentSafeZoneId = playerEntity.CurrentSafeZoneId,
+        alive = playerEntity:Alive(),
+        currentHealth = playerEntity:Health(),
         skillPoints = playerEntity.SkillPoints,
         health = playerEntity.SavedHealth,
         stamina = playerEntity.Stamina,
         hunger = playerEntity.Hunger,
-        thirst = playerEntity.Thirst
+        thirst = playerEntity.Thirst,
+        worldCellId = cell and cell.id or nil,
+        worldCellError = cellError,
+        radiationIntensity = radiationIntensity,
+        radiationHealthFloor = playerEntity:GetRadiationHealthFloor(),
+        networkRadiationIntensity = playerEntity:GetNWFloat("RadiationIntensity", 0),
+        radiationCellId = playerEntity.RadiationCellId,
+        radiationEnteredAt = playerEntity.RadiationEnteredAt,
+        radiationElapsedSeconds = radiationElapsedSeconds,
+        radiationNextDamageAt = playerEntity.RadiationNextDamageAt,
+        radiationSecondsUntilDamage = type(playerEntity.RadiationNextDamageAt) == "number"
+            and math.max(playerEntity.RadiationNextDamageAt - CurTime(), 0)
+            or nil
     }
 end
 
@@ -271,10 +291,7 @@ concommand.Add("zombiesim_dev_persistence_report", function(_, _, arguments)
 end)
 
 concommand.Add("zombiesim_validate_scripts", function(ply)
-    if IsValid(ply) and not ply:IsAdmin() then
-        ply:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] zombiesim_validate_scripts must be run by an in-game admin.\n")
-        return
-    end
+    if not ZM_Util.RequireAdmin(ply, "zombiesim_validate_scripts") then return end
     runScriptValidation()
 end)
 

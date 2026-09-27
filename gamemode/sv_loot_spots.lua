@@ -266,6 +266,7 @@ function Spots:CompleteSearch(target, now, rng)
         local instance, reason = ZM_Loot:RollEntityLoot(spot.rule, {
             danger = self.Cell.danger,
             playerLevel = target.GetLevel and target:GetLevel() or 1,
+            lootBonuses = ZM_ImplantService:GetLootBonuses(target),
             rng = rng
         })
         if not instance then
@@ -486,13 +487,7 @@ hook.Add("ShutDown", "ZM.LootSpots.Presence", function()
     end
 end)
 
-local function reply(caller, message)
-    if IsValid(caller) then
-        caller:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. message .. "\n")
-    else
-        print("[ZombieSim] " .. message)
-    end
-end
+local reply = ZM_Util.Reply
 
 local function describeSpots(caller)
     local candidates = Spots:FindCandidates()
@@ -522,10 +517,7 @@ local function describeSpots(caller)
 end
 
 local function runSpotsCommand(caller, command)
-    if IsValid(caller) and not caller:IsAdmin() then
-        reply(caller, command .. " must be run by an in-game admin.")
-        return false, "not an admin"
-    end
+    if not ZM_Util.RequireAdmin(caller, command) then return false, "not an admin" end
     if command == "zn_loot_spots_refresh" then
         local cell = Spots.Cell
         if not cell then
@@ -553,14 +545,56 @@ end
 
 ZM_DevConsole = ZM_DevConsole or {}
 ZM_DevConsole.DirectCommands = ZM_DevConsole.DirectCommands or {}
-for command, help in pairs({
+ZM_Util.RegisterCommands({
     zn_loot_spots = "Lists the loot spots in the current cell.",
     zn_loot_spots_refresh = "Re-rolls every loot spot in the current cell as if the refresh time had passed."
-}) do
-    concommand.Add(command, function(caller)
-        runSpotsCommand(caller, command)
-    end, nil, help)
-    ZM_DevConsole.DirectCommands[command] = function()
-        return runSpotsCommand(nil, command)
+}, runSpotsCommand)
+
+// Development probe: the first human searches and accepts up to `limit` available spots whose model contains
+// `pattern`, through the normal BeginSearch/CompleteSearch/RespondOffer path. The player is placed beside each
+// spot for the range checks and returned afterwards; the search timer is skipped.
+local function runScavengeProbe(argumentString)
+    local arguments = string.Explode("%s+", string.Trim(argumentString or ""), true)
+    local pattern = string.lower(arguments[1] or "")
+    local limit = math.Clamp(tonumber(arguments[2]) or 1, 1, 10)
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:Alive() then
+        return false, "zn_dev_scavenge needs a living connected player"
     end
+    if pattern == "" or not Spots.Cell then
+        return false, "usage: zn_dev_scavenge <modelSubstring> [limit] on a map with loot spots"
+    end
+    local origin = target:GetPos()
+    local results = {}
+    for key, spot in SortedPairs(Spots.Cell.spots) do
+        if #results >= limit then break end
+        local model = IsValid(spot.entity) and string.lower(spot.entity:GetModel() or "") or ""
+        if (spot.state == "available" or spot.state == "declined") and not spot.runtime and string.find(model, pattern, 1, true) then
+            local center = spot.entity:WorldSpaceCenter()
+            target:SetPos(spot.entity:NearestPoint(center + Vector(200, 0, 0)) + Vector(24, 0, 0))
+            local now = CurTime()
+            local began, beginError = Spots:BeginSearch(target, spot, now)
+            local payload, searchError
+            local accepted, acceptResult
+            if began then
+                payload, searchError = Spots:CompleteSearch(target, now + Spots.SearchSeconds)
+                if payload then
+                    accepted, acceptResult = Spots:RespondOffer(target, payload.token, true, now + Spots.SearchSeconds)
+                end
+            end
+            Spots:CancelSearch(target, "probe finished")
+            table.insert(results, { key = key, model = model, began = began == true, beginError = beginError, itemId = payload and payload.itemId, count = payload and payload.count, searchError = searchError, accepted = accepted == true, result = acceptResult, state = spot.state })
+        end
+    end
+    target:SetPos(origin)
+    for _, result in ipairs(results) do
+        reply(nil, string.format("Scavenged %s %s: %s x%s (%s)", result.key, result.model, tostring(result.itemId), tostring(result.count), tostring(result.result or result.searchError or result.beginError)))
+    end
+    ZM_DevConsole:Report("scavengeProbe", { pattern = pattern, results = results })
+    if #results == 0 then
+        return false, "no available spot matches '" .. pattern .. "'"
+    end
+    return true
 end
+
+ZM_DevConsole.DirectCommands.zn_dev_scavenge = runScavengeProbe

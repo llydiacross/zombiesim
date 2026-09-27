@@ -155,6 +155,7 @@ function Enemies:OnEnemyKilled(victim, attacker, options)
     local instance = ZM_Loot:RollEnemyDrop(enemy, {
         danger = victim.EnemyDanger,
         playerLevel = killer.GetLevel and killer:GetLevel() or 1,
+        lootBonuses = ZM_ImplantService:GetLootBonuses(killer),
         rng = options and options.rng
     })
     if instance then
@@ -172,28 +173,9 @@ function Enemies:OnEnemyKilled(victim, attacker, options)
     return true, reward
 end
 
-local function reply(caller, message)
-    if IsValid(caller) then
-        caller:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. message .. "\n")
-    else
-        print("[ZombieSim] " .. message)
-    end
-end
+local reply = ZM_Util.Reply
 
-local function resolveTarget(caller, command)
-    if IsValid(caller) then
-        if not caller:IsAdmin() then
-            reply(caller, command .. " must be run by an in-game admin.")
-            return nil
-        end
-        return caller
-    end
-    local target = player.GetHumans()[1]
-    if not IsValid(target) then
-        reply(caller, command .. " needs a connected player.")
-    end
-    return target
-end
+local resolveTarget = ZM_Util.ResolveCommandTarget
 
 // Spawns a development enemy in front of the player without a Walker ticket (it is never counted or despawned by the materializer).
 local function spawnEnemy(caller, arguments)

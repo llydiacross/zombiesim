@@ -2,43 +2,32 @@
 
 ## Purpose
 
-This registry is the first implementation checkpoint for the CSS-inspired weapon batch. It records the authoritative mapping from CSS art and balance references to the ZombieSim local weapon architecture.
+This registry records the first implemented CSS-inspired weapon batch. CSS provides model and balance references only; every runtime weapon is a local ZombieSim SWEP built on the ZombieSim hitscan base.
 
-The critical rule is: CSS classes are never used as the live runtime class. They are only a content and balance reference for a local SWEP implementation built on the ZombieSim weapon base.
-
-## Live Mapping Rule
-
-- CSS/Source weapon family: visual and balance reference only
-- Local ZombieSim SWEP class: the real runtime class used by the game
-- Item definition: stable game item id bound to the local SWEP class and ammo type
+The item definitions in [content/data_static/item_definitions.json](../content/data_static/item_definitions.json) are authoritative for the mappings below. Phase C implements each `ammoId` as a stackable backpack item and persists loaded rounds on the weapon instance.
 
 ## First Batch Registry
 
-| itemId | cssFamily | localWeaponBase | ammoId | firingMode | rarity | levelBand | implementationState |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| weaponCssUsp9mm | usp | weapon_zn_base_hitscan | ammo9mm | semi_auto | common | 1-12 | design_locked |
-| weaponCssAutoPistol9mm | auto_pistol | weapon_zn_base_hitscan | ammo9mm | auto | rare | 15-30 | design_locked |
-| weaponCssMp5 | mp5 | weapon_zn_base_hitscan | ammo9mm | auto | uncommon | 5-18 | design_locked |
-| weaponCssM4a1 | m4a1 | weapon_zn_base_hitscan | ammo556 | auto | uncommon | 8-24 | design_locked |
-| weaponCssAk47 | ak47 | weapon_zn_base_hitscan | ammo762 | auto | uncommon | 8-24 | design_locked |
-| weaponCssShotgunM3 | m3 | weapon_zn_base_hitscan | ammoShells | semi_auto | common | 4-16 | design_locked |
-| weaponCssScout | scout | weapon_zn_base_hitscan | ammo762 | semi_auto | rare | 10-28 | design_locked |
-| weaponCssAwp | awp | weapon_zn_base_hitscan | ammo50Bmg | semi_auto | very_rare | 18-35 | design_locked |
+| itemId | cssFamily | localWeaponClass | viewModel | worldModel | ammoId | firingMode | rarity | levelBand | status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| weaponUsp9mm | usp | weapon_zn_usp_9mm | models/weapons/cstrike/c_pist_usp.mdl | models/weapons/w_pist_usp.mdl | ammo9mm | semi_auto | common | 1-12 | implemented; representative live test passed |
+| weaponAutoPistol9mm | glock18 | weapon_zn_auto_pistol_9mm | models/weapons/cstrike/c_pist_glock18.mdl | models/weapons/w_pist_glock18.mdl | ammo9mm | automatic | rare | 15-30 | implemented; automatic cadence probe passed |
+| weaponMp5 | mp5 | weapon_zn_mp5 | models/weapons/cstrike/c_smg_mp5.mdl | models/weapons/w_smg_mp5.mdl | ammo9mm | automatic | uncommon | 5-18 | implemented; catalog validation passed |
+| weaponM4a1 | m4a1 | weapon_zn_m4a1 | models/weapons/cstrike/c_rif_m4a1.mdl | models/weapons/w_rif_m4a1.mdl | ammo556 | automatic | uncommon | 8-24 | implemented; catalog validation passed |
+| weaponAk47 | ak47 | weapon_zn_ak47 | models/weapons/cstrike/c_rif_ak47.mdl | models/weapons/w_rif_ak47.mdl | ammo762 | automatic | uncommon | 8-24 | implemented; catalog validation passed |
+| weaponShotgunM3 | m3 | weapon_zn_shotgun_m3 | models/weapons/cstrike/c_shot_m3super90.mdl | models/weapons/w_shot_m3super90.mdl | ammoShells | semi_auto | common | 4-16 | implemented; catalog validation passed |
+| weaponScout | scout | weapon_zn_scout | models/weapons/cstrike/c_snip_scout.mdl | models/weapons/w_snip_scout.mdl | ammo762 | semi_auto | rare | 10-28 | implemented; catalog validation passed |
+| weaponAwp | awp | weapon_zn_awp | models/weapons/cstrike/c_snip_awp.mdl | models/weapons/w_snip_awp.mdl | ammo50Bmg | semi_auto | very_rare | 18-35 | implemented; catalog validation passed |
 
-## Required Validation Checklist
+## Implementation and Validation
 
-Before any item is bulk-added or enabled in gameplay, each row above must satisfy all of the following:
-
-1. Local asset paths for the selected model/viewmodel and sounds are confirmed in the installed game content.
-2. The item id is stable and matches the data registry.
-3. The local SWEP base is the actual live class used by the item.
-4. The ammo id is explicitly mapped and persists through save/load boundaries.
-5. Firing mode behavior matches the selected weapon archetype and is server-authoritative.
-6. Loot group and rarity assignment are deterministic and level-scoped.
-7. Static validation is passing before the item is enabled in a live client test.
+- Each item resolves to an explicit local `weapon_zn_*` class; no stock CSS SWEP class is used.
+- All eight local classes inherit `weapon_zn_base_hitscan`. The M3 uses a multi-pellet bullet count, and the Glock-style pistol has a separate automatic implementation.
+- The new weapon items are included in weapon-category loot groups while preserving the pre-existing generic handgun/melee ordering.
+- Offline GLua parsing and JSON parsing passed. The inventory regression suite passed 28 cases; after preserving the previous generic-loot ordering, the static-data suite passed 11 cases.
+- `zn_test_weapon_catalog` checks item-to-class/model/ammo/mode mappings, SWEP registration, automatic flags, and mounted model validity.
+- After reloading the preview map against the current source, `zn_test_weapon_catalog` passed all eight mappings and confirmed the model paths are mounted.
 
 ## Phase B Gate
 
-Phase B is complete only when this registry is accepted, static validation passes, and at least one representative item from the batch is live-tested from spawn through equip, fire, reload, and persistence.
-
-Until then, the batch remains a design-only registry and not an active gameplay implementation.
+Phase B's implementation gate is **complete**. A USP was granted and equipped from an item instance, began empty, consumed backpack 9mm during reload, fired in the live client, synchronized its deferred clip at a map boundary, and restored without recreating rounds. The local automatic 9mm pistol also consumed exactly one round and set its scaled 0.117-second cadence in the runtime probe. Per-weapon visual/feel acceptance (animation, sound, top-down aim, impact, and damage tuning) remains a deliberate gameplay review rather than an implementation blocker.

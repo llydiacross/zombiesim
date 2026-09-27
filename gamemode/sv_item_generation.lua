@@ -67,7 +67,8 @@ local function separateUniformScores(attributes, names, low, high, rng)
     attributes[name] = first > low and first - 1 or first + 1
 end
 
-function Generation:RollAttributes(definition, level, mastercraft, rng)
+// perfectChance (optional) overrides PerfectMastercraftChance, the odds that a mastercraft rolls every attribute at max.
+function Generation:RollAttributes(definition, level, mastercraft, rng, perfectChance)
     if not definition.attributes then
         return nil
     end
@@ -76,7 +77,7 @@ function Generation:RollAttributes(definition, level, mastercraft, rng)
     local attributes = {}
 
     if mastercraft then
-        local perfect = rng:Chance(self.PerfectMastercraftChance)
+        local perfect = rng:Chance(perfectChance or self.PerfectMastercraftChance)
         local low = math.max(minimum, maximum - 1)
         for _, name in ipairs(names) do
             attributes[name] = perfect and maximum or low + rng:Int(0, maximum - low)
@@ -124,6 +125,7 @@ function Generation:CreateInstance(itemId, options)
         level = level,
         mastercraft = mastercraft,
         attributes = attributes,
+        clip = 0,
         createdAt = os.time()
     }
     local valid, reason = Items:ValidateInstance(instance)

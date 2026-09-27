@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "professionVersion": 1,
+  "professions": {
+    "Civilian": {
+      "name": "Civilian",
+      "description": "No trade. Civilians receive no daily delivery and offer no services."
+    },
+    "Farmer": {
+      "name": "Farmer",
+      "description": "Grows produce. Receives vegetables and fruit every day.",
+      "statBonuses": { "Farming": 3, "Endurance": 1 },
+      "deliveries": [
+        { "minLevel": 1, "items": [ { "item": "itemPotato", "min": 2, "max": 4 }, { "item": "itemCarrot", "min": 1, "max": 3 } ] },
+        { "minLevel": 10, "items": [ { "item": "itemPotato", "min": 3, "max": 5 }, { "item": "itemCarrot", "min": 2, "max": 4 }, { "item": "itemTomato", "min": 1, "max": 3 } ] },
+        { "minLevel": 25, "items": [ { "item": "itemPotato", "min": 4, "max": 6 }, { "item": "itemTomato", "min": 2, "max": 4 }, { "item": "itemBananas", "min": 1, "max": 3 }, { "item": "itemHerbs", "min": 1, "max": 2 } ] }
+      ]
+    },
+    "Doctor": {
+      "name": "Doctor",
+      "description": "Treats the wounded and installs or removes implants. Medical items applied by a Doctor heal 50% more.",
+      "aliases": [ "Medic" ],
+      "statBonuses": { "Medicine": 3, "Intelligence": 1 },
+      "services": [ "treat", "implant", "extract" ],
+      "deliveries": [
+        { "minLevel": 1, "items": [ { "item": "itemBandage", "min": 1, "max": 2 }, { "item": "itemPainkillers", "min": 1, "max": 2 } ] },
+        { "minLevel": 10, "items": [ { "item": "itemBandage", "min": 2, "max": 3 }, { "item": "itemPainkillers", "min": 1, "max": 3 }, { "item": "itemMorphine", "min": 1, "max": 1 } ] },
+        { "minLevel": 20, "items": [ { "item": "itemPainkillers", "min": 2, "max": 3 }, { "item": "itemMorphine", "min": 1, "max": 2 }, { "item": "itemSurgicalKit", "min": 1, "max": 1 } ] },
+        { "minLevel": 40, "items": [ { "item": "itemMorphine", "min": 1, "max": 2 }, { "item": "itemSurgicalKit", "min": 1, "max": 2 }, { "item": "itemAgentX", "min": 1, "max": 1 } ] }
+      ]
+    },
+    "Mechanic": {
+      "name": "Mechanic",
+      "description": "Keeps things running. Receives wire, fixings, and engine parts.",
+      "statBonuses": { "Mechanics": 3, "WeaponRepairing": 1 },
+      "deliveries": [
+        { "minLevel": 1, "items": [ { "item": "itemScrews", "min": 3, "max": 6 }, { "item": "itemScrapMetal", "min": 1, "max": 3 } ] },
+        { "minLevel": 10, "items": [ { "item": "itemScrews", "min": 4, "max": 8 }, { "item": "itemCopperWire", "min": 1, "max": 3 }, { "item": "itemGlue", "min": 1, "max": 2 } ] },
+        { "minLevel": 25, "items": [ { "item": "itemCopperWire", "min": 2, "max": 4 }, { "item": "itemGlue", "min": 1, "max": 3 }, { "item": "itemEngineParts", "min": 1, "max": 2 } ] }
+      ]
+    },
+    "Hunter": {
+      "name": "Hunter",
+      "description": "Hunts game and cooks it. Receives birds and shells.",
+      "statBonuses": { "Shotguns": 2, "Agility": 1 },
+      "services": [ "cook" ],
+      "deliveries": [
+        { "minLevel": 1, "items": [ { "item": "itemRawGameBird", "min": 1, "max": 2 }, { "item": "ammoShells", "min": 4, "max": 8 } ] },
+        { "minLevel": 15, "items": [ { "item": "itemRawGameBird", "min": 2, "max": 3 }, { "item": "ammoShells", "min": 6, "max": 12 }, { "item": "ammo762", "min": 5, "max": 10 } ] }
+      ]
+    },
+    "Scavenger": {
+      "name": "Scavenger",
+      "description": "Finds what others miss. Receives salvage and tinned food.",
+      "statBonuses": { "Agility": 2, "Endurance": 1 },
+      "deliveries": [
+        { "minLevel": 1, "items": [ { "item": "itemCannedBeans", "min": 1, "max": 2 }, { "item": "itemScrapMetal", "min": 1, "max": 3 }, { "item": "itemCloth", "min": 1, "max": 2 } ] },
+        { "minLevel": 10, "items": [ { "item": "itemCannedBeans", "min": 1, "max": 2 }, { "item": "itemScrapMetal", "min": 2, "max": 4 }, { "item": "itemGunpowder", "min": 1, "max": 2 }, { "item": "itemCloth", "min": 1, "max": 3 } ] },
+        { "minLevel": 25, "items": [ { "item": "itemMilitaryRation", "min": 1, "max": 1 }, { "item": "itemScrapMetal", "min": 2, "max": 4 }, { "item": "itemGunpowder", "min": 1, "max": 3 }, { "item": "ammo9mm", "min": 10, "max": 20 } ] }
+      ]
+    },
+    "Chef": {
+      "name": "Chef",
+      "description": "Cooks raw food for others. Receives vegetables, spices, and oil.",
+      "statBonuses": { "Farming": 1, "Endurance": 2 },
+      "services": [ "cook" ],
+      "deliveries": [
+        { "minLevel": 1, "items": [ { "item": "itemPotato", "min": 1, "max": 3 }, { "item": "itemSpices", "min": 1, "max": 2 }, { "item": "itemOil", "min": 1, "max": 2 } ] },
+        { "minLevel": 15, "items": [ { "item": "itemTomato", "min": 1, "max": 3 }, { "item": "itemSpices", "min": 2, "max": 3 }, { "item": "itemOil", "min": 1, "max": 3 }, { "item": "itemPreservedMeat", "min": 1, "max": 1 } ] }
+      ]
+    },
+    "PoliceOfficer": {
+      "name": "Police Officer",
+      "description": "Trained to handle firearms and keep going.",
+      "aliases": [ "Police" ],
+      "statBonuses": { "Endurance": 2, "Strength": 1, "Snipers": 1 }
+    },
+    "ArmySoldier": {
+      "name": "Army Soldier",
+      "description": "Military training in automatic weapons and endurance.",
+      "aliases": [ "Soldier" ],
+      "statBonuses": { "MachineGuns": 2, "Strength": 2, "Endurance": 1 }
+    },
+    "Scientist": {
+      "name": "Scientist",
+      "description": "Researches medicine from raw materials for anyone who brings them.",
+      "statBonuses": { "Intelligence": 3 },
+      "services": [ "research" ]
+    }
+  }
+}
