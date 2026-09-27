@@ -132,7 +132,26 @@ function Enemies.AwardXP(killer, amount)
     end
 end
 
-// Rewards the player who killed an enemy: XP plus a loot-drop roll into their backpack. Runs at most once per victim;
+function Enemies:RegisterCorpseLoot(corpse, item, key)
+    if not IsValid(corpse) then
+        return false, "the enemy corpse is unavailable"
+    end
+    if type(item) ~= "table" then
+        return false, "the corpse loot item is invalid"
+    end
+    if not ZM_LootSpots then
+        return false, "the loot-spot service is unavailable"
+    end
+
+    key = type(key) == "string" and key ~= "" and key or ("enemycorpse_" .. corpse:EntIndex())
+    local spot, spotError = ZM_LootSpots:RegisterRuntimeSpot(corpse, item, key)
+    if not spot then
+        return false, spotError or "the corpse loot spot could not be registered"
+    end
+    return true, spot
+end
+
+// Rewards the player who killed an enemy with XP and rolls loot onto its corpse. Runs at most once per victim;
 // despawned enemies never reach this. Returns true and the reward, or false and a reason.
 function Enemies:OnEnemyKilled(victim, attacker, options)
     if victim.EnemyRewarded then
@@ -159,15 +178,7 @@ function Enemies:OnEnemyKilled(victim, attacker, options)
         rng = options and options.rng
     })
     if instance then
-        local given, giveError = killer:GiveItemInstance(instance)
         reward.item = instance
-        reward.given = given == true
-        reward.error = giveError
-        if given then
-            killer:ChatPrint(string.format("[Loot] %s dropped %s x%d.", enemy.id, ZM_Items:GetDisplayName(instance), instance.count))
-        else
-            killer:ChatPrint("[Loot] The drop was lost: " .. tostring(giveError))
-        end
     end
     victim.EnemyReward = reward
     return true, reward

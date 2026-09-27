@@ -27,6 +27,8 @@ Only the worker may mutate core state. Lua calls that alter horde or ticket stat
 5. The worker publishes stats, cell summaries, horde summaries, and API v3 ticket summaries after each completed tick.
 6. `ShutDown` saves a native checkpoint before stopping the worker. On compatible startup, the host restores it before starting the worker; imported map-local materialized tickets are reconciled as despawned before the controller resumes. Periodic checkpoint serialization is requested and performed on the worker thread, then polled by Lua without stalling gameplay.
 
+Runtime world metadata uses `world.profileId` for profile identity. `world.mapDirectory` is only the map-path prefix and may be empty when profile maps are staged flat.
+
 The preview `WALKER` map mode is read-only visualization. It receives native horde summaries and the server materialization ratio every 0.5 seconds, and does not simulate walkers on the client. It renders one stable marker for each materialized-equivalent Walker: `ceil(horde population / zombiesim_walker_population_per_zombie)`.
 
 ## Configuration

@@ -451,6 +451,7 @@ $population = [long]$populationValue
 $runtimeWorld = [ordered]@{
     schemaVersion = 1
     world = [ordered]@{
+        profileId = $worldGenerationProfile.Name
         seed = $map.map.seed
         cityName = [string]$map.map.cityName
         grid = @($width, $height)

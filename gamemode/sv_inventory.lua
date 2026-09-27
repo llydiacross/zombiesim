@@ -721,7 +721,7 @@ function Service:EquipWeapon(target, reference, preferredSlot)
     if not definition or definition.entityClass ~= "weapon" then
         return false, "That item is not a weapon."
     end
-    local canUse, reason = Items:CanUse(target, instance.itemId)
+    local canUse, reason = Items:CanUse(target, instance.itemId, instance)
     if not canUse then
         return false, reason
     end
@@ -793,7 +793,7 @@ function Service:EquipWeaponInSlot(target, reference, slot)
     if not instance then return false, "That item is not in your backpack." end
     local definition = Items:GetDefinition(instance.itemId)
     if not definition or definition.entityClass ~= "weapon" then return false, "That item is not a weapon." end
-    local canUse, reason = Items:CanUse(target, instance.itemId)
+    local canUse, reason = Items:CanUse(target, instance.itemId, instance)
     if not canUse then return false, reason end
     target.ZM_WeaponSlots = target.ZM_WeaponSlots or {}
     if container == "equipped" and currentSlot ~= slot then

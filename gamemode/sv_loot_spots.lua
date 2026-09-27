@@ -279,6 +279,14 @@ function Spots:CompleteSearch(target, now, rng)
             return nil, "Could not save the loot: " .. tostring(saveError)
         end
         spot.item = instance
+    elseif spot.state == "declined" then
+        local saved, saveError = ZM_SetLootSpot(self.Cell.profile, self.Cell.cellId, spot.key, "available", spot.item)
+        if not saved then
+            spot.claim = nil
+            return nil, "Could not reopen the loot: " .. tostring(saveError)
+        end
+        spot.state = "available"
+        self:UpdateVisual(spot)
     end
     local offer = { token = string.format("%08x%08x", math.random(0, 0x7FFFFFFF), math.random(0, 0x7FFFFFFF)), key = spot.key, expiresAt = now + self.OfferSeconds }
     target.ZM_LootOffer = offer
@@ -550,10 +558,8 @@ ZM_Util.RegisterCommands({
     zn_loot_spots_refresh = "Re-rolls every loot spot in the current cell as if the refresh time had passed."
 }, runSpotsCommand)
 
-// Development probe: the first human searches and accepts up to `limit` available spots whose model contains
-// `pattern`, through the normal BeginSearch/CompleteSearch/RespondOffer path. The player is placed beside each
-// spot for the range checks and returned afterwards; the search timer is skipped.
-local function runScavengeProbe(argumentString)
+// Development probes use the real search/offer path. Declined offers remain on the spot and never touch inventory.
+local function runScavengeProbe(argumentString, acceptOffer)
     local arguments = string.Explode("%s+", string.Trim(argumentString or ""), true)
     local pattern = string.lower(arguments[1] or "")
     local limit = math.Clamp(tonumber(arguments[2]) or 1, 1, 10)
@@ -579,22 +585,30 @@ local function runScavengeProbe(argumentString)
             if began then
                 payload, searchError = Spots:CompleteSearch(target, now + Spots.SearchSeconds)
                 if payload then
-                    accepted, acceptResult = Spots:RespondOffer(target, payload.token, true, now + Spots.SearchSeconds)
+                    accepted, acceptResult = Spots:RespondOffer(target, payload.token, acceptOffer, now + Spots.SearchSeconds)
                 end
             end
             Spots:CancelSearch(target, "probe finished")
-            table.insert(results, { key = key, model = model, began = began == true, beginError = beginError, itemId = payload and payload.itemId, count = payload and payload.count, searchError = searchError, accepted = accepted == true, result = acceptResult, state = spot.state })
+            table.insert(results, { key = key, model = model, began = began == true, beginError = beginError, itemId = payload and payload.itemId, count = payload and payload.count, searchError = searchError, accepted = acceptOffer and accepted == true or false, result = acceptResult, state = spot.state })
         end
     end
     target:SetPos(origin)
     for _, result in ipairs(results) do
-        reply(nil, string.format("Scavenged %s %s: %s x%s (%s)", result.key, result.model, tostring(result.itemId), tostring(result.count), tostring(result.result or result.searchError or result.beginError)))
+        local action = acceptOffer and "Scavenged" or "Previewed"
+        reply(nil, string.format("%s %s %s: %s x%s (%s)", action, result.key, result.model, tostring(result.itemId), tostring(result.count), tostring(result.result or result.searchError or result.beginError)))
     end
-    ZM_DevConsole:Report("scavengeProbe", { pattern = pattern, results = results })
+    local reportName = acceptOffer and "scavengeProbe" or "lootOfferProbe"
+    ZM_DevConsole:Report(reportName, { pattern = pattern, results = results })
     if #results == 0 then
         return false, "no available spot matches '" .. pattern .. "'"
     end
     return true
 end
 
-ZM_DevConsole.DirectCommands.zn_dev_scavenge = runScavengeProbe
+ZM_DevConsole.DirectCommands.zn_dev_scavenge = function(argumentString)
+    return runScavengeProbe(argumentString, true)
+end
+
+ZM_DevConsole.DirectCommands.zn_dev_loot_offer = function(argumentString)
+    return runScavengeProbe(argumentString, false)
+end

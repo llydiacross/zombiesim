@@ -127,14 +127,27 @@ int main() {
     Expect(preview.graph->cells.size() == 576, "preview world has 576 logical cells");
     Expect(preview.graph->population == 81000, "preview world carries the 81,000 generator population");
     Expect(preview.graph->revisionHash != 0, "preview graph receives a revision hash");
+    Expect(preview.graph->profileId == "preview", "preview profile identity is imported independently of map directory");
     Expect(!preview.graph->IsSafeZone(0), "cell zero is not a safe zone");
     const auto wrongProfile = zombiesim::walker::LoadWorldJson(previewBytes, "city");
     Expect(!wrongProfile, "profile mismatch is rejected");
+    std::string previewJson(
+        reinterpret_cast<const char*>(previewBytes.data()),
+        previewBytes.size());
+    constexpr std::string_view profileIdField = "\"profileId\":\"preview\",";
+    const auto profileIdOffset = previewJson.find(profileIdField);
+    Expect(profileIdOffset != std::string::npos, "preview fixture includes profile identity");
+    if (profileIdOffset != std::string::npos) {
+        previewJson.erase(profileIdOffset, profileIdField.size());
+        const auto missingProfile = zombiesim::walker::LoadWorldJson(Bytes(previewJson), "preview");
+        Expect(!missingProfile, "missing profile identity is rejected");
+    }
 
     constexpr std::string_view duplicateId = R"json({
         "schemaVersion": 1,
         "world": {
-            "mapDirectory": "preview",
+            "profileId": "preview",
+            "mapDirectory": "",
             "mapManifestSha256": "fixture",
             "templatePlanSha256": "fixture",
             "seed": 1,

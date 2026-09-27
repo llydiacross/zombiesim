@@ -42,6 +42,17 @@ function Items:GetDefinition(itemId)
     return ZM_StaticData:GetItem(itemId)
 end
 
+function Items:GetRequiredLevel(itemId, instance)
+    local definition = self:GetDefinition(itemId)
+    if not definition then
+        return nil
+    end
+    if definition.entityClass == "weapon" and type(instance) == "table" then
+        return math.max(definition.minLevel, math.floor(tonumber(instance.level) or definition.minLevel))
+    end
+    return definition.minLevel
+end
+
 // Stackable instances share an item id and level and carry no per-instance attributes or mastercraft.
 // Perishable food additionally requires the same freshness band at `now` (default: current time).
 function Items:CanStack(first, second, now)
@@ -183,7 +194,7 @@ function Items:IsUltraMastercraft(instance)
 end
 
 // Checks level and stat requirements for using an item. Returns true or false plus a player-facing reason.
-function Items:CanUse(user, itemId)
+function Items:CanUse(user, itemId, instance)
     if not IsValid(user) then
         return false, "Player is invalid."
     end
@@ -191,8 +202,9 @@ function Items:CanUse(user, itemId)
     if not definition then
         return false, "Unknown item."
     end
-    if user:GetLevel() < definition.minLevel then
-        return false, "Requires level " .. definition.minLevel .. "."
+    local requiredLevel = self:GetRequiredLevel(itemId, instance)
+    if user:GetLevel() < requiredLevel then
+        return false, "Requires player level " .. requiredLevel .. "."
     end
     for stat, required in SortedPairs(definition.statRequirements) do
         if user:GetStat(stat) < required then

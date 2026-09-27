@@ -138,7 +138,7 @@ local function describe(instance)
     if not definition then
         return "Unknown item (" .. tostring(instance.itemId) .. ")\nThis item no longer exists and is kept unchanged."
     end
-    local lines = { ZM_Items:GetDisplayName(instance) .. (instance.count > 1 and (" x" .. instance.count) or ""), "Level " .. instance.level }
+    local lines = { ZM_Items:GetDisplayName(instance) .. (instance.count > 1 and (" x" .. instance.count) or ""), "Item level " .. instance.level }
     if definition.food then
         describeFood(lines, instance)
     end
@@ -149,9 +149,20 @@ local function describe(instance)
     for name, score in SortedPairs(instance.attributes or {}) do
         table.insert(lines, "  " .. name .. ": " .. score)
     end
-    local canUse, reason = ZM_Items:CanUse(LocalPlayer(), instance.itemId)
+    local player = LocalPlayer()
+    local action = definition.entityClass == "weapon" and "equip" or "use"
+    local requiredLevel = ZM_Items:GetRequiredLevel(instance.itemId, instance)
+    local playerLevel = IsValid(player) and player:GetLevel() or 0
+    if definition.entityClass == "weapon" or requiredLevel > 1 then
+        table.insert(lines, "Requires player level " .. requiredLevel .. " to " .. action .. " (you: " .. playerLevel .. ")")
+    end
+    for stat, required in SortedPairs(definition.statRequirements) do
+        local current = IsValid(player) and player:GetStat(stat) or 0
+        table.insert(lines, "Requires " .. stat .. " " .. required .. " to " .. action .. " (you: " .. current .. ")")
+    end
+    local canUse, reason = ZM_Items:CanUse(player, instance.itemId, instance)
     if not canUse then
-        table.insert(lines, reason)
+        table.insert(lines, "Unavailable: " .. reason)
     end
     table.insert(lines, string.format("Value: $%.2f", ZM_Items:GetInstanceValue(instance)))
     if Inventory:IsEquipped(instance.instanceId) then

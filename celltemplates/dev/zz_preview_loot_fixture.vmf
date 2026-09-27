@@ -4062,6 +4062,25 @@ entity
 		"logicalpos" "[0 0]"
 	}
 }
+entity
+{
+	"id" "1005"
+	"classname" "prop_physics_override"
+	"angles" "0 90 0"
+	"model" "models/props_junk/cardboard_box004a.mdl"
+	"modelscale" "1.0"
+	"skin" "0"
+	"spawnflags" "256"
+	"origin" "1056 0 32"
+	"targetname" "loot_fixture_unsupported_prop"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
 cameras
 {
 	"activecamera" "0"

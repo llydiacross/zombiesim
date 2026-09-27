@@ -4,8 +4,8 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Active Task Tracker
 
-- `todo-alpha-2.8.md` is the authoritative tracker for current Alpha 2.8 work.
-- `docs/todo-alpha-2.7.md`, `docs/todo-alpha-2.6.md`, older roadmaps, test logs, and prior agent notes are historical context unless an item is explicitly promoted into the active tracker.
+- `todo-alpha-2.9.md` is the authoritative tracker for current Alpha 2.9 work.
+- `todo-alpha-2.8.md` records the accepted Alpha 2.8 milestone and its explicitly deferred zombie-corpse interaction; older roadmaps, test logs, and prior agent notes are historical context unless an item is explicitly promoted into the active tracker.
 - When the active milestone changes, update this guide and the root tracker together; do not infer current work from historical phase labels.
 
 ## Read First

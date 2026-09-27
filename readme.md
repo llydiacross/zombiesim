@@ -468,6 +468,7 @@ ZombieSim disables Garry's Mod's default `+use` physics-prop pickup globally. Pr
 zn_loot_spots            // matching props and spot states in the current cell
 zn_loot_spots_refresh    // re-roll every spot now
 zn_test_loot_spots       // loot spot tests (throwaway profiles)
+zn_dev_loot_offer <modelSubstring> [limit]   // development: roll then decline matching offers (no inventory changes)
 zn_dev_scavenge <modelSubstring> [limit]   // development: search and accept matching spots as the first player
 ```
 

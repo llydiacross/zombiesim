@@ -4,6 +4,9 @@ include("shared.lua")
 
 local collisionMins = Vector(-16, -16, 0)
 local collisionMaxs = Vector(16, 16, 72)
+local corpseFadeDelay = 60
+local corpseFadeDuration = 5
+local corpseFadeInterval = 0.1
 
 function ENT:Initialize()
     self:SetModel(self.Model)
@@ -294,16 +297,90 @@ function ENT:OnInjured(damage)
     end
 end
 
+function ENT:CreateCorpse()
+    local corpse = ents.Create("prop_ragdoll")
+    if IsValid(corpse) then
+        corpse:SetModel(self:GetModel())
+        corpse:SetPos(self:GetPos())
+        corpse:SetAngles(self:GetAngles())
+        corpse:Spawn()
+        if not IsValid(corpse) then
+            corpse = nil
+        else
+            corpse:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+        end
+    end
+    return corpse
+end
+
+function ENT:ConfigureCorpse(corpse, lootable)
+    if not IsValid(corpse) then
+        return false
+    end
+    corpse:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+    if lootable then
+        return true
+    end
+    if corpse.CorpseFadeScheduled then
+        return true
+    end
+
+    corpse.CorpseFadeScheduled = true
+    timer.Simple(corpseFadeDelay, function()
+        if not IsValid(corpse) or corpse:GetNWBool("ZM_LootSpot", false) then
+            return
+        end
+        local originalColor = corpse:GetColor()
+        local fadeStartedAt = CurTime()
+        corpse:SetRenderMode(RENDERMODE_TRANSALPHA)
+
+        local function fade()
+            if not IsValid(corpse) then
+                return
+            end
+            if corpse:GetNWBool("ZM_LootSpot", false) then
+                corpse:SetRenderMode(RENDERMODE_NORMAL)
+                corpse:SetColor(originalColor)
+                return
+            end
+
+            local progress = math.Clamp((CurTime() - fadeStartedAt) / corpseFadeDuration, 0, 1)
+            if progress >= 1 then
+                corpse:Remove()
+                return
+            end
+            corpse:SetColor(Color(originalColor.r, originalColor.g, originalColor.b, math.floor(originalColor.a * (1 - progress))))
+            timer.Simple(corpseFadeInterval, fade)
+        end
+
+        fade()
+    end)
+    return true
+end
+
 function ENT:OnKilled(damage)
     if self.WalkerDead then
         return
     end
     self.WalkerDead = true
     self:ResolveWalkerTicket(true)
+    local reward
     if self.EnemyId and ZM_Enemies then
-        ZM_Enemies:OnEnemyKilled(self, damage:GetAttacker())
+        local _, killReward = ZM_Enemies:OnEnemyKilled(self, damage:GetAttacker())
+        reward = killReward
     end
-    self:BecomeRagdoll(damage)
+    local corpse = self:CreateCorpse()
+    local lootable = false
+    if reward and reward.item then
+        local registered, registrationError = ZM_Enemies:RegisterCorpseLoot(corpse, reward.item)
+        if registered then
+            lootable = true
+        else
+            ErrorNoHalt("[ZombieSim] Could not register enemy corpse loot: " .. tostring(registrationError) .. "\n")
+        end
+    end
+    self:ConfigureCorpse(corpse, lootable)
+    self:Remove()
 end
 
 function ENT:OnRemove()

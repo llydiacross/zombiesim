@@ -1,2 +1,3 @@
-# request: j-job-restore
-zn_set_job Civilian
+# request: walker_corpse_collision_fade_20260927
+lua_refresh
+zn_test_enemies

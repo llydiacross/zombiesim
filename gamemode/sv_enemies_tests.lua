@@ -161,7 +161,7 @@ test("definitions_scale_a_spawned_walker", function(check)
     end
 end)
 
-test("kills_reward_once_and_only_players", function(check)
+test("kills_reward_xp_and_place_loot_on_corpse_once", function(check)
     local registry = ZM_StaticData:GetRegistry()
     local original = registry.enemies.testLootEnemy
     registry.enemies.testLootEnemy = enemy("testLootEnemy", 0, 1, {
@@ -174,11 +174,43 @@ test("kills_reward_once_and_only_players", function(check)
         local rewarded, reward = Enemies:OnEnemyKilled(victim, killer, { rng = Generation.NewRng(3) })
         check(rewarded and reward.xp == 12, "a player kill should reward the enemy's XP")
         check(killer.xp == 12, "the killer should gain 12 XP, got " .. killer.xp)
-        check(#killer.items == 1 and killer.items[1].itemId == "itemBandage", "a 100% drop should give one bandage")
+        check(reward.item and reward.item.itemId == "itemBandage", "a 100% drop should roll one bandage for the corpse")
+        check(#killer.items == 0, "a rolled enemy drop must not be inserted directly into the killer's inventory")
+        check(#killer.messages == 0, "a rolled enemy drop must not be awarded through a loot chat message")
+
+        local originalCell = ZM_LootSpots.Cell
+        local walker = ents.Create("zn_walker_zombie")
+        if IsValid(walker) then
+            walker:SetPos(Vector(0, 0, -16000))
+            walker:Spawn()
+            local expectedModel = walker:GetModel()
+            local corpse = walker:CreateCorpse()
+            check(IsValid(corpse), "the walker creates an explicit ragdoll entity")
+            check(corpse and corpse:GetClass() == "prop_ragdoll" and corpse:GetModel() == expectedModel, "the corpse uses the walker's model")
+            check(corpse and corpse:GetCollisionGroup() == COLLISION_GROUP_DEBRIS, "the corpse does not collide with players")
+            ZM_LootSpots.Cell = { spots = {}, spotsByEntity = {} }
+            local registered, spot = Enemies:RegisterCorpseLoot(corpse, reward.item)
+            check(registered, "the rolled enemy item registers on its corpse")
+            check(spot and spot.runtime and spot.state == "available", "the corpse is an available runtime loot spot")
+            check(spot and spot.item == reward.item and ZM_LootSpots.Cell.spotsByEntity[corpse] == spot, "the runtime spot references the rolled item and corpse")
+            walker:ConfigureCorpse(corpse, registered)
+            check(not corpse.CorpseFadeScheduled, "lootable corpses do not get a fade timer")
+
+            local unlootableCorpse = walker:CreateCorpse()
+            walker:ConfigureCorpse(unlootableCorpse, false)
+            check(unlootableCorpse and unlootableCorpse.CorpseFadeScheduled, "corpses without loot are scheduled to fade")
+            check(unlootableCorpse and unlootableCorpse:GetCollisionGroup() == COLLISION_GROUP_DEBRIS, "unlootable corpses also do not collide with players")
+            if IsValid(unlootableCorpse) then unlootableCorpse:Remove() end
+            if IsValid(corpse) then corpse:Remove() end
+            if IsValid(walker) then walker:Remove() end
+        else
+            check(false, "a walker fixture can be created")
+        end
+        ZM_LootSpots.Cell = originalCell
 
         local again, reason = Enemies:OnEnemyKilled(victim, killer, { rng = Generation.NewRng(3) })
         check(not again and reason == "already rewarded", "a duplicate death callback must not reward again")
-        check(killer.xp == 12 and #killer.items == 1, "the duplicate must not add XP or items")
+        check(killer.xp == 12 and #killer.items == 0, "the duplicate must not add XP or inventory items")
 
         local worldKill = { EnemyId = "testLootEnemy", EnemyDanger = 0.5 }
         local worldRewarded = Enemies:OnEnemyKilled(worldKill, game.GetWorld())

@@ -103,8 +103,13 @@ WorldLoadResult LoadWorldJson(
             return {std::nullopt, "world metadata must be an object"};
         }
 
-        const auto profileId = world.at("mapDirectory").get<std::string>();
-        if (profileId.empty() || profileId != expectedProfileId) {
+        const auto profileIdField = world.find("profileId");
+        if (profileIdField == world.end() || !profileIdField->is_string() ||
+            profileIdField->get_ref<const std::string&>().empty()) {
+            return {std::nullopt, "world metadata must include a non-empty profileId"};
+        }
+        const auto profileId = profileIdField->get<std::string>();
+        if (profileId != expectedProfileId) {
             return {std::nullopt, "requested profile does not match world metadata"};
         }
 
