@@ -2,6 +2,8 @@ param(
     [string]$PlanData = '',
     [string]$DestinationDirectory = '',
     [string]$WorldProfile = '',
+    [ValidateRange(1, 8)]
+    [int]$ResolutionScale = 4,
     [switch]$Preview,
     [switch]$WhatIf,
     [string]$SettingsPath = ''
@@ -236,7 +238,7 @@ foreach ($recipe in $recipeCells) {
 }
 
 if ($WhatIf) {
-    Write-Output "WhatIf: render $($recipeCells.Count) local recipe map image(s) in: $DestinationDirectory"
+    Write-Output "WhatIf: render $($recipeCells.Count) local recipe map image(s) at ${ResolutionScale}x in: $DestinationDirectory"
     return
 }
 
@@ -245,6 +247,7 @@ Get-ChildItem -LiteralPath $DestinationDirectory -Filter '*.png' -File | Remove-
 
 $tileSize = 48
 $padding = 0
+$imageSizeForReport = 0
 $roadRoles = @('road', 'road_center', 'bridge_road', 'onramp_road', 'bridge_ramp_deadend', 'special_landmark_road_cap')
 $buildingBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(78, 76, 72))
 $decorationBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(101, 128, 87))
@@ -277,9 +280,13 @@ try {
         $imageSize = ($padding * 2) + ($tileGridSize * $tileSize)
         $backgroundColor = Get-EnvironmentColor ([string]$recipe.environmentProfile)
         $backgroundBrush = [System.Drawing.SolidBrush]::new($backgroundColor)
-        $bitmap = [System.Drawing.Bitmap]::new($imageSize, $imageSize)
+        $bitmap = [System.Drawing.Bitmap]::new($imageSize * $ResolutionScale, $imageSize * $ResolutionScale)
         $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
         try {
+            # Draw with the authored 48px tile coordinates and let the transform emit a sharper image.
+            $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+            $graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAlias
+            $graphics.ScaleTransform([single]$ResolutionScale, [single]$ResolutionScale)
             $graphics.Clear($backgroundColor)
             $isMotorway = [string]$recipe.topology -like 'motorway-*'
             $showLocationMarkers = -not $isMotorway -or [string]$recipe.transportFeature -like 'bridge-*' -or [string]$recipe.transportFeature -like 'onramp-*'
@@ -406,6 +413,7 @@ try {
 
             $outputFilename = [System.IO.Path]::ChangeExtension([string]$recipe.cellTemplateFilename, '.png')
             $bitmap.Save((Join-Path $DestinationDirectory $outputFilename), [System.Drawing.Imaging.ImageFormat]::Png)
+            $imageSizeForReport = $bitmap.Width
         } finally {
             $graphics.Dispose()
             $bitmap.Dispose()
@@ -419,4 +427,4 @@ try {
     $landmarkFormat.Dispose()
 }
 
-Write-Output "Rendered $($recipeCells.Count) local recipe map image(s): $DestinationDirectory"
+Write-Output "Rendered $($recipeCells.Count) local recipe map image(s) at $($imageSizeForReport)px: $DestinationDirectory"

@@ -2,6 +2,9 @@ param(
     [string]$PlanData = '',
     [string]$NavmeshDirectory = '',
     [string]$OutputPath = '',
+    [string]$CellDestinationDirectory = '',
+    [ValidateRange(64, 2048)]
+    [int]$CellImageSize = 960,
     [string]$WorldProfile = '',
     [switch]$Preview,
     [switch]$WhatIf,
@@ -151,6 +154,9 @@ if ([string]::IsNullOrWhiteSpace($NavmeshDirectory)) {
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
     $OutputPath = Join-Path $projectRoot (Join-Path (Join-Path (Join-Path 'content/materials/worlds' $worldGenerationProfile.Name) 'map_layers') 'wireframe.png')
 }
+if ([string]::IsNullOrWhiteSpace($CellDestinationDirectory)) {
+    $CellDestinationDirectory = Join-Path $projectRoot (Join-Path (Join-Path 'content/materials/worlds' $worldGenerationProfile.Name) 'cells_wireframe')
+}
 
 $plan = Get-Content -Raw -LiteralPath $PlanData | ConvertFrom-Json
 $cells = @($plan.cells)
@@ -176,6 +182,7 @@ if (-not (Test-Path -LiteralPath $NavmeshDirectory -PathType Container)) {
 
 if ($WhatIf) {
     Write-Output "WhatIf: parse Source navmesh version $navVersion files from $NavmeshDirectory and render $($cells.Count) cell wireframes into $($gridWidth * $tileSize)x$($gridHeight * $tileSize): $OutputPath"
+    Write-Output "WhatIf: render per-recipe ${CellImageSize}px wireframes into: $CellDestinationDirectory"
     return
 }
 
@@ -243,4 +250,38 @@ try {
     $bitmap.Dispose()
 }
 
+# Per-recipe wireframes let the client draw sharp navmesh detail when zoomed past the atlas resolution.
+[System.IO.Directory]::CreateDirectory($CellDestinationDirectory) | Out-Null
+Get-ChildItem -LiteralPath $CellDestinationDirectory -Filter '*.png' -File -ErrorAction SilentlyContinue | Remove-Item -Force
+$cellBackgroundColor = [System.Drawing.Color]::FromArgb(255, 9, 14, 18)
+$renderedCellImages = 0
+foreach ($mapName in @($navmeshesByMap.Keys | Sort-Object)) {
+    $cellBitmap = [System.Drawing.Bitmap]::new($CellImageSize, $CellImageSize)
+    $cellGraphics = [System.Drawing.Graphics]::FromImage($cellBitmap)
+    $cellWirePen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(255, 74, 224, 190), [Math]::Max(1.0, $CellImageSize / 240.0))
+    try {
+        $cellGraphics.Clear($cellBackgroundColor)
+        $cellGraphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+        foreach ($area in @($navmeshesByMap[$mapName])) {
+            $left = [single]((($area.NorthWestX + $cellHalfExtent) / (2 * $cellHalfExtent)) * $CellImageSize)
+            $right = [single]((($area.SouthEastX + $cellHalfExtent) / (2 * $cellHalfExtent)) * $CellImageSize)
+            $top = [single]((($cellHalfExtent - $area.NorthWestY) / (2 * $cellHalfExtent)) * $CellImageSize)
+            $bottom = [single]((($cellHalfExtent - $area.SouthEastY) / (2 * $cellHalfExtent)) * $CellImageSize)
+            $cellGraphics.DrawPolygon($cellWirePen, [System.Drawing.PointF[]]@(
+                [System.Drawing.PointF]::new($left, $top),
+                [System.Drawing.PointF]::new($right, $top),
+                [System.Drawing.PointF]::new($right, $bottom),
+                [System.Drawing.PointF]::new($left, $bottom)
+            ))
+        }
+        $cellBitmap.Save((Join-Path $CellDestinationDirectory "$mapName.png"), [System.Drawing.Imaging.ImageFormat]::Png)
+        $renderedCellImages++
+    } finally {
+        $cellWirePen.Dispose()
+        $cellGraphics.Dispose()
+        $cellBitmap.Dispose()
+    }
+}
+
 Write-Output "Rendered $availableCells navmesh wireframes from $($navmeshesByMap.Count) files; $unavailableCells unavailable cells; $($invalidNavmeshes.Count) invalid files: $OutputPath"
+Write-Output "Rendered $renderedCellImages per-recipe ${CellImageSize}px wireframe image(s): $CellDestinationDirectory"

@@ -6,12 +6,14 @@ local localMapCameraHeight = 3600
 local localMapFieldOfView = 48
 local localMapSpan = 2 * localMapCameraHeight * math.tan(math.rad(localMapFieldOfView * 0.5))
 local localMapDefaultZoom = 1
-local localMapTileCount = 2
-local localMapTileSize = 1024
-local localMapTileSpan = localMapSpan / localMapTileCount
-local localMapTileFieldOfView = math.deg(2 * math.atan(localMapTileSpan / (2 * localMapCameraHeight)))
-local localMapCaptureVersion = 2
+// The level view is one orthographic capture into a render target with its own depth buffer,
+// so there are no tile seams to tear.
+local localMapCaptureSize = 2048
+// Ortho ignores fov for projection; a wide fov only keeps any fov-based culling generous.
+local localMapCullFieldOfView = 100
+local localMapCaptureVersion = 7
 local localMapRefreshInterval = 3
+local mapDebugConVar = CreateClientConVar("zombiesim_map_debug", "0", true, false, "Show world map draw diagnostics.")
 
 WorldMap.Layers = {
     { id = "terrain", label = "Terrain", enabled = true },
@@ -26,7 +28,53 @@ WorldMap.Layers = {
     { id = "danger", label = "Danger", enabled = false },
     { id = "tables", label = "Map Keys", enabled = true }
 }
-WorldMap.EnabledLayers = WorldMap.EnabledLayers or {}
+
+// Layers each render mode can draw. The satellite image already bakes in terrain, buildings,
+// roads, and motorways, so those atlas-only layers are not offered there. The wireframe view
+// draws no layers at all; it shows only the player, waypoint, selected cell, and safe zones.
+WorldMap.RenderModeLayers = {
+    default = {
+        terrain = true,
+        districts = true,
+        buildings = true,
+        roads = true,
+        highways = true,
+        metro = true,
+        safe_zones = true,
+        landmarks = true,
+        radiation = true,
+        danger = true,
+        tables = true
+    },
+    satellite = {
+        districts = true,
+        metro = true,
+        safe_zones = true,
+        landmarks = true,
+        radiation = true,
+        danger = true,
+        tables = true
+    },
+    walker = {
+        districts = true,
+        metro = true,
+        safe_zones = true,
+        landmarks = true,
+        radiation = true,
+        danger = true,
+        tables = true
+    },
+    wireframe = {},
+    map = {}
+}
+
+// Enabled-by-default layers for modes that do not use the atlas defaults.
+WorldMap.RenderModeLayerDefaults = {
+    satellite = { safe_zones = true, landmarks = true, tables = true },
+    walker = { safe_zones = true, landmarks = true, tables = true }
+}
+
+WorldMap.EnabledLayers = {}
 WorldMap.Materials = WorldMap.Materials or {}
 WorldMap.CellMaterials = WorldMap.CellMaterials or {}
 WorldMap.LocalMapTiles = WorldMap.LocalMapTiles or {}
@@ -60,20 +108,56 @@ WorldMap.DefaultLayerOrder = {
 }
 WorldMap.LayerOrder = WorldMap.LayerOrder or {}
 
-local function getLayerPreference(layer)
-    local savedValue = cookie.GetString("zombiesim_world_map_layer_" .. layer.id, "")
+local function getLayerCookieKey(renderMode, layerId)
+    if renderMode == "default" then
+        return "zombiesim_world_map_layer_" .. layerId
+    end
+    return "zombiesim_world_map_layer_" .. renderMode .. "_" .. layerId
+end
+
+local function getLayerDefault(renderMode, layer)
+    if renderMode == "default" then
+        return layer.enabled == true
+    end
+    local defaults = WorldMap.RenderModeLayerDefaults[renderMode]
+    return defaults ~= nil and defaults[layer.id] == true
+end
+
+local function getLayerPreference(renderMode, layer)
+    local savedValue = cookie.GetString(getLayerCookieKey(renderMode, layer.id), "")
     if savedValue == "0" then
         return false
     end
     if savedValue == "1" then
         return true
     end
-    return layer.enabled
+    return getLayerDefault(renderMode, layer)
 end
 
-local function setLayerPreference(layerId, enabled)
-    WorldMap.EnabledLayers[layerId] = enabled
-    cookie.Set("zombiesim_world_map_layer_" .. layerId, enabled and "1" or "0")
+local function setLayerPreference(renderMode, layerId, enabled)
+    local modeLayers = WorldMap.EnabledLayers[renderMode]
+    if not modeLayers then
+        modeLayers = {}
+        WorldMap.EnabledLayers[renderMode] = modeLayers
+    end
+    modeLayers[layerId] = enabled and true or false
+    cookie.Set(getLayerCookieKey(renderMode, layerId), enabled and "1" or "0")
+end
+
+// Reports whether a layer is meaningful for a render mode, independent of the player's toggle.
+function WorldMap:IsLayerSupported(layerId, renderMode)
+    local supported = self.RenderModeLayers[renderMode or self.RenderMode]
+    return supported ~= nil and supported[layerId] == true
+end
+
+// Reports whether a layer should currently be drawn: supported by the mode and toggled on.
+function WorldMap:IsLayerEnabled(layerId, renderMode)
+    renderMode = renderMode or self.RenderMode
+    if not self:IsLayerSupported(layerId, renderMode) then
+        return false
+    end
+    local modeLayers = self.EnabledLayers[renderMode]
+    return modeLayers ~= nil and modeLayers[layerId] == true
 end
 
 local function getLayerById(layerId)
@@ -209,10 +293,12 @@ function WorldMap:SetRenderMode(renderMode)
     return true
 end
 
-for _, layer in ipairs(WorldMap.Layers) do
-    if WorldMap.EnabledLayers[layer.id] == nil then
-        WorldMap.EnabledLayers[layer.id] = getLayerPreference(layer)
+for renderMode in pairs(WorldMap.RenderModes) do
+    local modeLayers = {}
+    for _, layer in ipairs(WorldMap.Layers) do
+        modeLayers[layer.id] = WorldMap:IsLayerSupported(layer.id, renderMode) and getLayerPreference(renderMode, layer) or false
     end
+    WorldMap.EnabledLayers[renderMode] = modeLayers
 end
 WorldMap:LoadLayerOrder()
 
@@ -308,9 +394,34 @@ local function getLocalMapKey()
     return profile .. "/" .. mapName .. "/v" .. localMapCaptureVersion, profile, mapName
 end
 
-local function getLocalMapTiles()
+local function getLocalMapCapture()
     local mapKey = getLocalMapKey()
     return WorldMap.LocalMapTiles[mapKey]
+end
+
+// The flat ortho keys are used because the ortho table form is ignored by this Garry's Mod branch.
+local function renderLocalMapView(size)
+    local halfSpan = localMapSpan * 0.5
+    render.RenderView({
+        origin = Vector(0, 0, localMapCameraHeight),
+        angles = Angle(90, 90, 0),
+        x = 0,
+        y = 0,
+        w = size,
+        h = size,
+        fov = localMapCullFieldOfView,
+        ortho = true,
+        ortholeft = -halfSpan,
+        orthoright = halfSpan,
+        orthotop = -halfSpan,
+        orthobottom = halfSpan,
+        znear = 4,
+        zfar = 8192,
+        drawviewer = true,
+        drawviewmodel = false,
+        drawhud = false,
+        dopostprocess = false
+    })
 end
 
 function WorldMap:CaptureCurrentMap(resetViewport)
@@ -320,44 +431,38 @@ function WorldMap:CaptureCurrentMap(resetViewport)
     end
 
     local mapKey, profile, mapName = getLocalMapKey()
-    local tiles = {}
-    for row = 0, localMapTileCount - 1 do
-        for column = 0, localMapTileCount - 1 do
-            local renderTargetName = string.format("zombiesim_local_map_%s_%s_v%d_%d_%d", profile, mapName, localMapCaptureVersion, row, column)
-            local renderTarget = GetRenderTarget(renderTargetName, localMapTileSize, localMapTileSize, false)
-            local material = CreateMaterial(renderTargetName .. "_material", "UnlitGeneric", {
-                ["$basetexture"] = renderTarget:GetName(),
-                ["$vertexcolor"] = "1",
-                ["$vertexalpha"] = "1"
-            })
-            if not material or material:IsError() then
-                return false
-            end
-
-            local cameraX = (column - localMapTileCount * 0.5 + 0.5) * localMapTileSpan
-            local cameraY = (localMapTileCount * 0.5 - row - 0.5) * localMapTileSpan
-            render.PushRenderTarget(renderTarget)
-            render.Clear(0, 0, 0, 255, true, true)
-            render.RenderView({
-                origin = Vector(cameraX, cameraY, localMapCameraHeight),
-                angles = Angle(90, 90, 0),
-                x = 0,
-                y = 0,
-                w = localMapTileSize,
-                h = localMapTileSize,
-                fov = localMapTileFieldOfView,
-                znear = 4,
-                zfar = 8192,
-                drawviewmodel = false,
-                drawhud = false,
-                dopostprocess = false
-            })
-            render.PopRenderTarget()
-            table.insert(tiles, { row = row, column = column, material = material })
-        end
+    local renderTargetName = string.format("zombiesim_local_map_%s_%s_v%d", profile, mapName, localMapCaptureVersion)
+    // RT_SIZE and depth enums fall back to their documented values on branches that lack them.
+    // TEXTUREFLAGS are never exposed as globals, so clamp S (4) and clamp T (8) are literal.
+    // A separate depth buffer is required: an RT_SIZE_LITERAL target sharing the window depth
+    // buffer renders nothing below the window height.
+    local renderTarget = GetRenderTargetEx(
+        renderTargetName,
+        localMapCaptureSize,
+        localMapCaptureSize,
+        RT_SIZE_LITERAL or 8,
+        MATERIAL_RT_DEPTH_SEPARATE or 1,
+        bit.bor(4, 8),
+        0,
+        IMAGE_FORMAT_RGB888 or 2
+    )
+    if not renderTarget then
+        return false
+    end
+    local material = CreateMaterial(renderTargetName .. "_material", "UnlitGeneric", {
+        ["$basetexture"] = renderTarget:GetName(),
+        ["$vertexcolor"] = "1"
+    })
+    if not material or material:IsError() then
+        return false
     end
 
-    self.LocalMapTiles[mapKey] = tiles
+    render.PushRenderTarget(renderTarget)
+    render.Clear(0, 0, 0, 255, true, true)
+    renderLocalMapView(localMapCaptureSize)
+    render.PopRenderTarget()
+
+    self.LocalMapTiles[mapKey] = { material = material }
     self.LocalMapRefreshTimes[mapKey] = CurTime()
     if resetViewport ~= false then
         self.LocalViewport = { zoom = localMapDefaultZoom, panX = 0, panY = 0 }
@@ -367,7 +472,7 @@ function WorldMap:CaptureCurrentMap(resetViewport)
 end
 
 function WorldMap:EnsureLocalMapCapture()
-    if getLocalMapTiles() then
+    if getLocalMapCapture() then
         return true
     end
     return self:CaptureCurrentMap()
@@ -389,15 +494,15 @@ end
 function WorldMap:RefreshLocalMapIfDue()
     local mapKey = getLocalMapKey()
     local lastRefresh = self.LocalMapRefreshTimes[mapKey] or 0
-    if not getLocalMapTiles() or CurTime() - lastRefresh >= localMapRefreshInterval then
+    if not getLocalMapCapture() or CurTime() - lastRefresh >= localMapRefreshInterval then
         return self:CaptureCurrentMap(false)
     end
     return true
 end
 
 function WorldMap:DrawLocalMap(x, y, width, height, centerPosition, viewHeight)
-    local tiles = getLocalMapTiles()
-    if not tiles or width <= 0 or height <= 0 then
+    local capture = getLocalMapCapture()
+    if not capture or not capture.material or capture.material:IsError() or width <= 0 or height <= 0 then
         return false
     end
 
@@ -408,56 +513,46 @@ function WorldMap:DrawLocalMap(x, y, width, height, centerPosition, viewHeight)
     local viewStartV = 0.5 - centerPosition.y / localMapSpan - viewHeight / localMapSpan * 0.5
     local viewEndU = viewStartU + viewWidth / localMapSpan
     local viewEndV = viewStartV + viewHeight / localMapSpan
-    local tileUvSize = 1 / localMapTileCount
-    local drewMap = false
-
-    for _, tile in ipairs(tiles) do
-        if tile.material and not tile.material:IsError() then
-            local tileStartU = tile.column * tileUvSize
-            local tileStartV = tile.row * tileUvSize
-            local tileEndU = tileStartU + tileUvSize
-            local tileEndV = tileStartV + tileUvSize
-            local drawStartU = math.max(viewStartU, tileStartU)
-            local drawStartV = math.max(viewStartV, tileStartV)
-            local drawEndU = math.min(viewEndU, tileEndU)
-            local drawEndV = math.min(viewEndV, tileEndV)
-            if drawStartU < drawEndU and drawStartV < drawEndV then
-                local destinationX = x + (drawStartU - viewStartU) / (viewEndU - viewStartU) * width
-                local destinationY = y + (drawStartV - viewStartV) / (viewEndV - viewStartV) * height
-                local destinationWidth = (drawEndU - drawStartU) / (viewEndU - viewStartU) * width
-                local destinationHeight = (drawEndV - drawStartV) / (viewEndV - viewStartV) * height
-                surface.SetMaterial(tile.material)
-                surface.SetDrawColor(255, 255, 255, 255)
-                surface.DrawTexturedRectUV(
-                    destinationX,
-                    destinationY,
-                    destinationWidth,
-                    destinationHeight,
-                    (drawStartU - tileStartU) / tileUvSize,
-                    (drawStartV - tileStartV) / tileUvSize,
-                    (drawEndU - tileStartU) / tileUvSize,
-                    (drawEndV - tileStartV) / tileUvSize
-                )
-                drewMap = true
-            end
-        end
+    local drawStartU = math.max(viewStartU, 0)
+    local drawStartV = math.max(viewStartV, 0)
+    local drawEndU = math.min(viewEndU, 1)
+    local drawEndV = math.min(viewEndV, 1)
+    if drawStartU >= drawEndU or drawStartV >= drawEndV then
+        return false
     end
 
-    return drewMap
+    surface.SetMaterial(capture.material)
+    surface.SetDrawColor(255, 255, 255, 255)
+    surface.DrawTexturedRectUV(
+        x + (drawStartU - viewStartU) / (viewEndU - viewStartU) * width,
+        y + (drawStartV - viewStartV) / (viewEndV - viewStartV) * height,
+        (drawEndU - drawStartU) / (viewEndU - viewStartU) * width,
+        (drawEndV - drawStartV) / (viewEndV - viewStartV) * height,
+        drawStartU,
+        drawStartV,
+        drawEndU,
+        drawEndV
+    )
+    return true
 end
 
-local function getCellRenderMaterial(cell)
+local function getCellZoomMaterial(cell, renderMode)
     if not cell or type(cell.map) ~= "string" or cell.map == "" then
         return nil
     end
 
+    local directory = renderMode == "wireframe" and "cells_wireframe" or "cells"
     local profile = ZM_World and ZM_World.ActiveProfile or "city"
-    local materialKey = profile .. "/" .. cell.map
+    local materialKey = profile .. "/" .. directory .. "/" .. cell.map
     if not WorldMap.CellMaterials[materialKey] then
-        WorldMap.CellMaterials[materialKey] = Material("worlds/" .. profile .. "/cells/" .. cell.map .. ".png", "smooth")
+        WorldMap.CellMaterials[materialKey] = Material("worlds/" .. profile .. "/" .. directory .. "/" .. cell.map .. ".png", "smooth")
     end
 
     return WorldMap.CellMaterials[materialKey]
+end
+
+local function getCellRenderMaterial(cell)
+    return getCellZoomMaterial(cell, "satellite")
 end
 
 local function getCellGridCoordinates(cell)
@@ -467,6 +562,47 @@ local function getCellGridCoordinates(cell)
     end
 
     return ZM_World:GetGridCoordinates(worldX, worldY)
+end
+
+// Past the stitched atlas resolution, draw each visible cell from its own native-resolution
+// image so deep zoom stays sharp instead of magnifying the atlas.
+local function drawZoomedCells(worldData, mapX, mapY, mapSize, renderMode, viewWidth, viewHeight)
+    local gridWidth = tonumber(worldData.world.grid[1]) or 1
+    local gridHeight = tonumber(worldData.world.grid[2]) or 1
+    if gridWidth < 1 or gridHeight < 1 then
+        return false
+    end
+
+    local cellWidth = mapSize / gridWidth
+    local cellHeight = mapSize / gridHeight
+    local drewAnyCell = false
+    local drawnCells = 0
+    local missingCells = 0
+
+    surface.SetDrawColor(255, 255, 255, 255)
+    for _, cell in ipairs(worldData.cells or {}) do
+        local gridX, gridY = getCellGridCoordinates(cell)
+        if gridX and gridY then
+            local cellX = mapX + gridX * cellWidth
+            local cellY = mapY + gridY * cellHeight
+            if cellX + cellWidth >= 0 and cellY + cellHeight >= 0 and cellX <= viewWidth and cellY <= viewHeight then
+                local material = getCellZoomMaterial(cell, renderMode)
+                if material and not material:IsError() then
+                    surface.SetMaterial(material)
+                    // Overdraw by a pixel so fractional cell origins do not leave seams between tiles.
+                    surface.DrawTexturedRect(cellX, cellY, cellWidth + 1, cellHeight + 1)
+                    drewAnyCell = true
+                    drawnCells = drawnCells + 1
+                else
+                    missingCells = missingCells + 1
+                end
+            end
+        end
+    end
+
+    WorldMap.DebugDrawnCells = drawnCells
+    WorldMap.DebugMissingCells = missingCells
+    return drewAnyCell
 end
 
 local function toUnsigned32(value)
@@ -595,6 +731,63 @@ local function drawWaypoint(cell, mapX, mapY, cellSize)
     surface.DrawLine(centerX + radius, centerY, centerX, centerY + radius)
     surface.DrawLine(centerX, centerY + radius, centerX - radius, centerY)
     surface.DrawLine(centerX - radius, centerY, centerX, centerY - radius)
+end
+
+// Draws safe-zone destinations directly, for views that do not render the baked safe-zone layer.
+local function drawSafeZoneMarkers(worldData, mapX, mapY, cellWidth, cellHeight)
+    for _, safeZone in ipairs(worldData.safeZones or {}) do
+        local cell = ZM_World:GetCellById(safeZone.cell)
+        local gridX, gridY
+        if cell then
+            gridX, gridY = getCellGridCoordinates(cell)
+        end
+        if gridX and gridY then
+            local centerX = mapX + (gridX + 0.5) * cellWidth
+            local centerY = mapY + (gridY + 0.5) * cellHeight
+            local radius = math.max(4, math.min(10, math.min(cellWidth, cellHeight) * 0.3))
+            surface.SetDrawColor(8, 10, 12, 235)
+            surface.DrawRect(centerX - radius - 1, centerY - radius - 1, radius * 2 + 2, radius * 2 + 2)
+            surface.SetDrawColor(64, 226, 160, 255)
+            surface.DrawOutlinedRect(centerX - radius, centerY - radius, radius * 2, radius * 2, 2)
+            surface.DrawRect(centerX - 2, centerY - 2, 4, 4)
+        end
+    end
+end
+
+// Drawn per frame rather than baked into a layer so the lines stay one pixel wide at any zoom.
+// Only lines inside the visible canvas are drawn.
+local function drawWireframeCellGrid(mapX, mapY, gridWidth, gridHeight, cellWidth, cellHeight, viewWidth, viewHeight)
+    if cellWidth < 2 or cellHeight < 2 then
+        return
+    end
+
+    local top = math.max(mapY, 0)
+    local bottom = math.min(mapY + gridHeight * cellHeight, viewHeight)
+    local left = math.max(mapX, 0)
+    local right = math.min(mapX + gridWidth * cellWidth, viewWidth)
+    if right <= left or bottom <= top then
+        return
+    end
+
+    surface.SetDrawColor(220, 40, 40, 150)
+    local firstColumn = math.max(0, math.ceil((left - mapX) / cellWidth))
+    local lastColumn = math.min(gridWidth, math.floor((right - mapX) / cellWidth))
+    for column = firstColumn, lastColumn do
+        local x = math.floor(mapX + column * cellWidth)
+        surface.DrawRect(x, top, 1, bottom - top)
+    end
+
+    local firstRow = math.max(0, math.ceil((top - mapY) / cellHeight))
+    local lastRow = math.min(gridHeight, math.floor((bottom - mapY) / cellHeight))
+    for row = firstRow, lastRow do
+        local y = math.floor(mapY + row * cellHeight)
+        surface.DrawRect(left, y, right - left, 1)
+    end
+end
+
+// Safe-zone destinations stay visible in wireframe even though it draws no map layers.
+local function areSafeZonesVisible()
+    return WorldMap.RenderMode == "wireframe" or WorldMap:IsLayerEnabled("safe_zones")
 end
 
 local function drawBossMarkers(mapX, mapY, cellWidth, cellHeight)
@@ -777,7 +970,7 @@ local function drawFixedMapOverlays(worldData, width, height)
     end
 
     local keyWidth = 0
-    if WorldMap.EnabledLayers.tables then
+    if WorldMap:IsLayerEnabled("tables") then
         local keyMaterial = getMaterial("keys")
         if keyMaterial and not keyMaterial:IsError() then
             local keySourceWidth = 360
@@ -944,13 +1137,13 @@ local function createMapCanvas(parent, onSelect)
             if cell and playerCell and cell.id == playerCell.id then
                 table.insert(tooltipLines, player:Nick())
             end
-            if WorldMap.EnabledLayers.safe_zones then
+            if areSafeZonesVisible() then
                 local safeZone = cell and ZM_World:GetSafeZone(cell) or nil
                 if safeZone and safeZone.name then
                     table.insert(tooltipLines, "Safe Zone: " .. safeZone.name)
                 end
             end
-            if WorldMap.EnabledLayers.landmarks then
+            if WorldMap:IsLayerEnabled("landmarks") then
                 local landmarks = cell and ZM_World:GetLandmarks(cell) or nil
                 if landmarks and #landmarks > 0 then
                     for _, landmark in ipairs(landmarks) do
@@ -1017,15 +1210,9 @@ local function createMapCanvas(parent, onSelect)
             self.LandmarkTooltipText = nil
             local mapX, mapY, mapSize = self:GetMapBounds()
             local hasCapture = false
-            local tileSize = mapSize / localMapTileCount
-            for _, tile in ipairs(getLocalMapTiles() or {}) do
-                hasCapture = drawCellCapture(
-                    tile.material,
-                    mapX + tile.column * tileSize,
-                    mapY + tile.row * tileSize,
-                    tileSize,
-                    tileSize
-                ) or hasCapture
+            local capture = getLocalMapCapture()
+            if capture then
+                hasCapture = drawCellCapture(capture.material, mapX, mapY, mapSize, mapSize)
             end
             if hasCapture then
                 local player = LocalPlayer()
@@ -1073,9 +1260,8 @@ local function createMapCanvas(parent, onSelect)
         local hasRenderMaterial = false
         if renderMode == "default" then
             for _, layerId in ipairs(WorldMap.LayerOrder) do
-                local layer = getLayerById(layerId)
-                if layer and WorldMap.EnabledLayers[layer.id] then
-                    local material = getMaterial(layer.id)
+                if WorldMap:IsLayerEnabled(layerId) then
+                    local material = getMaterial(layerId)
                     if material and not material:IsError() then
                         surface.SetMaterial(material)
                         surface.SetDrawColor(255, 255, 255, 255)
@@ -1092,18 +1278,31 @@ local function createMapCanvas(parent, onSelect)
             end
         else
             local material = getRenderModeMaterial(renderMode)
-            hasRenderMaterial = material and not material:IsError()
-            if hasRenderMaterial then
+            local atlasAvailable = material and not material:IsError()
+            local atlasWidth = atlasAvailable and material:Width() or 0
+            local drewZoomedCells = false
+            WorldMap.DebugDrawnCells = 0
+            WorldMap.DebugMissingCells = 0
+            if not atlasAvailable or mapSize > atlasWidth then
+                drewZoomedCells = drawZoomedCells(worldData, mapX, mapY, mapSize, renderMode, width, height)
+            end
+            WorldMap.DebugAtlasWidth = atlasWidth
+            WorldMap.DebugMapSize = mapSize
+            WorldMap.DebugUsingCells = drewZoomedCells
+            hasRenderMaterial = drewZoomedCells or atlasAvailable
+            if atlasAvailable and not drewZoomedCells then
                 surface.SetMaterial(material)
                 surface.SetDrawColor(255, 255, 255, 255)
                 surface.DrawTexturedRect(mapX, mapY, mapSize, mapSize)
             end
-            for _, layerId in ipairs({ "safe_zones", "landmarks" }) do
-                local annotationMaterial = getMaterial(layerId)
-                if annotationMaterial and not annotationMaterial:IsError() then
-                    surface.SetMaterial(annotationMaterial)
-                    surface.SetDrawColor(255, 255, 255, 255)
-                    surface.DrawTexturedRect(mapX, mapY, mapSize, mapSize)
+            for _, layerId in ipairs(WorldMap.LayerOrder) do
+                if WorldMap:IsLayerEnabled(layerId) then
+                    local annotationMaterial = getMaterial(layerId)
+                    if annotationMaterial and not annotationMaterial:IsError() then
+                        surface.SetMaterial(annotationMaterial)
+                        surface.SetDrawColor(255, 255, 255, 255)
+                        surface.DrawTexturedRect(mapX, mapY, mapSize, mapSize)
+                    end
                 end
             end
         end
@@ -1119,7 +1318,12 @@ local function createMapCanvas(parent, onSelect)
         if renderMode == "walker" then
             WorldMap:DrawWalkerDots(mapX, mapY, cellWidth, cellHeight)
         end
-        drawBossMarkers(mapX, mapY, cellWidth, cellHeight)
+        if renderMode == "wireframe" then
+            drawWireframeCellGrid(mapX, mapY, gridWidth, gridHeight, cellWidth, cellHeight, width, height)
+            drawSafeZoneMarkers(worldData, mapX, mapY, cellWidth, cellHeight)
+        else
+            drawBossMarkers(mapX, mapY, cellWidth, cellHeight)
+        end
 
         local player = LocalPlayer()
         local playerCell
@@ -1150,8 +1354,28 @@ local function createMapCanvas(parent, onSelect)
             end
         end
 
-        if renderMode == "default" or renderMode == "wireframe" or renderMode == "satellite" or renderMode == "walker" then
+        if renderMode == "default" or renderMode == "satellite" or renderMode == "walker" then
             drawFixedMapOverlays(worldData, width, height)
+        end
+        if mapDebugConVar:GetBool() then
+            local sourceLabel
+            if renderMode == "default" or renderMode == "map" then
+                sourceLabel = "n/a for this mode"
+            elseif WorldMap.DebugUsingCells then
+                sourceLabel = string.format("per-cell (%d drawn, %d missing)", WorldMap.DebugDrawnCells or 0, WorldMap.DebugMissingCells or 0)
+            else
+                sourceLabel = "stitched atlas"
+            end
+            local lines = {
+                string.format("mode: %s   zoom: %.2f", tostring(renderMode), self.Zoom or 0),
+                string.format("map size: %dpx   atlas width: %dpx", math.floor(WorldMap.DebugMapSize or 0), math.floor(WorldMap.DebugAtlasWidth or 0)),
+                string.format("switch at: %dpx   source: %s", math.floor(WorldMap.DebugAtlasWidth or 0), sourceLabel)
+            }
+            surface.SetDrawColor(0, 0, 0, 220)
+            surface.DrawRect(8, height - 8 - (#lines * 16 + 8), 420, #lines * 16 + 8)
+            for index, line in ipairs(lines) do
+                draw.SimpleText(line, "DermaDefaultBold", 14, height - 8 - (#lines * 16 + 4) + (index - 1) * 16, MapColors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+            end
         end
         local cursorX, cursorY = self:CursorPos()
         self:UpdateLandmarkTooltip(cursorX, cursorY)
@@ -1612,8 +1836,12 @@ function WorldMap:Open()
     selectAllButton:SetText("Select All")
     selectAllButton.DoClick = function()
         for _, layer in ipairs(self.Layers) do
-            self.EnabledLayers[layer.id] = true
-            layerCheckboxes[layer.id]:SetValue(1)
+            if self:IsLayerSupported(layer.id) then
+                setLayerPreference(self.RenderMode, layer.id, true)
+                if layerCheckboxes[layer.id] then
+                    layerCheckboxes[layer.id]:SetValue(1)
+                end
+            end
         end
     end
 
@@ -1863,23 +2091,34 @@ function WorldMap:Open()
     rebuildLayerControls = function()
         layerList:Clear()
         layerCheckboxes = {}
-        local layerControlsEnabled = WorldMap.RenderMode == "default"
-        selectAllButton:SetEnabled(layerControlsEnabled)
+        local renderMode = WorldMap.RenderMode
+        local canReorder = renderMode == "default"
+        local supportedCount = 0
+        for _, layer in ipairs(self.Layers) do
+            if self:IsLayerSupported(layer.id, renderMode) then
+                supportedCount = supportedCount + 1
+            end
+        end
+        selectAllButton:SetEnabled(supportedCount > 0)
 
         local function addLayerControl(layer, stackIndex)
+            if not layer or not self:IsLayerSupported(layer.id, renderMode) then
+                return
+            end
+
             local row = vgui.Create("DPanel", layerList)
             row:Dock(TOP)
             row:DockMargin(4, 2, 4, 2)
             row:SetTall(20)
             row.Paint = function() end
 
-            if stackIndex then
+            if stackIndex and canReorder then
                 local moveUpButton = vgui.Create("DButton", row)
                 moveUpButton:Dock(RIGHT)
                 moveUpButton:SetWide(19)
                 moveUpButton:SetText("^")
                 moveUpButton:SetTooltip("Move layer higher")
-                moveUpButton:SetEnabled(layerControlsEnabled and stackIndex < #self.LayerOrder)
+                moveUpButton:SetEnabled(stackIndex < #self.LayerOrder)
                 moveUpButton.DoClick = function()
                     if self:MoveLayer(layer.id, 1) then
                         rebuildLayerControls()
@@ -1891,7 +2130,7 @@ function WorldMap:Open()
                 moveDownButton:SetWide(19)
                 moveDownButton:SetText("v")
                 moveDownButton:SetTooltip("Move layer lower")
-                moveDownButton:SetEnabled(layerControlsEnabled and stackIndex > 1)
+                moveDownButton:SetEnabled(stackIndex > 1)
                 moveDownButton.DoClick = function()
                     if self:MoveLayer(layer.id, -1) then
                         rebuildLayerControls()
@@ -1906,10 +2145,9 @@ function WorldMap:Open()
             checkbox:DockMargin(6, 1, 2, 0)
             checkbox:SetText(layer.label)
             checkbox:SetTextColor(MapColors.text)
-            checkbox:SetValue(self.EnabledLayers[layerId] and 1 or 0)
-            checkbox:SetEnabled(layerControlsEnabled)
+            checkbox:SetValue(self:IsLayerEnabled(layerId, renderMode) and 1 or 0)
             checkbox.OnChange = function(_, value)
-                setLayerPreference(layerId, value)
+                setLayerPreference(renderMode, layerId, value)
                 if (layerId == "landmarks" or layerId == "safe_zones") and not value then
                     canvas.LandmarkTooltipText = nil
                 end
@@ -1920,6 +2158,20 @@ function WorldMap:Open()
             addLayerControl(getLayerById(self.LayerOrder[stackIndex]), stackIndex)
         end
         addLayerControl(getLayerById("tables"), nil)
+
+        if supportedCount == 0 then
+            local emptyLabel = vgui.Create("DLabel", layerList)
+            emptyLabel:Dock(TOP)
+            emptyLabel:DockMargin(6, 4, 6, 4)
+            emptyLabel:SetTall(56)
+            emptyLabel:SetWrap(true)
+            emptyLabel:SetTextColor(MapColors.muted)
+            if renderMode == "wireframe" then
+                emptyLabel:SetText("This view draws no map layers. Only the player, waypoint, selected cell, and safe-zone destinations are shown.")
+            else
+                emptyLabel:SetText("This view does not use map layers.")
+            end
+        end
     end
 
     local renderModeControls = vgui.Create("DPanel", canvas)
