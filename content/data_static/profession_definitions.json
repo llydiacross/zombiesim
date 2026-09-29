@@ -6,6 +6,13 @@
       "name": "Civilian",
       "description": "No trade. Civilians receive no daily delivery and offer no services."
     },
+	"Capitalist": {
+      "name": "Capitalist",
+      "description": "You are a capitalist by nature. Trading is your life and blood. You must make a profit out of all costs.",
+	  "playerLootBonuses": {
+		"lootCashBundles": 0.25
+	  }
+    },
     "Farmer": {
       "name": "Farmer",
       "description": "Grows produce. Receives vegetables and fruit every day.",
@@ -86,6 +93,6 @@
       "description": "Researches medicine from raw materials for anyone who brings them.",
       "statBonuses": { "Intelligence": 3 },
       "services": [ "research" ]
-    }
+    },
   }
 }

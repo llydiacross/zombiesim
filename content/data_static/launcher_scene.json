@@ -5,10 +5,15 @@
     "city": { "city": "Z-Nation City", "latitude": 40.7128, "longitude": -74.006, "extentKm": 24 }
   },
   "credits": [
-    { "heading": "Z-NATION", "lines": ["A ZombieSim project"] },
-    { "heading": "DEVELOPMENT", "lines": ["ZombieSim development team"] },
-    { "heading": "WORLD AND GAMEPLAY", "lines": ["Original procedural world generation", "Original gameplay and launcher presentation"] },
-    { "heading": "ENGINE AND CONTENT", "lines": ["Garry's Mod and Source: Facepunch Studios / Valve", "Dancer models: Half-Life 2 / Valve"] },
-    { "heading": "THANK YOU", "lines": ["To everyone who plays and contributes."] }
+    { "heading": "Z-NATION", "lines": ["Created by llydia cross", "2026", "[LFP]"] },
+    { "heading": "DEVELOPMENT", "lines": ["llydia cross"] },
+    { "heading": "ART & DESIGN", "lines": ["llydia cross"] },
+    { "heading": "LEVEL DESIGN", "lines": ["llydia cross"] },
+    { "heading": "PROGRAMMING", "lines": ["llydia cross"] },
+    { "heading": "MUSIC", "lines": ["llydia cross"] },
+    { "heading": "PRODUCTION", "lines": ["llydia cross"] },
+    { "heading": "WRITING", "lines": ["llydia cross"] },
+    { "heading": "ENGINE AND THIRD PARTY", "lines": ["Garry's Mod and Source: Facepunch Studios / Valve"] },
+    { "heading": "THANK YOU", "lines": ["Marc Laidlaw", "Kaelta Bowen", "Dana", "Steve Noodle", "To everyone who plays and contributes."] }
   ]
 }
