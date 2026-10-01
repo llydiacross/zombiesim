@@ -287,10 +287,13 @@ function Get-TemplateRoadConnectionRotation {
     return (($yawByDirection[$FrontageDirection] - $yawByDirection[$localConnectionDirection] + 360) % 360)
 }
 $safeZoneSettings = $plannerSettings.safeZones
-if ($null -eq $safeZoneSettings -or -not $safeZoneSettings.ContainsKey('biomePriority') -or -not $safeZoneSettings.ContainsKey('biomeCodes') -or -not $safeZoneSettings.ContainsKey('templateFilenameFormat')) {
-    throw 'cellPlanning.safeZones must define biomePriority, biomeCodes, and templateFilenameFormat to plan standalone den maps.'
+if ($null -eq $safeZoneSettings) {
+    throw 'cellPlanning.safeZones must be defined to plan standalone den maps.'
 }
-$safeZoneTemplateDirectory = Join-Path $projectRoot $generatorSettings.paths.safeZoneTemplateDirectory
+if (-not ($safeZoneSettings.ContainsKey('defaultTemplate') -or $safeZoneSettings.ContainsKey('biomePriority'))) {
+    throw 'cellPlanning.safeZones must define defaultTemplate, or the legacy biomePriority/biomeCodes schema, to plan standalone den maps.'
+}
+$safeZoneTemplateDirectory = if ($safeZoneSettings.ContainsKey('templateDirectory')) { Join-Path $projectRoot $safeZoneSettings.templateDirectory } else { Join-Path $projectRoot $generatorSettings.paths.safeZoneTemplateDirectory }
 if (-not (Test-Path -LiteralPath $safeZoneTemplateDirectory -PathType Container)) {
     throw "Safe-zone template directory was not found: $safeZoneTemplateDirectory"
 }
@@ -443,6 +446,93 @@ function Get-CellOrientation {
         return $directionNames[$presentDirections[0]]
     }
     return 'none'
+}
+
+function Get-SafeZoneEntrancePlan {
+    param(
+        [object]$Cell,
+        [int]$TileGridSize,
+        [int]$PlacementSeed,
+        [hashtable]$ExcludedSlots = @{}
+    )
+
+    if ($null -eq $Cell.safeZone) { return $null }
+    if ($TileGridSize -ne 5) {
+        throw "Safe-zone entrance at $($Cell.x),$($Cell.y) requires a 5x5 playable grid."
+    }
+    $template = [string]$safeZoneSettings.entrance.template
+    if (-not $templateFiles.ContainsKey($template.ToLowerInvariant())) {
+        throw "Safe-zone entrance template does not exist: $template"
+    }
+    $roads = @(Get-CellConnections $Cell)
+    if ($roads.Count -eq 0) {
+        throw "Safe zone at $($Cell.x),$($Cell.y) has no adjacent road for its entrance."
+    }
+    $waterSides = @(Get-WaterBorderPlan $Cell | ForEach-Object { $_.side })
+    $edgeSlots = @{
+        W = @{ x = -1; y = 1; yaw = 180; front = 'E'; roadX = 2; roadY = 2 }
+        E = @{ x = 3; y = 1; yaw = 0; front = 'W'; roadX = 2; roadY = 2 }
+        N = @{ x = 1; y = -1; yaw = 90; front = 'S'; roadX = 2; roadY = 2 }
+        S = @{ x = 1; y = 3; yaw = 270; front = 'N'; roadX = 2; roadY = 2 }
+    }
+    $cornerSlots = @{
+        NW = @{ x = -1; y = -1; yaw = 180; front = 'E'; roadX = 2; roadY = 1 }
+        NE = @{ x = 3; y = -1; yaw = 0; front = 'W'; roadX = 2; roadY = 1 }
+        SW = @{ x = -1; y = 3; yaw = 180; front = 'E'; roadX = 2; roadY = 3 }
+        SE = @{ x = 3; y = 3; yaw = 0; front = 'W'; roadX = 2; roadY = 3 }
+    }
+    $edgeOrder = @(@('N', 'E', 'S', 'W') | Where-Object { $_ -notin $roads })
+    $edgeOrder = @($edgeOrder | Sort-Object { ([Math]::Abs([int64]$PlacementSeed) + @('N', 'E', 'S', 'W').IndexOf($_)) % 4 })
+    if ($roads.Count -eq 1) {
+        $adjacent = switch ($roads[0]) {
+            N { @('W', 'E') } E { @('N', 'S') } S { @('W', 'E') } W { @('N', 'S') }
+        }
+        $edgeOrder = @($edgeOrder | Sort-Object { if ($_ -in $adjacent) { 0 } else { 1 } })
+    }
+    $cornerOrder = @(@('NW', 'NE', 'SW', 'SE') | Sort-Object { (@('NW', 'NE', 'SW', 'SE').IndexOf($_) + $PlacementSeed) % 4 })
+    $choices = if ($roads.Count -eq 4) { @($cornerOrder) } else { @($edgeOrder) + @($cornerOrder) }
+    foreach ($slot in $choices) {
+        if ($ExcludedSlots.ContainsKey($slot)) { continue }
+        $isCorner = $slot.Length -eq 2
+        $settings = if ($isCorner) { $cornerSlots[$slot] } else { $edgeSlots[$slot] }
+        $ring = [System.Collections.Generic.List[object]]::new()
+        $interior = [System.Collections.Generic.List[object]]::new()
+        $blocked = $false
+        for ($y = $settings.y; $y -lt $settings.y + 3; $y++) {
+            for ($x = $settings.x; $x -lt $settings.x + 3; $x++) {
+                if ($x -lt 0 -or $x -ge $TileGridSize -or $y -lt 0 -or $y -ge $TileGridSize) {
+                    $side = if ($x -lt 0) { 'W' } elseif ($x -ge $TileGridSize) { 'E' } elseif ($y -lt 0) { 'N' } else { 'S' }
+                    $otherSide = if ($y -lt 0) { 'N' } elseif ($y -ge $TileGridSize) { 'S' } else { $null }
+                    $coversGate = (($side -in @('W', 'E') -and $y -eq 2) -or ($side -in @('N', 'S') -and $x -eq 2)) -and $side -in $roads
+                    if ($coversGate -or $side -in $waterSides -or ($otherSide -and $otherSide -in $waterSides)) {
+                        $blocked = $true
+                    }
+                    $ring.Add([pscustomobject]@{ tileX = $x; tileY = $y })
+                } else {
+                    $interior.Add([pscustomobject]@{ tileX = $x; tileY = $y })
+                }
+            }
+        }
+        if ($blocked) { continue }
+        if ($isCorner -and $roads.Count -ne 4) {
+            # A corner fallback must still have an ordinary road on its front edge.
+            if ($settings.roadX -eq 2 -and $slot[0] -eq 'N' -and 'N' -notin $roads) { continue }
+            if ($settings.roadX -eq 2 -and $slot[0] -eq 'S' -and 'S' -notin $roads) { continue }
+        }
+        return [pscustomobject]@{
+            template = $templateFiles[$template.ToLowerInvariant()]
+            mode = if ($isCorner) { 'corner' } else { 'edge' }
+            slot = $slot
+            anchorTile = [pscustomobject]@{ tileX = $settings.x; tileY = $settings.y }
+            footprint = 3
+            yaw = $settings.yaw
+            frontage = $settings.front
+            adjacentRoadTile = [pscustomobject]@{ tileX = $settings.roadX; tileY = $settings.roadY }
+            interiorTiles = @($interior)
+            suppressedBorderTiles = @($ring)
+        }
+    }
+    throw "No valid safe-zone entrance placement at $($Cell.x),$($Cell.y): road, water, or border conflict."
 }
 
 function Get-EnvironmentProfile {
@@ -1537,7 +1627,8 @@ function Get-CellTilePlacements {
         [string]$Orientation,
         [int]$TileGridSize,
         [hashtable]$AvailableTemplates,
-        [bool]$ForceCarpark
+        [bool]$ForceCarpark,
+        [object]$SafeZoneEntrance
     )
 
     $center = [int][Math]::Floor($TileGridSize / 2)
@@ -1683,6 +1774,23 @@ function Get-CellTilePlacements {
                 template = $bridgeRampTemplate
                 rotationYaw = Get-TransportFeatureRotation $TransportFeature
                 role = 'bridge_ramp'
+            }
+        }
+    }
+
+    if ($null -ne $SafeZoneEntrance) {
+        foreach ($coordinate in $SafeZoneEntrance.interiorTiles) {
+            $key = "$($coordinate.tileX),$($coordinate.tileY)"
+            if ([string]$placements[$key].role -notin @('terrain', 'road')) {
+                throw "Safe-zone entrance at $($Cell.x),$($Cell.y) conflicts with tile $key ($($placements[$key].role))."
+            }
+            $placements[$key] = [pscustomobject]@{
+                tileX = [int]$coordinate.tileX
+                tileY = [int]$coordinate.tileY
+                template = $SafeZoneEntrance.template
+                rotationYaw = [int]$SafeZoneEntrance.yaw
+                role = 'safezone_entrance_occupied'
+                emitsInstance = $false
             }
         }
     }
@@ -2253,7 +2361,8 @@ function Get-RecipeFilenameCodes {
         [string]$TransportFeature,
         [int]$BuildingDensityTier,
         [string[]]$Landmarks,
-        [object[]]$TilePlacements = @()
+        [object[]]$TilePlacements = @(),
+        [object]$SafeZoneEntrance
     )
 
     $profileKey = ConvertTo-FilenamePart $Profile
@@ -2285,6 +2394,7 @@ function Get-RecipeFilenameCodes {
         density = "d$BuildingDensityTier"
         landmarks = $landmarkCodes
         macro = Get-MacroLayoutFilenameCode $TilePlacements
+        safeZoneEntrance = if ($SafeZoneEntrance) { "$($SafeZoneEntrance.template)|$($SafeZoneEntrance.slot)|$($SafeZoneEntrance.yaw)" } else { '' }
     }
 }
 
@@ -2302,6 +2412,9 @@ function Get-CellFilename {
         (@($Codes.landmarks) -join '+'),
         [string]$Codes.macro
     ) -join '|'
+    if (-not [string]::IsNullOrEmpty([string]$Codes.safeZoneEntrance)) {
+        $recipeIdentity += "|$($Codes.safeZoneEntrance)"
+    }
     $sha256 = [System.Security.Cryptography.SHA256]::Create()
     try {
         $hashBytes = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($recipeIdentity))
@@ -2397,8 +2510,38 @@ function Resolve-Template {
     throw "No fallback template exists. Candidates: $($Candidates -join ', ')"
 }
 
-function Get-SafeZoneBiome {
+function Get-SafeZoneLandmarkName {
     param([object]$Cell)
+
+    $landmarkNames = @(Get-CellLandmarks $Cell)
+    if ($safeZoneSettings.ContainsKey('landmarkTemplates') -and $safeZoneSettings.landmarkTemplates -is [System.Collections.IDictionary]) {
+        foreach ($landmark in @($safeZoneSettings.landmarkPriority)) {
+            if ($landmarkNames -contains $landmark -and $safeZoneSettings.landmarkTemplates.ContainsKey($landmark)) {
+                return [string]$landmark
+            }
+        }
+        foreach ($landmark in @($landmarkNames)) {
+            if ($safeZoneSettings.landmarkTemplates.ContainsKey($landmark)) {
+                return [string]$landmark
+            }
+        }
+    }
+
+    foreach ($landmark in @($safeZoneSettings.landmarkPriority)) {
+        if ($landmarkNames -contains $landmark) {
+            return [string]$landmark
+        }
+    }
+
+    return ''
+}
+
+function Get-SafeZoneLegacyBiome {
+    param([object]$Cell)
+
+    if (-not $safeZoneSettings.ContainsKey('biomePriority')) {
+        return ''
+    }
 
     $tags = @($Cell.environment.tags)
     foreach ($biome in @($safeZoneSettings.biomePriority)) {
@@ -2407,55 +2550,83 @@ function Get-SafeZoneBiome {
         }
     }
 
-    return [string]$safeZoneSettings.defaultBiome
-}
-
-function Get-SafeZoneLandmarkVariant {
-    param([object]$Cell)
-
-    $landmarkNames = @(Get-CellLandmarks $Cell)
-    foreach ($landmark in @($safeZoneSettings.landmarkPriority)) {
-        if ($landmarkNames -contains $landmark) {
-            if (-not $safeZoneSettings.landmarkVariants.ContainsKey($landmark)) {
-                throw "Standalone safe-zone landmark '$landmark' has no configured landmarkVariants entry."
-            }
-            return [string]$safeZoneSettings.landmarkVariants[$landmark]
-        }
+    if ($safeZoneSettings.ContainsKey('defaultBiome')) {
+        return [string]$safeZoneSettings.defaultBiome
     }
 
     return ''
 }
 
-function Get-SafeZoneTemplateFilename {
-    param(
-        [string]$Biome,
-        [string]$LandmarkVariant
-    )
+function Get-SafeZoneLegacyLandmarkVariant {
+    param([object]$Cell)
 
-    if (-not $safeZoneSettings.biomeCodes.ContainsKey($Biome)) {
-        throw "No standalone safe-zone biome code is configured for '$Biome'."
+    $landmarkName = Get-SafeZoneLandmarkName $Cell
+    if ([string]::IsNullOrWhiteSpace($landmarkName)) {
+        return ''
     }
-    $biomeCode = [string]$safeZoneSettings.biomeCodes[$Biome]
-    $landmarkSuffix = if ([string]::IsNullOrWhiteSpace($LandmarkVariant)) { '' } else { "_$LandmarkVariant" }
+    if (-not $safeZoneSettings.ContainsKey('landmarkVariants')) {
+        return ''
+    }
+    if (-not $safeZoneSettings.landmarkVariants.ContainsKey($landmarkName)) {
+        throw "Standalone safe-zone landmark '$landmarkName' has no configured landmarkVariants entry."
+    }
+    return [string]$safeZoneSettings.landmarkVariants[$landmarkName]
+}
+
+function Get-SafeZoneTemplateFilename {
+    param([object]$Cell)
+
+    $landmarkName = Get-SafeZoneLandmarkName $Cell
+    if (-not [string]::IsNullOrWhiteSpace($landmarkName) -and $safeZoneSettings.ContainsKey('landmarkTemplates') -and $safeZoneSettings.landmarkTemplates -is [System.Collections.IDictionary]) {
+        if ($safeZoneSettings.landmarkTemplates.ContainsKey($landmarkName)) {
+            $templateFilename = [string]$safeZoneSettings.landmarkTemplates[$landmarkName]
+            if ([System.IO.Path]::GetFileName($templateFilename) -ne $templateFilename -or [System.IO.Path]::GetExtension($templateFilename) -ine '.vmf') {
+                throw "Safe-zone template for landmark '$landmarkName' must be a .vmf filename without a path: $templateFilename"
+            }
+            $templateFullPath = Join-Path $safeZoneTemplateDirectory $templateFilename
+            if (-not (Test-Path -LiteralPath $templateFullPath -PathType Leaf)) {
+                throw "Safe-zone template for landmark '$landmarkName' was not found: $templateFullPath"
+            }
+            return $templateFilename
+        }
+    }
+
+    if ($safeZoneSettings.ContainsKey('defaultTemplate')) {
+        $templateFilename = [string]$safeZoneSettings.defaultTemplate
+        if ([System.IO.Path]::GetFileName($templateFilename) -ne $templateFilename -or [System.IO.Path]::GetExtension($templateFilename) -ine '.vmf') {
+            throw "Safe-zone default template must be a .vmf filename without a path: $templateFilename"
+        }
+        $templateFullPath = Join-Path $safeZoneTemplateDirectory $templateFilename
+        if (-not (Test-Path -LiteralPath $templateFullPath -PathType Leaf)) {
+            throw "Safe-zone default template was not found: $templateFullPath"
+        }
+        return $templateFilename
+    }
+
+    $biome = Get-SafeZoneLegacyBiome $Cell
+    if (-not $safeZoneSettings.biomeCodes.ContainsKey($biome)) {
+        throw "No standalone safe-zone biome code is configured for '$biome'."
+    }
+    $biomeCode = [string]$safeZoneSettings.biomeCodes[$biome]
+    $landmarkVariant = Get-SafeZoneLegacyLandmarkVariant $Cell
+    $landmarkSuffix = if ([string]::IsNullOrWhiteSpace($landmarkVariant)) { '' } else { "_$landmarkVariant" }
     $templateFilename = ([string]$safeZoneSettings.templateFilenameFormat).Replace('{biome}', $biomeCode).Replace('{landmarkSuffix}', $landmarkSuffix)
     if ([System.IO.Path]::GetFileName($templateFilename) -ne $templateFilename -or [System.IO.Path]::GetExtension($templateFilename) -ine '.vmf') {
-        throw "Safe-zone template for biome '$Biome' must be a .vmf filename without a path: $templateFilename"
+        throw "Safe-zone template for biome '$biome' must be a .vmf filename without a path: $templateFilename"
     }
-    if (-not (Test-Path -LiteralPath (Join-Path $safeZoneTemplateDirectory $templateFilename) -PathType Leaf)) {
-        throw "Safe-zone template for biome '$Biome' was not found: $(Join-Path $safeZoneTemplateDirectory $templateFilename)"
+    $templateFullPath = Join-Path $safeZoneTemplateDirectory $templateFilename
+    if (-not (Test-Path -LiteralPath $templateFullPath -PathType Leaf)) {
+        throw "Safe-zone template for biome '$biome' was not found: $templateFullPath"
     }
     return $templateFilename
 }
 
 function Get-SafeZoneMapFilename {
-    param(
-        [string]$Biome,
-        [string]$LandmarkVariant
-    )
+    param([object]$Cell)
 
-    $biomeCode = [string]$safeZoneSettings.biomeCodes[$Biome]
-    $landmarkSuffix = if ([string]::IsNullOrWhiteSpace($LandmarkVariant)) { '' } else { "_$LandmarkVariant" }
-    return 'zz_{0}_den_{1}{2}.vmf' -f $worldGenerationProfile.Name, $biomeCode, $landmarkSuffix
+    $landmarkName = Get-SafeZoneLandmarkName $Cell
+    $landmarkSuffix = if ([string]::IsNullOrWhiteSpace($landmarkName)) { '' } else { "_$(ConvertTo-FilenamePart $landmarkName)" }
+    return 'zz_{0}_den{1}.vmf' -f $worldGenerationProfile.Name, $landmarkSuffix
 }
 
 $carparkCoverage = Get-CarparkCoveragePlan @($map.cells)
@@ -2495,8 +2666,23 @@ foreach ($cell in $map.cells) {
     $exactTemplateExists = $templateFiles.ContainsKey($desiredTemplate.ToLowerInvariant())
     $features = @(Get-CellFeatures $cell $cell.environment.terrain $profile $topology)
     $activeEntrances = @(Get-ActiveEntrances $cell)
-    $tilePlacements = @(Get-CellTilePlacements $cell $terrainTemplate $buildingCandidates $landmarkTemplate $landmarks $profile $carparkTemplates $decorationTemplates $placementSeed $buildingDensityTier $transportFeature $topology $orientation $CellTileSize $templateFiles $forceCarpark)
-    $filenameCodes = Get-RecipeFilenameCodes $profile $topology $orientation $transportFeature $buildingDensityTier $landmarks $tilePlacements
+    $excludedEntranceSlots = @{}
+    do {
+        $safeZoneEntrance = Get-SafeZoneEntrancePlan $cell $CellTileSize $placementSeed $excludedEntranceSlots
+        $tilePlacements = @(Get-CellTilePlacements $cell $terrainTemplate $buildingCandidates $landmarkTemplate $landmarks $profile $carparkTemplates $decorationTemplates $placementSeed $buildingDensityTier $transportFeature $topology $orientation $CellTileSize $templateFiles $forceCarpark $safeZoneEntrance)
+        $endcapConflict = $false
+        if ($null -ne $safeZoneEntrance) {
+            $endcaps = @(Get-CarparkEndcapPlacements -Recipe ([pscustomobject]@{ tilePlacements = $tilePlacements }) -TileGridSize $CellTileSize -CarparkTemplates $plannerSettings.carparks.templates)
+            foreach ($ringTile in $safeZoneEntrance.suppressedBorderTiles) {
+                if (@($endcaps | Where-Object { $_.tileX -eq $ringTile.tileX -and $_.tileY -eq $ringTile.tileY }).Count -gt 0) {
+                    $endcapConflict = $true
+                    break
+                }
+            }
+            if ($endcapConflict) { $excludedEntranceSlots[$safeZoneEntrance.slot] = $true }
+        }
+    } while ($endcapConflict)
+    $filenameCodes = Get-RecipeFilenameCodes $profile $topology $orientation $transportFeature $buildingDensityTier $landmarks $tilePlacements $safeZoneEntrance
     $waterBorderSides = @(Get-WaterBorderPlan $cell)
     $cellTemplateFilename = Get-CarparkCoverageFilename (Get-WaterBorderFilename (Get-CellFilename $filenameCodes) $waterBorderSides) $forceCarpark
     $cellTemplatePath = Join-Path $CellDirectory $cellTemplateFilename
@@ -2512,6 +2698,8 @@ foreach ($cell in $map.cells) {
         rampExits = $rampExits
         bridgeRampDirections = $bridgeRampDirections
         activeEntrances = $activeEntrances
+        safeZoneEntrance = $safeZoneEntrance
+        suppressedBorderTiles = @(if ($safeZoneEntrance) { foreach ($tile in $safeZoneEntrance.suppressedBorderTiles) { $tile } })
         environmentProfile = $profile
         buildingDensityTier = $buildingDensityTier
         filenameCodes = $filenameCodes
@@ -2554,20 +2742,23 @@ foreach ($safeZone in @($map.safeZones | Sort-Object y, x, name)) {
     if ($null -eq $mapCell -or $null -eq $mapCell.safeZone) {
         throw "Safe zone '$($safeZone.name)' does not match a generated map cell at $coordinateKey."
     }
-    $biome = Get-SafeZoneBiome $mapCell
-    $landmarkVariant = Get-SafeZoneLandmarkVariant $mapCell
-    $templateFilename = Get-SafeZoneTemplateFilename $biome $landmarkVariant
-    $mapFilename = Get-SafeZoneMapFilename $biome $landmarkVariant
+    $landmarkName = Get-SafeZoneLandmarkName $mapCell
+    $templateFilename = Get-SafeZoneTemplateFilename $mapCell
+    $mapFilename = Get-SafeZoneMapFilename $mapCell
+    $legacyBiome = Get-SafeZoneLegacyBiome $mapCell
+    $legacyBiomeCode = if ($safeZoneSettings.ContainsKey('biomeCodes') -and $safeZoneSettings.biomeCodes.ContainsKey($legacyBiome)) { [string]$safeZoneSettings.biomeCodes[$legacyBiome] } else { '' }
+    $legacyLandmarkVariant = Get-SafeZoneLegacyLandmarkVariant $mapCell
     $safeZoneMaps += [pscustomobject]@{
         x = $x
         y = $y
         name = [string]$safeZone.name
-        biome = $biome
-        biomeCode = [string]$safeZoneSettings.biomeCodes[$biome]
-        landmarkVariant = $landmarkVariant
+        landmark = if ([string]::IsNullOrWhiteSpace($landmarkName)) { $null } else { $landmarkName }
         templateFilename = $templateFilename
         mapFilename = $mapFilename
         mapName = [System.IO.Path]::GetFileNameWithoutExtension($mapFilename)
+        biome = $legacyBiome
+        biomeCode = $legacyBiomeCode
+        landmarkVariant = $legacyLandmarkVariant
     }
     $safeZoneMapCoordinates[$coordinateKey] = $true
 }

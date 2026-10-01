@@ -561,18 +561,18 @@ This section turns the wide city map into a 5-by-5 grid of Hammer prefab instanc
 
 ### `safeZones`
 
-These settings choose the reusable standalone den map for a safe-zone entrance. They do not change the city recipe at the entrance coordinate.
+These settings choose the reusable standalone den map and the entrance instance in the safe-zone cell's city recipe.
 
 | Setting | What it controls |
 | --- | --- |
-| `biomePriority` | Ordered environment tags used to select a den biome. The first tag present on an entrance cell wins. |
-| `biomeCodes` | Short biome code used in the safe-zone template filename. Every value must correspond to an authored `cell_<code>_safezone*.vmf` template. |
-| `defaultBiome` | Biome key used when no tag in `biomePriority` applies. It must be a key in `biomeCodes`. |
-| `landmarkPriority` | Ordered landmark names eligible for a specialised den variant. The first matching landmark at the entrance wins. |
-| `landmarkVariants` | Maps an eligible landmark name to its filename suffix, such as `hospital` for `_hospital`. |
-| `templateFilenameFormat` | Filename pattern for a safe-zone source template. Keep `{biome}` and `{landmarkSuffix}` placeholders intact. |
+| `defaultTemplate` | Standalone den VMF used for the origin and whenever no configured landmark override matches. |
+| `landmarkPriority` | Ordered landmark names checked for an override when more than one occurs in the cell. |
+| `landmarkTemplates` | Optional mapping from landmark names to standalone den VMF filenames. An unmapped landmark uses `defaultTemplate`. |
+| `entrance.template` | Authored 3x3 city entrance VMF, currently `safezones/entrance_safezone_3x.vmf`. |
+| `entrance.footprint` | Width and height in tiles; currently `3`. The planner requires a 5x5 playable grid. |
+| `entrance.origin` | Authored frontage reference: the source tile faces west at yaw 0 and must be rotated to face its adjacent road. |
 
-Changing these values changes which den VMFs are copied into the active source directory. Confirm every referenced template exists in `celltemplates/safezones`, then refresh recipes before compiling.
+The planner places an edge-centred entrance on a roadless side, or at a corner when all four sides carry roads, reserving its playable tiles before buildings and suppressing the covered border tiles. The Storm Drain's missing-west T-junction takes slot `W`, yaw `180`, facing east across the centre road tile. A conflicting road gate, water border, or carpark endcap rules out that slot. Different entrance placements change recipe identity. Confirm every den template exists in `celltemplates/safezones` and the entrance exists in `tiletemplates/safezones`, then refresh the preview plan and recipes before compiling. Inspect the resulting `func_instance` and border seal in Hammer; VMF and VBSP checks alone do not establish visual correctness.
 
 ### `templatePatterns` (Advanced)
 

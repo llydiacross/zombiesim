@@ -28824,6 +28824,35 @@ entity
 }
 entity
 {
+	"id" "25731"
+	"classname" "zn_safezone_arrival"
+	"angles" "0 90 0"
+	"origin" "0 -1536 40"
+	editor
+	{
+		"color" "164 225 0"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 11500]"
+	}
+}
+entity
+{
+	"id" "25732"
+	"classname" "zn_safezone_door"
+	"angles" "0 90 0"
+	"role" "exit"
+	"origin" "0 -1536 40"
+	editor
+	{
+		"color" "164 225 0"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 11500]"
+	}
+}
+entity
+{
 	"id" "228"
 	"classname" "info_landmark"
 	"targetname" "WEST_ENTRANCE"

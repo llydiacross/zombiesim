@@ -2,18 +2,13 @@
 ZM_LauncherSceneClient = ZM_LauncherSceneClient or {}
 local Scene = ZM_LauncherSceneClient
 local Menu = ZM_LauncherMenu
-local sphereMaterial = CreateMaterial("zombiesim_launcher_planet_v3", "UnlitGeneric", {
-    ["$basetexture"] = "models/debug/debugwhite", ["$vertexcolor"] = "1",
-    ["$nocull"] = "1"
-})
-local quality = CreateClientConVar("zombiesim_globe_quality", "1", true, false,
+local quality = CreateClientConVar("zombiesim_globe_quality", "0", true, false,
     "Globe detail: 0 low, 1 normal.")
 local shotLock = CreateClientConVar("zombiesim_credits_shot", "", false, false,
     "Credits dancer name for camera tuning.")
 local debugShots = CreateClientConVar("zombiesim_credits_debug", "0", false, false,
     "Show the credits camera trace and shot state.")
 local tilt = math.rad(12)
-local tiltCos, tiltSin = math.cos(tilt), math.sin(tilt)
 local lightDirection = Vector(-0.4, -0.8, 0.45)
 
 function Scene:GetDancer(index)
@@ -26,11 +21,11 @@ local function surfacePoint(latitude, longitude)
     return Vector(math.cos(lat) * math.cos(lon), math.cos(lat) * math.sin(lon), math.sin(lat))
 end
 
-local function rotate(normal, sine, cosine)
-    local x = normal.x * cosine - normal.y * sine
-    local y = normal.x * sine + normal.y * cosine
-    return Vector(x, y * tiltCos - normal.z * tiltSin,
-        y * tiltSin + normal.z * tiltCos)
+local function rotate(normal, yawSine, yawCosine, pitchSine, pitchCosine)
+    local x = normal.x * yawCosine - normal.y * yawSine
+    local y = normal.x * yawSine + normal.y * yawCosine
+    return Vector(x, y * pitchCosine - normal.z * pitchSine,
+        y * pitchSine + normal.z * pitchCosine)
 end
 
 local continents = {
@@ -39,66 +34,75 @@ local continents = {
 }
 for _, region in ipairs(continents) do region.normal = surfacePoint(region[1], region[2]) end
 
-local function landAt(normal, lat, lon)
-    local score = 0
+// Positive scores are land; the continuous value lets coastlines blend smoothly across triangles.
+local function landScore(normal, lat, lon)
+    local score = -1
     for _, region in ipairs(continents) do
-        score = math.max(score, normal:Dot(region.normal) - (1 - region[3]))
+        score = math.max(score, normal:Dot(region.normal) - (0.98 - region[3] * 0.1))
     end
     return score + math.sin(math.rad(lat * 13 + lon * 7)) * 0.045
-        + math.cos(math.rad(lat * 21 - lon * 11)) * 0.026 > 0
+        + math.cos(math.rad(lat * 21 - lon * 11)) * 0.026
 end
 
-local function geometry(detail)
-    Scene.Geometry = Scene.Geometry or {}
-    if Scene.Geometry[detail] then return Scene.Geometry[detail] end
-    local grid, vertices = {}, {}
+local globeMaterial = CreateMaterial("zombiesim_launcher_globe_v3", "UnlitGeneric", {
+    ["$basetexture"] = "color/white",
+    ["$vertexcolor"] = "1",
+    ["$nocull"] = "1"
+})
+
+local function surfaceGrid(detail)
+    if Scene.SurfaceVersion ~= 2 then
+        Scene.SurfaceGrids, Scene.SurfaceVersion = {}, 2
+    end
+    if Scene.SurfaceGrids[detail] then return Scene.SurfaceGrids[detail] end
+    local grid = {}
     for row = 0, detail do
         grid[row] = {}
         for col = 0, detail * 2 do
             local lat = -90 + row * 180 / detail
             local lon = -180 + col * 180 / detail
             local normal = surfacePoint(lat, lon)
-            grid[row][col] = { normal = normal, land = landAt(normal, lat, lon), latitude = lat, longitude = lon }
+            local score = landScore(normal, lat, lon)
+            grid[row][col] = {
+                normal = normal,
+                land = math.Clamp((score + 0.015) / 0.03, 0, 1),
+                cityLights = math.sin(math.rad(lat * 119 + lon * 67))
+                    * math.cos(math.rad(lat * 83 - lon * 141)) > 0.62
+            }
         end
     end
-    // Source treats clockwise triangles (as seen from outside the sphere) as front faces.
-    for row = 0, detail - 1 do
-        for col = 0, detail * 2 - 1 do
-            vertices[#vertices + 1] = grid[row][col]
-            vertices[#vertices + 1] = grid[row + 1][col]
-            vertices[#vertices + 1] = grid[row + 1][col + 1]
-            vertices[#vertices + 1] = grid[row][col]
-            vertices[#vertices + 1] = grid[row + 1][col + 1]
-            vertices[#vertices + 1] = grid[row][col + 1]
-        end
-    end
-    Scene.Geometry[detail] = vertices
-    return vertices
+    Scene.SurfaceGrids[detail] = grid
+    return grid
 end
 
-local function vertex(entry, centre, sine, cosine, radius)
-    local rotated = rotate(entry.normal, sine, cosine)
+local function surfaceColour(entry, rotated)
     local daylight = math.max(0, rotated:Dot(lightDirection))
     local rim = math.pow(1 - math.abs(rotated.y), 3)
-    local land = entry.land
-    local lights = land and daylight < 0.28 and
-        math.sin(math.rad(entry.latitude * 119 + entry.longitude * 67))
-            * math.cos(math.rad(entry.latitude * 83 - entry.longitude * 141)) > 0.62
-    local baseRed, baseGreen, baseBlue = land and 41 or 9, land and 78 or 40, land and 62 or 82
-    local amount = 0.16 + daylight * 0.84
-    local light = lights and 1 or 0
-    local r = math.min(255, baseRed * amount + rim * 20 + light * 65)
-    local g = math.min(255, baseGreen * amount + rim * 39 + light * 43)
-    local b = math.min(255, baseBlue * amount + rim * 72 + light * 9)
+    local land = entry.land * entry.land * (3 - 2 * entry.land)
+    local amount = 0.24 + daylight * 0.76
+    local light = (entry.cityLights and daylight < 0.28) and land or 0
+    local red = Lerp(land, 8, 48) * amount + rim * 20 + light * 65
+    local green = Lerp(land, 32, 110) * amount + rim * 39 + light * 43
+    local blue = Lerp(land, 78, 68) * amount + rim * 72 + light * 9
+    return math.min(255, red), math.min(255, green), math.min(255, blue)
+end
+
+local function emitVertex(entry, rotated, centre, radius)
+    local red, green, blue = surfaceColour(entry, rotated)
     mesh.Position(centre + rotated * radius)
     mesh.Normal(rotated)
-    mesh.Color(r, g, b, 255)
+    mesh.Color(red, green, blue, 255)
     mesh.AdvanceVertex()
 end
 
+function Scene:IsGlobeHidden()
+    return not Menu.Active or Menu.Credits or not Menu.Globe
+        or (Menu.IsCharacterPreviewVisible and Menu:IsCharacterPreviewVisible())
+end
+
 function Scene:DrawGlobe()
-    if not Menu.Active or Menu.Credits or not Menu.Globe or not Menu.Camera then return end
-    local latitudeSteps = quality:GetBool() and 24 or 12
+    if self:IsGlobeHidden() or not Menu.Camera then return end
+    local latitudeSteps = quality:GetBool() and 48 or 24
     local longitudeSteps = latitudeSteps * 2
     local now = RealTime()
     local anchor = ZM_LauncherScene:GetAnchor(Menu.Profile)
@@ -107,44 +111,75 @@ function Scene:DrawGlobe()
     local lon = tonumber(selected and selected.originLongitude) or (anchor and tonumber(anchor.longitude))
     local targetYaw = lon and (-90 - lon) or nil
     local elapsed = math.min(FrameTime(), 0.1)
-    self.Yaw = (self.Yaw or 0) + elapsed * 4
+    self.Yaw = self.Yaw or 0
+    self.Pitch = self.Pitch or math.deg(tilt)
     if targetYaw then
-        local difference = math.AngleDifference(targetYaw, self.Yaw)
-        self.Yaw = self.Yaw + difference * math.min(1, elapsed * 2)
+        local blend = 1 - math.exp(-elapsed * 2)
+        self.Yaw = self.Yaw + math.AngleDifference(targetYaw, self.Yaw) * blend
+        self.Pitch = self.Pitch + ((lat or 0) - self.Pitch) * blend
+    else
+        self.Yaw = self.Yaw + elapsed * 4
+        self.Pitch = math.deg(tilt)
     end
     local centre = Menu.Globe + Vector(0, 0, math.sin(now * 0.9) * 2)
-    local sine, cosine = math.sin(math.rad(self.Yaw)), math.cos(math.rad(self.Yaw))
-    render.SetMaterial(sphereMaterial)
-    mesh.Begin(MATERIAL_TRIANGLES, latitudeSteps * longitudeSteps * 2)
-    for _, entry in ipairs(geometry(latitudeSteps)) do
-        vertex(entry, centre, sine, cosine, 42)
+    local yawSine, yawCosine = math.sin(math.rad(self.Yaw)), math.cos(math.rad(self.Yaw))
+    local pitchSine, pitchCosine = math.sin(math.rad(self.Pitch)), math.cos(math.rad(self.Pitch))
+    // Vertex-coloured mesh; only the camera-facing (south, -Y) hemisphere is emitted, so face winding is irrelevant.
+    local fogMode = render.GetFogMode()
+    render.FogMode(MATERIAL_FOG_NONE)
+    local grid = surfaceGrid(latitudeSteps)
+    local rotated = {}
+    for row = 0, latitudeSteps do
+        rotated[row] = {}
+        for col = 0, longitudeSteps do
+            rotated[row][col] = rotate(grid[row][col].normal, yawSine, yawCosine, pitchSine, pitchCosine)
+        end
     end
-    mesh.End()
-    if not anchor then return end
-    for slot, row in pairs(Menu.Slots or {}) do
-        local dotLat = tonumber(row.originLatitude) or tonumber(anchor.latitude)
-        local dotLon = tonumber(row.originLongitude) or tonumber(anchor.longitude)
-        if dotLat and dotLon then
-            local normal = surfacePoint(dotLat, dotLon)
-            local rotated = rotate(normal, sine, cosine)
-            if rotated.y < -0.03 then
-                local pulse = slot == Menu.SelectedSlot and 1 + 0.3 * math.sin(now * 4) or 0.7
-                render.DrawSphere(centre + rotated * 43, pulse * 1.7, 8, 6,
-                    Color(255, slot == Menu.SelectedSlot and 175 or 105, 70))
+    local quads = {}
+    for row = 0, latitudeSteps - 1 do
+        for col = 0, longitudeSteps - 1 do
+            if math.min(rotated[row][col].y, rotated[row + 1][col].y, rotated[row][col + 1].y,
+                rotated[row + 1][col + 1].y) < 0.05 then
+                quads[#quads + 1] = { row, col }
             end
         end
     end
+    render.SetMaterial(globeMaterial)
+    mesh.Begin(MATERIAL_TRIANGLES, #quads * 2)
+    for _, quad in ipairs(quads) do
+        local row, col = quad[1], quad[2]
+        emitVertex(grid[row][col], rotated[row][col], centre, 42)
+        emitVertex(grid[row + 1][col], rotated[row + 1][col], centre, 42)
+        emitVertex(grid[row + 1][col + 1], rotated[row + 1][col + 1], centre, 42)
+        emitVertex(grid[row][col], rotated[row][col], centre, 42)
+        emitVertex(grid[row + 1][col + 1], rotated[row + 1][col + 1], centre, 42)
+        emitVertex(grid[row][col + 1], rotated[row][col + 1], centre, 42)
+    end
+    mesh.End()
+    render.SetColorMaterial()
+    if anchor then
+        for slot, row in pairs(Menu.Slots or {}) do
+            local dotLat = tonumber(row.originLatitude) or tonumber(anchor.latitude)
+            local dotLon = tonumber(row.originLongitude) or tonumber(anchor.longitude)
+            if dotLat and dotLon then
+                local normal = surfacePoint(dotLat, dotLon)
+                local rotated = rotate(normal, yawSine, yawCosine, pitchSine, pitchCosine)
+                if rotated.y < -0.03 then
+                    local pulse = slot == Menu.SelectedSlot and 1 + 0.3 * math.sin(now * 4) or 0.7
+                    render.DrawSphere(centre + rotated * 43, pulse * 1.7, 8, 6,
+                        Color(255, slot == Menu.SelectedSlot and 175 or 105, 70))
+                end
+            end
+        end
+    end
+    render.FogMode(fogMode)
 end
 
-hook.Add("PostDrawOpaqueRenderables", "ZombieSim.Launcher.Globe", function(depth, skybox)
+// The opaque pass was never visible in the launcher room; the translucent pass is drawn after the fake-fog walls.
+hook.Remove("PostDrawOpaqueRenderables", "ZombieSim.Launcher.Globe")
+hook.Remove("PostDrawTranslucentRenderables", "ZombieSim.Launcher.GlobeHalo")
+hook.Add("PostDrawTranslucentRenderables", "ZombieSim.Launcher.Globe", function(depth, skybox)
     if not depth and not skybox then Scene:DrawGlobe() end
-end)
-
-hook.Add("PostDrawTranslucentRenderables", "ZombieSim.Launcher.GlobeHalo", function(_, skybox)
-    if skybox or not Menu.Active or Menu.Credits or not Menu.Globe then return end
-    render.SetColorMaterial()
-    render.DrawSphere(Menu.Globe + Vector(0, 0, math.sin(RealTime() * 0.9) * 2),
-        43.5, 32, 16, Color(70, 140, 220, 8))
 end)
 
 local function dancerPoint(entity)

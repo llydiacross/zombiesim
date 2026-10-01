@@ -84,15 +84,7 @@ end
 function Preview:CreateMapPane(parent, mapContext)
     local palette = ZM_DermaSkin.Palette
     local function styleComboBox(combo)
-        combo:SetTextColor(Color(0, 0, 0))
-        combo.OnMenuOpened = function(_, menu)
-            for _, option in ipairs(menu:GetCanvas():GetChildren()) do
-                if option.SetTextColor then
-                    option:SetTextColor(Color(0, 0, 0))
-                end
-            end
-        end
-        return combo
+        return ZM_DermaSkin.StyleComboBox(combo)
     end
     local pane = vgui.Create("DPanel", parent)
     pane:Dock(FILL)

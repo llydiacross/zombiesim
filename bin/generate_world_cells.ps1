@@ -2788,7 +2788,7 @@ foreach ($source in $radiationSources) {
 
 # The world origin and every district receive a named safe-zone den on a reachable local road.
 # Prefer Hospital, Army Base, and Bunker cells so their standalone safe-room variants are reachable.
-$denCells[$originKey] = @{ Name = "The Evac Zone"; District = -1; Difficult = $false }
+$denCells[$originKey] = @{ Name = "The Storm Drain"; District = -1; Difficult = $false }
 $safeRoomLandmarkPriority = @("Hospital", "Army Base", "Bunker")
 $safeZonePlacementDiagnostics = [System.Collections.Generic.List[object]]::new()
 $districtPlacementOrder = @(
@@ -3342,5 +3342,5 @@ $bitmap.Dispose()
 if ($ExportLayers) {
     Write-Output "Generated $Output ($width x $height); map data: $mapDataOutput; pruned stale source maps/layers: $staleSourceMapCount; exported layers: $($layerOutputs -join ', ')."
 } else {
-    Write-Output "Generated $Output ($width x $height); map data: $mapDataOutput; pruned stale source maps/layers: $staleSourceMapCount; The Evac Zone is at world origin (0, 0); Metro network has $($metroLines.Count) lines and $($metroStations.Count) stations."
+    Write-Output "Generated $Output ($width x $height); map data: $mapDataOutput; pruned stale source maps/layers: $staleSourceMapCount; The Storm Drain is at world origin (0, 0); Metro network has $($metroLines.Count) lines and $($metroStations.Count) stations."
 }

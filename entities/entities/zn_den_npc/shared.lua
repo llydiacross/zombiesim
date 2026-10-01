@@ -13,6 +13,24 @@ if SERVER then
     for name, method in pairs(ZM_DenNpcs and ZM_DenNpcs.ProviderMethods or {}) do
         ENT[name] = method
     end
+
+    // Den NPCs are few and the level map shows them all, so they are networked outside the PVS too.
+    function ENT:UpdateTransmitState()
+        return TRANSMIT_ALWAYS
+    end
+end
+
+// "Army Soldier lvl 15  |  Trader" style role line from the networked settings ("" for a plain resident).
+function ENT:GetRoleText()
+    local job = self:GetNWString("ZM_NpcJob", "")
+    local trader = self:GetNWString("ZM_NpcTrader", "")
+    local role = ""
+    if job ~= "" then
+        local profession = ZM_Professions and ZM_Professions:Get(job)
+        role = ((profession and profession.name) or job) .. " lvl " .. self:GetNWInt("ZM_NpcLevel", 1)
+    end
+    if trader ~= "" then role = role ~= "" and (role .. "  |  Trader") or "Trader" end
+    return role
 end
 
 // Hammer keyvalues arrive before Spawn; they are kept raw and resolved by ZM_DenNpcs against the live static data.

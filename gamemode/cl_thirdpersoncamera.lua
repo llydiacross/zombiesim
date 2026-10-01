@@ -35,6 +35,28 @@ local aimYaw = 0
 local cursorX, cursorY
 local lastViewOrigin
 local middleWasDown = false
+local denCameraBlend = 0
+local lastDenCameraState
+
+local function isInDenCamera(ply)
+    if not IsValid(ply) or not ZM_World or not ZM_World:IsLoaded() then
+        return false
+    end
+    local safeZoneId = ply:GetNWString("CurrentSafeZoneId", "")
+    local mapName = string.lower(game.GetMap())
+    if safeZoneId ~= "" and safeZoneId ~= "NULL" then
+        local mapPath = ZM_SafeZones:GetMap(safeZoneId)
+        local expectedMap = mapPath and string.match(mapPath, "([^/]+)$")
+        if expectedMap and string.lower(expectedMap) == mapName then return true end
+    end
+    local worldData = ZM_World:GetData()
+    for _, safeZone in ipairs(worldData and worldData.safeZones or {}) do
+        if type(safeZone.map) == "string" and string.lower(safeZone.map) == mapName then
+            return true
+        end
+    end
+    return false
+end
 
 // Mouse sensitivity scales cursor movement in the locked camera and look speed in the free camera.
 local sensitivityCookie = "zombiesim_mouse_sensitivity"
@@ -97,9 +119,13 @@ local function getShoulderWeight()
     return (1 - zoom) * (1 - lockBlend)
 end
 
-// Returns the aim cursor's screen position while the camera is locked.
+function ZM_IsInDenCamera()
+    return isInDenCamera(LocalPlayer())
+end
+
+// Returns the aim cursor's screen position while the camera is locked (never in the first-person den camera).
 function ZM_GetAimCursor()
-    if not cameraLocked or not cursorX then
+    if not cameraLocked or not cursorX or isInDenCamera(LocalPlayer()) then
         return nil
     end
     return cursorX, cursorY
@@ -147,8 +173,22 @@ local function setCameraLocked(locked)
 end
 
 hook.Add("Think", "ZM.CameraLockToggle", function()
+    local ply = LocalPlayer()
+    local inDen = isInDenCamera(ply)
+    if lastDenCameraState == nil then
+        denCameraBlend = inDen and 1 or 0
+    elseif lastDenCameraState and not inDen and IsValid(ply) then
+        modelYaw = ply:EyeAngles().y
+        aimYaw = modelYaw
+        cursorX = nil
+    elseif inDen and not lastDenCameraState then
+        cursorX = nil
+    end
+    lastDenCameraState = inDen
+    denCameraBlend = math.Approach(denCameraBlend, inDen and 1 or 0, FrameTime() * 3)
+
     local down = input.IsMouseDown(MOUSE_MIDDLE)
-    if down and not middleWasDown and not vgui.CursorVisible() and not gui.IsGameUIVisible() then
+    if not inDen and down and not middleWasDown and not vgui.CursorVisible() and not gui.IsGameUIVisible() then
         setCameraLocked(not cameraLocked)
     end
     middleWasDown = down
@@ -191,7 +231,7 @@ end
 local blockedScrollBinds = { invprev = true, invnext = true }
 
 hook.Add("PlayerBindPress", "ZM.CameraBlockScrollWeaponSwitch", function(_, bind)
-    if blockedScrollBinds[string.lower(bind or "")] then
+    if not isInDenCamera(LocalPlayer()) and blockedScrollBinds[string.lower(bind or "")] then
         return true
     end
 end)
@@ -200,6 +240,10 @@ end)
 hook.Add("CreateMove", "ZM.RotateThirdPersonModel", function(cmd)
     local ply = LocalPlayer()
     if not IsValid(ply) or not ply:Alive() then return end
+
+    if isInDenCamera(ply) then
+        return
+    end
 
     targetDist = math.Clamp(targetDist - cmd:GetMouseWheel() * zoomStep, minDist, maxDist)
 
@@ -243,8 +287,10 @@ hook.Add("CalcView", "ZM.CustomThirdPersonView", function(ply, pos, angles, fov)
     if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     if not IsValid(ply) or not ply:Alive() then return end
 
+    local inDen = isInDenCamera(ply)
     local view = {}
     local cameraAngles = GetCameraAngles()
+
     dist = Lerp(math.min(FrameTime() * 10, 1), dist, targetDist)
 
     local orbitPos = ply:EyePos() - (cameraAngles:Forward() * dist) + (cameraAngles:Up() * up)
@@ -264,10 +310,10 @@ hook.Add("CalcView", "ZM.CustomThirdPersonView", function(ply, pos, angles, fov)
         maxs = Vector(4, 4, 4),
     })
 
-    view.origin = tr.HitPos
-    view.angles = cameraAngles
+    view.origin = LerpVector(denCameraBlend, tr.HitPos, ply:EyePos())
+    view.angles = LerpAngle(denCameraBlend, cameraAngles, angles)
     view.fov = fov
-    view.drawplayer = true -- Make sure the player model is visible
+    view.drawplayer = not inDen and denCameraBlend < 0.5
     lastViewOrigin = view.origin
 
     return view
@@ -275,5 +321,5 @@ end)
 
 // The camera is always external enough that the local player model should be rendered.
 hook.Add("ShouldDrawLocalPlayer", "ZM.DrawPlayer", function(ply)
-    return true
+    return not isInDenCamera(ply) and denCameraBlend < 0.5
 end)

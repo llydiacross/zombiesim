@@ -83,7 +83,13 @@ hook.Add("HUDPaint", "ZM.CustomCrosshair", function()
         radius = 6 + (math.sin(CurTime() * 10) + 1) * 1.5
     end
 
-    local x, y = getClippedAimScreenPos(ply, radius)
+    local x, y
+    if ZM_IsInDenCamera and ZM_IsInDenCamera() then
+        // First-person den camera: the crosshair is fixed at screen centre and turns with the view.
+        x, y = ScrW() * 0.5, ScrH() * 0.5
+    else
+        x, y = getClippedAimScreenPos(ply, radius)
+    end
     if not x then return end
 
     local healthPercent = math.Clamp(ply:Health() / math.max(ply:GetMaxHealth(), 1), 0, 1)

@@ -281,30 +281,18 @@
       "carparks": "^carparks/tile_carpark_(?:entrance[A-Za-z0-9_-]*|straight_[12]|deadend_(?:east|west))\\.vmf$"
     },
     "safeZones": {
-      "biomePriority": ["radioactive", "fortified", "military", "medical", "emergency_services", "religious", "service_station", "financial", "commercial", "recreation", "parkland"],
-      "biomeCodes": {
-        "grasslands": "gr",
-        "settlement": "st",
-        "commercial": "co",
-        "financial": "fi",
-        "radioactive": "ra",
-        "fortified": "fo",
-        "military": "mi",
-        "medical": "md",
-        "emergency_services": "es",
-        "religious": "rl",
-        "service_station": "ss",
-        "recreation": "rc",
-        "parkland": "pk"
-      },
-      "defaultBiome": "grasslands",
+      "templateDirectory": "celltemplates/safezones",
+      "defaultTemplate": "cell_safezone.vmf",
       "landmarkPriority": ["Hospital", "Army Base", "Bunker"],
-      "landmarkVariants": {
-        "Hospital": "hospital",
-        "Army Base": "army_base",
-        "Bunker": "bunker"
-      },
-      "templateFilenameFormat": "cell_{biome}_safezone{landmarkSuffix}.vmf"
+      "landmarkTemplates": {},
+      "entrance": {
+        "template": "safezones/entrance_safezone_3x.vmf",
+        "footprint": 3,
+        "origin": {
+          "side": "W",
+          "facing": "E"
+        }
+      }
     },
     "terrainTemplates": {
       "grassland": "terrain/tile_grass.vmf",

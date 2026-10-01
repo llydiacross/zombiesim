@@ -4,7 +4,7 @@
 
 On `zn_preview_start` or `zn_city_start`, the optional Volt/Walker briefings precede the character menu. Load an existing slot or create one of three profile-specific survivors: choose a name, citizen model/appearance, profession, and spend exactly ten starting attribute points. A migrated slot-1 survivor requires an appearance before deployment. Deleting a slot requires typing its name. Options in the launcher use the same settings controls as the in-game radial menu; Exit disconnects. Keyboard navigation supports Up/Down, Enter and Escape. Deployment only begins after the server accepts a selected slot.
 
-The main menu draws an original procedural globe at the authored `menu_globe` marker. Each slot's origin dot uses the profile's geographic anchor in `content/data_static/launcher_scene.json`; selecting a slot turns the globe to that dot. The profile anchors are fictional presentation coordinates, **not** a real-world geolocation of generated cells. `zombiesim_globe_quality 0` uses fewer globe triangles. No external imagery or copied textures are packaged.
+The main menu draws an original procedural globe at the authored `menu_globe` marker. Each slot's origin dot uses the profile's geographic anchor in `content/data_static/launcher_scene.json`; selecting a slot turns the globe to that dot. The profile anchors are fictional presentation coordinates, **not** a real-world geolocation of generated cells. The globe defaults to low detail (`zombiesim_globe_quality 0`); enable **High-detail menu globe** in Options (or set the convar to `1`) for a finer mesh. No external imagery or copied textures are packaged.
 
 Credits uses the same maintained JSON file for its crawl. It hides the menu and cuts to `credits_camera`, then cycles through the four named dancers; Escape, Enter, Space, or click returns to the menu. The server supplies camera poses, dancer entity indexes, and credits-area visibility; credits fog is confined to the credits view. For camera tuning, `zombiesim_credits_shot gman` (or `alyx`, `barney`, `kleiner`; empty to unlock) and `zombiesim_credits_debug 1` expose the shot and obstruction trace. Admins can run `zombiesim_launcher_flexes` to inspect available model flex controllers. The dancing, flex replication, camera clearance, and presentation still require live-client verification.
 
@@ -181,6 +181,12 @@ Run this from an in-game admin console to print your saved raw grid cell, logica
 ```
 zombiesim_player_status
 ```
+
+The den camera selects first-person when the loaded map matches a den in the active world profile, including the brief exit interval when the saved safe-zone ID has already been cleared; outside dens it retains the top-down/orbit controls. The weapon HUD reads clip capacity from the active weapon and reserve rounds from the server-synchronized inventory snapshot. An unavailable inventory snapshot displays `--` rather than pretending the reserve is empty. Hammer `npc_name` takes precedence for den NPC display names; if absent, the entity's `targetname` is used.
+
+In a generated safe-zone cell, approach an authored `zn_safezone_door` and press E to enter its den; use the exit point at the den's south entrance to return to the same city cell. The server checks loaded player state, the active map and safe zone, and the single-human transition guard before persisting a map change. Arrivals use the authored `zn_safezone_arrival` point when available, with `info_player_start` as a fallback. The client displays a nearby-door prompt, but the server owns the interaction. Run `zn_test_safezones` in an in-game admin console to exercise the safe-zone door and arrival suite; GLua syntax checks alone do not exercise a map transition.
+
+To compare the client atmosphere before and after respawning in the same cell, run `zombiesim_atmosphere_status` in the client console. It prints whether runtime world data is loaded, the active and expected profile indexes, any pending profile, its application source, storm intensity, and fog settings. This is a diagnostic, not proof that lighting and fog match visually; record both the output and screenshots from a live client.
 
 ## Development Command Bridge
 

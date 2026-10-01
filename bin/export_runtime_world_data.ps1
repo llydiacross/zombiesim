@@ -268,8 +268,10 @@ foreach ($safeZone in @($map.safeZones | Sort-Object name)) {
     }
     $safeZoneMap = $safeZoneMapByCoordinate[$safeZoneKey]
     $safeZoneMapName = [System.IO.Path]::GetFileNameWithoutExtension([string]$safeZoneMap.mapFilename)
-    $safeZoneBiome = if ($null -ne $safeZoneMap.PSObject.Properties['biome']) { [string]$safeZoneMap.biome } else { '' }
-    $safeZoneLandmarkVariant = if ($null -ne $safeZoneMap.PSObject.Properties['landmarkVariant']) { [string]$safeZoneMap.landmarkVariant } else { '' }
+    $safeZoneLandmark = if ($null -ne $safeZoneMap.PSObject.Properties['landmark']) { [string]$safeZoneMap.landmark } else { '' }
+    $safeZoneTemplate = if ($null -ne $safeZoneMap.PSObject.Properties['templateFilename']) { [System.IO.Path]::GetFileName([string]$safeZoneMap.templateFilename) } else { '' }
+    $planCell = $planCellByCoordinate[$safeZoneKey]
+    $entrance = if ($null -ne $planCell.PSObject.Properties['safeZoneEntrance']) { $planCell.safeZoneEntrance } else { $null }
     $safeZoneId = "safezone-$([int]$safeZone.x)-$([int]$safeZone.y)"
     $isOrigin = $null -ne $originSafeZoneKey -and $safeZoneKey -eq $originSafeZoneKey
     $safeZoneRequiredMapNames[$safeZoneMapName.ToLowerInvariant()] = $safeZoneMapName
@@ -282,8 +284,18 @@ foreach ($safeZone in @($map.safeZones | Sort-Object name)) {
         cell = Get-CellId ([int]$safeZone.x) ([int]$safeZone.y) $width
         difficult = [bool]$safeZone.difficult
         map = $safeZoneMapName
-        biome = $safeZoneBiome
-        landmarkVariant = $safeZoneLandmarkVariant
+        landmark = if ([string]::IsNullOrWhiteSpace($safeZoneLandmark)) { $null } else { $safeZoneLandmark }
+        template = if ([string]::IsNullOrWhiteSpace($safeZoneTemplate)) { $null } else { $safeZoneTemplate }
+        entrance = if ($entrance) {
+            [ordered]@{
+                anchorTile = @([int]$entrance.anchorTile.tileX, [int]$entrance.anchorTile.tileY)
+                footprint = [int]$entrance.footprint
+                yaw = [int]$entrance.yaw
+                frontage = [string]$entrance.frontage
+                slot = [string]$entrance.slot
+                mode = [string]$entrance.mode
+            }
+        } else { $null }
     })
     if ($isOrigin) {
         if ($null -ne $originSafeZoneId) { throw 'Multiple safe zones are marked as the world origin.' }

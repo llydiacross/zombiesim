@@ -35,6 +35,6 @@ end)
 net.Receive("ZM.RefreshPlayerData", function()
     LocalPlayer():SetPlayerData(util.JSONToTable(net.ReadString()) or {})
     if ZM_Atmosphere and ZM_Atmosphere.ApplyPlayerProfile then
-        ZM_Atmosphere:ApplyPlayerProfile()
+        ZM_Atmosphere:ApplyPlayerProfile("player data refresh")
     end
 end)

@@ -191,7 +191,7 @@ local function buildServices(parent, state)
     selection.provider = provider.providerId or provider.userId
     if not table.HasValue(provider.services, selection.kind) then selection.kind = provider.services[1] end
 
-    local providerBox = vgui.Create("DComboBox", panel)
+    local providerBox = ZM_DermaSkin.StyleComboBox(vgui.Create("DComboBox", panel))
     providerBox:Dock(TOP)
     providerBox:DockMargin(0, 6, 0, 4)
     providerBox:SetTall(24)
@@ -204,7 +204,7 @@ local function buildServices(parent, state)
         UI:Rebuild()
     end
 
-    local kindBox = vgui.Create("DComboBox", panel)
+    local kindBox = ZM_DermaSkin.StyleComboBox(vgui.Create("DComboBox", panel))
     kindBox:Dock(TOP)
     kindBox:DockMargin(0, 0, 0, 4)
     kindBox:SetTall(24)
@@ -229,7 +229,7 @@ local function buildServices(parent, state)
     choice = choice or choices[1]
     selection.ref = choice.ref
 
-    local refBox = vgui.Create("DComboBox", panel)
+    local refBox = ZM_DermaSkin.StyleComboBox(vgui.Create("DComboBox", panel))
     refBox:Dock(TOP)
     refBox:DockMargin(0, 0, 0, 4)
     refBox:SetTall(24)
@@ -334,6 +334,7 @@ function UI:Open()
     frame:MakePopup()
     frame.OnRemove = function()
         if UI.Frame == frame then UI.Frame = nil end
+        if ZM_UI then ZM_UI:UnregisterTransient(frame) end
     end
     self.Frame = frame
     self.Message = nil

@@ -13,6 +13,7 @@ local minimapZoomOutDown = false
 local minimapViewModes = {}
 local minimapModeDown = false
 local compassCellSize = 3200
+local denNpcColor = Color(222, 184, 84)
 local compassMarkerLabels = {
     waypoint = "Waypoint",
     objective = "Objective",
@@ -51,14 +52,14 @@ local minimapColors = {
 }
 
 hook.Add("HUDShouldDraw", "ZM.SuppressDefaultSurvivalHud", function(hudName)
-    if hudName == "CHudHealth" or hudName == "CHudBattery" then
+    if hudName == "CHudHealth" or hudName == "CHudBattery" or hudName == "CHudAmmo" or hudName == "CHudSecondaryAmmo" then
         return false
     end
 end)
 
 // Dedicated notification font keeps combat feedback independent from the default HUD font.
 surface.CreateFont("ZM_PlayerNotification", {
-    font = "Trebuchet24",
+    font = "Trebuchet MS",
     size = 20,
     weight = 700,
 })
@@ -67,6 +68,27 @@ surface.CreateFont("ZM_MinimapLabel", {
     font = "Trebuchet MS",
     size = 13,
     weight = 800,
+    antialias = true
+})
+
+surface.CreateFont("ZM_WeaponHudName", {
+    font = "Trebuchet MS",
+    size = 18,
+    weight = 700,
+    antialias = true
+})
+
+surface.CreateFont("ZM_WeaponHudValue", {
+    font = "Trebuchet MS",
+    size = 28,
+    weight = 800,
+    antialias = true
+})
+
+surface.CreateFont("ZM_WeaponHudReserve", {
+    font = "Trebuchet MS",
+    size = 16,
+    weight = 700,
     antialias = true
 })
 
@@ -91,6 +113,159 @@ local function getHudPlayerCell(player)
 
     local gridX, gridY = ZM_World:GetGridCoordinates(player:GetNWInt("CellX", 0), player:GetNWInt("CellY", 0))
     return gridX and ZM_World:GetCell(gridX, gridY) or nil
+end
+
+local function drawWeaponHudBullets(x, y, width, count, maxCount, active)
+    if maxCount <= 0 then
+        return
+    end
+
+    local columns = math.min(20, maxCount)
+    local spacing = math.floor(width / columns)
+    local bulletWidth = math.max(2, spacing - 2)
+    for index = 1, maxCount do
+        local column = (index - 1) % columns
+        local row = math.floor((index - 1) / columns)
+        if index <= count then
+            surface.SetDrawColor(active and 255 or 210, active and 210 or 170, 100, 240)
+        else
+            surface.SetDrawColor(65, 69, 72, 220)
+        end
+        surface.DrawRect(x + column * spacing, y + row * 10, bulletWidth, 7)
+    end
+end
+
+local function getHudAmmoAndDefinition(weapon)
+    local inventory = ZM_Inventory and ZM_Inventory.Snapshot
+    local instanceId = weapon.GetItemInstanceId and weapon:GetItemInstanceId()
+    if not inventory or not instanceId or instanceId == "" then
+        return nil, nil
+    end
+    for _, instance in ipairs(inventory.equippedItems or {}) do
+        if instance.instanceId == instanceId then
+            local definition = ZM_Items:GetDefinition(instance.itemId)
+            if not definition or not definition.ammoId then return nil, definition end
+            local reserve = 0
+            for _, item in ipairs(inventory.backpack or {}) do
+                if item.itemId == definition.ammoId then
+                    reserve = reserve + (tonumber(item.count) or 0)
+                end
+            end
+            return reserve, definition
+        end
+    end
+    return nil, nil
+end
+
+local function getHudWeaponEntries(player)
+    local entries = {}
+    if not IsValid(player) then
+        return entries
+    end
+
+    local activeWeapon = player:GetActiveWeapon()
+    for _, weapon in ipairs(player:GetWeapons() or {}) do
+        if IsValid(weapon) then
+            local className = weapon:GetClass() or ""
+            if className ~= "" then
+                local clip = tonumber(weapon:Clip1()) or 0
+                local maxClip = tonumber(weapon.GetMaxClip and weapon:GetMaxClip() or weapon:GetMaxClip1()) or -1
+                local reserveAmmo, definition = getHudAmmoAndDefinition(weapon)
+                if reserveAmmo == nil and not weapon.GetItemInstanceId then
+                    local ammoType = weapon:GetPrimaryAmmoType()
+                    if ammoType and ammoType >= 0 then
+                        reserveAmmo = player:GetAmmoCount(ammoType)
+                    end
+                end
+                local name = definition and definition.name or weapon:GetPrintName()
+                table.insert(entries, {
+                    className = className,
+                    name = name and name ~= "" and name or className,
+                    clip = clip,
+                    maxClip = maxClip,
+                    reserve = reserveAmmo,
+                    definition = definition,
+                    active = IsValid(activeWeapon) and weapon == activeWeapon
+                })
+            end
+        end
+    end
+
+    table.sort(entries, function(left, right)
+        if left.active ~= right.active then
+            return left.active
+        end
+            return left.name == right.name and left.className < right.className or left.name < right.name
+    end)
+
+    return entries
+end
+
+local function drawWeaponHudPanel()
+    local player = LocalPlayer()
+    if not IsValid(player) or not player:Alive() or ZM_LauncherMenu and ZM_LauncherMenu.Active then
+        return
+    end
+
+    local weaponEntries = getHudWeaponEntries(player)
+    if #weaponEntries <= 0 then
+        return
+    end
+
+    local boxWidth = math.min(240, ScrW() - 24)
+    local boxX = ScrW() - boxWidth - 16
+    local activeWeapon = nil
+    for _, entry in ipairs(weaponEntries) do
+        if entry.active then
+            activeWeapon = entry
+            break
+        end
+    end
+    local otherWeapons = {}
+    for _, entry in ipairs(weaponEntries) do
+        if not entry.active then
+            table.insert(otherWeapons, entry)
+        end
+    end
+
+    local rows = activeWeapon and math.ceil(math.max(0, activeWeapon.maxClip) / 20) or 0
+    local activeHeight = activeWeapon and (86 + rows * 10) or 0
+    local slotHeight = 48
+    local columns = boxWidth >= 200 and 2 or 1
+    local slotWidth = math.floor((boxWidth - (columns - 1) * 6) / columns)
+    local otherRows = math.ceil(#otherWeapons / columns)
+    local boxY = math.max(72, ScrH() - 24 - activeHeight - otherRows * (slotHeight + 6))
+    for index, entry in ipairs(otherWeapons) do
+        local x = boxX + ((index - 1) % columns) * (slotWidth + 6)
+        local y = boxY + math.floor((index - 1) / columns) * (slotHeight + 6)
+        surface.SetDrawColor(12, 15, 19, 220)
+        surface.DrawRect(x, y, slotWidth, slotHeight)
+        surface.SetDrawColor(255, 255, 255, 40)
+        surface.DrawOutlinedRect(x, y, slotWidth, slotHeight, 1)
+        draw.SimpleText(string.sub(entry.name, 1, 14), "ZM_WeaponHudReserve", x + 6, y + 4, Color(230, 230, 230), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        local clipText = entry.maxClip > 0 and (math.max(0, entry.clip) .. "/" .. entry.maxClip) or "--"
+        draw.SimpleText(clipText, "ZM_WeaponHudReserve", x + 6, y + 25, Color(255, 206, 98), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        draw.SimpleText(entry.reserve and tostring(entry.reserve) or "--", "ZM_WeaponHudReserve", x + slotWidth - 6, y + 25, Color(200, 200, 200), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+    end
+
+    if not activeWeapon then return end
+    local activeX = boxX
+    local activeY = boxY + otherRows * (slotHeight + 6)
+    local activeWidth = boxWidth
+    surface.SetDrawColor(10, 12, 16, 230)
+    surface.DrawRect(activeX, activeY, activeWidth, activeHeight)
+    surface.SetDrawColor(255, 255, 255, 65)
+    surface.DrawOutlinedRect(activeX, activeY, activeWidth, activeHeight, 1)
+
+    draw.SimpleText(string.sub(activeWeapon.name, 1, 24), "ZM_WeaponHudName", activeX + 12, activeY + 8, Color(255, 255, 255), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+    local clipText = activeWeapon.maxClip > 0 and (math.max(0, activeWeapon.clip) .. "/" .. activeWeapon.maxClip) or "--"
+    draw.SimpleText(clipText, "ZM_WeaponHudValue", activeX + 12, activeY + 30, Color(255, 255, 255), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+    draw.SimpleText("RESERVE", "ZM_WeaponHudReserve", activeX + activeWidth - 12, activeY + 30, Color(200, 200, 200), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+    draw.SimpleText(activeWeapon.reserve and tostring(activeWeapon.reserve) or "--", "ZM_WeaponHudValue", activeX + activeWidth - 12, activeY + 47, Color(255, 208, 92), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+    if activeWeapon.definition and ZM_ItemIcons then
+        ZM_ItemIcons:DrawOverride(activeWeapon.definition, activeX + activeWidth - 100, activeY + 18, 44)
+    end
+    drawWeaponHudBullets(activeX + 12, activeY + 77, activeWidth - 24, math.max(0, activeWeapon.clip), activeWeapon.maxClip, true)
 end
 
 local function hasCurrentSafeZone(player)
@@ -299,9 +474,18 @@ local function drawPlayerCompass()
             end
         end
     end
+    for _, npc in ipairs(ents.FindByClass("zn_den_npc")) do
+        if IsValid(npc) and not npc:IsDormant() then
+            local offset = npc:WorldSpaceCenter() - player:EyePos()
+            if offset:LengthSqr() > 2500 then
+                drawCompassMarker(x, y, width, heading, offset:Angle().y, npc:GetNWString("ZM_NpcName", "Den Resident"), denNpcColor)
+            end
+        end
+    end
 end
 
 hook.Add("HUDPaint", "ZM.PlayerCompass", drawPlayerCompass)
+hook.Add("HUDPaint", "ZM.PlayerWeaponHud", drawWeaponHudPanel)
 
 local function getMinimapCellMaterial(cell)
     if not cell or type(cell.map) ~= "string" or cell.map == "" or not ZM_World then
@@ -439,6 +623,36 @@ local function drawOtherPlayerMinimapMarker(mapX, mapY, mapWidth, mapHeight, mar
     )
 end
 
+// Off-map NPCs are pinned to the minimap edge along the line from the centre, so they still point the right way.
+local function drawDenNpcMinimapMarker(mapX, mapY, mapWidth, mapHeight, markerX, markerY, npc)
+    local inset = 7
+    local centreX, centreY = mapX + mapWidth * 0.5, mapY + mapHeight * 0.5
+    local deltaX, deltaY = markerX - centreX, markerY - centreY
+    local halfWidth, halfHeight = mapWidth * 0.5 - inset, mapHeight * 0.5 - inset
+    local scale = math.max(math.abs(deltaX) / halfWidth, math.abs(deltaY) / halfHeight, 1)
+    local pinned = scale > 1
+    markerX, markerY = math.floor(centreX + deltaX / scale), math.floor(centreY + deltaY / scale)
+    draw.NoTexture()
+    surface.SetDrawColor(10, 8, 4, 255)
+    surface.DrawPoly({ { x = markerX, y = markerY - 6 }, { x = markerX + 6, y = markerY }, { x = markerX, y = markerY + 6 }, { x = markerX - 6, y = markerY } })
+    surface.SetDrawColor(denNpcColor.r, denNpcColor.g, denNpcColor.b, pinned and 190 or 255)
+    surface.DrawPoly({ { x = markerX, y = markerY - 4 }, { x = markerX + 4, y = markerY }, { x = markerX, y = markerY + 4 }, { x = markerX - 4, y = markerY } })
+    // Labels flip below markers pinned near the top edge so they do not cover the diamond.
+    local labelBelow = markerY - 6 < mapY + 12
+    local name = npc:GetNWString("ZM_NpcName", "Den Resident")
+    surface.SetFont("ZM_MinimapLabel")
+    local labelHalfWidth = math.min(surface.GetTextSize(name) * 0.5, mapWidth * 0.5 - 4)
+    draw.SimpleText(
+        name,
+        "ZM_MinimapLabel",
+        math.Clamp(markerX, mapX + 4 + labelHalfWidth, mapX + mapWidth - 4 - labelHalfWidth),
+        labelBelow and markerY + 6 or markerY - 6,
+        denNpcColor,
+        TEXT_ALIGN_CENTER,
+        labelBelow and TEXT_ALIGN_TOP or TEXT_ALIGN_BOTTOM
+    )
+end
+
 local function drawBossMinimapMarker(mapX, mapY, mapWidth, mapHeight, markerX, markerY)
     if markerX < mapX or markerX > mapX + mapWidth or markerY < mapY or markerY > mapY + mapHeight then
         return
@@ -494,6 +708,14 @@ local function drawPlayerMinimap()
         drewMap, cellTextureTransform = drawCellTextureMinimap(mapX, mapY, mapWidth, mapHeight, cell, position, zoom)
     end
     if drewMap then
+        if minimapViewMode == "map" and ZM_WorldMap and ZM_WorldMap.ProjectLocalMapPosition then
+            for _, npc in ipairs(ents.FindByClass("zn_den_npc")) do
+                if IsValid(npc) and not npc:IsDormant() then
+                    local npcX, npcY = ZM_WorldMap:ProjectLocalMapPosition(mapX, mapY, mapWidth, mapHeight, position, localMapViewHeight, npc:GetPos())
+                    if npcX and npcY then drawDenNpcMinimapMarker(mapX, mapY, mapWidth, mapHeight, npcX, npcY, npc) end
+                end
+            end
+        end
         local playerMarkerX, playerMarkerY = mapX + mapWidth * 0.5, mapY + mapHeight * 0.5
         if cellTextureTransform then
             playerMarkerX, playerMarkerY = projectCellTexturePosition(mapX, mapY, mapWidth, mapHeight, position, cellTextureTransform)

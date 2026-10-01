@@ -14,10 +14,6 @@ node_modules/
 generated/build/
 generated/build_preview/
 
-# Generated release staging output
-content/maps/preview/
-content/data_static/zombiesim_world_preview.json
-
 # Developer-only pipeline outputs (regenerate with the bin/ scripts)
 generated/
 celltemplates/dev/

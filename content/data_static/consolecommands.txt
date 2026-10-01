@@ -1,3 +1,4 @@
-# request: walker_corpse_collision_fade_20260927
-lua_refresh
-zn_test_enemies
+# request: door-fix-check-1
+zn_test_safezones
+zn_safezone_door_status
+zombiesim_player_status

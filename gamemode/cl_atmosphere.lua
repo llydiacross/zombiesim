@@ -4,6 +4,8 @@ local Atmosphere = ZM_Atmosphere
 
 Atmosphere.ActiveProfileIndex = Atmosphere.ActiveProfileIndex or nil
 Atmosphere.StormIntensity = Atmosphere.StormIntensity or 0
+Atmosphere.PendingProfileIndex = Atmosphere.PendingProfileIndex or nil
+Atmosphere.LastApplySource = Atmosphere.LastApplySource or "none"
 
 local function getNumber(value, fallback)
     value = tonumber(value)
@@ -18,26 +20,41 @@ function Atmosphere:GetActiveProfile()
     return ZM_World:GetAtmosphereProfileByIndex(self.ActiveProfileIndex)
 end
 
-function Atmosphere:ApplyProfile(profileIndex)
+function Atmosphere:ApplyProfile(profileIndex, source)
     profileIndex = tonumber(profileIndex)
-    local profile = profileIndex and ZM_World:GetAtmosphereProfileByIndex(profileIndex) or nil
+    if not profileIndex then
+        ErrorNoHalt("[ZombieSim] Atmosphere received a non-numeric profile index.\n")
+        return false
+    end
+    local profile = ZM_World:GetAtmosphereProfileByIndex(profileIndex)
     if not profile then
+        if not ZM_World:IsLoaded() then
+            self.PendingProfileIndex = profileIndex
+            self.LastApplySource = tostring(source or "unknown") .. " (waiting for world data)"
+        else
+            ErrorNoHalt("[ZombieSim] Unknown atmosphere profile index: " .. tostring(profileIndex) .. "\n")
+        end
         return false
     end
 
     self.ActiveProfileIndex = math.floor(profileIndex)
+    self.PendingProfileIndex = nil
+    self.LastApplySource = source or "unknown"
     return true
 end
 
-function Atmosphere:ApplyPlayerProfile()
+function Atmosphere:ApplyPlayerProfile(source)
     local player = LocalPlayer()
     if not IsValid(player) then
         return false
     end
 
-    local gridX, gridY = ZM_World:GetGridCoordinates(player:GetNWInt("CellX", 0), player:GetNWInt("CellY", 0))
+    if not ZM_World:IsLoaded() then
+        return false
+    end
+    local gridX, gridY = ZM_World:GetGridCoordinates(player.CellX or player:GetNWInt("CellX", 0), player.CellY or player:GetNWInt("CellY", 0))
     local cell = gridX and ZM_World:GetCell(gridX, gridY) or nil
-    return cell and self:ApplyProfile(cell.atmosphereProfile) or false
+    return cell and self:ApplyProfile(cell.atmosphereProfile, source or "player data") or false
 end
 
 // A future server-authoritative weather event can set this from 0 (clear) to 1 (full storm).
@@ -109,11 +126,36 @@ hook.Add("RenderScreenspaceEffects", "ZM.Atmosphere.ColourCorrection", function(
 end)
 
 net.Receive("ZM.SetAtmosphereProfile", function()
-    Atmosphere:ApplyProfile(net.ReadUInt(8))
+    Atmosphere:ApplyProfile(net.ReadUInt(8), "server")
 end)
 
 hook.Add("InitPostEntity", "ZM.Atmosphere.ApplyLoadedCell", function()
     timer.Simple(0, function()
-        Atmosphere:ApplyPlayerProfile()
+        Atmosphere:ApplyPlayerProfile("InitPostEntity")
     end)
+end)
+
+hook.Add("Think", "ZM.Atmosphere.WaitForWorldData", function()
+    if not Atmosphere.PendingProfileIndex or not ZM_World:IsLoaded() then return end
+    Atmosphere:ApplyProfile(Atmosphere.PendingProfileIndex, "world data ready")
+end)
+
+concommand.Add("zombiesim_atmosphere_status", function()
+    local player = LocalPlayer()
+    local profile = Atmosphere:GetActiveProfile()
+    local settings = Atmosphere:GetFogSettings()
+    local worldReady = ZM_World:IsLoaded()
+    local cell
+    if worldReady and IsValid(player) then
+        local gridX, gridY = ZM_World:GetGridCoordinates(player.CellX or player:GetNWInt("CellX", 0), player.CellY or player:GetNWInt("CellY", 0))
+        cell = gridX and ZM_World:GetCell(gridX, gridY) or nil
+    end
+    print(string.format("[ZombieSim] Atmosphere: world=%s active=%s expected=%s pending=%s source=%s storm=%.2f fog=%s",
+        tostring(worldReady), tostring(Atmosphere.ActiveProfileIndex),
+        tostring(cell and cell.atmosphereProfile), tostring(Atmosphere.PendingProfileIndex),
+        tostring(Atmosphere.LastApplySource), Atmosphere.StormIntensity,
+        settings and string.format("start %.1f end %.1f density %.2f color %s",
+            settings.start, settings.finish, settings.maxDensity, table.concat(settings.color or {}, ","))
+            or "inactive"))
+    if profile then print("[ZombieSim] Atmosphere profile: " .. tostring(profile.id or profile.name or Atmosphere.ActiveProfileIndex)) end
 end)

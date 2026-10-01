@@ -1221,6 +1221,31 @@ local function createMapCanvas(parent, onSelect)
                     local playerX = mapX + mapSize * 0.5 + position.x / localMapSpan * mapSize
                     local playerY = mapY + mapSize * 0.5 - position.y / localMapSpan * mapSize
                     local cursorX, cursorY = self:CursorPos()
+                    // Den NPCs: a gold diamond with their name and "Profession lvl N" beside it.
+                    for _, npc in ipairs(ents.FindByClass("zn_den_npc")) do
+                        if IsValid(npc) and not npc:IsDormant() then
+                            local npcPosition = npc:GetPos()
+                            local npcX = math.floor(mapX + mapSize * 0.5 + npcPosition.x / localMapSpan * mapSize)
+                            local npcY = math.floor(mapY + mapSize * 0.5 - npcPosition.y / localMapSpan * mapSize)
+                            local name = npc:GetNWString("ZM_NpcName", "Den Resident")
+                            local role = npc.GetRoleText and npc:GetRoleText() or ""
+                            draw.NoTexture()
+                            surface.SetDrawColor(10, 8, 4, 255)
+                            surface.DrawPoly({ { x = npcX, y = npcY - 9 }, { x = npcX + 9, y = npcY }, { x = npcX, y = npcY + 9 }, { x = npcX - 9, y = npcY } })
+                            surface.SetDrawColor(222, 184, 84, 255)
+                            surface.DrawPoly({ { x = npcX, y = npcY - 7 }, { x = npcX + 7, y = npcY }, { x = npcX, y = npcY + 7 }, { x = npcX - 7, y = npcY } })
+                            surface.SetDrawColor(10, 8, 4, 255)
+                            surface.DrawRect(npcX - 2, npcY - 4, 4, 3)
+                            surface.DrawRect(npcX - 3, npcY, 6, 3)
+                            draw.SimpleTextOutlined(name, "DermaDefaultBold", npcX + 12, npcY - 1, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, 1, color_black)
+                            if role ~= "" then
+                                draw.SimpleTextOutlined(role, "DermaDefault", npcX + 12, npcY - 1, Color(222, 184, 84), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP, 1, color_black)
+                            end
+                            if (cursorX - npcX) ^ 2 + (cursorY - npcY) ^ 2 <= 144 then
+                                self.LandmarkTooltipText = role ~= "" and (name .. " - " .. role) or name
+                            end
+                        end
+                    end
                     if (cursorX - playerX) ^ 2 + (cursorY - playerY) ^ 2 <= 144 then
                         self.LandmarkTooltipText = player:Nick()
                     end
@@ -1809,7 +1834,8 @@ function WorldMap:Open()
     local sidebarContent = vgui.Create("DPanel", sidebar)
     sidebarContent:Dock(TOP)
     sidebarContent:DockMargin(8, 0, 8, 2)
-    sidebarContent:SetTall(math.Clamp(math.floor(frameHeight * 0.4), 168, 300))
+    local sidebarContentHeight = math.Clamp(math.floor(frameHeight * 0.4), 168, 300)
+    sidebarContent:SetTall(sidebarContentHeight)
     sidebarContent.Paint = function() end
 
     local layersContent = vgui.Create("DPanel", sidebarContent)
@@ -2076,20 +2102,37 @@ function WorldMap:Open()
         end
     end
 
+    // The cell inspector describes rendered tiles, so it only belongs to the satellite and walker views.
+    local function refreshCellInspectorVisibility()
+        local renderMode = WorldMap.RenderMode
+        local visible = sidebarView ~= "preview" and (renderMode == "satellite" or renderMode == "walker")
+        if cellInspector:IsVisible() ~= visible then
+            cellInspector:SetVisible(visible)
+            sidebar:InvalidateLayout(true)
+        end
+    end
+
     setSidebarView = function(view)
         sidebarView = view
         layersContent:SetVisible(view == "layers")
         placesContent:SetVisible(view == "places")
-        cellInspector:SetVisible(view ~= "preview")
         if previewContent then
             previewContent:SetVisible(view == "preview")
-            sidebarContent:Dock(view == "preview" and FILL or TOP)
+            if view == "preview" then
+                sidebarContent:Dock(FILL)
+            else
+                // FILL stretches the panel; restore its height or it squeezes the inspector to nothing.
+                sidebarContent:Dock(TOP)
+                sidebarContent:SetTall(sidebarContentHeight)
+            end
         end
+        refreshCellInspectorVisibility()
         sidebar:InvalidateLayout(true)
         sidebarContent:InvalidateLayout(true)
     end
 
     rebuildLayerControls = function()
+        refreshCellInspectorVisibility()
         layerList:Clear()
         layerCheckboxes = {}
         local renderMode = WorldMap.RenderMode

@@ -123,25 +123,7 @@ function ZM_Options:BuildPanel(panel)
         cookie.Set("zombiesim_quick_menu_labels", enabled and "1" or "0")
     end
     local function setSliderLabel(slider, text)
-        slider:SetText("")
-        slider:SetTall(52)
-        if IsValid(slider.Label) then
-            slider.Label:SetVisible(false)
-        end
-        local label = vgui.Create("DLabel", slider)
-        label:SetFont("DermaDefaultBold")
-        label:SetTextColor(ZM_DermaSkin.Palette.text)
-        label:SetContentAlignment(4)
-        label:SetText(text)
-        slider.PerformLayout = function(currentSlider, width, height)
-            currentSlider.Label:SetVisible(false)
-            label:SetPos(0, 0)
-            label:SetSize(width, 20)
-            currentSlider.Slider:SetPos(0, 24)
-            currentSlider.Slider:SetSize(math.max(1, width - 56), math.max(1, height - 24))
-            currentSlider.TextArea:SetPos(math.max(0, width - 52), 22)
-            currentSlider.TextArea:SetSize(52, math.max(1, height - 22))
-        end
+        ZM_DermaSkin.LabelSlider(slider, text)
     end
     local scale = vgui.Create("DNumSlider", panel)
     scale:Dock(TOP)
@@ -185,6 +167,15 @@ function ZM_Options:BuildPanel(panel)
                 ZM_SetInvertMouseY(option.mode, enabled)
             end
         end
+    end
+
+    if GetConVar("zombiesim_globe_quality") then
+        local globeQuality = vgui.Create("DCheckBoxLabel", panel)
+        globeQuality:Dock(TOP)
+        globeQuality:DockMargin(4, 4, 4, 4)
+        globeQuality:SetText("High-detail menu globe")
+        globeQuality:SetTextColor(ZM_DermaSkin.Palette.text)
+        globeQuality:SetConVar("zombiesim_globe_quality")
     end
 
     local walkerHeading = vgui.Create("DLabel", panel)

@@ -687,10 +687,19 @@ hook.Add("PlayerDeath", "ZM.Professions.CancelOffers", function(victim)
 end)
 
 // Sets a player's job (admin/dev only; there is no in-game picker yet). Stores the canonical profession id.
-// Canonical profession id for an id or alias, or nil and a reason.
+// Canonical profession id for an id, alias, or display name (case and spacing ignored), or nil and a reason.
 function Pro:ResolveJob(job)
     local registry = StaticData:GetRegistry()
     local id = registry and (registry.professions[job] and job or registry.professionAliases[job])
+    if not id and registry and isstring(job) then
+        local key = string.lower(string.gsub(job, "[%s_%-]", ""))
+        for professionId, profession in pairs(registry.professions) do
+            if string.lower(professionId) == key or string.lower(string.gsub(profession.name or "", "[%s_%-]", "")) == key then
+                id = professionId
+                break
+            end
+        end
+    end
     if not id then
         return nil, "Unknown profession '" .. tostring(job) .. "' (" .. table.concat(Professions:GetIds(), ", ") .. ")."
     end

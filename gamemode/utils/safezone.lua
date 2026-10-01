@@ -31,6 +31,36 @@ function SafeZones:GetName(id)
 	return safeZone and safeZone.name or nil
 end
 
+// Returns the landmark name for a configured safe-zone destination, when one exists.
+function SafeZones:GetLandmark(id)
+	local safeZone = self:Get(id)
+	if safeZone and type(safeZone.landmark) == "string" and safeZone.landmark ~= "" then
+		return safeZone.landmark
+	end
+	if safeZone and type(safeZone.landmarkVariant) == "string" and safeZone.landmarkVariant ~= "" then
+		return safeZone.landmarkVariant
+	end
+	return nil
+end
+
+// Returns the destination template filename used for a safe-zone map, if known.
+function SafeZones:GetTemplate(id)
+	local safeZone = self:Get(id)
+	if safeZone and type(safeZone.template) == "string" and safeZone.template ~= "" then
+		return safeZone.template
+	end
+	if safeZone and type(safeZone.templateFilename) == "string" and safeZone.templateFilename ~= "" then
+		return safeZone.templateFilename
+	end
+	return nil
+end
+
+// Returns the authored entrance placement, or nil for older runtime indexes.
+function SafeZones:GetEntrance(id)
+	local safeZone = self:Get(id)
+	return safeZone and type(safeZone.entrance) == "table" and safeZone.entrance or nil
+end
+
 // Returns the logical city entrance cell for a safe-zone id, or nil when it is unknown.
 function SafeZones:GetEntranceCell(id)
 	local safeZone = self:Get(id)
@@ -75,15 +105,26 @@ end
 // Returns the semantic biome/profile used by a safe-zone's destination map.
 function SafeZones:GetBiome(id)
 	local safeZone = self:Get(id)
-	return safeZone and safeZone.biome or nil
+	if not safeZone then
+		return nil
+	end
+	if type(safeZone.biome) == "string" and safeZone.biome ~= "" then
+		return safeZone.biome
+	end
+	if type(safeZone.template) == "string" and safeZone.template ~= "" then
+		return safeZone.template
+	end
+	return nil
 end
 
 // Returns the landmark-specific destination variant, or nil for a generic safe room.
 function SafeZones:GetLandmarkVariant(id)
 	local safeZone = self:Get(id)
-	if not safeZone or type(safeZone.landmarkVariant) ~= "string" or safeZone.landmarkVariant == "" then
-		return nil
+	if safeZone and type(safeZone.landmarkVariant) == "string" and safeZone.landmarkVariant ~= "" then
+		return safeZone.landmarkVariant
 	end
-
-	return safeZone.landmarkVariant
+	if safeZone and type(safeZone.landmark) == "string" and safeZone.landmark ~= "" then
+		return safeZone.landmark
+	end
+	return nil
 end

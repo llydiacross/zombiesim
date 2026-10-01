@@ -118,7 +118,7 @@ function UI:Rebuild()
     jobLabel:SetFont("ZM_CraftingBody")
     jobLabel:SetTextColor(ZM_DermaSkin.Palette.text)
     jobLabel:SetText("Job: " .. tostring(state.job or "?"))
-    local jobChoice = vgui.Create("DComboBox", jobRow)
+    local jobChoice = ZM_DermaSkin.StyleComboBox(vgui.Create("DComboBox", jobRow))
     jobChoice:Dock(LEFT)
     jobChoice:SetWide(180)
     jobChoice:DockMargin(0, 4, 8, 4)
@@ -163,6 +163,7 @@ function UI:Open()
     frame:MakePopup()
     frame.OnRemove = function()
         if UI.Frame == frame then UI.Frame = nil end
+        if ZM_UI then ZM_UI:UnregisterTransient(frame) end
     end
     self.Frame = frame
     self.Message = nil

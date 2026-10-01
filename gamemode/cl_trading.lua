@@ -248,6 +248,7 @@ function UI:Open(npcIndex)
     frame:MakePopup()
     frame.OnRemove = function()
         if UI.Frame == frame then UI.Frame = nil end
+        if ZM_UI then ZM_UI:UnregisterTransient(frame) end
     end
     self.Frame = frame
     self.State = nil

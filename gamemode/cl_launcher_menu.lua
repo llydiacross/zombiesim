@@ -60,6 +60,136 @@ local function addButton(parent, text, callback)
     return button
 end
 
+local function modelLabel(path)
+    local gender, number = string.match(path or "", "/(%a+)_(%d+)%.mdl$")
+    if not gender then return tostring(path or "") end
+    return string.upper(string.sub(gender, 1, 1)) .. string.sub(gender, 2) .. " " .. number
+end
+
+local function attributeLabel(attribute)
+    return (string.gsub(attribute, "(%l)(%u)", "%1 %2"))
+end
+
+local bonusColour = Color(92, 214, 112)
+local previewPages = { create = true, appearance = true }
+
+function Menu:IsCharacterPreviewVisible()
+    return IsValid(self.PreviewPanel) and self.PreviewPanel:IsVisible()
+end
+
+local function createCharacterPreview()
+    local panel = vgui.Create("DModelPanel")
+    panel:SetFOV(30)
+    panel:SetAmbientLight(Color(70, 70, 80))
+    panel:SetDirectionalLight(BOX_TOP, Color(255, 244, 230))
+    panel:SetDirectionalLight(BOX_FRONT, Color(170, 170, 185))
+    panel:SetMouseInputEnabled(true)
+    panel.Yaw, panel.Distance, panel.PanX, panel.PanZ = 0, 150, 0, 0
+    panel.PlayerColour = Vector(1, 1, 1)
+
+    panel.LayoutEntity = function(preview, entity)
+        local appearance = Menu.Draft and Menu.Draft.appearance
+        if appearance then
+            entity:SetSkin(tonumber(appearance.skin) or 0)
+            for id, value in pairs(appearance.bodygroups or {}) do
+                entity:SetBodygroup(tonumber(id) or 0, tonumber(value) or 0)
+            end
+            local colour = appearance.playerColour or {}
+            preview.PlayerColour = Vector(colour[1] or 1, colour[2] or 1, colour[3] or 1)
+        end
+        if not entity.GetPlayerColor then
+            entity.GetPlayerColor = function() return preview.PlayerColour end
+        end
+        preview:RunAnimation()
+        entity:SetAngles(Angle(0, preview.Yaw, 0))
+        local lookZ = 36 + preview.PanZ
+        preview:SetLookAt(Vector(0, preview.PanX, lookZ))
+        preview:SetCamPos(Vector(preview.Distance, preview.PanX, lookZ + 4))
+    end
+
+    // Left-drag rotates, right-drag moves the camera, and the wheel zooms.
+    panel.OnMousePressed = function(preview, code)
+        if code ~= MOUSE_LEFT and code ~= MOUSE_RIGHT then return end
+        preview.DragButton = code
+        preview.DragX, preview.DragY = gui.MousePos()
+        preview:MouseCapture(true)
+    end
+    panel.OnMouseReleased = function(preview, code)
+        if code ~= preview.DragButton then return end
+        preview.DragButton = nil
+        preview:MouseCapture(false)
+    end
+    panel.OnMouseWheeled = function(preview, delta)
+        preview.Distance = math.Clamp(preview.Distance - delta * 12, 40, 220)
+        return true
+    end
+    local baseThink = panel.Think
+    panel.Think = function(preview)
+        if baseThink then baseThink(preview) end
+        if not preview.DragButton then return end
+        if not input.IsMouseDown(preview.DragButton) then
+            preview:OnMouseReleased(preview.DragButton)
+            return
+        end
+        local x, y = gui.MousePos()
+        local deltaX, deltaY = x - preview.DragX, y - preview.DragY
+        preview.DragX, preview.DragY = x, y
+        if preview.DragButton == MOUSE_LEFT then
+            preview.Yaw = (preview.Yaw + deltaX * 0.6) % 360
+        else
+            local scale = preview.Distance / 400
+            preview.PanX = math.Clamp(preview.PanX - deltaX * scale, -40, 40)
+            preview.PanZ = math.Clamp(preview.PanZ + deltaY * scale, -34, 36)
+        end
+    end
+
+    local basePaint = panel.Paint
+    panel.Paint = function(preview, width, height)
+        surface.SetDrawColor(0, 0, 0, 70)
+        surface.DrawRect(0, 0, width, height)
+        basePaint(preview, width, height)
+        local draft = Menu.Draft or {}
+        local name = isstring(draft.name) and string.Trim(draft.name) ~= "" and draft.name or "UNNAMED SURVIVOR"
+        local _, nameHeight = draw.SimpleText(string.upper(name), "ZM_DependencyBriefingTitle", width * 0.5, 36,
+            palette.text, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+        draw.SimpleText(string.upper(draft.job or "NO PROFESSION CHOSEN"), "DermaDefaultBold", width * 0.5,
+            42 + nameHeight, palette.redBright, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+        draw.SimpleText("LEFT-DRAG ROTATE  /  RIGHT-DRAG MOVE  /  SCROLL ZOOM", "DermaDefault", width * 0.5,
+            height - 28, palette.muted, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+    end
+    return panel
+end
+
+// The full-body preview replaces the globe on the right for the whole create/appearance flow.
+function Menu:SyncCharacterPreview()
+    local draft = self.Draft
+    local wanted = IsValid(self.Frame) and self.Frame:IsVisible() and not self.Credits and not self.Waiting
+        and previewPages[self.Page] and istable(draft) and istable(draft.appearance)
+    if not wanted then
+        if IsValid(self.PreviewPanel) then self.PreviewPanel:Remove() end
+        self.PreviewPanel = nil
+        return nil
+    end
+    local panel = self.PreviewPanel
+    if not IsValid(panel) then
+        panel = createCharacterPreview()
+        self.PreviewPanel = panel
+    end
+    local left = self.Frame:GetWide()
+    panel:SetPos(left, 0)
+    panel:SetSize(math.max(1, ScrW() - left), ScrH())
+    if panel.ModelPath ~= draft.appearance.model then
+        panel:SetModel(draft.appearance.model)
+        panel.ModelPath = draft.appearance.model
+        local entity = panel:GetEntity()
+        if IsValid(entity) then
+            local sequence = entity:LookupSequence("idle_all_01")
+            if sequence and sequence > 0 then entity:ResetSequence(sequence) end
+        end
+    end
+    return panel
+end
+
 function Menu:Request(action, slot, details)
     if self.Waiting then return end
     self.Waiting = action
@@ -145,6 +275,8 @@ function Menu:Open()
         if self.Frame ~= frame then return end
         if self.Credits then self:EndCredits() end
         self.Frame = nil
+        if IsValid(self.PreviewPanel) then self.PreviewPanel:Remove() end
+        self.PreviewPanel = nil
         if ZM_UI then ZM_UI:UnregisterTransient(frame) end
     end
     self.Frame = frame
@@ -154,6 +286,7 @@ end
 
 function Menu:Render()
     if not IsValid(self.Frame) then return end
+    self:SyncCharacterPreview()
     if IsValid(self.Content) then self.Content:Remove() end
     local content = vgui.Create("DScrollPanel", self.Frame)
     content:Dock(FILL)
@@ -183,7 +316,10 @@ function Menu:Render()
         if anchor then
             for slot, row in pairs(self.Slots or {}) do
                 button((slot == self.SelectedSlot and "● " or "○ ") .. "Continue: " .. row.name .. " / " .. anchor.city,
-                    function() self.SelectedSlot = slot self:Render() end)
+                    function()
+                        self.SelectedSlot = slot
+                        self:Request("select", slot)
+                    end)
             end
         end
         button("NEW CHARACTER", function()
@@ -229,7 +365,8 @@ function Menu:Render()
                 button(tonumber(row.appearanceRequired) ~= 0 and "SET APPEARANCE" or "DEPLOY " .. row.name,
                     function()
                         if tonumber(row.appearanceRequired) ~= 0 then
-                            self.Draft = { slot = slot, appearance = { model = ZM_CharacterRules.Models[1], skin = 0,
+                            self.Draft = { slot = slot, name = row.name, job = row.job,
+                                appearance = { model = ZM_CharacterRules.Models[1], skin = 0,
                                 bodygroups = {}, playerColour = { 1, 1, 1 } } }
                             self.Page = "appearance"
                             self:Render()
@@ -270,69 +407,54 @@ function Menu:Render()
             input:SetText(draft.name or "")
             input.OnChange = function(field) draft.name = field:GetValue() end
         elseif step == "appearance" then
-            addLabel(content, "Choose a male or female face / model. Drag the preview to inspect it.", 42)
-            local preview = vgui.Create("DModelPanel", content)
-            preview:Dock(TOP)
-            preview:SetTall(175)
-            preview:SetModel(draft.appearance.model)
-            preview:SetFOV(38)
-            preview:SetCamPos(Vector(80, 0, 55))
-            preview:SetLookAt(Vector(0, 0, 51))
-            preview.LayoutEntity = function(_, entity) entity:SetAngles(Angle(0, RealTime() * 20 % 360, 0)) end
-            local model = vgui.Create("DComboBox", content)
+            addLabel(content, "Choose a face and outfit. The survivor on the right updates as you edit.", 42)
+            addLabel(content, "FACE / MODEL", 20):SetFont("DermaDefaultBold")
+            local model = ZM_DermaSkin.StyleComboBox(vgui.Create("DComboBox", content))
             model:Dock(TOP)
+            model:DockMargin(4, 0, 4, 6)
             model:SetTall(32)
-            model:SetValue(draft.appearance.model)
-            for _, path in ipairs(ZM_CharacterRules.Models) do model:AddChoice(path, path) end
+            for _, path in ipairs(ZM_CharacterRules.Models) do model:AddChoice(modelLabel(path), path) end
+            model:SetValue(modelLabel(draft.appearance.model))
             model.OnSelect = function(_, _, _, value)
                 draft.appearance.model = value
                 draft.appearance.skin = 0
                 draft.appearance.bodygroups = {}
-                preview:SetModel(value)
                 self:Render()
             end
-            local skin = vgui.Create("DNumSlider", content)
-            skin:Dock(TOP)
-            skin:SetTall(44)
-            skin:SetText("Skin")
-            skin:SetMin(0)
-            local entity = preview:GetEntity()
-            skin:SetMax(IsValid(entity) and math.max(0, entity:SkinCount() - 1) or 0)
-            skin:SetDecimals(0)
-            skin:SetValue(draft.appearance.skin)
-            skin.OnValueChanged = function(_, value)
-                draft.appearance.skin = math.Round(value)
-                if IsValid(preview:GetEntity()) then preview:GetEntity():SetSkin(draft.appearance.skin) end
+            local preview = self.PreviewPanel
+            local entity = IsValid(preview) and preview:GetEntity() or nil
+            local function addSlider(text, minimum, maximum, decimals, value, onChange)
+                local slider = vgui.Create("DNumSlider", content)
+                slider:Dock(TOP)
+                slider:DockMargin(4, 2, 4, 4)
+                ZM_DermaSkin.LabelSlider(slider, text)
+                slider:SetMin(minimum)
+                slider:SetMax(maximum)
+                slider:SetDecimals(decimals)
+                slider:SetValue(value)
+                slider.OnValueChanged = function(_, newValue) onChange(newValue) end
+                return slider
+            end
+            local skinCount = IsValid(entity) and entity:SkinCount() or 1
+            if skinCount > 1 then
+                addSlider("Skin", 0, skinCount - 1, 0, draft.appearance.skin or 0, function(value)
+                    draft.appearance.skin = math.Round(value)
+                end)
             end
             if IsValid(entity) then
                 for _, group in ipairs(entity:GetBodyGroups() or {}) do
                     if group.num > 1 then
                         local id = group.id
-                        local groupSlider = vgui.Create("DNumSlider", content)
-                        groupSlider:Dock(TOP)
-                        groupSlider:SetTall(44)
-                        groupSlider:SetText(group.name)
-                        groupSlider:SetMin(0)
-                        groupSlider:SetMax(group.num - 1)
-                        groupSlider:SetDecimals(0)
-                        groupSlider:SetValue(draft.appearance.bodygroups[tostring(id)] or 0)
-                        groupSlider.OnValueChanged = function(_, value)
-                            draft.appearance.bodygroups[tostring(id)] = math.Round(value)
-                            if IsValid(preview:GetEntity()) then preview:GetEntity():SetBodygroup(id, math.Round(value)) end
-                        end
+                        addSlider(attributeLabel(string.gsub(group.name or ("Bodygroup " .. id), "^%l", string.upper)),
+                            0, group.num - 1, 0, draft.appearance.bodygroups[tostring(id)] or 0, function(value)
+                                draft.appearance.bodygroups[tostring(id)] = math.Round(value)
+                            end)
                     end
                 end
             end
-            for index, colourName in ipairs({ "RED", "GREEN", "BLUE" }) do
-                local slider = vgui.Create("DNumSlider", content)
-                slider:Dock(TOP)
-                slider:SetTall(43)
-                slider:SetText("Player colour " .. colourName)
-                slider:SetMin(0)
-                slider:SetMax(1)
-                slider:SetDecimals(2)
-                slider:SetValue(draft.appearance.playerColour[index])
-                slider.OnValueChanged = function(_, value) draft.appearance.playerColour[index] = math.Round(value, 2) end
+            for index, colourName in ipairs({ "Red", "Green", "Blue" }) do
+                addSlider("Clothing colour - " .. colourName, 0, 1, 2, draft.appearance.playerColour[index] or 1,
+                    function(value) draft.appearance.playerColour[index] = math.Round(value, 2) end)
             end
         elseif step == "profession" then
             for _, id in ipairs(ZM_Professions:GetIds()) do
@@ -359,37 +481,69 @@ function Menu:Render()
                 return ZM_CharacterRules.StartingPoints - spent
             end
             local counter = addLabel(content, "", 30)
-            local function update() counter:SetText("POINTS REMAINING: " .. remaining()) end
+            counter:SetFont("DermaDefaultBold")
+            local function update()
+                counter:SetText("POINTS REMAINING: " .. remaining() .. " / " .. ZM_CharacterRules.StartingPoints)
+            end
             update()
-            for _, name in ipairs(ZM_CharacterRules.Attributes) do
+            local header = vgui.Create("DPanel", content)
+            header:Dock(TOP)
+            header:DockMargin(4, 4, 4, 0)
+            header:SetTall(26)
+            header.Paint = function(_, width, height)
+                surface.SetDrawColor(palette.redDark)
+                surface.DrawRect(0, 0, width, height)
+                draw.SimpleText("ATTRIBUTE", "DermaDefaultBold", 10, height * 0.5, palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+                draw.SimpleText("VALUE", "DermaDefaultBold", width - 150, height * 0.5, palette.text, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+            end
+            for index, name in ipairs(ZM_CharacterRules.Attributes) do
                 local attribute = name
                 local bonus = ZM_Professions:GetStatBonus(draft.job, attribute)
                 local line = vgui.Create("DPanel", content)
                 line:Dock(TOP)
-                line:SetTall(34)
-                line.Paint = function() end
-                local label = vgui.Create("DLabel", line)
-                label:Dock(FILL)
-                label:SetTextColor(palette.text)
-                local function refresh() label:SetText(attribute .. "  " .. (draft.attributes[attribute] or 0) .. "  +" .. bonus .. " PROFESSION") update() end
+                line:DockMargin(4, 0, 4, 0)
+                line:SetTall(30)
+                // Values start at the profession default; spent points are added on top of it.
+                line.Paint = function(_, width, height)
+                    if index % 2 == 0 then
+                        surface.SetDrawColor(30, 33, 38, 240)
+                    else
+                        surface.SetDrawColor(14, 16, 19, 240)
+                    end
+                    surface.DrawRect(0, 0, width, height)
+                    draw.SimpleText(attributeLabel(attribute), "DermaDefaultBold", 10, height * 0.5, palette.text,
+                        TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+                    local spent = draft.attributes[attribute] or 0
+                    local valueX = width - 150
+                    draw.SimpleText(tostring(bonus + spent), "DermaDefaultBold", valueX, height * 0.5,
+                        spent > 0 and palette.redBright or palette.text, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+                    if bonus > 0 then
+                        draw.SimpleText("(+" .. bonus .. ")", "DermaDefaultBold", valueX + 14, height * 0.5, bonusColour,
+                            TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+                    end
+                end
                 local plus = vgui.Create("DButton", line)
                 plus:Dock(RIGHT)
-                plus:SetWide(30)
+                plus:DockMargin(2, 3, 4, 3)
+                plus:SetWide(28)
                 plus:SetText("+")
                 plus.DoClick = function()
                     if remaining() <= 0 or (draft.attributes[attribute] or 0) >= ZM_CharacterRules.MaximumAttribute then return end
+                    self:PlayCue("select")
                     draft.attributes[attribute] = (draft.attributes[attribute] or 0) + 1
-                    refresh()
+                    update()
                 end
                 local minus = vgui.Create("DButton", line)
                 minus:Dock(RIGHT)
-                minus:SetWide(30)
+                minus:DockMargin(2, 3, 2, 3)
+                minus:SetWide(28)
                 minus:SetText("-")
                 minus.DoClick = function()
-                    draft.attributes[attribute] = math.max(0, (draft.attributes[attribute] or 0) - 1)
-                    refresh()
+                    if (draft.attributes[attribute] or 0) <= 0 then return end
+                    self:PlayCue("select")
+                    draft.attributes[attribute] = draft.attributes[attribute] - 1
+                    update()
                 end
-                refresh()
             end
             button("REVIEW", function()
                 if remaining() ~= 0 then self.Error = "Spend all 10 starting points" self:Render() return end
@@ -397,9 +551,14 @@ function Menu:Render()
             end)
         elseif step == "review" then
             addLabel(content, "SLOT " .. draft.slot .. "  /  " .. draft.name .. "  /  " .. draft.job, 38)
-            addLabel(content, "MODEL " .. draft.appearance.model, 38)
+            addLabel(content, "MODEL " .. modelLabel(draft.appearance.model), 38)
             for _, name in ipairs(ZM_CharacterRules.Attributes) do
-                if (draft.attributes[name] or 0) > 0 then addLabel(content, name .. ": " .. draft.attributes[name], 22) end
+                local bonus = ZM_Professions:GetStatBonus(draft.job, name)
+                local spent = draft.attributes[name] or 0
+                if spent + bonus > 0 then
+                    addLabel(content, attributeLabel(name) .. ": " .. (spent + bonus)
+                        .. (bonus > 0 and "  (+" .. bonus .. " profession)" or ""), 22)
+                end
             end
             button("CONFIRM AND SAVE", function()
                 self:Request("create", draft.slot, {
@@ -427,6 +586,7 @@ function Menu:StartCredits()
     if IsValid(self.CreditsOverlay) then self.CreditsOverlay:Remove() end
     ZM_LauncherSceneClient:BeginCredits()
     if IsValid(self.Frame) then self.Frame:SetVisible(false) end
+    self:SyncCharacterPreview()
     local overlay = vgui.Create("DFrame")
     overlay:SetSize(ScrW(), ScrH())
     overlay:SetPos(0, 0)

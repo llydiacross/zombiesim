@@ -12376,6 +12376,62 @@ entity
 }
 entity
 {
+	"id" "1326"
+	"classname" "zn_safezone_door"
+	"role" "enter"
+	"origin" "-641 -432 48"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "1327"
+	"classname" "zn_safezone_door"
+	"role" "enter"
+	"origin" "-705 692 48"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "1328"
+	"classname" "zn_safezone_door"
+	"role" "enter"
+	"origin" "-66 752 104"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "1329"
+	"classname" "zn_safezone_arrival"
+	"angles" "0 0 0"
+	"origin" "-992 0 40"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
 	"id" "943"
 	"classname" "prop_static"
 	"angles" "0 0 0"

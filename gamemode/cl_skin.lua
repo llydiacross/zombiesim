@@ -14,6 +14,44 @@ local palette = {
 
 ZM_DermaSkin.Palette = palette
 
+local comboText = Color(0, 0, 0)
+
+// DComboBox ignores the skin's text colours in several parents, so every dropdown sets black text explicitly.
+function ZM_DermaSkin.StyleComboBox(combo)
+    combo:SetTextColor(comboText)
+    local baseOpened = combo.OnMenuOpened
+    combo.OnMenuOpened = function(panel, menu)
+        if baseOpened then baseOpened(panel, menu) end
+        for _, option in ipairs(menu:GetCanvas():GetChildren()) do
+            if option.SetTextColor then option:SetTextColor(comboText) end
+        end
+    end
+    return combo
+end
+
+// The stock DNumSlider label is unreadable on the dark skin; draw a full-width label above the slider instead.
+function ZM_DermaSkin.LabelSlider(slider, text)
+    slider:SetText("")
+    slider:SetTall(52)
+    if IsValid(slider.Label) then slider.Label:SetVisible(false) end
+    local label = vgui.Create("DLabel", slider)
+    label:SetFont("DermaDefaultBold")
+    label:SetTextColor(palette.text)
+    label:SetContentAlignment(4)
+    label:SetText(text)
+    slider.ZM_Label = label
+    slider.PerformLayout = function(current, width, height)
+        current.Label:SetVisible(false)
+        label:SetPos(0, 0)
+        label:SetSize(width, 20)
+        current.Slider:SetPos(0, 24)
+        current.Slider:SetSize(math.max(1, width - 56), math.max(1, height - 24))
+        current.TextArea:SetPos(math.max(0, width - 52), 22)
+        current.TextArea:SetSize(52, math.max(1, height - 22))
+    end
+    return slider
+end
+
 surface.CreateFont("ZM_DermaFrameTitle", {
     font = "Trebuchet MS",
     size = 18,

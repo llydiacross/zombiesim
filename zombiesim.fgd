@@ -57,6 +57,20 @@
     model(studio) : "World model" : "models/Humans/Group01/male_07.mdl"
 ]
 
+@PointClass base(Targetname, Angles) = zn_safezone_door : "ZombieSim Safe-Zone Door"
+[
+    role(choices) : "Door role" : "enter" : "Whether this door enters a safe zone from the city or exits a den." =
+    [
+        "enter" : "Enter safe zone"
+        "exit" : "Exit safe zone"
+    ]
+    use_radius(float) : "Use radius" : "96" : "Maximum distance at which this door can be used or prompted."
+]
+
+@PointClass base(Targetname, Angles) = zn_safezone_arrival : "ZombieSim Safe-Zone Arrival"
+[
+]
+
 @SolidClass base(Targetname) = trigger_multiple : "ZombieSim Transition Gate"
 [
     zm_transition_direction(choices) : "World exit direction" : "north" : "The cardinal world edge this gate travels through." =

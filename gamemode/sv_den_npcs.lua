@@ -1,7 +1,7 @@
 // Den NPCs (zn_den_npc): Hammer-placed point entities that act as a trader, a professional, or both.
 // Keyvalues: profession (a profession id or alias; empty or "none" for a trader only), service_level (1..300; stands
 // in for the player level cap), fees ("cook=5 treat=10"; overrides trade_definitions.json npcServiceFees), trader
-// (a trader table id in trade_definitions.json), npc_name, and model. Settings are resolved against the live static
+// (a trader table id in trade_definitions.json), npc_name (falling back to Hammer targetname), and model. Settings are resolved against the live static
 // data each time, so a reload takes effect at once; an unknown profession offers no services.
 ZM_DenNpcs = ZM_DenNpcs or {}
 local Npcs = ZM_DenNpcs
@@ -61,6 +61,9 @@ function Npcs:Resolve(npc)
         end
     end
     local name = string.sub(string.Trim(tostring(config.npc_name or "")), 1, 32)
+    if name == "" then
+        name = string.sub(string.Trim(tostring(config.targetname or (npc.GetName and npc:GetName()) or "")), 1, 32)
+    end
     resolved.name = name ~= "" and name or resolved.traderName or (definition and definition.name) or "Den Resident"
     return resolved
 end

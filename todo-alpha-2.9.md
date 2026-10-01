@@ -1,7 +1,12 @@
 # Alpha 2.9 (Hud Weapon & Ammo Display Transitions, Fog, Skyboxes, Post Processing Effects, Dismemberment)
 
+- Status: active; not accepted. Den camera, weapon/ammo readout, door interactions, atmosphere diagnostics and gate identification have static checks only. Live verification and most phases below remain open.
 - Alpha 2.8 was accepted on 2026-09-27. Its ordinary-zombie corpse search interaction remains an explicitly deferred follow-up.
-- Note: Please now keep the current world preview data untouched now for the foreseeable future as all our changes should not required a world re-generation and we will wager when to rebuild vmfs and things like that again due to how long it takes to do it (2 hours)
+- Preview exception (approved 2026-10-01, then explicitly approved again for the entrance contract): seed-1337 preview was regenerated with 11 planned safe-zone entrances and an authored den exit. The required-cell check found 167 recipes, zero missing. The entrance-aware VBSP-only build checked 170 maps, compiled 166, skipped 4 current, and had zero failed/incomplete VBSP stages. After explicit review and approval of the portal-budget risk, a bounded, portal-cost-prioritized VVIS/VRAD pass compiled 167 maps and skipped 3 current maps, with zero failed/incomplete stages. All 170 staged BSP hashes match their build outputs, and the matching runtime index and map images were staged. This is a compiled preview, **not** evidence of successful in-game play or visual acceptance.
+- The portal preflight checked 170 maps; 17 recipes exceed the Alpha 2.9 900-portal budget (up to 1,272), with zero invalid/missing portal files. The den maps are under budget, and the approved compile completed despite those violations. Per user direction on 2026-10-01, portal-budget policy and compiler performance are deferred to `todo-alpha-2.9.1.md`; they no longer block Alpha 2.9 live verification. Production `city` is untouched.
+- The planner reserves entrance interiors and suppresses the border pieces they replace. The authored door/arrival points and server-authoritative entry/exit service have passed GLua syntax but **not** an in-game transition test. Generated `func_instance` origins/yaws were checked for the Storm Drain (`W`, yaw 180, `-1280 0 0`) and a north-side entrance (`N`, yaw 90, `0 1280 0`). Hammer inspection and the den's physical south-door presentation remain open. The earlier claim that the first VBSP preview was ready for physical den entry was incorrect.
+- Focused static checks: GLua syntax 125/125; safe-zone entrance fixture 11 zones and four T-junction orientations; multi-tile templates, Phase C2 layouts and border showcase pass; current tile zoos refreshed (11 dev cells). `test_building_frontage.ps1` still has a stale commercial-building expectation at `(12,20)` that was absent from the pre-entrance preview plan. More orientation, carpark, exclusive-landmark and no-slot fixtures plus Hammer confirmation remain open. No preview navmeshes were staged (170 required maps lacked one); 11 logical wireframe cells were unavailable.
+- No Garry's Mod client/server was running during this static pass. Camera, HUD, gates, fog, den NPC names, and map changes remain unverified in-engine; avoid changing saved player data for a probe without a verified backup/restoration path.
 
 
 ## HUD Ammo and Ammo Display
@@ -24,12 +29,6 @@
  - Implement den entrances that allow players to enter and exit dens seamlessly. 
 
  - Fix border transition gates as they are not working and do nothing
-
-## Add Skyboxes to the cells
-
- - In the den, there is such a thing as drawing the skybox in a custom fashion in gmod I am sure. I was wondering when you are in a den, we could draw a unique skybox using lua that reflects the environment outside the den, enhancing the immersive experience.
-
- - Theorise how to take advantage of propper to generate convincing set of skybox models for the different environments to be put in each cell. This will help create a more immersive and visually appealing game world.
 
 ## Better Fog
 
@@ -183,7 +182,7 @@ When in the shoulder mode, the players crosshair should be the indicator for wha
 
 - This file is the authoritative tracker for Alpha 2.9 scope, decisions, phase status, and remaining verification.
 - Implement phases in dependency order unless a phase explicitly identifies independent work. Record decisions and results here; do not infer completion from code alone.
-- **Do not regenerate or rebuild the current preview world or refresh its plans/VMFs as part of Alpha 2.9.** Keep the current preview data and generated maps untouched. Implement against existing runtime data and loaded maps. If a future requirement appears to need a world rebuild, stop and agree on that separately before doing it.
+- **Do not regenerate or rebuild the preview again as part of ordinary Alpha 2.9 work.** The user explicitly approved the one preview refresh described above. Further source/VMF work requires focused checks and a separate staged build decision; keep production `city` untouched.
 - Preserve the Lua realm boundary: server owns gameplay outcomes, persistence, loot, harvesting, and AFK protection; client owns presentation, camera easing, HUD, and cosmetic effects. Audit and validate every network request and register network strings server-side.
 - Reuse existing systems and contracts for `ZM_World`, `ZM_SafeZones`, player progression, inventory, weapons/ammo, loot spots, den interactions, and map transitions. Audit actual APIs before extending them; avoid parallel state or duplicated coordinate/profile resolution.
 - All dynamic environmental placement in this milestone is runtime Lua, not static map generation. Derive placement from available loaded-map/world data and traces, with deterministic per-cell selection, explicit entity/particle budgets, and cleanup on cell changes.

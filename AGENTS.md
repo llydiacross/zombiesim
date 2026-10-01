@@ -4,9 +4,9 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Active Task Tracker
 
-- `todo-alpha-2.8.5.md` is the authoritative tracker for current Alpha 2.8.5 work (launcher menu, character slots, globe, and credits). It is completed before Alpha 2.9.
-- `todo-alpha-2.9.md` holds the planned Alpha 2.9 milestone, queued behind Alpha 2.8.5; do not start its phases until 2.8.5 is closed.
-- `todo-alpha-2.8.md` records the accepted Alpha 2.8 milestone and its explicitly deferred zombie-corpse interaction; older roadmaps, test logs, and prior agent notes are historical context unless an item is explicitly promoted into the active tracker.
+- `todo-alpha-2.9.md` is the active tracker for the current Alpha 2.9 milestone (HUD weapon/ammo display transitions, first-person dens, transition gates, atmosphere work, and the follow-up preview build verification loop).
+- `docs/todo-alpha-2.8.6.md` remains as milestone history and source context for the safe-zone contract and Storm Drain work that landed before the current cycle.
+- `docs/todo-alpha-2.8.5.md` and `docs/todo-alpha-2.8.md` are historical context only unless explicitly promoted back into the active tracker.
 - When the active milestone changes, update this guide and the root tracker together; do not infer current work from historical phase labels.
 
 ## Read First

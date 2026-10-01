@@ -267,6 +267,7 @@ function Test-RecipeTilePlacements {
     }
 
     $ownerByCoordinate = @{}
+    $suppressedInterior = @($placements | Where-Object { $_.role -eq 'safezone_entrance_occupied' })
     foreach ($placement in $placements) {
         if (-not (Test-PlacementEmitsInstance $placement)) { continue }
         $tileX = [int]$placement.tileX
@@ -282,11 +283,12 @@ function Test-RecipeTilePlacements {
         }
     }
 
-    if ($ownerByCoordinate.Count -ne $expectedTileCount) {
-        throw "$($Recipe.cellTemplateFilename) covers $($ownerByCoordinate.Count) interior tiles; expected $expectedTileCount."
+    if ($ownerByCoordinate.Count + $suppressedInterior.Count -ne $expectedTileCount) {
+        throw "$($Recipe.cellTemplateFilename) covers $($ownerByCoordinate.Count) interior tiles plus $($suppressedInterior.Count) entrance tiles; expected $expectedTileCount."
     }
     foreach ($key in $placementByCoordinate.Keys) {
         $occupancyRecord = $placementByCoordinate[$key]
+        if ($occupancyRecord.role -eq 'safezone_entrance_occupied') { continue }
         $owner = $ownerByCoordinate[$key]
         $ownerId = Get-PlacementId $owner
         if ((Get-PlacementId $occupancyRecord) -ne $ownerId -or
@@ -303,6 +305,63 @@ function Get-RecipeInteriorInstanceCount {
     return @($Recipe.tilePlacements | Where-Object { Test-PlacementEmitsInstance $_ }).Count
 }
 
+# VBSP remaps instance entity origins/angles only for classes in the game's FGD (garrysmod.fgd), so ZombieSim point
+# entities inside a func_instance keep their template-local coordinates. Re-emit them here in cell space, flagged
+# with zm_instance_transformed so the runtime ignores the untransformed copies VBSP still merges.
+$instanceTransformedClasses = @('zn_safezone_door', 'zn_safezone_arrival')
+
+function Get-TransformedInstancePointEntities {
+    param(
+        [string]$TemplatePath,
+        [double]$OriginX,
+        [double]$OriginY,
+        [double]$OriginZ,
+        [int]$Yaw,
+        [int]$FirstEntityId
+    )
+
+    $contents = Get-Content -Raw $TemplatePath
+    $radians = $Yaw * [Math]::PI / 180.0
+    $cosine = [Math]::Round([Math]::Cos($radians), 10)
+    $sine = [Math]::Round([Math]::Sin($radians), 10)
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $entityId = $FirstEntityId
+    foreach ($match in [regex]::Matches($contents, '(?ms)^entity\r?\n\{\r?\n(.*?)^\}')) {
+        $body = $match.Groups[1].Value
+        $classMatch = [regex]::Match($body, '(?m)^\s*"classname" "([^"]+)"')
+        if (-not $classMatch.Success -or $instanceTransformedClasses -notcontains $classMatch.Groups[1].Value) { continue }
+        $keyValues = [ordered]@{}
+        $editorStart = [regex]::Match($body, '(?m)^\s*editor\s*$')
+        $keyText = if ($editorStart.Success) { $body.Substring(0, $editorStart.Index) } else { $body }
+        foreach ($pair in [regex]::Matches($keyText, '(?m)^\s*"([^"]+)" "([^"]*)"')) {
+            $keyValues[$pair.Groups[1].Value] = $pair.Groups[2].Value
+        }
+        $origin = @(([string]$keyValues['origin']) -split '\s+' | Where-Object { $_ -ne '' } | ForEach-Object { [double]$_ })
+        if ($origin.Count -ne 3) {
+            throw "$($classMatch.Groups[1].Value) in $TemplatePath has no valid origin."
+        }
+        $angles = @(([string]$(if ($keyValues.Contains('angles')) { $keyValues['angles'] } else { '0 0 0' })) -split '\s+' | Where-Object { $_ -ne '' } | ForEach-Object { [double]$_ })
+        if ($angles.Count -ne 3) { $angles = @(0.0, 0.0, 0.0) }
+        $worldX = $OriginX + $origin[0] * $cosine - $origin[1] * $sine
+        $worldY = $OriginY + $origin[0] * $sine + $origin[1] * $cosine
+        $worldZ = $OriginZ + $origin[2]
+        $worldYaw = (($angles[1] + $Yaw) % 360 + 360) % 360
+        $lines.Add('entity')
+        $lines.Add('{')
+        $lines.Add(('    "id" "{0}"' -f $entityId))
+        foreach ($key in $keyValues.Keys) {
+            if ($key -in @('id', 'origin', 'angles')) { continue }
+            $lines.Add(('    "{0}" "{1}"' -f $key, $keyValues[$key]))
+        }
+        $lines.Add([string]::Format([Globalization.CultureInfo]::InvariantCulture, '    "origin" "{0:0.###} {1:0.###} {2:0.###}"', $worldX, $worldY, $worldZ))
+        $lines.Add([string]::Format([Globalization.CultureInfo]::InvariantCulture, '    "angles" "{0:0.###} {1:0.###} {2:0.###}"', $angles[0], $worldYaw, $angles[2]))
+        $lines.Add('    "zm_instance_transformed" "1"')
+        $lines.Add('}')
+        $entityId++
+    }
+    return [pscustomobject]@{ Lines = $lines; NextEntityId = $entityId }
+}
+
 function Test-GeneratedCellVmf {
     param(
         [string]$Path,
@@ -313,8 +372,8 @@ function Test-GeneratedCellVmf {
 
     $contents = Get-Content -Raw $Path
     $instanceCount = [regex]::Matches($contents, '"classname" "func_instance"').Count
+    $expectedBorderCount = if ($ExpectedBorderInstanceCount -ge 0) { $ExpectedBorderInstanceCount } elseif ($borderEnabled) { 24 } else { 0 }
     if ($ExpectedInteriorInstanceCount -ge 0) {
-        $expectedBorderCount = if ($ExpectedBorderInstanceCount -ge 0) { $ExpectedBorderInstanceCount } elseif ($borderEnabled) { 24 } else { 0 }
         $expectedInstanceCount = $ExpectedInteriorInstanceCount + $expectedBorderCount
         if ($instanceCount -ne $expectedInstanceCount) { return $false }
     }
@@ -325,8 +384,8 @@ function Test-GeneratedCellVmf {
         return $contents -match 'tiletemplates/' -and $instanceCount -gt 0
     }
     return $contents -match 'tiletemplates/' -and
-        $instanceCount -ge 24 -and
-        [regex]::Matches($contents, '"targetname" "(?:zm_border_|zm_transition_road_)').Count -eq 24
+        $instanceCount -gt 0 -and
+        [regex]::Matches($contents, '"targetname" "(?:zm_border_|zm_transition_road_)').Count -eq $expectedBorderCount
 }
 
 function Get-RecipeLightingProfile {
@@ -511,6 +570,16 @@ function Get-BorderPlacements {
     foreach ($endcap in @(Get-CarparkEndcapPlacements -Recipe $Recipe -TileGridSize $TileGridSize -CarparkTemplates $generatorSettings.cellPlanning.carparks.templates)) {
         $carparkEndcapsByBorderSlot["$($endcap.tileX),$($endcap.tileY)"] = $endcap
     }
+    $suppressedBorder = @{}
+    $suppressedTilesProperty = $Recipe.PSObject.Properties['suppressedBorderTiles']
+    $suppressedTiles = if ($null -ne $suppressedTilesProperty) { @($suppressedTilesProperty.Value) } else { @() }
+    foreach ($tile in $suppressedTiles) {
+        $key = "$([int]$tile.tileX),$([int]$tile.tileY)"
+        if ($suppressedBorder.ContainsKey($key) -or $carparkEndcapsByBorderSlot.ContainsKey($key)) {
+            throw "Safe-zone entrance conflicts with a carpark endcap or repeated border tile at $key in $($Recipe.cellTemplateFilename)."
+        }
+        $suppressedBorder[$key] = $true
+    }
     $wallYawBySide = @{ N = 270; E = 180; S = 90; W = 0 }
     $waterDeadendYawBySide = @{ N = 180; E = 90; S = 0; W = 270 }
     $cornerYawByPosition = @{ 'N-W' = 0; 'N-E' = 270; 'S-E' = 180; 'S-W' = 90 }
@@ -522,6 +591,7 @@ function Get-BorderPlacements {
             $isOuterRow = $tileY -eq -1 -or $tileY -eq $TileGridSize
             $isOuterColumn = $tileX -eq -1 -or $tileX -eq $TileGridSize
             if (-not ($isOuterRow -or $isOuterColumn)) { continue }
+            if ($suppressedBorder.ContainsKey("$tileX,$tileY")) { continue }
 
             $isCorner = $isOuterRow -and $isOuterColumn
             if ($isCorner) {
@@ -569,6 +639,7 @@ function Get-BorderPlacements {
     }
 
     $expectedCount = (($TileGridSize + 2) * ($TileGridSize + 2)) - ($TileGridSize * $TileGridSize)
+    $expectedCount -= $suppressedBorder.Count
     if ($placements.Count -ne $expectedCount) {
         throw "Border placement count for $($Recipe.cellTemplateFilename) was $($placements.Count), expected $expectedCount."
     }
@@ -703,6 +774,32 @@ function New-CellVmf {
             '}'
         ))
         $entityId++
+    }
+    if ($null -ne $Recipe.PSObject.Properties['safeZoneEntrance'] -and $null -ne $Recipe.safeZoneEntrance) {
+        $entrance = $Recipe.safeZoneEntrance
+        $anchorX = [int]$entrance.anchorTile.tileX
+        $anchorY = [int]$entrance.anchorTile.tileY
+        $footprint = [int]$entrance.footprint
+        $originX = [int](($anchorX - $center + (($footprint - 1) / 2.0)) * $TileWidth)
+        $originY = [int](($center - $anchorY - (($footprint - 1) / 2.0)) * $TileWidth)
+        $instancePath = Get-VmfInstancePath $SourceDirectory $TemplateDirectory ([string]$entrance.template)
+        $lines.AddRange([string[]]@(
+            'entity',
+            '{',
+            ('    "id" "{0}"' -f $entityId),
+            '    "classname" "func_instance"',
+            ('    "origin" "{0} {1} {2}"' -f $originX, $originY, $TileVerticalOffset),
+            ('    "angles" "0 {0} 0"' -f [int]$entrance.yaw),
+            ('    "file" "{0}"' -f $instancePath),
+            ('    "targetname" "zm_safezone_entrance_{0}"' -f $entrance.slot),
+            '    "fixup_style" "0"',
+            '}'
+        ))
+        $entityId++
+        $transformed = Get-TransformedInstancePointEntities -TemplatePath (Join-Path $TemplateDirectory ([string]$entrance.template)) `
+            -OriginX $originX -OriginY $originY -OriginZ $TileVerticalOffset -Yaw ([int]$entrance.yaw) -FirstEntityId $entityId
+        if ($transformed.Lines.Count -gt 0) { $lines.AddRange([string[]]$transformed.Lines) }
+        $entityId = $transformed.NextEntityId
     }
     foreach ($placement in $BorderPlacements) {
         $instancePath = Get-VmfInstancePath $SourceDirectory $TemplateDirectory $placement.template
@@ -899,7 +996,8 @@ if ($RefreshGenerated -or $Force -or $PruneStaleGenerated) {
 foreach ($recipe in $recipes) {
     $outputPath = Join-Path $CellDirectory $recipe.cellTemplateFilename
     Test-RecipeTilePlacements $recipe $plan.cellTileGridSize
-    $expectedInteriorInstanceCount = Get-RecipeInteriorInstanceCount $recipe
+    $hasSafeZoneEntrance = $null -ne $recipe.PSObject.Properties['safeZoneEntrance'] -and $null -ne $recipe.safeZoneEntrance
+    $expectedInteriorInstanceCount = (Get-RecipeInteriorInstanceCount $recipe) + $(if ($hasSafeZoneEntrance) { 1 } else { 0 })
     $cubemapAnchors = Get-CubemapAnchors $recipe $plan.cellTileGridSize $TileSize $TileZOffset
     $borderPlacements = Get-BorderPlacements $recipe $plan.cellTileGridSize
     $transitionGates = @(Get-TransitionGatePlacements $recipe)

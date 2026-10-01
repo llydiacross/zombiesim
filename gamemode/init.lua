@@ -100,6 +100,8 @@ include( "sv_launcher.lua" )
 include( "sv_walker_sim.lua" )
 include( "sv_walker_materialization.lua" )
 include( "sv_transitions.lua" )
+include( "sv_safezone_doors.lua" )
+include( "sv_safezone_doors_tests.lua" )
 
 // Ensure the SQLite schema exists before any PlayerSpawn handler performs a lookup.
 local attributesReady, attributesError = ZM_CreatePlayerAttributesTable()

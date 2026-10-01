@@ -249,6 +249,7 @@ function Crafting:Open()
     frame:MakePopup()
     frame.OnRemove = function()
         if Crafting.Frame == frame then Crafting.Frame = nil end
+        if ZM_UI then ZM_UI:UnregisterTransient(frame) end
     end
     self.Frame = frame
     self.Message = nil
