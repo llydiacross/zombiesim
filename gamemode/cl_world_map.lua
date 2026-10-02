@@ -4,13 +4,15 @@ local MapColors = ZM_DermaSkin.Palette
 local getAllPlayers = player.GetAll
 local localMapCameraHeight = 3600
 local localMapFieldOfView = 48
-local localMapSpan = 2 * localMapCameraHeight * math.tan(math.rad(localMapFieldOfView * 0.5))
+local localMapBaseSpan = 2 * localMapCameraHeight * math.tan(math.rad(localMapFieldOfView * 0.5))
 local localMapDefaultZoom = 1
 // The level view is one orthographic capture into a render target with its own depth buffer,
 // so there are no tile seams to tear.
 local localMapCaptureSize = 2048
-// Ortho ignores fov for projection; a wide fov only keeps any fov-based culling generous.
-local localMapCullFieldOfView = 100
+local localMapDenSpanScale = 2
+// Ortho ignores fov for projection; a wide fov only keeps any fov-based culling generous
+// (120 degrees reaches the doubled den span from the camera height).
+local localMapCullFieldOfView = 120
 local localMapCaptureVersion = 7
 local localMapRefreshInterval = 3
 local mapDebugConVar = CreateClientConVar("zombiesim_map_debug", "0", true, false, "Show world map draw diagnostics.")
@@ -399,9 +401,23 @@ local function getLocalMapCapture()
     return WorldMap.LocalMapTiles[mapKey]
 end
 
+// Den maps are larger than a city cell, so a den capture covers twice the span (four times the area).
+local function getLocalMapCaptureSpan()
+    local player = LocalPlayer()
+    local safeZoneId = IsValid(player) and player:GetNWString("CurrentSafeZoneId", "") or ""
+    local isInDen = safeZoneId ~= "" and safeZoneId ~= "NULL"
+    return isInDen and localMapBaseSpan * localMapDenSpanScale or localMapBaseSpan
+end
+
+// Projection always uses the span the current capture was rendered with.
+local function getLocalMapSpan()
+    local capture = getLocalMapCapture()
+    return capture and capture.span or getLocalMapCaptureSpan()
+end
+
 // The flat ortho keys are used because the ortho table form is ignored by this Garry's Mod branch.
-local function renderLocalMapView(size)
-    local halfSpan = localMapSpan * 0.5
+local function renderLocalMapView(size, span)
+    local halfSpan = span * 0.5
     render.RenderView({
         origin = Vector(0, 0, localMapCameraHeight),
         angles = Angle(90, 90, 0),
@@ -457,12 +473,13 @@ function WorldMap:CaptureCurrentMap(resetViewport)
         return false
     end
 
+    local span = getLocalMapCaptureSpan()
     render.PushRenderTarget(renderTarget)
     render.Clear(0, 0, 0, 255, true, true)
-    renderLocalMapView(localMapCaptureSize)
+    renderLocalMapView(localMapCaptureSize, span)
     render.PopRenderTarget()
 
-    self.LocalMapTiles[mapKey] = { material = material }
+    self.LocalMapTiles[mapKey] = { material = material, span = span }
     self.LocalMapRefreshTimes[mapKey] = CurTime()
     if resetViewport ~= false then
         self.LocalViewport = { zoom = localMapDefaultZoom, panX = 0, panY = 0 }
@@ -481,14 +498,45 @@ end
 function WorldMap:ProjectLocalMapPosition(x, y, width, height, centerPosition, viewHeight, mapPosition)
     centerPosition = centerPosition or vector_origin
     mapPosition = mapPosition or vector_origin
-    viewHeight = math.Clamp(tonumber(viewHeight) or localMapSpan * 0.46, 1, localMapSpan)
+    viewHeight = math.Clamp(tonumber(viewHeight) or getLocalMapSpan() * 0.46, 1, getLocalMapSpan())
     local viewWidth = viewHeight * width / height
-    local viewStartU = 0.5 + centerPosition.x / localMapSpan - viewWidth / localMapSpan * 0.5
-    local viewStartV = 0.5 - centerPosition.y / localMapSpan - viewHeight / localMapSpan * 0.5
-    local mapU = 0.5 + mapPosition.x / localMapSpan
-    local mapV = 0.5 - mapPosition.y / localMapSpan
-    return x + (mapU - viewStartU) / (viewWidth / localMapSpan) * width,
-        y + (mapV - viewStartV) / (viewHeight / localMapSpan) * height
+    local viewStartU = 0.5 + centerPosition.x / getLocalMapSpan() - viewWidth / getLocalMapSpan() * 0.5
+    local viewStartV = 0.5 - centerPosition.y / getLocalMapSpan() - viewHeight / getLocalMapSpan() * 0.5
+    local mapU = 0.5 + mapPosition.x / getLocalMapSpan()
+    local mapV = 0.5 - mapPosition.y / getLocalMapSpan()
+    return x + (mapU - viewStartU) / (viewWidth / getLocalMapSpan()) * width,
+        y + (mapV - viewStartV) / (viewHeight / getLocalMapSpan()) * height
+end
+
+WorldMap.SafeZoneDoorColor = Color(92, 214, 140)
+local safeZoneDoorLabels = { enter = "Safe Zone", exit = "Exit" }
+
+// Server-published door markers (see Doors:InitializeDoors); these stay valid when the door entity is dormant.
+function WorldMap:GetSafeZoneDoorMarkers()
+    local markers = {}
+    for index = 1, GetGlobal2Int("ZMSafeZoneDoorCount", 0) do
+        local role = GetGlobal2String("ZMSafeZoneDoorRole_" .. index, "")
+        if safeZoneDoorLabels[role] then
+            table.insert(markers, {
+                position = GetGlobal2Vector("ZMSafeZoneDoor_" .. index, vector_origin),
+                role = role,
+                label = safeZoneDoorLabels[role]
+            })
+        end
+    end
+    return markers
+end
+
+// A green door glyph: dark outline, filled frame and a dark doorway.
+function WorldMap:DrawSafeZoneDoorGlyph(markerX, markerY, size)
+    local color = self.SafeZoneDoorColor
+    draw.NoTexture()
+    surface.SetDrawColor(10, 8, 4, 255)
+    surface.DrawRect(markerX - size - 2, markerY - size - 2, size * 2 + 4, size * 2 + 4)
+    surface.SetDrawColor(color.r, color.g, color.b, 255)
+    surface.DrawRect(markerX - size, markerY - size, size * 2, size * 2)
+    surface.SetDrawColor(10, 8, 4, 255)
+    surface.DrawRect(markerX - math.ceil(size * 0.4), markerY - math.ceil(size * 0.5), math.ceil(size * 0.8), math.ceil(size * 1.5))
 end
 
 function WorldMap:RefreshLocalMapIfDue()
@@ -507,12 +555,12 @@ function WorldMap:DrawLocalMap(x, y, width, height, centerPosition, viewHeight)
     end
 
     centerPosition = centerPosition or vector_origin
-    viewHeight = math.Clamp(tonumber(viewHeight) or localMapSpan * 0.46, 1, localMapSpan)
+    viewHeight = math.Clamp(tonumber(viewHeight) or getLocalMapSpan() * 0.46, 1, getLocalMapSpan())
     local viewWidth = viewHeight * width / height
-    local viewStartU = 0.5 + centerPosition.x / localMapSpan - viewWidth / localMapSpan * 0.5
-    local viewStartV = 0.5 - centerPosition.y / localMapSpan - viewHeight / localMapSpan * 0.5
-    local viewEndU = viewStartU + viewWidth / localMapSpan
-    local viewEndV = viewStartV + viewHeight / localMapSpan
+    local viewStartU = 0.5 + centerPosition.x / getLocalMapSpan() - viewWidth / getLocalMapSpan() * 0.5
+    local viewStartV = 0.5 - centerPosition.y / getLocalMapSpan() - viewHeight / getLocalMapSpan() * 0.5
+    local viewEndU = viewStartU + viewWidth / getLocalMapSpan()
+    local viewEndV = viewStartV + viewHeight / getLocalMapSpan()
     local drawStartU = math.max(viewStartU, 0)
     local drawStartV = math.max(viewStartV, 0)
     local drawEndU = math.min(viewEndU, 1)
@@ -827,6 +875,30 @@ local function getWaypointPath(playerCell)
     return cells
 end
 
+function WorldMap:GetWaypointPath(playerCell)
+    return getWaypointPath(playerCell)
+end
+
+function WorldMap:GetWaypointDirection(playerCell)
+    local path = getWaypointPath(playerCell)
+    if not path or #path < 2 then
+        return nil
+    end
+
+    local currentX, currentY = ZM_World:GetWorldCoordinates(path[1])
+    local nextX, nextY = ZM_World:GetWorldCoordinates(path[2])
+    if currentX == nil or currentY == nil or nextX == nil or nextY == nil then
+        return nil
+    end
+
+    local deltaX = nextX - currentX
+    local deltaY = currentY - nextY
+    if math.abs(deltaX) > math.abs(deltaY) then
+        return deltaX > 0 and "E" or "W"
+    end
+    return deltaY > 0 and "N" or "S"
+end
+
 local function drawRouteLine(startX, startY, endX, endY, width)
     local deltaX = endX - startX
     local deltaY = endY - startY
@@ -1083,8 +1155,8 @@ local function createMapCanvas(parent, onSelect)
             startPanX = self.PanX,
             startPanY = self.PanY,
             targetZoom = targetZoom,
-            targetPanX = -position.x / localMapSpan * mapSize,
-            targetPanY = position.y / localMapSpan * mapSize
+            targetPanX = -position.x / getLocalMapSpan() * mapSize,
+            targetPanY = position.y / getLocalMapSpan() * mapSize
         }
     end
 
@@ -1218,15 +1290,27 @@ local function createMapCanvas(parent, onSelect)
                 local player = LocalPlayer()
                 if IsValid(player) then
                     local position = player:GetPos()
-                    local playerX = mapX + mapSize * 0.5 + position.x / localMapSpan * mapSize
-                    local playerY = mapY + mapSize * 0.5 - position.y / localMapSpan * mapSize
+                    local playerX = mapX + mapSize * 0.5 + position.x / getLocalMapSpan() * mapSize
+                    local playerY = mapY + mapSize * 0.5 - position.y / getLocalMapSpan() * mapSize
                     local cursorX, cursorY = self:CursorPos()
+                    local entranceCell = getPlayerMapCell(player)
+                    local entranceSafeZone = entranceCell and ZM_SafeZones:GetForCell(entranceCell) or nil
+                    local entranceName = entranceSafeZone and entranceSafeZone.name or "Safe Zone entrance"
+                    for _, door in ipairs(WorldMap:GetSafeZoneDoorMarkers()) do
+                        local doorX = math.floor(mapX + mapSize * 0.5 + door.position.x / getLocalMapSpan() * mapSize)
+                        local doorY = math.floor(mapY + mapSize * 0.5 - door.position.y / getLocalMapSpan() * mapSize)
+                        WorldMap:DrawSafeZoneDoorGlyph(doorX, doorY, 7)
+                        draw.SimpleTextOutlined(door.label, "DermaDefaultBold", doorX + 12, doorY, WorldMap.SafeZoneDoorColor, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER, 1, color_black)
+                        if (cursorX - doorX) ^ 2 + (cursorY - doorY) ^ 2 <= 144 then
+                            self.LandmarkTooltipText = door.role == "enter" and entranceName or "Exit to the city"
+                        end
+                    end
                     // Den NPCs: a gold diamond with their name and "Profession lvl N" beside it.
                     for _, npc in ipairs(ents.FindByClass("zn_den_npc")) do
                         if IsValid(npc) and not npc:IsDormant() then
                             local npcPosition = npc:GetPos()
-                            local npcX = math.floor(mapX + mapSize * 0.5 + npcPosition.x / localMapSpan * mapSize)
-                            local npcY = math.floor(mapY + mapSize * 0.5 - npcPosition.y / localMapSpan * mapSize)
+                            local npcX = math.floor(mapX + mapSize * 0.5 + npcPosition.x / getLocalMapSpan() * mapSize)
+                            local npcY = math.floor(mapY + mapSize * 0.5 - npcPosition.y / getLocalMapSpan() * mapSize)
                             local name = npc:GetNWString("ZM_NpcName", "Den Resident")
                             local role = npc.GetRoleText and npc:GetRoleText() or ""
                             draw.NoTexture()
@@ -1259,8 +1343,8 @@ local function createMapCanvas(parent, onSelect)
                     for _, otherPlayer in ipairs(getAllPlayers()) do
                         if otherPlayer ~= player and IsValid(otherPlayer) and otherPlayer:Alive() then
                             local otherPosition = otherPlayer:GetPos()
-                            local otherX = mapX + mapSize * 0.5 + otherPosition.x / localMapSpan * mapSize
-                            local otherY = mapY + mapSize * 0.5 - otherPosition.y / localMapSpan * mapSize
+                            local otherX = mapX + mapSize * 0.5 + otherPosition.x / getLocalMapSpan() * mapSize
+                            local otherY = mapY + mapSize * 0.5 - otherPosition.y / getLocalMapSpan() * mapSize
                             if (cursorX - otherX) ^ 2 + (cursorY - otherY) ^ 2 <= 144 then
                                 self.LandmarkTooltipText = otherPlayer:Nick()
                             end
@@ -2471,6 +2555,14 @@ end)
 hook.Add("PostRender", "ZM.WorldMap.LocalMapRefresh", function()
     if IsValid(WorldMap.Frame) and WorldMap.RenderMode == "map" then
         WorldMap:RefreshLocalMapIfDue()
+    end
+end)
+
+// The saved waypoint drives the compass and minimap, so load it as soon as world data is ready rather than only when
+// the map window first opens. LoadPersistentState returns immediately once the profile's state is loaded.
+hook.Add("Think", "ZM.WorldMap.LoadSavedWaypoint", function()
+    if ZM_World and ZM_World:IsLoaded() and WorldMap.StateProfile ~= ZM_World.ActiveProfile then
+        WorldMap:LoadPersistentState()
     end
 end)
 

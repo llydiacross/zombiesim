@@ -36,6 +36,8 @@ All template rotations are measured from these `$0^\circ$` authored orientations
 | Border wall corner | North to east, at the north-east tile corner |
 | Carpark entrance | Connective tip on the south tile edge; standard variants have local east and west lanes. At `$0^\circ$`, `_deadend_west` closes west and connects east, while `_deadend_east` closes east and connects west. |
 
+Instance yaw follows Source's world-space rotation: positive yaw turns counter-clockwise in Hammer's XY plane. Convert logical north/east/south/west directions to physical yaw before rotating a marker or footprint; logical tile-grid rotation alone uses the opposite sign.
+
 The generated border ring sits one tile outside the playable cell. Its corner instances use the Hammer-verified yaws `NW=0`, `NE=270`, `SE=180`, and `SW=90`, placing the authored corner against the level rather than toward the skybox.
 
 ### Tile Road Connections
@@ -175,6 +177,8 @@ When the current source VMFs, BSPs, and `.prt` files have already passed the VBS
 
 `-SkipVBSP` requires an existing `.bsp` and `.prt` for every required recipe, then runs VVIS and VRAD only. Keep `-SkipRecipeRefresh` with it so the release uses the exact VMFs that produced those portal files. Completed VVIS and VRAD stages are reused when their compiler logs are newer than their `.prt` or VVIS-log input; add `-Force` to run every requested stage again.
 
+Recipe refreshes and compiles are incremental. `build_cell_vmfs.ps1` rewrites a generated VMF, or copies a standalone den template, only when the content differs; its summary reports `unchanged`. A map is recompiled, or its portal data refreshed, only when its BSP is missing or its VMF or any `func_instance` file it references (followed recursively; see `bin/vmf_source_dependencies.psm1`) is newer than the build output. Editing one tile therefore recompiles only the recipes that instance it.
+
 Add `-PrioritizePortalCost` to that reuse build to run the maps with the most portals first. The queue uses portal count, then portal-cluster count, from each `.prt` header. It requires `-SkipVBSP`, since a normal VBSP pass has not yet generated portal data when its queue is ordered:
 
 ```powershell
@@ -189,7 +193,7 @@ Use the visibility-budget check after changing structural tile geometry. With `-
 .\bin\check_vis_budgets.ps1 -WorldProfile preview -RefreshPortalData
 ```
 
-The configured budgets are `500` portal clusters and `900` portals. The cluster threshold was raised from 250 to 500 as a project diagnostic budget; it is not an engine limit. They are configured under `compilation.visibilityBudget` in [generator-settings.json](generator-settings.json), can be overridden for one run with `-MaxPortalClusters` and `-MaxPortals`, and write `vis-budget-report.json` beside the preview BSPs. For every over-budget recipe, the report also ranks its instanced tiles by their aggregate non-`func_detail` brush-solid count and shows each tile's detail-solid, entity, and prop counts. This is a diagnostic lead rather than a portal attribution: open sightlines between tiles can also create high VVIS cost. The command exits nonzero for over-budget, missing, or invalid portal files.
+The configured diagnostic budgets are `750` portal clusters and `1,350` portals. These thresholds are not engine limits. They are configured under `compilation.visibilityBudget` in [generator-settings.json](generator-settings.json), can be overridden for one run with `-MaxPortalClusters` and `-MaxPortals`, and write `vis-budget-report.json` beside the preview BSPs. For every over-budget recipe, the report also ranks its instanced tiles by their aggregate non-`func_detail` brush-solid count and shows each tile's detail-solid, entity, and prop counts. This is a diagnostic lead rather than a portal attribution: open sightlines between tiles can also create high VVIS cost. The command exits nonzero for over-budget, missing, or invalid portal files.
 
 ## Selecting City Data In Hammer
 
@@ -369,11 +373,15 @@ These settings control the profile-driven VMF compiler runner. Command-line time
 | --- | --- | --- |
 | `activeProfile` | Compiler profile used when `-CompilerProfile` is omitted. | Default: `stock-gmod`. |
 | `progressRefreshMilliseconds` | How often the active-stage progress display refreshes. | Keep at least `100`. Default: `1000`. |
+| `maxParallelProcesses` | Maximum number of compiler processes scheduled at once. | Default: `4`; override per run with `-MaxParallelProcesses`. Stock Hammer's `-threads` switch has no numeric limit, so the runner uses this process cap. |
 | `stageTimeoutSeconds.vbsp`, `.vvis`, `.vrad` | Soft timeout budget for each compiler stage. | A stage is deferred after this budget while the remaining queue continues. Defaults: `300`, `900`, `1800`. |
 | `deferredGraceSeconds` | Extra wait after the normal queue for deferred compiler processes. | Default: `300`. |
+| `stagePresets.fast` / `.final` | VVIS and VRAD argument arrays used by the selected build preset. | Preview defaults to `fast`; `city` defaults to `final`. Use `-Fast` or `-Final` to override. |
 | `profiles.<name>.toolDirectory` | Folder containing that profile's executables. | Empty for the stock Garry's Mod `bin`; otherwise absolute or project-relative. |
 | `profiles.<name>.executables` | Names or absolute paths for `vbsp`, `vvis`, and `vrad`. | All three keys are required, including VBSP-only runs. |
 | `profiles.<name>.arguments` | Argument-template arrays for `vbsp`, `vvis`, and `vrad`. | Use the supported placeholders shown above. |
+
+Compiler invocations run through a bounded process pool (`maxParallelProcesses`, default `4`). The installed stock Hammer tools expose `-threads` as a valueless switch rather than a numeric thread limit, so the runner does not append an unsupported thread count; pool size is the supported concurrency control. Timed-out stages remain counted against the pool while their process is still running; completed/deferred stages are recorded in `compile-report.json`.
 
 ## `directions` (Advanced)
 

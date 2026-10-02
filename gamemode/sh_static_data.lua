@@ -37,7 +37,8 @@ StaticData.LootPropClasses = {
     prop_physics_override = "prop_physics",
     prop_physics_multiplayer = "prop_physics_multiplayer",
     prop_dynamic = "prop_dynamic",
-    prop_dynamic_override = "prop_dynamic"
+    prop_dynamic_override = "prop_dynamic",
+    prop_ragdoll = "prop_ragdoll"
 }
 StaticData.DefaultLootPropClasses = { "prop_physics", "prop_physics_multiplayer", "prop_dynamic" }
 
@@ -853,7 +854,7 @@ local function validateEntityLoot(report, registry, internal)
                 if className == "prop_static" then
                     context:Error(classPath, "static props are compiled into the map and cannot be looted; use prop_physics_override or prop_dynamic_override in the template")
                 elseif not canonical then
-                    context:Error(classPath, "must be prop_physics, prop_physics_multiplayer, or prop_dynamic")
+                    context:Error(classPath, "must be prop_physics, prop_physics_multiplayer, prop_dynamic, or prop_ragdoll")
                 elseif not seenClasses[canonical] then
                     seenClasses[canonical] = true
                     table.insert(rule.classes, canonical)

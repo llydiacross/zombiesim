@@ -7,9 +7,24 @@ local collisionMaxs = Vector(16, 16, 72)
 local corpseFadeDelay = 60
 local corpseFadeDuration = 5
 local corpseFadeInterval = 0.1
+local validModels
+
+local function pickModel(entity)
+    if not validModels then
+        validModels = {}
+        for _, model in ipairs(entity.Models or {}) do
+            if util.IsValidModel(model) then
+                table.insert(validModels, model)
+            end
+        end
+    end
+    return validModels[math.random(#validModels)] or entity.Model
+end
 
 function ENT:Initialize()
-    self:SetModel(self.Model)
+    self:SetModel(pickModel(self))
+    self:SetSkin(math.random(0, math.max(0, self:SkinCount() - 1)))
+    self.WalkActivity = self.WalkActivities[math.random(#self.WalkActivities)]
     self:SetHealth(self.DevelopmentHealth)
     self:SetCollisionBounds(collisionMins, collisionMaxs)
     self:SetSolid(SOLID_BBOX)
@@ -99,7 +114,7 @@ function ENT:ResolveWalkerTicket(killed)
 end
 
 function ENT:IsValidTarget(target)
-    if not IsValid(target) or not target:IsPlayer() or not target:Alive() then
+    if not IsValid(target) or not target:IsPlayer() or not target:Alive() or target:IsFlagSet(FL_NOTARGET) then
         return false
     end
     local cell = target:GetWorldCell()
@@ -199,7 +214,7 @@ function ENT:AttackTarget(target)
     self.NextAttackAt = CurTime() + self.DevelopmentAttackInterval
     self.AttackCount = self.AttackCount + 1
     self.WalkerState = "attack"
-    self:StartActivity(ACT_MELEE_ATTACK1)
+    self:AddGesture(self.AttackGesture)
     local damage = DamageInfo()
     damage:SetDamage(self.DevelopmentAttackDamage)
     damage:SetDamageType(DMG_SLASH)
@@ -208,8 +223,33 @@ function ENT:AttackTarget(target)
     target:TakeDamageInfo(damage)
 end
 
+function ENT:MoveActivity()
+    return self.GoreCrawler and self.CrawlActivity or self.WalkActivity
+end
+
+function ENT:RestActivity()
+    return self.GoreCrawler and self.CrawlActivity or self.IdleActivity
+end
+
+// base_nextbot only drives move_x/move_y for ACT_WALK/ACT_RUN. A crawler keeps the forward swim blend (an
+// inclined drag along the ground) and scales playback with speed so it slows to a twitch when still.
+function ENT:BodyUpdate()
+    if self.GoreCrawler then
+        self:SetPoseParameter("move_x", 1)
+        self:SetPoseParameter("move_y", 0)
+        self:SetPlaybackRate(math.Clamp(self.loco:GetVelocity():Length2D() / 30, 0.2, 1.5))
+        self:FrameAdvance()
+        return
+    end
+    if self:GetActivity() == self.WalkActivity then
+        self:BodyMoveXY()
+        return
+    end
+    self:FrameAdvance()
+end
+
 function ENT:ChaseTarget(target)
-    self:StartActivity(ACT_WALK)
+    self:StartActivity(self:MoveActivity())
     self.loco:SetDesiredSpeed(self.WalkSpeed or self.DevelopmentWalkSpeed)
 
     while self:IsValidTarget(target) do
@@ -241,7 +281,7 @@ function ENT:RunBehaviour()
             self:ChaseTarget(target)
         elseif self.LastKnownTargetPosition and CurTime() < self.LastKnownTargetExpiresAt then
             self.WalkerState = "targetLost"
-            self:StartActivity(ACT_WALK)
+            self:StartActivity(self:MoveActivity())
             self.loco:SetDesiredSpeed(self.WalkSpeed or self.DevelopmentWalkSpeed)
             if self:UpdatePath(self.LastKnownTargetPosition) then
                 coroutine.yield()
@@ -250,7 +290,9 @@ function ENT:RunBehaviour()
             end
         else
             self.WalkerState = "idle"
-            self:StartActivity(ACT_IDLE)
+            if self:GetActivity() ~= self:RestActivity() then
+                self:StartActivity(self:RestActivity())
+            end
             coroutine.wait(0.1)
         end
         coroutine.yield()
@@ -287,20 +329,35 @@ function ENT:GetWalkerPerformanceStats()
     }
 end
 
+// Runs before EntityTakeDamage, so ZM_Enemies can apply the headshot rule to the same bullet.
+function ENT:OnTraceAttack(damage, _, trace)
+    if self.WalkerDead or not trace then
+        return
+    end
+    if trace.HitGroup == HITGROUP_HEAD then
+        self.HeadHitTick = engine.TickCount()
+    end
+    if ZM_Gore then
+        ZM_Gore:RecordTraceAttack(self, damage, trace)
+    end
+end
+
+// The engine subtracts health after OnInjured and then calls OnKilled itself; only observe the hit here.
 function ENT:OnInjured(damage)
     if self.WalkerDead then
         return
     end
-    self:SetHealth(self:Health() - math.max(0, damage:GetDamage()))
-    if self:Health() <= 0 then
-        self:OnKilled(damage)
+    if ZM_Gore then
+        ZM_Gore:HandleDamage(self, damage, self:Health() - math.max(0, damage:GetDamage()) <= 0)
     end
 end
 
+// The corpse keeps the zombie's model, skin and pose; severed regions are hidden on it by the client gore mask.
 function ENT:CreateCorpse()
     local corpse = ents.Create("prop_ragdoll")
     if IsValid(corpse) then
         corpse:SetModel(self:GetModel())
+        corpse:SetSkin(self:GetSkin())
         corpse:SetPos(self:GetPos())
         corpse:SetAngles(self:GetAngles())
         corpse:Spawn()
@@ -308,6 +365,17 @@ function ENT:CreateCorpse()
             corpse = nil
         else
             corpse:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+            local velocity = self.loco and self.loco:GetVelocity() or vector_origin
+            for index = 0, corpse:GetPhysicsObjectCount() - 1 do
+                local physics = corpse:GetPhysicsObjectNum(index)
+                local position, angles = self:GetBonePosition(corpse:TranslatePhysBoneToBone(index))
+                if IsValid(physics) and position then
+                    physics:SetPos(position)
+                    physics:SetAngles(angles)
+                    physics:SetVelocity(velocity)
+                    physics:Wake()
+                end
+            end
         end
     end
     return corpse
@@ -380,6 +448,9 @@ function ENT:OnKilled(damage)
         end
     end
     self:ConfigureCorpse(corpse, lootable)
+    if ZM_Gore then
+        ZM_Gore:ApplyCorpse(self, corpse)
+    end
     self:Remove()
 end
 

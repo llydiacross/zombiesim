@@ -120,6 +120,59 @@ test("unsupported_entities_are_skipped", function(check)
     check(#candidates == 0, "an enemy with an unsupported entity is not a spawn candidate")
 end)
 
+test("hit_markers_only_target_registered_enemies", function(check)
+    local victim = ents.Create("zn_walker_zombie")
+    check(IsValid(victim), "walker test entity should be created")
+    if not IsValid(victim) then return end
+
+    victim:SetPos(Vector(0, 0, -16000))
+    victim:Spawn()
+    check(not Enemies.IsHitMarkerTarget(victim), "an unregistered walker is not a hit-marker target")
+    victim.EnemyId = "walker"
+    check(Enemies.IsHitMarkerTarget(victim), "a registered walker is a hit-marker target")
+    victim.EnemyId = nil
+    victim.BossInstanceId = "boss-test"
+    check(Enemies.IsHitMarkerTarget(victim), "a boss instance is a hit-marker target")
+    victim:Remove()
+end)
+
+test("headshots_kill_walkers_and_scale_boss_damage", function(check)
+    local victim = ents.Create("zn_walker_zombie")
+    check(IsValid(victim), "walker test entity should be created")
+    if not IsValid(victim) then return end
+    victim:SetPos(Vector(0, 0, -16000))
+    victim:Spawn()
+    victim:SetMaxHealth(60)
+    victim:SetHealth(60)
+    victim.EnemyId = "walker"
+    local function bullet(amount, damageType)
+        local damage = DamageInfo()
+        damage:SetDamage(amount)
+        damage:SetDamageType(damageType or DMG_BULLET)
+        return damage
+    end
+
+    local body = bullet(12)
+    check(not Enemies.ApplyHeadshot(victim, body) and body:GetDamage() == 12, "a body shot keeps its damage")
+    victim.HeadHitTick = engine.TickCount()
+    local head = bullet(12)
+    check(Enemies.ApplyHeadshot(victim, head) and head:GetDamage() >= victim:Health(), "a headshot is lethal to a walker")
+    local melee = bullet(20, DMG_CLUB)
+    check(not Enemies.ApplyHeadshot(victim, melee) and melee:GetDamage() == 20, "melee is not a headshot")
+    victim.HeadHitTick = engine.TickCount() - 1
+    local stale = bullet(12)
+    check(not Enemies.ApplyHeadshot(victim, stale) and stale:GetDamage() == 12, "a head trace from an earlier tick does not count")
+
+    victim.EnemyId = nil
+    victim.BossInstanceId = "boss-test"
+    victim:SetHealth(600)
+    victim.HeadHitTick = engine.TickCount()
+    local bossHead = bullet(20)
+    check(Enemies.ApplyHeadshot(victim, bossHead) and bossHead:GetDamage() == 20 * Enemies.BossHeadshotScale,
+        "a boss headshot is scaled instead of lethal")
+    victim:Remove()
+end)
+
 test("selection_distribution_and_ticket_repeatability", function(check)
     local registry = fixtureRegistry()
     local rng = Generation.NewRng(7)

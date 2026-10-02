@@ -20,6 +20,7 @@ For configuration meanings, template-orientation contracts, and compiler diagnos
    - Map-material renderer changes: regenerate and stitch preview materials; compilation is unnecessary unless VMFs also changed.
 2. Use `-WorldProfile preview` unless the request explicitly requires a production `city` build. Keep the seed stable at `1337` while comparing changes.
 3. Never edit generated manifests, plans, VMFs, BSPs, staged profile maps, runtime JSON, or map material outputs by hand. Edit their source or generator, then regenerate.
+4. Builds are incremental. Generated VMFs are rewritten only when their content changes, and a map recompiles only when its VMF or any referenced `func_instance` (recursively) is newer than its BSP or portal file. Before compiling, name the maps the edit affects (for example, every recipe that instances the edited tile). Avoid `-Force`/`-ForcePortalData` unless a clean build is deliberately required.
 
 ## Preview Generation And VMF Check
 
@@ -93,7 +94,7 @@ Only after VBSP and, when applicable, visibility checks have passed, build a pla
 
 `-SkipVBSP` is valid only when every source VMF is unchanged from the portal preflight. It must be paired with `-SkipRecipeRefresh`; otherwise the staged release may combine new VMFs with old portal data.
 
-For a deliberate full preview compile, use:
+For a deliberate full preview compile of every required map (compiler or settings changes only; ordinary source edits rebuild just the affected maps without `-Force`), use:
 
 ```powershell
 .\bin\build_city.ps1 -WorldProfile preview -OnlyRequiredMaps -Force -CleanStagedCity -VvisTimeoutSeconds 1800 -VradTimeoutSeconds 3600

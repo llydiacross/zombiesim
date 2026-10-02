@@ -11,15 +11,23 @@ util.AddNetworkString("ZM.LootOfferResult")
 
 Spots.RefreshSeconds = 300
 Spots.SearchSeconds = 2
-Spots.UseRange = 110
+// Shared with the client highlight so both realms agree on which spot Use searches.
+Spots.UseRange = ZM_LootTargeting.UseRange
 Spots.OfferRange = 200
 Spots.OfferSeconds = 120
 Spots.PresenceInterval = 15
 Spots.HighlightColor = Color(255, 225, 110)
 Spots.DeclinedColor = Color(145, 145, 145)
 
-// Map-placed entities keep their MapCreationID across loads of the same map; runtime-spawned props are never spots.
+// Map-placed entities keep their MapCreationID across loads of the same map. Runtime props are spots only when their
+// spawner assigns a deterministic ZM_LootSpotKey (fallen bodies); enemy corpses and other runtime props never are.
 function Spots.GetSpotKey(entity)
+    if type(entity.ZM_LootSpotKey) == "string" and entity.ZM_LootSpotKey ~= "" then
+        return entity.ZM_LootSpotKey
+    end
+    if entity.ZM_EnemyCorpse then
+        return nil
+    end
     local id = entity.MapCreationID and entity:MapCreationID() or -1
     if not id or id < 0 then
         return nil
@@ -206,6 +214,9 @@ function Spots:BeginSearch(target, spot, now)
     if self.GetDistance(target, spot) > self.UseRange then
         return false, "You are too far away."
     end
+    if ZM_LootTargeting.IsObstructed(target, spot.entity) then
+        return false, ZM_LootTargeting.ReasonText.blocked
+    end
     spot.claim = { player = target, expiresAt = now + self.SearchSeconds + self.OfferSeconds }
     target.ZM_LootSearch = { key = spot.key, finishAt = now + self.SearchSeconds }
     send(target, "ZM.LootSearch", function()
@@ -363,21 +374,29 @@ function Spots:ReleasePlayer(target)
     end
 end
 
-function Spots:FindNearestSpot(target)
+// Applies the shared targeting rule. Returns the spot to search (or nil) and, when the aimed spot cannot be searched,
+// the player-facing reason.
+function Spots:SelectSpot(target)
     if not self.Cell then
         return nil
     end
-    local nearest, nearestDistance = nil, self.UseRange
-    for _, entity in ipairs(ents.FindInSphere(target:WorldSpaceCenter(), self.UseRange + 150)) do
-        local spot = self.Cell.spotsByEntity[entity]
-        if spot and (spot.state == "available" or spot.state == "declined") then
-            local distance = self.GetDistance(target, spot)
-            if distance <= nearestDistance then
-                nearest, nearestDistance = spot, distance
-            end
-        end
+    local byEntity = self.Cell.spotsByEntity
+    local selection = ZM_LootTargeting.Select(target, function(entity)
+        local spot = byEntity[entity]
+        return spot and spot.state or nil
+    end)
+    if not selection then
+        return nil
     end
-    return nearest
+    if selection.reason then
+        return nil, ZM_LootTargeting.ReasonText[selection.reason]
+    end
+    return byEntity[selection.entity]
+end
+
+// The searchable spot the player would search with Use; foliage harvesting yields to it.
+function Spots:FindNearestSpot(target)
+    return (self:SelectSpot(target))
 end
 
 local function baseMapName(path)
@@ -418,12 +437,14 @@ hook.Add("KeyPress", "ZM.LootSpots.Search", function(target, key)
     if key ~= IN_USE or not isRealPlayer(target) or not Spots.Cell then
         return
     end
-    local spot = Spots:FindNearestSpot(target)
+    local spot, reason = Spots:SelectSpot(target)
     if spot then
-        local started, reason = Spots:BeginSearch(target, spot)
+        local started, failure = Spots:BeginSearch(target, spot)
         if not started then
-            sendResult(target, false, reason)
+            sendResult(target, false, failure)
         end
+    elseif reason then
+        sendResult(target, false, reason)
     end
 end)
 

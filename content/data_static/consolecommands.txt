@@ -1,4 +1,2 @@
-# request: door-fix-check-1
-zn_test_safezones
-zn_safezone_door_status
-zombiesim_player_status
+# request: bridge-20261002-080552-200
+zn_test_loot_spots

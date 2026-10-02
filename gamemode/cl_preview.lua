@@ -664,3 +664,71 @@ hook.Add("InitPostEntity", "ZM.Preview.RefreshClientCapabilities", function()
         net.SendToServer()
     end)
 end)
+// Preview diagnostic: when the server dev command arms it, records raw key state against the movement command for the
+// first seconds after the next map load. Written to DATA zombiesim/arrival_trace_client.json.
+local clientTraceArmPath = "zombiesim/arrival_trace_client.arm.txt"
+local clientTracePath = "zombiesim/arrival_trace_client.json"
+local clientTrace
+if file.Exists(clientTraceArmPath, "DATA") then
+    file.Delete(clientTraceArmPath)
+    clientTrace = { map = game.GetMap(), samples = {} }
+end
+
+hook.Add("CreateMove", "ZM.Preview.ArrivalTrace", function(cmd)
+    local trace = clientTrace
+    if not trace then
+        return
+    end
+    trace.startedAt = trace.startedAt or CurTime()
+    trace.realStartedAt = trace.realStartedAt or SysTime()
+    local elapsed = CurTime() - trace.startedAt
+    if SysTime() - trace.realStartedAt > 7 then
+        clientTrace = nil
+        trace.predicted = nil
+        file.Write(clientTracePath, util.TableToJSON(trace, true) or "{}")
+        return
+    end
+    local focus = vgui.GetKeyboardFocus()
+    local keyboardPanels = {}
+    for _, root in ipairs({ vgui.GetWorldPanel(), GetHUDPanel and GetHUDPanel() or nil }) do
+        if IsValid(root) then
+            for _, child in ipairs(root:GetChildren()) do
+                if IsValid(child) and child:IsVisible() and child:IsKeyboardInputEnabled() then
+                    table.insert(keyboardPanels, child:GetClassName() .. ":" .. tostring(child:GetName()))
+                end
+            end
+        end
+    end
+    table.insert(trace.samples, {
+        plyFlags = IsValid(LocalPlayer()) and LocalPlayer():GetFlags() or -1,
+        plyFrozen = IsValid(LocalPlayer()) and LocalPlayer():IsFrozen() or false,
+        plyMoveType = IsValid(LocalPlayer()) and LocalPlayer():GetMoveType() or -1,
+        plyAlive = IsValid(LocalPlayer()) and LocalPlayer():Alive() or false,
+        predictedButtons = trace.predicted and trace.predicted[cmd:CommandNumber() - 1] or -1,
+        keyboardPanels = table.concat(keyboardPanels, ","),
+        console = gui.IsConsoleVisible(),
+        t = math.Round(elapsed, 3),
+        real = math.Round(SysTime() - trace.realStartedAt, 3),
+        command = cmd:CommandNumber(),
+        tick = cmd:TickCount(),
+        keyW = input.IsKeyDown(KEY_W),
+        keyA = input.IsKeyDown(KEY_A),
+        cmdForward = cmd:KeyDown(IN_FORWARD),
+        forwardMove = cmd:GetForwardMove(),
+        buttons = cmd:GetButtons(),
+        focus = IsValid(focus) and focus:GetClassName() or "",
+        cursor = vgui.CursorVisible(),
+        gameUI = gui.IsGameUIVisible(),
+        hasFocus = system.HasFocus()
+    })
+end)
+
+// Records the buttons the client prediction actually runs for each command, after engine processing.
+hook.Add("StartCommand", "ZM.Preview.ArrivalTracePredicted", function(ply, cmd)
+    local trace = clientTrace
+    if not trace or ply ~= LocalPlayer() or cmd:CommandNumber() == 0 then
+        return
+    end
+    trace.predicted = trace.predicted or {}
+    trace.predicted[cmd:CommandNumber()] = cmd:GetButtons()
+end)

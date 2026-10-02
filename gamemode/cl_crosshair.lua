@@ -4,6 +4,11 @@
 // Suppresses the Source crosshair because ZM.CustomCrosshair draws the gameplay replacement.
 hook.Add("HUDShouldDraw", "ZM.HideDefaultCrosshair", function(name)
     if name == "CHudCrosshair" then return false end
+    if name == "CHudWeaponSelection" and ZM_SafeZones:IsPlayerInside(LocalPlayer()) then return false end
+end)
+
+hook.Add("PreDrawPlayerHands", "ZM.DenHolsterHands", function(_, _, ply)
+    if ZM_SafeZones:IsPlayerInside(ply) then return true end
 end)
 
 // Remove the legacy event notifier; damage is tracked by ZM.TrackPlayerDamage in cl_hud.lua.
@@ -37,6 +42,10 @@ end
 local function getClippedAimScreenPos(ply, radius)
     local origin = ply:GetLevelAim()
     local hitPos = ply:GetLevelAimTrace().HitPos
+    // A degenerate hitbox can return a NaN hit position (NaN ~= NaN); fall back to the shot origin.
+    if hitPos.x ~= hitPos.x or hitPos.y ~= hitPos.y or hitPos.z ~= hitPos.z then
+        hitPos = origin
+    end
     local hitScreen = hitPos:ToScreen()
     if isInsidePlayArea(hitScreen, radius) then
         return hitScreen.x, hitScreen.y
@@ -62,7 +71,7 @@ end
 hook.Add("HUDPaint", "ZM.CustomCrosshair", function()
     if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     local ply = LocalPlayer()
-    if not IsValid(ply) or not ply:Alive() then return end
+    if not IsValid(ply) or not ply:Alive() or ZM_SafeZones:IsPlayerInside(ply) then return end
 
     local cursorX, cursorY
     if ZM_GetAimCursor then

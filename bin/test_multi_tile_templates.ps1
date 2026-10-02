@@ -54,6 +54,30 @@ function Get-ExpectedRoadJunctionCount {
     }).Count
 }
 
+function Get-TemplateRoadConnectionMarkers {
+    param([string]$Template)
+
+    $templatePath = Join-Path $projectRoot (Join-Path 'tiletemplates' $Template)
+    $contents = Get-Content -Raw -LiteralPath $templatePath
+    $markers = foreach ($match in [regex]::Matches($contents, '(?s)entity\s*\{\s*(?<body>.*?)\r?\n\}')) {
+        $body = $match.Groups['body'].Value
+        if ($body -notmatch '"classname"\s+"zn_road_connection"') { continue }
+        $originMatch = [regex]::Match($body, '"origin"\s+"([^"]+)"')
+        $typeMatch = [regex]::Match($body, '"connection_type"\s+"([^"]+)"')
+        if (-not $originMatch.Success) {
+            throw "Road connection marker in '$Template' must define origin."
+        }
+        $origin = @($originMatch.Groups[1].Value -split '\s+')
+        if ($origin.Count -ne 3) { throw "Road connection marker in '$Template' has an invalid origin." }
+        [pscustomobject]@{
+            originX = [double]::Parse($origin[0], [Globalization.CultureInfo]::InvariantCulture)
+            originY = [double]::Parse($origin[1], [Globalization.CultureInfo]::InvariantCulture)
+            connectionType = if ($typeMatch.Success) { [string]$typeMatch.Groups[1].Value } else { 'none' }
+        }
+    }
+    return @($markers)
+}
+
 function Get-AuthoredTileDirection {
     param([string]$Template)
 
@@ -72,7 +96,99 @@ function Get-AuthoredTileDirection {
 function Get-CardinalYaw {
     param([string]$Direction)
 
-    return @{ N = 0; E = 90; S = 180; W = 270 }[$Direction]
+    return @{ N = 0; E = 270; S = 180; W = 90 }[$Direction]
+}
+
+function Add-PhysicalRoadConnectionValidation {
+    param(
+        [object]$Recipe,
+        [object]$Anchor,
+        [object]$Footprint,
+        [System.Collections.Generic.List[string]]$Errors,
+        [hashtable]$Statistics
+    )
+
+    $markers = @(Get-TemplateRoadConnectionMarkers ([string]$Anchor.template) | Where-Object { $_.connectionType -ne 'none' })
+    $matchedTargets = @{}
+    $originX = (([int]$Anchor.tileX - 2) + (($Footprint.width - 1) / 2.0)) * 640
+    $originY = ((2 - [int]$Anchor.tileY) - (($Footprint.height - 1) / 2.0)) * 640
+    $radians = ([int]$Anchor.rotationYaw % 360) * [Math]::PI / 180.0
+    $cosine = [Math]::Cos($radians)
+    $sine = [Math]::Sin($radians)
+    $junctionRoles = @('building_road_junction', 'landmark_carpark_junction', 'landmark_road_junction')
+    $junctionTemplates = @{
+        t_junction = 'roads/tile_road_tjunction.vmf'
+        bus = 'roads/tile_road_bus.vmf'
+        driveway = 'roads/tile_road_driveway.vmf'
+    }
+
+    foreach ($marker in $markers) {
+        $edge = if ([Math]::Abs($marker.originY - ($Footprint.height * 320.0)) -le 0.5) {
+            'N'
+        } elseif ([Math]::Abs($marker.originX - ($Footprint.width * 320.0)) -le 0.5) {
+            'E'
+        } elseif ([Math]::Abs($marker.originY + ($Footprint.height * 320.0)) -le 0.5) {
+            'S'
+        } elseif ([Math]::Abs($marker.originX + ($Footprint.width * 320.0)) -le 0.5) {
+            'W'
+        } else {
+            $null
+        }
+        if ($null -eq $edge) {
+            Add-ValidationError $Errors "$($Recipe.cellTemplateFilename) $($Anchor.template) road marker is not on a footprint edge."
+            continue
+        }
+        $normal = switch ($edge) {
+            'N' { [pscustomobject]@{ x = 0.0; y = 1.0 } }
+            'E' { [pscustomobject]@{ x = 1.0; y = 0.0 } }
+            'S' { [pscustomobject]@{ x = 0.0; y = -1.0 } }
+            'W' { [pscustomobject]@{ x = -1.0; y = 0.0 } }
+        }
+        $markerWorldX = $originX + ($marker.originX * $cosine) - ($marker.originY * $sine)
+        $markerWorldY = $originY + ($marker.originX * $sine) + ($marker.originY * $cosine)
+        $roadWorldX = $markerWorldX + 320.0 * (($normal.x * $cosine) - ($normal.y * $sine))
+        $roadWorldY = $markerWorldY + 320.0 * (($normal.x * $sine) + ($normal.y * $cosine))
+        $targetTileX = [int][Math]::Round(($roadWorldX / 640.0) + 2)
+        $targetTileY = [int][Math]::Round(2 - ($roadWorldY / 640.0))
+        $target = @($Recipe.tilePlacements | Where-Object {
+            [int]$_.tileX -eq $targetTileX -and [int]$_.tileY -eq $targetTileY
+        } | Select-Object -First 1)[0]
+        $Statistics.checked++
+        if ($null -eq $target) {
+            Add-ValidationError $Errors "$($Recipe.cellTemplateFilename) $($Anchor.template) marker does not land on a planned road at ($targetTileX,$targetTileY)."
+            continue
+        }
+        $targetKey = "$targetTileX,$targetTileY"
+        if ($matchedTargets.ContainsKey($targetKey)) {
+            Add-ValidationError $Errors "$($Recipe.cellTemplateFilename) maps multiple road markers to ($targetTileX,$targetTileY)."
+            continue
+        }
+        $matchedTargets[$targetKey] = $true
+
+        if ($target.role -in $junctionRoles) {
+            $Statistics.junctions++
+            if ($target.template -ne $junctionTemplates[$marker.connectionType]) {
+                Add-ValidationError $Errors "$($Recipe.cellTemplateFilename) marker type '$($marker.connectionType)' selected '$($target.template)' at ($targetTileX,$targetTileY)."
+                continue
+            }
+            if ($marker.connectionType -eq 't_junction') {
+                $junctionRadians = ([int]$target.rotationYaw % 360) * [Math]::PI / 180.0
+                $stemX = -[Math]::Sin($junctionRadians)
+                $stemY = [Math]::Cos($junctionRadians)
+                $frontX = -(($normal.x * $cosine) - ($normal.y * $sine))
+                $frontY = -(($normal.x * $sine) + ($normal.y * $cosine))
+                if ([Math]::Abs($stemX - $frontX) -gt 0.001 -or [Math]::Abs($stemY - $frontY) -gt 0.001) {
+                    Add-ValidationError $Errors "$($Recipe.cellTemplateFilename) T-junction at ($targetTileX,$targetTileY) points away from its building."
+                }
+            }
+        } elseif ([string]$target.template -like 'roads/tile_motorway*.vmf') {
+            $Statistics.motorways++
+        } elseif ([string]$target.role -eq 'path') {
+            $Statistics.paths++
+        } else {
+            Add-ValidationError $Errors "$($Recipe.cellTemplateFilename) marker targets unsupported $($target.role) '$($target.template)' at ($targetTileX,$targetTileY)."
+        }
+    }
 }
 
 if (-not (Test-Path -LiteralPath $fixtureMapPath -PathType Leaf)) {
@@ -105,6 +221,7 @@ if ($recipes.Count -ne $expectedTemplates.Count) {
 }
 
 $actualTemplates = [System.Collections.Generic.List[string]]::new()
+$markerStatistics = @{ checked = 0; junctions = 0; motorways = 0; paths = 0 }
 foreach ($recipe in $recipes) {
     $coordinate = "$($recipe.x),$($recipe.y)"
     $fixtureCell = $fixtureCellsByCoordinate[$coordinate]
@@ -147,6 +264,7 @@ foreach ($recipe in $recipes) {
     if ($junctionCount -ne $expectedJunctionCount) {
         Add-ValidationError $errors "$coordinate must create $expectedJunctionCount authored building road T-junction(s); found $junctionCount."
     }
+    Add-PhysicalRoadConnectionValidation $recipe $anchor $footprint $errors $markerStatistics
     $facesRoad = $false
     $localDirection = Get-AuthoredTileDirection ([string]$anchor.template)
     foreach ($tileY in [int]$anchor.tileY..(([int]$anchor.tileY + $footprint.height) - 1)) {
@@ -169,6 +287,25 @@ foreach ($recipe in $recipes) {
 
 if (@(Compare-Object $expectedTemplates @($actualTemplates | Sort-Object)).Count -gt 0) {
     Add-ValidationError $errors 'The fixture plan did not use exactly the seven requested templates.'
+}
+$cityPlanPath = Join-Path $OutputRoot 'preview_template_plan.json'
+$cityListPath = Join-Path $OutputRoot 'preview_required_cell_vmfs.txt'
+$cityMapDataPath = Join-Path $PSScriptRoot 'preview_grid_24x24_seed_1337.json'
+& $plannerScript -WorldProfile preview -MapData $cityMapDataPath -Output $cityPlanPath -ListOutput $cityListPath -CellDirectory $cellDirectory -SettingsPath $SettingsPath | Out-Null
+if (-not $?) { throw 'Full preview planner regression failed.' }
+$cityPlan = Get-Content -Raw -LiteralPath $cityPlanPath | ConvertFrom-Json
+$cityMarkerStatistics = @{ checked = 0; junctions = 0; motorways = 0; paths = 0 }
+foreach ($recipe in @($cityPlan.cells)) {
+    foreach ($anchor in @($recipe.tilePlacements | Where-Object {
+        (Test-PlacementEmitsInstance $_) -and ([int]$_.footprintWidth -gt 1 -or [int]$_.footprintHeight -gt 1) -and
+        $_.template -like 'buildings/*'
+    })) {
+        $footprint = [pscustomobject]@{ width = [int]$anchor.footprintWidth; height = [int]$anchor.footprintHeight }
+        Add-PhysicalRoadConnectionValidation $recipe $anchor $footprint $errors $cityMarkerStatistics
+    }
+}
+if ($cityMarkerStatistics.checked -eq 0) {
+    Add-ValidationError $errors 'The current preview plan contains no marked multi-tile road connections to validate.'
 }
 if (@($recipes.cellTemplateFilename | Sort-Object -Unique).Count -ne $expectedTemplates.Count) {
     Add-ValidationError $errors 'The fixture recipe filenames are not unique.'
@@ -206,4 +343,4 @@ if (@(Get-ChildItem -LiteralPath $mapDirectory -Filter '*.png' -File).Count -ne 
     throw 'Multi-tile fixture local-map renderer did not create every recipe image.'
 }
 
-Write-Output "Multi-tile fixture passed: templates=$($expectedTemplates.Count); recipes=$($recipes.Count); output=$OutputRoot"
+Write-Output "Multi-tile frontage passed: fixtureTemplates=$($expectedTemplates.Count); fixtureRecipes=$($recipes.Count); cityMarkers=$($cityMarkerStatistics.checked); junctions=$($cityMarkerStatistics.junctions); motorwayFrontages=$($cityMarkerStatistics.motorways); output=$OutputRoot"

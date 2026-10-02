@@ -13,6 +13,7 @@ param(
     [int]$VvisTimeoutSeconds = 0,
     [int]$VradTimeoutSeconds = 0,
     [int]$DeferredGraceSeconds = 0,
+    [int]$MaxParallelProcesses = 0,
     [switch]$OnlyRequiredMaps,
     [string]$WorldProfile = '',
     [switch]$Preview,
@@ -22,6 +23,8 @@ param(
     [switch]$SkipRecipeRefresh,
     [switch]$SkipCompile,
     [switch]$Force,
+    [switch]$Fast,
+    [switch]$Final,
     [switch]$FinalizeWithIncomplete,
     [switch]$CleanStagedCity,
     [switch]$WhatIf,
@@ -36,6 +39,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 Write-ZMProgress -Activity 'Building city release maps' -Status 'Resolving required recipe list and staging paths.' -PercentComplete 2 -Step 'setup'
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
 $profileSettings = $worldGenerationProfile.Config
+if ($Fast -and $Final) { throw 'Fast and Final cannot be selected together.' }
 if (-not $PSBoundParameters.ContainsKey('CleanStagedCity')) { $CleanStagedCity = $true }
 if ([string]::IsNullOrWhiteSpace($MapData)) {
     $mapFilePattern = "$($profileSettings.filePrefix)_grid_*.json"
@@ -147,7 +151,10 @@ if (-not $SkipCompile) {
         VvisTimeoutSeconds = $VvisTimeoutSeconds
         VradTimeoutSeconds = $VradTimeoutSeconds
         DeferredGraceSeconds = $DeferredGraceSeconds
+        MaxParallelProcesses = $MaxParallelProcesses
         Force = $Force
+        Fast = $Fast
+        Final = $Final
         WhatIf = $WhatIf
         WorldProfile = $worldGenerationProfile.Name
         VBSPOnly = $VBSPOnly

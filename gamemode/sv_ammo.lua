@@ -90,6 +90,9 @@ function Ammo:SyncAll(target)
 end
 
 function Ammo:CompleteReload(target, weapon)
+    if ZM_SafeZones:IsPlayerInside(target) then
+        return false, "weapons are holstered inside the den"
+    end
     local state, stateError = getWeaponState(target, weapon)
     if not state then
         return false, stateError

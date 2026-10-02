@@ -235,7 +235,7 @@ test("barrels_map_only_to_their_resource", function(check)
             check(ZM_StaticData:GetEntityLootRule("prop_static", model) == nil, "static " .. model .. " must not be lootable")
         end
     end
-    for _, model in ipairs({ "models/props_c17/oildrum_crush.mdl", "models/props_phx/empty_barrel.mdl", "models/props_borealis/bluebarrel001_chunk01.mdl", "models/props_c17/furniturecouch001a.mdl", "models/props/de_inferno/wine_barrel.mdl" }) do
+    for _, model in ipairs({ "models/props_borealis/bluebarrel001_chunk01.mdl", "models/props_c17/furniturecouch001a.mdl", "models/props_junk/trafficcone001a.mdl" }) do
         check(ZM_StaticData:GetEntityLootRule("prop_physics", model) == nil, model .. " is not a supported barrel")
     end
     check(ZM_StaticData:GetEntityLootRule("prop_ragdoll", "models/props_c17/oildrum001.mdl") == nil, "unsupported entity classes are not lootable")

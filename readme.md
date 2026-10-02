@@ -2,7 +2,7 @@
 
 ## Launcher characters
 
-On `zn_preview_start` or `zn_city_start`, the optional Volt/Walker briefings precede the character menu. Load an existing slot or create one of three profile-specific survivors: choose a name, citizen model/appearance, profession, and spend exactly ten starting attribute points. A migrated slot-1 survivor requires an appearance before deployment. Deleting a slot requires typing its name. Options in the launcher use the same settings controls as the in-game radial menu; Exit disconnects. Keyboard navigation supports Up/Down, Enter and Escape. Deployment only begins after the server accepts a selected slot.
+On `zn_preview_start` or `zn_city_start`, the optional Volt/Walker briefings precede the character menu. The launcher is not yet deployed gameplay: load an existing slot or create one of three profile-specific survivors, complete any required appearance, and deploy the character. Only after the server accepts deployment does play continue into the character's saved city cell or safe zone; for a gameplay test, then enter the intended den or cell. Choose a name, citizen model/appearance, profession, and spend exactly ten starting attribute points when creating a survivor. A migrated slot-1 survivor requires an appearance before deployment. Deleting a slot requires typing its name. Options in the launcher use the same settings controls as the in-game radial menu; Exit disconnects. Keyboard navigation supports Up/Down, Enter and Escape.
 
 The main menu draws an original procedural globe at the authored `menu_globe` marker. Each slot's origin dot uses the profile's geographic anchor in `content/data_static/launcher_scene.json`; selecting a slot turns the globe to that dot. The profile anchors are fictional presentation coordinates, **not** a real-world geolocation of generated cells. The globe defaults to low detail (`zombiesim_globe_quality 0`); enable **High-detail menu globe** in Options (or set the convar to `1`) for a finer mesh. No external imagery or copied textures are packaged.
 
@@ -15,6 +15,30 @@ Character persistence uses a profile-specific three-slot roster. Existing per-pr
 Please read the [GDD](docs/gdd.md) for an overview of the game's design and mechanics.
 
 Work in progress
+
+## Camera aiming and HUD size
+
+Middle-click toggles the overhead and orbit camera. Scroll into shoulder view for mouse-look with full horizontal and vertical weapon aiming. **Hold Z** in shoulder view to fix the camera direction and aim with a visible, freely moving cursor; release Z to ease back to normal shoulder aiming. Middle-click returns to overhead view; scrolling out returns to orbit mouse-look. Point-and-click aiming never enables the Derma mouse cursor, so normal firing remains available and menus retain their own mouse focus. The pistol uses the normal player aiming animation driven by the same aim angles as the shot.
+
+Options (in the launcher or the in-game radial menu) includes **Compass height** and **Minimap size** sliders. Both update immediately and are saved locally. Console equivalents are `zombiesim_compass_height` (0.55-1.5, default `0.55`) and `zombiesim_minimap_size` (0.7-1.75, default `1`). **Mouse sensitivity** defaults to `0.3`. Existing saved preferences are preserved. Compass height changes the available label rows without shrinking text; the XP bar and notifications follow its lower edge. Minimap size changes its on-screen map area, not its zoom, and keeps the survival labels readable. Both Options screens scroll when needed.
+
+## Firearm presentation
+
+Inside a safe zone/den, equipped firearms and melee weapons are holstered: world/view models, hands, weapon/ammo panels, crosshair and hit markers are hidden. Attacks and reloads are blocked server-side; entering cancels pending reloads without consuming ammunition. Equipped slots and clips are retained and weapons automatically return when leaving. City entrance cells outside the den remain combat-enabled; inventory management remains available inside.
+
+The shared hitscan base sends one server-confirmed presentation event per shot. Pistol/SMG, 5.56/7.62 rifle, shotgun and sniper profiles select mounted casing models and flash/smoke sizes. The .50 profile uses a scaled mounted rifle casing; no new Valve assets are copied into the addon. The flash uses a separately tinted yellow material and is centered four units forward along the muzzle attachment, without shifting smoke or bullet origins. Tracers converge from the world-model muzzle to each actual spread pellet's engine trace endpoint. Named muzzle/ejection attachments are preferred, with attachment 1 and an aim-relative ejection position as model fallbacks.
+
+CSS firearms use their mounted weapon-specific firing and reload sounds instead of generic HL2 pulse-rifle/crossbow sounds. Pump/bolt firearms also play their cycling sound after a successful shot. Aim recoil accumulates per weapon, recovers exponentially, and is capped at 4 degrees upward and 1.5 degrees sideways; shots and the impact crosshair share the same recoil offset. Den shots remain level with lateral recoil. Damage, range, random spread, ammunition consumption and reload timing remain unchanged; bullet physics force is now class-specific.
+
+The server's close-range firing impulse scatters at most eight loose physics props per shot within 96 units of the firing origin. Only movable, unparented, unconstrained props weighing at most 12 kg qualify; loot props, doors, ragdolls and characters are excluded. Walls block the impulse, each prop has a 0.1-second cooldown, and additional speed is bounded by a 180-unit/second budget. This is a restrained gameplay effect, not a realistic simulation of firearm blast pressure.
+
+For an admin-only preview check, `zombiesim_dev_muzzle_blast_probe start` places three green loose cans and one red frozen control on clear ground ahead. Fire away from them while staying nearby. `status` reports displacement and whether a firing impulse reached each can; `clear` removes only the tracked test props. They also automatically disappear after 180 seconds. No inventory or saved world data is changed.
+
+Each client keeps at most 32 shot effects and 32 casings. Flash lasts 0.045 seconds, tracers 0.08 seconds, smoke 1.4 seconds and casings 2 seconds. Smoke is a thin, curling ribbon sampled from the rendered muzzle for up to 0.375 seconds, with at most 16 points per shot (512 total). New shots stop the previous shot's emission on that weapon; emitted points continue rising and fading in world space rather than following the moving gun. Casings bounce against map brushes without affecting gameplay physics. Fine detail is culled beyond 1,800 units, all shot effects beyond 4,096; cleanup also runs on map cleanup and Lua auto-refresh. `zombiesim_weapon_effects_status` prints the current client counts (both should return to zero after firing stops).
+
+Run `zn_test_weapon_effects` for profile/asset, trace, ballistic, single-shot and dry-fire/reload contracts, plus `zn_test_weapon_catalog` and `zn_test_inventory`. These do not replace live firing checks in overhead, orbit, shoulder, hold-Z and den views.
+
+Short-lived dust appears only on concrete, dirt, sand, wood or tile impacts and nearby brush ground. It supplements the engine's normal impact effects rather than replacing them; no dust is added for flesh, metal, glass, water or sky. Each shot retains at most four dust puffs for 0.45 seconds (128 globally under the shot cap). The effects suite also checks recoil recovery, blast exclusions/walls/bounds, mounted audio and dust surface selection without moving live world props.
 
 # Folder Structure
 
@@ -75,6 +99,8 @@ Run a complete clean preview build, including fresh BSPs, visibility, lighting, 
 ```powershell
 .\bin\build_city.ps1 -WorldProfile preview -OnlyRequiredMaps -Force  -CleanStagedCity -VvisTimeoutSeconds 1800 -VradTimeoutSeconds 3600
 ```
+
+Preview builds default to Hammer's `-fast` VVIS/VRAD preset. Production `city` builds default to the `final` preset (full VVIS plus VRAD `-final -staticproplighting -staticproppolys`). Override the preset with `-Fast` or `-Final`, and tune the bounded compile pool with `-MaxParallelProcesses`; its default is `4`. Stock Hammer tools do not accept a numeric `-threads` value, so the runner uses the process-pool limit rather than passing an invalid argument.
 
 ## Export To Garry's Mod
 
@@ -186,13 +212,24 @@ The den camera selects first-person when the loaded map matches a den in the act
 
 In a generated safe-zone cell, approach an authored `zn_safezone_door` and press E to enter its den; use the exit point at the den's south entrance to return to the same city cell. The server checks loaded player state, the active map and safe zone, and the single-human transition guard before persisting a map change. Arrivals use the authored `zn_safezone_arrival` point when available, with `info_player_start` as a fallback. The client displays a nearby-door prompt, but the server owns the interaction. Run `zn_test_safezones` in an in-game admin console to exercise the safe-zone door and arrival suite; GLua syntax checks alone do not exercise a map transition.
 
-To compare the client atmosphere before and after respawning in the same cell, run `zombiesim_atmosphere_status` in the client console. It prints whether runtime world data is loaded, the active and expected profile indexes, any pending profile, its application source, storm intensity, and fog settings. This is a diagnostic, not proof that lighting and fog match visually; record both the output and screenshots from a live client.
+To compare the client atmosphere before and after respawning in the same cell, run `zombiesim_atmosphere_status` in the client console. It prints the active and expected profile indexes/ids, logical cell, whether world data was loaded when the server profile arrived, pending profile application, a bounded application history, storm intensity, effective fog settings, and the latest world-fog, skybox-fog, and colour-correction hook results. The colour-correction hook intentionally returns `nil` after drawing so it does not suppress other addons' render hooks; `applied=true` indicates ZombieSim called `DrawColorModify`. This is a diagnostic, not proof that lighting and fog match visually; record output and screenshots across first join, respawn, map reload, and cell transition.
 
 ## Development Command Bridge
 
 For local development, edit [content/data_static/consolecommands.txt](content/data_static/consolecommands.txt). Give every request a new `# request:` identifier and place one server-console command on each uncommented line. The bridge polls the mounted file and executes each identifier once, including across map changes. It is enabled by default only for non-dedicated servers; toggle `zombiesim_dev_console_enabled` to control it.
 
-The bridge writes an acknowledgement and any structured diagnostic data to `garrysmod/data/zombiesim/consolecommands.result.json`. This location is the GMod `DATA` mount, so it is intentionally outside the gamemode source tree. Ordinary engine-console output remains in the game console; use the structured persistence probe for automation:
+The bridge writes an acknowledgement and any structured diagnostic data to `garrysmod/data/zombiesim/consolecommands.result.json`. This location is the GMod `DATA` mount, so it is intentionally outside the gamemode source tree. While the server ticks, the bridge also refreshes `consolecommands.heartbeat.json` about once per second. A stale heartbeat while `gmod.exe` is running means the game is paused (Escape menu in singleplayer) or loading.
+
+`.\bin\invoke_dev_bridge.ps1 -Command 'zn_test_safezones'` sends a request and prints the matching result. After `changelevel` it waits for the reloaded map to tick. Its exit codes:
+
+- 0: acknowledged
+- 2: server not ticking (paused or loading)
+- 3: Garry's Mod not running
+- 4: a ticking server did not acknowledge in time
+
+`zombiesim_dev_door_report` (preview only) reports the live safe-zone door and arrival entities, their model bounds and the player's pose.
+
+Ordinary engine-console output remains in the game console; use the structured persistence probe for automation:
 
 ```
 zombiesim_dev_persistence_report STEAM_0:1:31630
@@ -201,6 +238,24 @@ zombiesim_dev_persistence_report STEAM_0:1:31630
 That report includes the raw `city` and `preview` player/attribute rows, active map and profile, actual live health, resolved world-cell id, safe-zone status, radiation intensity, elapsed exposure time, time until the next radiation tick, and the current Strength-based health floor. Radiation below 75% intensity deals 1 damage every 120 seconds; intensity at or above 75% deals 2 damage every 60 seconds. Radiation cannot reduce health below 64 at Strength 0-4, 72 at Strength 5-9, or 80 at Strength 10+. Leaving radiation or changing cells resets the interval.
 
 Two preview-only bridge commands require an active admin preview session: `zombiesim_preview_refill` restores health and survival reserves; `zombiesim_preview_restore` also moves the player to the origin safe room and respawns them if needed.
+
+For launcher testing, the bridge also supports `zombiesim_dev_character_slots` (read-only slot summary) and `zombiesim_dev_deploy_character <slot>` (selects an existing character and deploys it from `zn_preview_start`). Deployment requires an admin and the preview launcher. `zombiesim_dev_teleport_cell <gridX> <gridY>` uses the normal profile-aware transition path; cell coordinates are persisted, so capture `zombiesim_dev_persistence_report` before moving and restore the original cell/safe-zone afterward. `zombiesim_preview_restore` deliberately moves the preview character into the origin safe room and refills survival values; use it only when that state change is intended.
+
+For a live preview atmosphere snapshot, submit `zombiesim_dev_atmosphere_status` through the bridge. The admin-only request asks the local client for its active/expected profile, fog, and render-hook diagnostic and writes the response to `garrysmod/data/zombiesim/atmosphere_status.json`. This is separate from the server bridge acknowledgement and is only available in the preview profile.
+
+For a client frame-cost profile, run `zombiesim_dev_profile_hooks [seconds]` (default 10, maximum 120; also reachable through the bridge). It temporarily wraps named render, Think and HUD hooks, records frame times and Lua allocation, restores the original hooks, prints the top entries and writes `garrysmod/data/zombiesim/hook_profile.json`.
+
+Weather follows a seasonal schedule driven by the server's clock (northern hemisphere): every 8–25 minutes the server rolls clear, rain or snow from the current month's chances. Snow is rare, most likely in December, guaranteed all of Christmas Day (25 December) and never falls in June–August; out-of-season snow is replaced at once. The schedule state is archived (`zombiesim_weather_until`, `zombiesim_weather_manual`), so level changes do not reroll it. From the server console or an admin client, `zombiesim_weather clear`, `zombiesim_weather rain` or `zombiesim_weather snow` (and the preview cheat buttons) override the weather for one spell, after which the schedule resumes; `zombiesim_weather auto` resumes it immediately, `zombiesim_weather` with no argument reports the mode and time to the next change, and `zombiesim_weather_auto 0` keeps the weather steady. Rain and snow effects are limited to outdoor city cells; sheltered interiors and dens remain dry. Rain adds local footstep splashes and mounted rain/splash audio when those assets are available. It also forms client-local puddles at fixed map locations; off-screen puddles remain in world space and are rendered only when visible. Their irregular, feathered water meshes grow while forming and shrink/fade as they dry, with bounded cluster and per-frame render limits. Puddles that stay wet slowly spread, and some become large pools where the surrounding ground is level. The launcher and in-game Options panels include **Rain density** (0.5-2.0, default 1.5), **Puddle opacity** (0.05-0.45, default 0.15), and **Puddle amount** (0.5-3.0, default 1.0). All three are saved locally. Lower puddle opacity shows more ground through the water, and higher puddle amounts form more puddles at some extra frame cost. Snow cools the colour grade and fog, adds breath, a frost edge, and wind, and gradually lays a snow blanket over exposed outdoor ground (built client-side per map, no recompile). The cover settles in drifting patches over about three minutes of snowfall before joining up and thickening. The server owns the lying-snow amount (`zombiesim_snow_cover`, archived), so it carries over level changes. When snow is lying, a newly loaded map keeps the loading screen up until the cover is built (normally 1–2 s, capped at 12 s). Walking through the snow carves a trail, which fresh snowfall fills back in. The cover melts when the weather clears or turns to rain. Weather does not change movement. The options menu's “Subtle film grain” toggle is off by default.
+
+In an admin preview session, the **Cheats** window provides several toggles, which are saved per player in `data/zombiesim/preview_cheats.json` and stay on across level changes:
+
+- god mode, which shows a **GOD MODE** badge under the XP bar
+- noclip
+- zombies ignore me
+- infinite ammo
+- survival lock (no hunger, thirst or radiation drain)
+
+It also has one-shot actions: restore vitals, level up, kill nearby zombies, and clear/rain/snow weather. Use the world map for travel.
 
 ## Local Development Session
 
@@ -214,6 +269,8 @@ Use the scripts below from the repository root to start a local ZombieSim sessio
 ```
 
 `send_zombiesim_dev_command.ps1` overwrites the bridge input with a fresh request id, as required by `sv_dev_console.lua`. Use `read_zombiesim_dev_log.ps1 -Console` for the `-condebug` capture, or add `-Follow` when manually observing an active session. `stop_zombiesim_dev.ps1` closes the local `gmod.exe` window first so the server can run normal shutdown hooks; use `-Force` only when it cannot exit gracefully.
+
+For iterative Lua testing, use Garry's Mod hot-reload rather than closing and relaunching the game. To repeat map initialization or a spawn path, issue `changelevel <current-map>` from the server console or through the bridge; this reloads the same map while keeping the game open. Confirm the player has rejoined and the intended profile/cell has loaded before collecting diagnostics.
 
 Validate every loaded gamemode and utility Lua file with Garry's Mod's native GLua parser without executing the files:
 
@@ -297,7 +354,8 @@ Each gameplay service has a server-side suite that uses throwaway SteamIDs and p
 
 ```
 zn_test_static_data zn_test_weapon_catalog zn_test_inventory zn_test_loot zn_test_loot_spots zn_test_enemies
-zn_test_bosses zn_test_crafting zn_test_implants zn_test_professions zn_test_mastercraft zn_test_trading
+zn_test_bosses zn_test_crafting zn_test_implants zn_test_professions zn_test_mastercraft zn_test_trading zn_test_foliage
+zn_test_atmosphere zn_test_gore
 ```
 
 New suites use `ZM_TestHarness` (`gamemode/utils/test_harness.lua`): `NewSuite()`, `suite:Add(name, function(check) ... end)`, `suite:Run({ before, after })`, and `ZM_TestHarness.Register({ command, label, file, report, help, run })`. Shared server helpers for command runners (first human, profile, whole-number checks, replies, admin gates, command registration) are in `ZM_Util` (`gamemode/utils/server.lua`).
@@ -480,7 +538,7 @@ Through the bridge these add `reports.lootRoll`, `reports.lootGrant`, and `repor
 
 # Enemies
 
-`ZM_Enemies` (server) picks the enemy type for each Walker ticket from the spawn groups matching the cell's environment tags (or `defaultGroup`), limited to enemies whose `minDanger`..`maxDanger` contains the cell danger. Health, speed, and spawn weight scale across each enemy's own danger range. A player kill awards the enemy's `xp` and rolls its loot drop once; despawns give nothing.
+Walker and boss zombies are infected survivors: each picks a random stock citizen, refugee or rebel player model (`models/player/group01..03`, validated with `util.IsValidModel`) and skin, and animates with the HL2MP zombie set (one of `ACT_HL2MP_WALK_ZOMBIE_01..05` per zombie, `ACT_HL2MP_IDLE_ZOMBIE`, and the `ACT_GMOD_GESTURE_RANGE_ZOMBIE` attack gesture); a `BodyUpdate` override drives `move_x`/`move_y` for these activities. Corpses copy the zombie's bone pose into the ragdoll. `ZM_Enemies` (server) picks the enemy type for each Walker ticket from the spawn groups matching the cell's environment tags (or `defaultGroup`), limited to enemies whose `minDanger`..`maxDanger` contains the cell danger. Health, speed, and spawn weight scale across each enemy's own danger range. Walkers have 50–65 health (rare walkers 65–90, bosses 500–650), so most guns need four to six body hits. A bullet or pellet that strikes the head hitgroup is lethal to a walker; bosses take triple head damage instead (`Enemies.ApplyHeadshot`, an `EntityTakeDamage` hook fed by the walker's `OnTraceAttack`). Melee damage is unchanged by hit location. The engine subtracts NextBot health after `OnInjured` and then calls `OnKilled`, so `OnInjured` only observes a hit and must not change health itself. A player kill awards the enemy's `xp` and rolls its loot drop once; despawns give nothing.
 
 ```
 zn_spawn_enemy [enemyId|auto] [danger]   // development spawn in front of the player (not Walker-ticketed)
@@ -492,9 +550,11 @@ Through the bridge these add `reports.enemySpawn`, `reports.enemyKills`, and `re
 
 # World Loot Spots
 
-`ZM_LootSpots` (server) turns matching map props from `entity_loot.json` into loot spots when a player loads into a city cell. Spot state is saved per profile and cell in SQLite; a cell re-rolls on the next load after 5 minutes with nobody in it. Press E near a highlighted prop to search it, then accept or decline the offered item (declining keeps the same item on the spot).
+`ZM_LootSpots` (server) turns matching map props from `entity_loot.json` into loot spots when a player loads into a city cell. Spot state is saved per profile and cell in SQLite; a cell re-rolls on the next load after 5 minutes with nobody in it. Press E to search the targeted spot, then accept or decline the offered item (declining keeps the same item on the spot). `ZM_LootTargeting` (`gamemode/sh_loot_targeting.lua`) runs the same rule in both realms: the spot under the aim trace (the crosshair in shoulder mode) wins when it is searchable, within 110 units and unobstructed; otherwise the nearest such spot is used. The client outlines that target (gold, or grey once declined) with an `[E] Search` hint; aiming at a spot that cannot be searched shows `Empty`, `Too far` or `Blocked`, and the server rejects Use with the matching message. Players, NextBots and ragdolls never count as obstructions; walls, doors and other props do.
 
 Rules cover every whole, container-like mounted model (HL2, CSS, PHX): vehicles and train cars, barrels and fuel cans, vending units and coolers, crates and boxes, ammo cans and footlockers, lockers, cabinets, desks, fridges, kitchen units, shelving, laundry machines, trash cans and dumpsters, electrical boxes, and cash sources such as registers, luggage, and money pallets. Each rule maps to a semantic group: `lootCash` holds cash bundles and `lootMedicalSupplies` holds bandages and painkillers. Gibs, fragments, scenery, loose pickup-sized junk, and PHX building blocks are deliberately excluded. A rule only applies when a template places the model as `prop_physics`/`prop_dynamic` (or their `_override` variants); `prop_static` cannot be looted.
+
+Rules may also target `prop_ragdoll`. Map ragdolls match by model, and `ZM_LootBodies` (`gamemode/sv_loot_bodies.lua`) places 2?4 fallen bodies per city cell on walkable, nav-covered ground before the cell's spots are collected. Placement, models and spot keys (`b1_<attempt>`) come from the profile/cell/map seed, so a reloaded cell recreates the same bodies and keeps their searched state; they settle and freeze after 3 seconds. Body families are weighted civilian (`lootBodyCivilian`: cash, medical, food, a rare handgun), rebel (`lootBodyRebel`: weapons, ammunition, medical), birds, charred remains, police/Combine (`lootBodyMilitary`) and medics. Enemy corpses are never generic candidates (they only carry their one rolled kill reward), and severed limbs are client-only and cannot be searched. A cell that was already stored before bodies existed picks them up at its next re-roll (`zn_loot_spots_refresh` forces one).
 
 ZombieSim disables Garry's Mod's default `+use` physics-prop pickup globally. Pressing E can still activate ZombieSim interactions, doors, buttons, and transition gates, but cannot carry barrels, crates, or other physics props.
 
@@ -506,7 +566,7 @@ zn_dev_loot_offer <modelSubstring> [limit]   // development: roll then decline m
 zn_dev_scavenge <modelSubstring> [limit]   // development: search and accept matching spots as the first player
 ```
 
-Barrels are scavenged for resources. Blue plastic (`props_borealis/bluebarrel001`) and wooden (`props_c17/woodbarrel001`) barrels give `itemBarrelWater`; oil drums, warning barrels, `de_train/barrel`, and barrel pallets give `itemOil`. Rules match `prop_physics`, `prop_physics_multiplayer`, `prop_physics_override`, and `prop_dynamic` by normalized model path; other barrel models, broken barrel gibs, and `prop_static` are not loot spots.
+Barrels are scavenged for resources. Blue plastic (`props_borealis/bluebarrel001`) and wooden (`props_c17/woodbarrel001`) barrels give `itemBarrelWater`; oil drums, warning barrels, `de_train/barrel`, and barrel pallets give `itemOil`; crushed oil drums, PHX empty/Facepunch barrels and gas cans also use the oil group, and the CSS wine barrel uses the water group. Rules match `prop_physics`, `prop_physics_multiplayer`, `prop_physics_override`, and `prop_dynamic` by normalized model path; broken barrel gibs, unmapped models and `prop_static` are not loot spots.
 
 Semantic container rules are also model-specific: the CSS and HL2 vending machines roll bottled water or soda; ammunition crates and the listed CSS military crates roll weapons/ammunition only; and the listed wooden crates roll food, medical supplies, or materials. No generic prop-class rule grants fallback loot, so unsupported models remain non-lootable.
 
@@ -514,6 +574,19 @@ Semantic container rules are also model-specific: the CSS and HL2 vending machin
 
 Through the bridge these add `reports.lootSpots`, `reports.lootSpotTests`, and `reports.scavengeProbe`. The bridge-only `zombiesim_dev_teleport_cell <gridX> <gridY>` moves the first player to a raw grid cell through the normal world transition.
 
+# Runtime Foliage and Ambient Debris
+
+`ZM_Foliage` places a bounded, deterministic set of server-owned trees and berry bushes in each outdoor city cell. It traces ground, accepts only flat grass/dirt/mud/gravel/sand surface properties, rejects road/building materials, map edges, occupied spaces and nearby map props, and never edits or regenerates map files. Nodes are non-solid and harvestable plants are tinted yellow. Press E near a bush to pick Berries by hand; trees require any equipped melee weapon and yield Wood. The server validates range, life state, tool, season and cooldown before granting through the inventory service.
+
+The mounted models are `models/props/de_inferno/tree_small.mdl` and `models/props/de_inferno/bushgreensmall.mdl`. Wood is available year-round. Berries are plentiful March-August, scarce September-November and unavailable December-February, based on server-local time. Harvest cooldowns are shared per profile and logical cell, persisted in SQLite and survive restarts: one day for bushes, seven days for trees. Wood and Berries are generic material items with no sale value or food effects assigned yet.
+
+Ambient debris is client-local, limited to nearby deterministic sites, does not collide with players, and cannot be harvested. Kinds: paper (`props_c17/paper01`, newspaper) flutters and lifts in gusts; bottles and cans (`cs_militia/bottle01`, HL2 glass/plastic bottles, cans) lie on their side and roll; cartons and cardboard slide; rare tumbleweeds (HL2 `props_foliage/bramble001a`, scaled 0.5) roll and bounce with the prevailing wind within a leash of their site. Moving players kick nearby debris, and bullet impacts from any player's `ZM.WeaponShot` broadcast throw debris away from the hit point. Debris only simulates (gravity, wall collision, ground following) while moving and within 2000 units. The client setting `zombiesim_ambient_debris_amount` (0 disables, 1 default, up to 3; quick-menu **Debris amount** slider) scales site density and the model cap (20 × amount, at most 60). `zn_foliage_status` reports current server placement, rejection reasons and the most-sampled surface props/textures; `zn_foliage_rebuild` clears and re-places foliage for the current cell without a map reload. `zombiesim_ambient_debris_status` reports client debris amount, counts per kind and how many are moving. `zn_test_foliage` covers deterministic placement filters, seasonal rewards, cooldowns, tool checks, duplicate harvests and persistence; run `zn_test_inventory` for inventory regression. Live model, appearance, exclusion, sharing and repeat-visit checks remain required.
+
+# Dismemberment and Gore
+
+`ZM_Gore` (`gamemode/sv_gore.lua`) decides every sever on the server. Bullets record their hitgroup in the zombie's `OnTraceAttack` (pellets in one tick are combined; the region with the most damage wins); melee resolves the nearest bone to the damage position. Regions are the left and right forearm, the legs, the head and the torso. A living zombie can lose a forearm (cosmetic stump) or its legs; legs turn it into a crawler (half walk speed, same damage, low hull) that keeps its model: the root bone is lowered by `Gore.CrawlerBodyOffset` so server hitboxes match the forward `swimming_all` crawl, and clients hide the leg chains. The head pops (blood burst plus the severed head) and the torso splits only on a killing blow. Living severs need accumulated region damage (arms 25% and legs 40% of max health); the chance is `damage / maxHealth × GoreSeverFactor × 1.6` (×1.5 on a kill, capped at 85%). `GoreSeverFactor` is set per weapon: melee 1.4, pistols 0.5, MP5 0.8, M4A1 1.2, AK-47 1.3, Scout 2, AWP and M3 2.5; other damage falls back by type (buckshot 2.5, slash 1.8, club 1.2, otherwise 0.6). Bosses can lose arms while alive and gib as corpses but never become crawlers. Severed regions are networked as the `ZM_GoreSevered` bitmask and carried onto the corpse, which keeps the zombie model, skin and pose and hides the severed regions. Rewards still happen once in `OnEnemyKilled`, and only the main corpse can be a loot spot.
+
+`cl_gore.lua` draws everything cosmetic from `ZM.Gore` messages: `BloodImpact` effects, exit and floor `Blood` decals, sever bursts, short stump spurts, blood trails behind maimed zombies and pools under gored corpses. Severed regions (forearms, both leg chains, head) pin every bone of the chain to its root at a near-zero scale (0.001; a zero matrix is singular and its hitbox gives NaN results to aim traces) in a `BuildBonePositions` callback; each write is guarded by a successful `GetBoneMatrix` read because only bones in the current setup pass are writable (others print `Bone is unwriteable`, even under `pcall`). The callback also holds a ragdoll's physics bones in place so the skin does not stretch (bone scale alone does not, because ragdoll bones are positioned by physics). A severed region's pose is captured inside that same bone-setup callback (reading bones from a net message or `Think` raises `Bone access not allowed`), then spawned as a client copy of the same model whose other bones are pinned to the cut point (the centre of the chain roots) at near-zero scale, so skin weighted to the hidden body closes at the cut instead of stretching, moved by a small rigid simulation; spurts follow the zombie by a local offset rather than a bone. Limbs fade after 60 seconds and are capped (12 Full, 4 Reduced). Engine decals cannot be faded individually, so blood stays until the next cell change. The client setting `zombiesim_gore_quality` (0 off, 1 reduced, 2 full; quick-menu **Gore** slider) only changes these cosmetic effects; a crawler's legs stay hidden when gore is off. `zn_gore_sever <leftArm|rightArm|legs|head|torso>` severs a region on the aimed or nearest enemy for testing; `zn_test_gore` covers region mapping, chances, crawlers, boss limits and corpse transfer.
 # Runtime World Data
 
 `ZM_World` loads `data_static/zombiesim_world.json` from the `GAME` mount during gamemode initialization. It returns `nil` or `false, error` when the index is unavailable, so gameplay code can fail safely while a release is being assembled.

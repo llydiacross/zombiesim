@@ -166,6 +166,44 @@ net.Receive("ZM.LootOfferResult", function()
     end
 end)
 
+// The client runs the same targeting rule as the server, so the outlined spot is the one Use will search.
+local targetRefreshSeconds = 0.05
+local targetHaloAvailable = Color(255, 220, 90)
+local targetHaloDeclined = Color(170, 170, 170)
+local targetHints = {
+    empty = { text = "Empty", color = Color(170, 170, 170) },
+    far = { text = "Too far", color = Color(255, 170, 110) },
+    blocked = { text = "Blocked", color = Color(255, 140, 110) }
+}
+local nextTargetRefresh = 0
+
+local function clientSpotState(entity)
+    local state = entity:GetNWString("ZM_LootSpotState", "")
+    return state ~= "" and state or nil
+end
+
+hook.Add("Think", "ZM.LootPopup.Target", function()
+    if CurTime() < nextTargetRefresh then
+        return
+    end
+    nextTargetRefresh = CurTime() + targetRefreshSeconds
+    local ply = LocalPlayer()
+    if not IsValid(ply) or not ply:Alive() or Popup.Search or IsValid(Popup.Frame) then
+        Popup.Target = nil
+        return
+    end
+    Popup.Target = ZM_LootTargeting.Select(ply, clientSpotState)
+end)
+
+hook.Add("PreDrawHalos", "ZM.LootPopup.Target", function()
+    local target = Popup.Target
+    if not target or target.reason or not IsValid(target.entity) then
+        return
+    end
+    local color = target.state == "declined" and targetHaloDeclined or targetHaloAvailable
+    halo.Add({ target.entity }, color, 2, 2, 1, true, false)
+end)
+
 hook.Add("HUDPaint", "ZM.LootPopup.Markers", function()
     local ply = LocalPlayer()
     if not IsValid(ply) then
@@ -182,6 +220,17 @@ hook.Add("HUDPaint", "ZM.LootPopup.Markers", function()
             local color = declined and Color(160, 160, 160, 255) or Color(255, 220, 90, pulse)
             draw.SimpleTextOutlined("?", "ZM_LootMarker", screen.x, screen.y, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 2, Color(0, 0, 0, 200))
             end
+        end
+    end
+
+    local target = Popup.Target
+    if target and IsValid(target.entity) then
+        local entity = target.entity
+        local anchor = entity:WorldSpaceCenter() + Vector(0, 0, entity:OBBMaxs().z - entity:OBBCenter().z + 12)
+        local screen = anchor:ToScreen()
+        if screen.visible then
+            local hint = targetHints[target.reason] or { text = "[" .. string.upper(input.LookupBinding("+use") or "E") .. "] Search", color = color_white }
+            draw.SimpleTextOutlined(hint.text, "ZM_LootLevel", screen.x, screen.y + 22, hint.color, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, Color(0, 0, 0, 220))
         end
     end
 

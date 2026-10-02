@@ -8,14 +8,13 @@ function ENT:OnKilled(damage)
     if ZM_Bosses then
         rewarded, reward = ZM_Bosses:OnBossKilled(self, damage:GetAttacker())
     end
-    local corpse = ents.Create("prop_ragdoll")
+    local corpse = self:CreateCorpse()
     if IsValid(corpse) then
-        corpse:SetModel(self:GetModel())
-        corpse:SetPos(self:GetPos())
-        corpse:SetAngles(self:GetAngles())
-        corpse:Spawn()
         if reward and reward.item and ZM_LootSpots then
             ZM_LootSpots:RegisterRuntimeSpot(corpse, reward.item, "bosscorpse_" .. tostring(self.BossInstanceId))
+        end
+        if ZM_Gore then
+            ZM_Gore:ApplyCorpse(self, corpse)
         end
     end
     self:Remove()

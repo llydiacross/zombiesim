@@ -98,3 +98,17 @@ Players can have up to 3 online characters which they choose in the loading map 
 Gmod actually already has p2p inside of it which might be able to be leveraged through steam API so ghosts can join your instance and actually play in the same level as you and also interact with the world in real time, providing a more immersive multiplayer experience without relying solely on a central server.
 
 It would have to safely work with the steam API so players can connect to each other's instances securely and seamlessly, ensuring a smooth multiplayer experience while maintaining the integrity of the game world.
+
+# Runtime foliage and debris
+
+Outdoor city cells can contain server-placed, non-solid trees and berry bushes. Players press the interact key to harvest: trees require an equipped melee weapon and yield Wood; bushes yield Berries by hand. Shared harvest cooldowns are saved per profile and logical cell, so one player's harvest is visible to others and survives restarts. Trees regrow after seven days and berry bushes after one day. The server calendar controls berry availability: plentiful in spring and summer, scarce in autumn, and unavailable in winter. Prices and food effects for these new material items remain unassigned.
+
+Nearby paper, bottles, cans, cartons and occasional tumbleweeds are client-side ambience only. Wind gusts lift paper and drive tumbleweeds, players kick debris as they move through it, and gunshots scatter debris near bullet impacts. None of it collides with players or affects gameplay, and each player can scale or disable it with the Debris amount setting.
+
+# Zombie toughness
+
+Zombies are hard to put down with body shots: an ordinary walker takes four to six hits from most guns, and tougher variants take more. A shot to the head always drops a walker. Bosses shrug off headshots better, taking heavy extra damage rather than dying instantly.
+
+# Dismemberment and gore
+
+Heavy hits can sever a zombie's forearms or legs; stronger weapons such as shotguns, rifles and melee sever more readily than pistols, and a limb usually needs some damage before it comes off. A zombie that loses its legs keeps crawling toward the player at half speed and still bites as hard. A killing headshot can burst the head off, and a heavy killing blow can split the body. Bosses can lose arms but never become crawlers. Blood sprays on hits, stains walls and floors, trails behind maimed zombies and stays until the player leaves the cell. Severed limbs are scenery only, never loot, and fade after a minute. Players can reduce or disable gore effects without changing how combat works.

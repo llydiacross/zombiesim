@@ -139,6 +139,66 @@
       "include": ["lootGenericMedical", "lootGenericMeleeWeapons", "lootGenericFood", "lootGenericMaterials", "lootImplants"],
       "overrides": { "itemCashBundle": { "minWeight": 20, "minCount": 50, "maxCount": 500 } }
     },
+    "lootBodyCivilian": {
+      "items": {
+        "itemCashBundle": { "minWeight": 30, "maxWeight": 24, "minCount": 5, "maxCount": 80 },
+        "itemBandage": { "minWeight": 16, "maxWeight": 12, "maxCount": 2 },
+        "itemPainkillers": { "minWeight": 8, "maxWeight": 8 },
+        "itemSodaCan": { "minWeight": 10, "maxWeight": 6 },
+        "itemCannedBeans": { "minWeight": 8, "maxWeight": 6 },
+        "itemOrange": { "minWeight": 6, "maxWeight": 4 },
+        "itemCloth": { "minWeight": 10, "maxWeight": 8, "maxCount": 2 },
+        "weaponHandgun9mm": { "minWeight": 3, "maxWeight": 2 },
+        "ammo9mm": { "minWeight": 8, "maxWeight": 6, "minCount": 3, "maxCount": 15 }
+      }
+    },
+    "lootBodyRebel": {
+      "include": ["lootGenericHandguns", "lootGenericSmgs", "lootGenericShotguns", "lootGenericRifles", "lootGenericAmmunition", "lootMedicalSupplies"],
+      "items": {
+        "itemMilitaryRation": { "minWeight": 6, "maxWeight": 8 },
+        "itemCashBundle": { "minWeight": 6, "maxWeight": 4, "minCount": 5, "maxCount": 40 }
+      }
+    },
+    "lootBodyMedic": {
+      "include": ["lootMedicalSupplies"],
+      "items": {
+        "itemMorphine": { "minWeight": 10, "maxWeight": 14 },
+        "itemSurgicalKit": { "minWeight": 2, "maxWeight": 5 },
+        "ammo9mm": { "minWeight": 8, "maxWeight": 6, "minCount": 3, "maxCount": 15 }
+      }
+    },
+    "lootBodyMilitary": {
+      "include": ["lootGenericHandguns", "lootGenericSmgs", "lootGenericRifles", "lootGenericAmmunition"],
+      "items": {
+        "itemMilitaryRation": { "minWeight": 10, "maxWeight": 12 }
+      }
+    },
+    "lootBodyCharred": {
+      "items": {
+        "itemScrapMetal": { "minWeight": 30, "maxWeight": 24, "maxCount": 2 },
+        "itemScrews": { "minWeight": 10, "maxWeight": 10, "maxCount": 3 },
+        "itemCashBundle": { "minWeight": 8, "maxWeight": 6, "minCount": 2, "maxCount": 20 }
+      }
+    },
+    "lootBodyBird": {
+      "items": {
+        "itemRawGameBird": { "minWeight": 1 }
+      }
+    },
+    "lootElectronics": {
+      "items": {
+        "itemCopperWire": { "minWeight": 30, "maxWeight": 26, "maxCount": 3 },
+        "itemScrews": { "minWeight": 24, "maxWeight": 20, "maxCount": 4 },
+        "itemScrapMetal": { "minWeight": 16, "maxWeight": 14, "maxCount": 2 }
+      }
+    },
+    "lootBedding": {
+      "items": {
+        "itemCloth": { "minWeight": 40, "maxWeight": 34, "maxCount": 3 },
+        "itemCashBundle": { "minWeight": 10, "maxWeight": 10, "minCount": 5, "maxCount": 60 },
+        "itemPainkillers": { "minWeight": 5, "maxWeight": 5 }
+      }
+    },
     "lootBossRewards": {
       "items": {
         "weaponMeleeCrowbar": { "minWeight": 35 },

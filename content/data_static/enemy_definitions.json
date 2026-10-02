@@ -3,8 +3,8 @@
   "enemies": {
     "entityWalker": {
       "entity": "zn_walker_zombie",
-      "minHealth": 19,
-      "maxHealth": 30,
+      "minHealth": 50,
+      "maxHealth": 65,
       "minSpeed": 1,
       "maxSpeed": 1,
       "minDanger": 0,
@@ -18,8 +18,8 @@
     },
     "entityRareWalker": {
       "entity": "zn_walker_zombie",
-      "minHealth": 29,
-      "maxHealth": 49,
+      "minHealth": 65,
+      "maxHealth": 90,
       "minSpeed": 1,
       "maxSpeed": 1.25,
       "minDanger": 0.25,
@@ -33,8 +33,8 @@
     },
     "entityBossWalker": {
       "entity": "zn_boss_zombie",
-      "minHealth": 220,
-      "maxHealth": 300,
+      "minHealth": 500,
+      "maxHealth": 650,
       "minSpeed": 0.85,
       "maxSpeed": 1,
       "minDanger": 0.5,

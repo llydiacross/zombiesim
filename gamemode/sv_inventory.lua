@@ -833,7 +833,7 @@ function Service:EquipWeaponInSlot(target, reference, slot)
 end
 
 hook.Add("PlayerSwitchWeapon", "ZM.Inventory.PersistSelectedWeapon", function(target, oldWeapon, weapon)
-    if ZM_AmmoService and IsValid(oldWeapon) and oldWeapon.GetItemInstanceId and oldWeapon:GetItemInstanceId() ~= "" then
+    if ZM_AmmoService and IsValid(oldWeapon) and oldWeapon.GetItemInstanceId and oldWeapon.GetMaxClip and oldWeapon:GetItemInstanceId() ~= "" then
         local synced, syncError = ZM_AmmoService:SyncWeapon(target, oldWeapon)
         if not synced then
             ErrorNoHalt("[ZombieSim] Could not persist switched weapon ammunition: " .. tostring(syncError) .. "\n")
@@ -860,7 +860,7 @@ end)
 function Service:UnequipWeapon(target, instanceId)
     for _, weapon in ipairs(target:GetWeapons()) do
         if weapon.GetItemInstanceId and weapon:GetItemInstanceId() == instanceId then
-            if ZM_AmmoService then
+            if ZM_AmmoService and weapon.GetMaxClip then
                 local synced, syncError = ZM_AmmoService:SyncWeapon(target, weapon)
                 if not synced then
                     return false, "could not save weapon ammunition: " .. tostring(syncError)

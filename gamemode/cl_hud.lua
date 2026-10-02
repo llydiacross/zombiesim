@@ -1,8 +1,21 @@
 // Short-lived messages shown above the local player's head, newest message nearest the player.
 local getAllPlayers = player.GetAll
 local playerNotifications = {}
+local hudEventNotifications = {}
 local notificationDuration = 1
 local notificationFadeDuration = 0.35
+local hudEventDuration = 3.5
+local hudEventFadeDuration = 0.5
+local maximumPlayerNotifications = 6
+local maximumHudEventNotifications = 4
+local hudWeaponIconPanel
+local hudWeaponIconKey
+local enemyHitMarkerExpires = 0
+local enemyHitMarkerSoundAt = 0
+local compassHeightScale = CreateClientConVar("zombiesim_compass_height", "0.55", true, false,
+    "Compass height multiplier (0.55 to 1.5).")
+local minimapSizeScale = CreateClientConVar("zombiesim_minimap_size", "1", true, false,
+    "Minimap size multiplier (0.7 to 1.75).")
 local minimapMaterials = {}
 local minimapSatelliteMaterials = {}
 local minimapCellHalfExtent = 1600
@@ -23,6 +36,7 @@ local compassMarkerLabels = {
     loot = "Loot",
     warning = "Warning"
 }
+local waypointDirectionYaw = { N = 90, E = 0, S = -90, W = 180 }
 local compassLandmarkStyles = {
     ["Airport"] = { color = Color(83, 177, 224), priority = 60 },
     ["Army Base"] = { color = Color(222, 72, 65), priority = 95 },
@@ -62,6 +76,13 @@ surface.CreateFont("ZM_PlayerNotification", {
     font = "Trebuchet MS",
     size = 20,
     weight = 700,
+})
+
+surface.CreateFont("ZM_HudEventNotification", {
+    font = "Trebuchet MS",
+    size = 22,
+    weight = 900,
+    antialias = true
 })
 
 surface.CreateFont("ZM_MinimapLabel", {
@@ -168,6 +189,7 @@ local function getHudWeaponEntries(player)
         if IsValid(weapon) then
             local className = weapon:GetClass() or ""
             if className ~= "" then
+                local instanceId = weapon.GetItemInstanceId and weapon:GetItemInstanceId()
                 local clip = tonumber(weapon:Clip1()) or 0
                 local maxClip = tonumber(weapon.GetMaxClip and weapon:GetMaxClip() or weapon:GetMaxClip1()) or -1
                 local reserveAmmo, definition = getHudAmmoAndDefinition(weapon)
@@ -178,11 +200,22 @@ local function getHudWeaponEntries(player)
                     end
                 end
                 local name = definition and definition.name or weapon:GetPrintName()
+                local selectionSlot
+                local snapshot = ZM_Inventory and ZM_Inventory.Snapshot
+                for slot = 1, 3 do
+                    local loadout = snapshot and snapshot.weaponSlots and snapshot.weaponSlots[slot]
+                    if instanceId and instanceId ~= "" and loadout and loadout.instanceId == instanceId then
+                        selectionSlot = slot
+                        break
+                    end
+                end
                 table.insert(entries, {
                     className = className,
+                    selectionSlot = selectionSlot,
+                    iconKey = className .. ":" .. tostring(instanceId or ""),
                     name = name and name ~= "" and name or className,
                     clip = clip,
-                    maxClip = maxClip,
+                    maxClip = math.floor(maxClip),
                     reserve = reserveAmmo,
                     definition = definition,
                     active = IsValid(activeWeapon) and weapon == activeWeapon
@@ -201,18 +234,81 @@ local function getHudWeaponEntries(player)
     return entries
 end
 
+local function drawWeaponSlotKey(entry, x, y, height)
+    if not entry.selectionSlot then return end
+    local size = 20
+    local badgeX, badgeY = x - size - 4, y + (height - size) * 0.5
+    local color = entry.active and Color(255, 208, 92) or Color(200, 200, 200)
+    surface.SetDrawColor(10, 12, 16, 230)
+    surface.DrawRect(badgeX, badgeY, size, size)
+    surface.SetDrawColor(color)
+    surface.DrawOutlinedRect(badgeX, badgeY, size, size, 1)
+    draw.SimpleText(tostring(entry.selectionSlot), "ZM_WeaponHudReserve",
+        badgeX + size * 0.5, badgeY + size * 0.5, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+end
+
+local function hideHudWeaponIcon()
+    if IsValid(hudWeaponIconPanel) then
+        hudWeaponIconPanel:SetVisible(false)
+    end
+end
+
+local function drawHudWeaponIcon(entry, x, y, size)
+    local definition = entry and entry.definition
+    if not definition or not ZM_ItemIcons then
+        hideHudWeaponIcon()
+        return false
+    end
+
+    local override = ZM_ItemIcons:GetOverride(definition)
+    if override then
+        hideHudWeaponIcon()
+        surface.SetMaterial(override)
+        surface.SetDrawColor(255, 255, 255, 255)
+        surface.DrawTexturedRect(x, y, size, size)
+        return true
+    end
+
+    if not definition.iconModel then
+        hideHudWeaponIcon()
+        return false
+    end
+
+    if not IsValid(hudWeaponIconPanel) or hudWeaponIconKey ~= entry.iconKey then
+        if IsValid(hudWeaponIconPanel) then
+            hudWeaponIconPanel:Remove()
+        end
+
+        hudWeaponIconPanel = vgui.Create("DPanel")
+        hudWeaponIconPanel:SetPaintBackgroundEnabled(false)
+        hudWeaponIconPanel:SetPaintBorderEnabled(false)
+        hudWeaponIconPanel:SetMouseInputEnabled(false)
+        hudWeaponIconPanel:SetKeyboardInputEnabled(false)
+        hudWeaponIconKey = entry.iconKey
+        ZM_ItemIcons:Attach(hudWeaponIconPanel, definition, 0)
+    end
+
+    hudWeaponIconPanel:SetPos(x, y)
+    hudWeaponIconPanel:SetSize(size, size)
+    hudWeaponIconPanel:SetVisible(true)
+    return true
+end
+
 local function drawWeaponHudPanel()
     local player = LocalPlayer()
-    if not IsValid(player) or not player:Alive() or ZM_LauncherMenu and ZM_LauncherMenu.Active then
+    if not IsValid(player) or not player:Alive() or ZM_SafeZones:IsPlayerInside(player)
+        or ZM_LauncherMenu and ZM_LauncherMenu.Active then
+        hideHudWeaponIcon()
         return
     end
 
     local weaponEntries = getHudWeaponEntries(player)
     if #weaponEntries <= 0 then
+        hideHudWeaponIcon()
         return
     end
 
-    local boxWidth = math.min(240, ScrW() - 24)
+    local boxWidth = math.min(240, ScrW() - 48)
     local boxX = ScrW() - boxWidth - 16
     local activeWeapon = nil
     for _, entry in ipairs(weaponEntries) do
@@ -232,23 +328,36 @@ local function drawWeaponHudPanel()
     local activeHeight = activeWeapon and (86 + rows * 10) or 0
     local slotHeight = 48
     local columns = boxWidth >= 200 and 2 or 1
-    local slotWidth = math.floor((boxWidth - (columns - 1) * 6) / columns)
+    local columnGap = 30
+    local slotWidth = math.floor((boxWidth - (columns - 1) * columnGap) / columns)
     local otherRows = math.ceil(#otherWeapons / columns)
     local boxY = math.max(72, ScrH() - 24 - activeHeight - otherRows * (slotHeight + 6))
     for index, entry in ipairs(otherWeapons) do
-        local x = boxX + ((index - 1) % columns) * (slotWidth + 6)
+        local x = boxX + ((index - 1) % columns) * (slotWidth + columnGap)
         local y = boxY + math.floor((index - 1) / columns) * (slotHeight + 6)
         surface.SetDrawColor(12, 15, 19, 220)
         surface.DrawRect(x, y, slotWidth, slotHeight)
         surface.SetDrawColor(255, 255, 255, 40)
         surface.DrawOutlinedRect(x, y, slotWidth, slotHeight, 1)
-        draw.SimpleText(string.sub(entry.name, 1, 14), "ZM_WeaponHudReserve", x + 6, y + 4, Color(230, 230, 230), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-        local clipText = entry.maxClip > 0 and (math.max(0, entry.clip) .. "/" .. entry.maxClip) or "--"
+        surface.SetFont("ZM_WeaponHudReserve")
+        local label = entry.name
+        if surface.GetTextSize(label) > slotWidth - 12 then
+            repeat
+                label = string.sub(label, 1, #label - 1)
+            until #label == 0 or surface.GetTextSize(label .. "...") <= slotWidth - 12
+            label = label .. "..."
+        end
+        draw.SimpleText(label, "ZM_WeaponHudReserve", x + 6, y + 4, Color(230, 230, 230), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        local clipText = entry.maxClip > 0 and entry.clip >= 0 and (math.max(0, entry.clip) .. "/" .. entry.maxClip) or "--"
         draw.SimpleText(clipText, "ZM_WeaponHudReserve", x + 6, y + 25, Color(255, 206, 98), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
         draw.SimpleText(entry.reserve and tostring(entry.reserve) or "--", "ZM_WeaponHudReserve", x + slotWidth - 6, y + 25, Color(200, 200, 200), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+        drawWeaponSlotKey(entry, x, y, slotHeight)
     end
 
-    if not activeWeapon then return end
+    if not activeWeapon then
+        hideHudWeaponIcon()
+        return
+    end
     local activeX = boxX
     local activeY = boxY + otherRows * (slotHeight + 6)
     local activeWidth = boxWidth
@@ -256,16 +365,21 @@ local function drawWeaponHudPanel()
     surface.DrawRect(activeX, activeY, activeWidth, activeHeight)
     surface.SetDrawColor(255, 255, 255, 65)
     surface.DrawOutlinedRect(activeX, activeY, activeWidth, activeHeight, 1)
+    drawWeaponSlotKey(activeWeapon, activeX, activeY, activeHeight)
 
     draw.SimpleText(string.sub(activeWeapon.name, 1, 24), "ZM_WeaponHudName", activeX + 12, activeY + 8, Color(255, 255, 255), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-    local clipText = activeWeapon.maxClip > 0 and (math.max(0, activeWeapon.clip) .. "/" .. activeWeapon.maxClip) or "--"
+    local clipText = activeWeapon.maxClip > 0 and activeWeapon.clip >= 0 and (math.max(0, activeWeapon.clip) .. "/" .. activeWeapon.maxClip) or "--"
     draw.SimpleText(clipText, "ZM_WeaponHudValue", activeX + 12, activeY + 30, Color(255, 255, 255), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-    draw.SimpleText("RESERVE", "ZM_WeaponHudReserve", activeX + activeWidth - 12, activeY + 30, Color(200, 200, 200), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
-    draw.SimpleText(activeWeapon.reserve and tostring(activeWeapon.reserve) or "--", "ZM_WeaponHudValue", activeX + activeWidth - 12, activeY + 47, Color(255, 208, 92), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
-    if activeWeapon.definition and ZM_ItemIcons then
-        ZM_ItemIcons:DrawOverride(activeWeapon.definition, activeX + activeWidth - 100, activeY + 18, 44)
+    local weaponIconSize = activeWidth >= 200 and 44 or 34
+    local weaponIconX = activeX + activeWidth - weaponIconSize - 8
+    local weaponIconY = activeY + 20
+    local reserveRight = weaponIconX - 8
+    draw.SimpleText("RESERVE", "ZM_WeaponHudReserve", reserveRight, activeY + 30, Color(200, 200, 200), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+    draw.SimpleText(activeWeapon.reserve and tostring(activeWeapon.reserve) or "--", "ZM_WeaponHudValue", reserveRight, activeY + 47, Color(255, 208, 92), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+    if activeWeapon.maxClip > 0 and activeWeapon.clip >= 0 then
+        drawWeaponHudBullets(activeX + 12, activeY + 77, activeWidth - 24, math.max(0, activeWeapon.clip), activeWeapon.maxClip, true)
     end
-    drawWeaponHudBullets(activeX + 12, activeY + 77, activeWidth - 24, math.max(0, activeWeapon.clip), activeWeapon.maxClip, true)
+    drawHudWeaponIcon(activeWeapon, weaponIconX, weaponIconY, weaponIconSize)
 end
 
 local function hasCurrentSafeZone(player)
@@ -359,7 +473,7 @@ local function getNearbyLandmarkCompassTargets(playerCell)
     return targets
 end
 
-local function drawCompassMarker(x, y, width, heading, targetYaw, icon, color, pulse, showAtEdge)
+local function drawCompassMarker(x, y, width, heading, targetYaw, icon, color, pulse, showAtEdge, occupiedLabelRows)
     if not targetYaw then
         return
     end
@@ -380,21 +494,53 @@ local function drawCompassMarker(x, y, width, heading, targetYaw, icon, color, p
     surface.SetDrawColor(markerColor)
     surface.DrawRect(markerX - (isVisible and 1 or 2), y + 4, isVisible and 3 or 4, 19)
     if isVisible then
-        draw.SimpleText(icon, "ZM_CompassMarker", markerX, y + 25, markerColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+        surface.SetFont("ZM_CompassMarker")
+        local labelWidth = surface.GetTextSize(icon)
+        local maxLabelWidth = math.max(1, width - 16)
+        while labelWidth > maxLabelWidth and #icon > 3 do
+            icon = string.sub(icon, 1, #icon - 1)
+            labelWidth = surface.GetTextSize(icon)
+        end
+        local labelX = math.Clamp(markerX, x + labelWidth * 0.5 + 8, x + width - labelWidth * 0.5 - 8)
+        local maxRows = math.max(1, math.floor((94 * math.Clamp(compassHeightScale:GetFloat(), 0.55, 1.5) - 35) / 14))
+        local row = 1
+        while row <= maxRows do
+            local overlaps = false
+            for _, occupied in ipairs(occupiedLabelRows[row] or {}) do
+                if labelX - labelWidth * 0.5 - 4 < occupied.right and labelX + labelWidth * 0.5 + 4 > occupied.left then
+                    overlaps = true
+                    break
+                end
+            end
+            if not overlaps then
+                break
+            end
+            row = row + 1
+        end
+        if row <= maxRows then
+            occupiedLabelRows[row] = occupiedLabelRows[row] or {}
+            table.insert(occupiedLabelRows[row], {
+                left = labelX - labelWidth * 0.5 - 4,
+                right = labelX + labelWidth * 0.5 + 4
+            })
+            draw.SimpleText(icon, "ZM_CompassMarker", labelX, y + 31 + (row - 1) * 14, markerColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+        end
     end
 end
 
 // Screen rectangles of the fixed HUD panels, shared by their draw code and the crosshair clip.
 local function getCompassRect()
     local width = math.min(500, ScrW() - 40)
-    return math.floor((ScrW() - width) * 0.5), 18, width, 51
+    return math.floor((ScrW() - width) * 0.5), 18, width,
+        math.floor(94 * math.Clamp(compassHeightScale:GetFloat(), 0.55, 1.5))
 end
 
 local minimapMargin = 20
 local minimapBarAreaHeight = 76
 
 local function getMinimapRect()
-    local width = math.min(230, ScrW() - minimapMargin * 2)
+    local width = math.floor(math.min(230 * math.Clamp(minimapSizeScale:GetFloat(), 0.7, 1.75),
+        ScrW() - minimapMargin * 2, (ScrH() * 0.6 - minimapBarAreaHeight) / 0.62))
     local height = math.floor(width * 0.62) + minimapBarAreaHeight
     return minimapMargin, ScrH() - height - minimapMargin, width, height
 end
@@ -405,6 +551,8 @@ function ZM_GetHudReservedRects()
         local x, y, width, height = getRect()
         table.insert(rects, { x = x, y = y, w = width, h = height })
     end
+    local x, y, width, height = getCompassRect()
+    table.insert(rects, { x = x, y = y + height + 5, w = width, h = 18 })
     return rects
 end
 
@@ -433,6 +581,7 @@ local function drawPlayerCompass()
     local heading = getSmoothedCompassHeading(player)
     local playerCell = getHudPlayerCell(player)
     local isInDen = hasCurrentSafeZone(player)
+    local occupiedLabelRows = {}
 
     surface.SetDrawColor(7, 8, 10, 235)
     surface.DrawRect(x, y, width, height)
@@ -457,12 +606,17 @@ local function drawPlayerCompass()
         end
     end
 
-    if not isInDen and playerCell and ZM_WorldMap and ZM_WorldMap.WaypointCell and ZM_WorldMap.WaypointProfile == ZM_World.ActiveProfile then
-        drawCompassMarker(x, y, width, heading, getCellCompassYaw(player, ZM_WorldMap.WaypointCell), getCompassMarkerLabel("waypoint"), Color(246, 210, 48), true, true)
+    if not isInDen and playerCell and ZM_WorldMap and ZM_WorldMap.WaypointCell
+        and ZM_WorldMap.WaypointProfile == ZM_World.ActiveProfile then
+        local direction = ZM_WorldMap:GetWaypointDirection(playerCell)
+        local yaw = waypointDirectionYaw[direction]
+        if yaw then
+            drawCompassMarker(x, y, width, heading, yaw, getCompassMarkerLabel("waypoint"), Color(246, 210, 48), true, true, occupiedLabelRows)
+        end
     end
     if not isInDen and playerCell then
         for _, target in ipairs(getNearbyLandmarkCompassTargets(playerCell)) do
-            drawCompassMarker(x, y, width, heading, getCellCompassYaw(player, target.cell), target.landmark.label, target.landmark.color)
+            drawCompassMarker(x, y, width, heading, getCellCompassYaw(player, target.cell), target.landmark.label, target.landmark.color, false, false, occupiedLabelRows)
         end
     end
     for _, entity in ipairs(ents.GetAll()) do
@@ -470,7 +624,7 @@ local function drawPlayerCompass()
         if marker then
             local offset = entity:WorldSpaceCenter() - player:EyePos()
             if offset:LengthSqr() > 2500 then
-                drawCompassMarker(x, y, width, heading, offset:Angle().y, getCompassMarkerLabel(marker.icon, marker.label), Color(239, 57, 72))
+                drawCompassMarker(x, y, width, heading, offset:Angle().y, getCompassMarkerLabel(marker.icon, marker.label), Color(239, 57, 72), false, false, occupiedLabelRows)
             end
         end
     end
@@ -478,14 +632,57 @@ local function drawPlayerCompass()
         if IsValid(npc) and not npc:IsDormant() then
             local offset = npc:WorldSpaceCenter() - player:EyePos()
             if offset:LengthSqr() > 2500 then
-                drawCompassMarker(x, y, width, heading, offset:Angle().y, npc:GetNWString("ZM_NpcName", "Den Resident"), denNpcColor)
+                drawCompassMarker(x, y, width, heading, offset:Angle().y, npc:GetNWString("ZM_NpcName", "Den Resident"), denNpcColor, false, false, occupiedLabelRows)
             end
         end
     end
+
+    local xp = math.max(player:GetNWInt("XP", tonumber(player.XP) or 0), 0)
+    local experiencePerLevel = math.max(player:GetNWInt("ExperiencePerLevel", tonumber(player.ExperiencePerLevel) or 1000), 1)
+    local progress = math.Clamp(xp / experiencePerLevel, 0, 1)
+    local xpY = y + height + 5
+    local xpHeight = 18
+    surface.SetDrawColor(7, 8, 10, 230)
+    surface.DrawRect(x, xpY, width, xpHeight)
+    surface.SetDrawColor(47, 123, 83, 255)
+    surface.DrawRect(x, xpY, math.floor(width * progress), xpHeight)
+    surface.SetDrawColor(114, 22, 31, 255)
+    surface.DrawOutlinedRect(x, xpY, width, xpHeight, 1)
+    draw.SimpleText(
+        string.format("LEVEL %d  |  XP %d / %d", player:GetNWInt("Level", tonumber(player.Level) or 1), xp, experiencePerLevel),
+        "ZM_MinimapLabel",
+        x + width * 0.5,
+        xpY + xpHeight * 0.5,
+        Color(255, 255, 255),
+        TEXT_ALIGN_CENTER,
+        TEXT_ALIGN_CENTER
+    )
 end
 
 hook.Add("HUDPaint", "ZM.PlayerCompass", drawPlayerCompass)
 hook.Add("HUDPaint", "ZM.PlayerWeaponHud", drawWeaponHudPanel)
+
+// Preview god mode is networked by sv_preview so the badge survives level changes with the persisted cheat.
+local function getGodModeBadgeRect()
+    local x, y, width, height = getCompassRect()
+    local badgeWidth, badgeHeight = 120, 20
+    return math.floor(x + (width - badgeWidth) * 0.5), y + height + 5 + 18 + 4, badgeWidth, badgeHeight
+end
+
+hook.Add("HUDPaint", "ZM.PreviewGodModeBadge", function()
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    local player = LocalPlayer()
+    if not IsValid(player) or not player:GetNWBool("ZM_CheatGod", false) then return end
+
+    local x, y, width, height = getGodModeBadgeRect()
+    local pulse = 0.75 + 0.25 * math.sin(CurTime() * 4)
+    surface.SetDrawColor(7, 8, 10, 230)
+    surface.DrawRect(x, y, width, height)
+    surface.SetDrawColor(246, 210, 48, math.floor(255 * pulse))
+    surface.DrawOutlinedRect(x, y, width, height, 1)
+    draw.SimpleText("GOD MODE", "ZM_MinimapLabel", x + width * 0.5, y + height * 0.5,
+        Color(246, 210, 48, math.floor(255 * pulse)), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+end)
 
 local function getMinimapCellMaterial(cell)
     if not cell or type(cell.map) ~= "string" or cell.map == "" or not ZM_World then
@@ -653,6 +850,79 @@ local function drawDenNpcMinimapMarker(mapX, mapY, mapWidth, mapHeight, markerX,
     )
 end
 
+local waypointMinimapColor = Color(246, 210, 48)
+
+// Returns the published centre of the nearest transition gate on the waypoint route side of the current cell.
+local function getWaypointGatePosition(playerCell, position)
+    if not playerCell or not ZM_WorldMap or not ZM_WorldMap.WaypointCell or ZM_WorldMap.WaypointProfile ~= ZM_World.ActiveProfile then
+        return nil
+    end
+    local direction = ZM_WorldMap:GetWaypointDirection(playerCell)
+    if not waypointDirectionYaw[direction] then
+        return nil
+    end
+    local nearest, nearestDistance
+    for index = 1, GetGlobal2Int("ZMTransitionGateCount_" .. direction, 0) do
+        local centre = GetGlobal2Vector("ZMTransitionGate_" .. direction .. "_" .. index, vector_origin)
+        local distance = centre:DistToSqr(position)
+        if not nearestDistance or distance < nearestDistance then
+            nearest, nearestDistance = centre, distance
+        end
+    end
+    return nearest
+end
+
+// Pinned to the minimap edge (like den NPCs) when the gate is outside the visible area.
+local function drawWaypointMinimapMarker(mapX, mapY, mapWidth, mapHeight, markerX, markerY)
+    local inset = 8
+    local centreX, centreY = mapX + mapWidth * 0.5, mapY + mapHeight * 0.5
+    local deltaX, deltaY = markerX - centreX, markerY - centreY
+    local scale = math.max(math.abs(deltaX) / (mapWidth * 0.5 - inset), math.abs(deltaY) / (mapHeight * 0.5 - inset), 1)
+    markerX, markerY = math.floor(centreX + deltaX / scale), math.floor(centreY + deltaY / scale)
+    local pulse = 0.75 + 0.25 * math.sin(CurTime() * 5)
+    draw.NoTexture()
+    surface.SetDrawColor(10, 8, 4, 255)
+    surface.DrawPoly({ { x = markerX, y = markerY - 8 }, { x = markerX + 8, y = markerY }, { x = markerX, y = markerY + 8 }, { x = markerX - 8, y = markerY } })
+    surface.SetDrawColor(waypointMinimapColor.r, waypointMinimapColor.g, waypointMinimapColor.b, math.floor(255 * pulse))
+    surface.DrawPoly({ { x = markerX, y = markerY - 6 }, { x = markerX + 6, y = markerY }, { x = markerX, y = markerY + 6 }, { x = markerX - 6, y = markerY } })
+    local label = getCompassMarkerLabel("waypoint")
+    local labelBelow = markerY - 8 < mapY + 12
+    surface.SetFont("ZM_MinimapLabel")
+    local labelHalfWidth = math.min(surface.GetTextSize(label) * 0.5, mapWidth * 0.5 - 4)
+    draw.SimpleText(
+        label,
+        "ZM_MinimapLabel",
+        math.Clamp(markerX, mapX + 4 + labelHalfWidth, mapX + mapWidth - 4 - labelHalfWidth),
+        labelBelow and markerY + 8 or markerY - 8,
+        waypointMinimapColor,
+        TEXT_ALIGN_CENTER,
+        labelBelow and TEXT_ALIGN_TOP or TEXT_ALIGN_BOTTOM
+    )
+end
+
+// Safe-zone entrances (in a cell) and exits (in a den) stay visible, pinned to the minimap edge when off-screen.
+local function drawSafeZoneDoorMinimapMarker(mapX, mapY, mapWidth, mapHeight, markerX, markerY, label)
+    local inset = 8
+    local centreX, centreY = mapX + mapWidth * 0.5, mapY + mapHeight * 0.5
+    local deltaX, deltaY = markerX - centreX, markerY - centreY
+    local scale = math.max(math.abs(deltaX) / (mapWidth * 0.5 - inset), math.abs(deltaY) / (mapHeight * 0.5 - inset), 1)
+    markerX, markerY = math.floor(centreX + deltaX / scale), math.floor(centreY + deltaY / scale)
+    ZM_WorldMap:DrawSafeZoneDoorGlyph(markerX, markerY, 5)
+    local color = ZM_WorldMap.SafeZoneDoorColor
+    local labelBelow = markerY - 7 < mapY + 12
+    surface.SetFont("ZM_MinimapLabel")
+    local labelHalfWidth = math.min(surface.GetTextSize(label) * 0.5, mapWidth * 0.5 - 4)
+    draw.SimpleText(
+        label,
+        "ZM_MinimapLabel",
+        math.Clamp(markerX, mapX + 4 + labelHalfWidth, mapX + mapWidth - 4 - labelHalfWidth),
+        labelBelow and markerY + 8 or markerY - 8,
+        color,
+        TEXT_ALIGN_CENTER,
+        labelBelow and TEXT_ALIGN_TOP or TEXT_ALIGN_BOTTOM
+    )
+end
+
 local function drawBossMinimapMarker(mapX, mapY, mapWidth, mapHeight, markerX, markerY)
     if markerX < mapX or markerX > mapX + mapWidth or markerY < mapY or markerY > mapY + mapHeight then
         return
@@ -715,6 +985,27 @@ local function drawPlayerMinimap()
                     if npcX and npcY then drawDenNpcMinimapMarker(mapX, mapY, mapWidth, mapHeight, npcX, npcY, npc) end
                 end
             end
+        end
+        if ZM_WorldMap and ZM_WorldMap.GetSafeZoneDoorMarkers then
+            for _, door in ipairs(ZM_WorldMap:GetSafeZoneDoorMarkers()) do
+                local doorX, doorY
+                if minimapViewMode == "map" and ZM_WorldMap.ProjectLocalMapPosition then
+                    doorX, doorY = ZM_WorldMap:ProjectLocalMapPosition(mapX, mapY, mapWidth, mapHeight, position, localMapViewHeight, door.position)
+                elseif cellTextureTransform then
+                    doorX, doorY = projectCellTexturePosition(mapX, mapY, mapWidth, mapHeight, door.position, cellTextureTransform)
+                end
+                if doorX and doorY then drawSafeZoneDoorMinimapMarker(mapX, mapY, mapWidth, mapHeight, doorX, doorY, door.label) end
+            end
+        end
+        local gatePosition = not isInDen and getWaypointGatePosition(cell, position) or nil
+        if gatePosition then
+            local gateX, gateY
+            if minimapViewMode == "map" and ZM_WorldMap and ZM_WorldMap.ProjectLocalMapPosition then
+                gateX, gateY = ZM_WorldMap:ProjectLocalMapPosition(mapX, mapY, mapWidth, mapHeight, position, localMapViewHeight, gatePosition)
+            elseif cellTextureTransform then
+                gateX, gateY = projectCellTexturePosition(mapX, mapY, mapWidth, mapHeight, gatePosition, cellTextureTransform)
+            end
+            if gateX and gateY then drawWaypointMinimapMarker(mapX, mapY, mapWidth, mapHeight, gateX, gateY) end
         end
         local playerMarkerX, playerMarkerY = mapX + mapWidth * 0.5, mapY + mapHeight * 0.5
         if cellTextureTransform then
@@ -823,9 +1114,25 @@ end)
 // Queues a message that HUDPaint will fade and remove after notificationDuration seconds.
 function ZM_AddPlayerNotification(text)
     table.insert(playerNotifications, {
-        text = tostring(text),
+        text = string.sub(tostring(text), 1, 96),
         created = CurTime(),
     })
+    while #playerNotifications > maximumPlayerNotifications do
+        table.remove(playerNotifications, 1)
+    end
+end
+
+function ZM_AddHudEventNotification(text, soundPath)
+    table.insert(hudEventNotifications, {
+        text = string.sub(tostring(text), 1, 96),
+        created = CurTime(),
+    })
+    while #hudEventNotifications > maximumHudEventNotifications do
+        table.remove(hudEventNotifications, 1)
+    end
+    if soundPath then
+        surface.PlaySound(soundPath)
+    end
 end
 
 // Screen position just above the player's head, or the screen centre when the head is off-screen.
@@ -891,6 +1198,77 @@ hook.Add("HUDPaint", "ZM.PlayerNotifications", function()
             )
             index = index + 1
         end
+    end
+end)
+
+hook.Add("HUDPaint", "ZM.HudEventNotifications", function()
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    local player = LocalPlayer()
+    if not IsValid(player) then return end
+
+    local now = CurTime()
+    local compassX, compassY, compassWidth, compassHeight = getCompassRect()
+    local eventY = compassY + compassHeight + 5 + 18 + 12
+    local visibleIndex = 0
+    for index = #hudEventNotifications, 1, -1 do
+        local notification = hudEventNotifications[index]
+        local age = now - notification.created
+        if age >= hudEventDuration then
+            table.remove(hudEventNotifications, index)
+        else
+            local alpha = 255
+            if age > hudEventDuration - hudEventFadeDuration then
+                alpha = math.floor(255 * (hudEventDuration - age) / hudEventFadeDuration)
+            end
+            draw.SimpleText(
+                notification.text,
+                "ZM_HudEventNotification",
+                compassX + compassWidth * 0.5,
+                eventY + visibleIndex * 27,
+                Color(255, 224, 145, alpha),
+                TEXT_ALIGN_CENTER,
+                TEXT_ALIGN_TOP
+            )
+            visibleIndex = visibleIndex + 1
+        end
+    end
+end)
+
+net.Receive("ZM.HudLevelUp", function()
+    local level = net.ReadUInt(16)
+    ZM_AddHudEventNotification("LEVEL UP  |  LEVEL " .. level, "buttons/button15.wav")
+end)
+
+net.Receive("ZM.EnemyHitMarker", function()
+    if ZM_SafeZones:IsPlayerInside(LocalPlayer()) then return end
+    local now = CurTime()
+    enemyHitMarkerExpires = now + 0.22
+    if now >= enemyHitMarkerSoundAt then
+        surface.PlaySound("buttons/button14.wav")
+        enemyHitMarkerSoundAt = now + 0.12
+    end
+end)
+
+hook.Add("HUDPaint", "ZM.EnemyHitMarker", function()
+    local player = LocalPlayer()
+    if CurTime() >= enemyHitMarkerExpires or not IsValid(player) or not player:Alive()
+        or ZM_SafeZones:IsPlayerInside(player)
+        or gui.IsGameUIVisible() or IsValid(vgui.GetKeyboardFocus())
+        or ZM_LauncherMenu and ZM_LauncherMenu.Active then
+        return
+    end
+
+    local scale = math.Clamp(ScrH() / 1080, 0.75, 1.5)
+    local cursorX, cursorY
+    if ZM_GetAimCursor then cursorX, cursorY = ZM_GetAimCursor() end
+    local centerX, centerY = cursorX or ScrW() * 0.5, cursorY or ScrH() * 0.5
+    local inner = 7 * scale
+    local outer = 13 * scale
+    local color = Color(255, 255, 255, 230)
+    surface.SetDrawColor(color)
+    for _, direction in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+        surface.DrawLine(centerX + direction[1] * inner, centerY + direction[2] * inner,
+            centerX + direction[1] * outer, centerY + direction[2] * outer)
     end
 end)
 

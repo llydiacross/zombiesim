@@ -56,14 +56,40 @@ function Preview:SendCapabilities(playerEntity)
     net.Send(playerEntity)
 end
 
+// Cheat toggles persist to DATA so they survive changelevel and cell transitions.
+Preview.CheatToggles = { "god", "noclip", "notarget", "infiniteAmmo", "survivalLock" }
+local cheatStatePath = "zombiesim/preview_cheats.json"
+
+local function loadCheatStates()
+    local stored = file.Exists(cheatStatePath, "DATA") and util.JSONToTable(file.Read(cheatStatePath, "DATA") or "") or nil
+    return type(stored) == "table" and stored or {}
+end
+
+function Preview:SaveCheatStates()
+    file.CreateDir("zombiesim")
+    file.Write(cheatStatePath, util.TableToJSON(self.CheatStates, true) or "{}")
+end
+
+if not Preview.CheatStatesLoaded then
+    Preview.CheatStates = loadCheatStates()
+    Preview.CheatStatesLoaded = true
+end
+
 function Preview:GetCheatState(playerEntity)
     local steamId = IsValid(playerEntity) and playerEntity:SteamID() or nil
     if not steamId then
-        return { god = false, noclip = false }
+        return {}
     end
 
-    self.CheatStates[steamId] = self.CheatStates[steamId] or { god = false, noclip = false }
-    return self.CheatStates[steamId]
+    local state = self.CheatStates[steamId]
+    if type(state) ~= "table" then
+        state = {}
+        self.CheatStates[steamId] = state
+    end
+    for _, key in ipairs(self.CheatToggles) do
+        state[key] = state[key] == true
+    end
+    return state
 end
 
 function Preview:SendCheatStatus(playerEntity, accepted, message)
@@ -71,8 +97,9 @@ function Preview:SendCheatStatus(playerEntity, accepted, message)
     net.Start("ZM.PreviewCheatStatus")
         net.WriteBool(accepted == true)
         net.WriteString(message or "")
-        net.WriteBool(state.god == true)
-        net.WriteBool(state.noclip == true)
+        for _, key in ipairs(self.CheatToggles) do
+            net.WriteBool(state[key] == true)
+        end
     net.Send(playerEntity)
 end
 
@@ -81,18 +108,51 @@ function Preview:ApplyCheatState(playerEntity)
         return
     end
 
+    // Persisted toggles only take effect while the player still holds preview operator rights.
+    local allowed = self:HasServerCapability(playerEntity, self.Capabilities.operator)
     local state = self:GetCheatState(playerEntity)
-    if state.god then
+    if allowed and state.god then
         playerEntity:GodEnable()
     else
         playerEntity:GodDisable()
     end
-    if state.noclip then
+    if allowed and state.noclip then
         playerEntity:SetMoveType(MOVETYPE_NOCLIP)
     elseif playerEntity:GetMoveType() == MOVETYPE_NOCLIP then
         playerEntity:SetMoveType(MOVETYPE_WALK)
     end
+    local notarget = allowed and state.notarget == true
+    playerEntity.ZM_CheatNoTarget = notarget
+    playerEntity:SetNoTarget(notarget)
+    playerEntity.ZM_CheatInfiniteAmmo = allowed and state.infiniteAmmo == true
+    playerEntity.ZM_CheatSurvivalLock = allowed and state.survivalLock == true
+    playerEntity:SetNWBool("ZM_CheatGod", allowed and state.god == true)
 end
+
+// Keeps clips topped up and survival reserves full for players with those cheats.
+local nextCheatMaintenanceAt = 0
+hook.Add("Think", "ZM.Preview.CheatMaintenance", function()
+    if CurTime() < nextCheatMaintenanceAt then return end
+    nextCheatMaintenanceAt = CurTime() + 0.2
+
+    for _, playerEntity in ipairs(player.GetHumans()) do
+        if not playerEntity:Alive() then continue end
+        if playerEntity.ZM_CheatInfiniteAmmo then
+            local weapon = playerEntity:GetActiveWeapon()
+            if IsValid(weapon) and weapon:GetMaxClip1() > 0 and weapon:Clip1() < weapon:GetMaxClip1() then
+                weapon:SetClip1(weapon:GetMaxClip1())
+            end
+        end
+        if playerEntity.ZM_CheatSurvivalLock and playerEntity.ZM_PersistentStateLoaded == true then
+            playerEntity.Hunger = 100
+            playerEntity.Thirst = 100
+            playerEntity.Stamina = playerEntity:GetMaxStamina()
+            playerEntity:SetNWFloat("Hunger", 100)
+            playerEntity:SetNWFloat("Thirst", 100)
+            playerEntity:SetNWFloat("Stamina", playerEntity.Stamina)
+        end
+    end
+end)
 
 net.Receive("ZM.RequestPreviewCapabilities", function(_, playerEntity)
     Preview:SendCapabilities(playerEntity)
@@ -297,13 +357,6 @@ net.Receive("ZM.RequestPreviewDenTeleport", function(_, playerEntity)
     print(string.format("[ZombieSim] Preview den teleport: %s -> %s (%s)", playerEntity:SteamID(), safeZone.id, mapPath))
 end)
 
-local cheatDirections = {
-    move_north = "N",
-    move_east = "E",
-    move_south = "S",
-    move_west = "W"
-}
-
 local function refillPlayer(playerEntity)
     playerEntity.SavedHealth = math.max(playerEntity:GetMaxHealth(), 100)
     playerEntity.Stamina = playerEntity:GetMaxStamina()
@@ -391,32 +444,55 @@ ZM_DevConsole.DirectCommands.zombiesim_preview_restore = function()
     return restorePreviewPlayer(ZM_Util.FirstHuman())
 end
 
-local function movePlayerToNeighbour(playerEntity, direction)
-    if getHumanPlayerCount() ~= 1 then
-        return false, "Cell movement requires exactly one human player"
+local function grantPreviewLevel(playerEntity)
+    if playerEntity.ZM_PersistentStateLoaded ~= true then
+        return false, "Player data is not loaded"
     end
-    if Preview.TransitionLocked or (ZM_MapBatch and ZM_MapBatch:IsActive()) then
-        return false, "A map transition is already active"
+    local previousLevel = tonumber(playerEntity.Level) or 1
+    playerEntity.XP = math.max(tonumber(playerEntity.XP) or 0, tonumber(playerEntity.ExperiencePerLevel) or 0)
+    playerEntity:AddXP(0)
+    local saved, saveError = playerEntity:UpdatePlayerData("preview cheat level")
+    if not saved then
+        return false, saveError or "Could not save the level grant"
     end
-
-    local targetCell = playerEntity:GetNeighbouringCell(direction)
-    if not targetCell then
-        return false, "There is no connected cell in that direction"
-    end
-    local worldX, worldY = ZM_World:GetWorldCoordinates(targetCell)
-    local positioned, positionError = playerEntity:SetWorldCell(worldX, worldY)
-    if not positioned then
-        return false, positionError or "Could not set the neighboring cell"
-    end
-
-    Preview.TransitionLocked = true
-    local transitionQueued = GAMEMODE and GAMEMODE.EnsurePlayerWorldMap and GAMEMODE:EnsurePlayerWorldMap(playerEntity)
-    if not transitionQueued then
-        Preview.TransitionLocked = false
-        return false, "Core world transition could not be queued"
-    end
-    return true, "Loading the neighboring cell"
+    playerEntity:SetNetworkPlayerData()
+    playerEntity:SendPlayerData()
+    return true, string.format("Level %d -> %d", previousLevel, tonumber(playerEntity.Level) or previousLevel)
 end
+
+local killNearbyRadius = 2500
+
+local function killNearbyZombies(playerEntity)
+    local origin = playerEntity:GetPos()
+    local killed = 0
+    for _, zombie in ipairs(ents.FindByClass("zn_walker_zombie")) do
+        if IsValid(zombie) and zombie:Health() > 0 and zombie:GetPos():DistToSqr(origin) <= killNearbyRadius * killNearbyRadius then
+            // Credit the player so kill rewards, corpses, and walker tickets resolve normally.
+            local damageInfo = DamageInfo()
+            damageInfo:SetDamage(zombie:Health() + 1000)
+            damageInfo:SetDamageType(DMG_GENERIC)
+            damageInfo:SetAttacker(playerEntity)
+            damageInfo:SetInflictor(playerEntity)
+            zombie:TakeDamageInfo(damageInfo)
+            killed = killed + 1
+        end
+    end
+    return true, killed == 0 and "No zombies nearby" or string.format("Killed %d nearby zombie(s)", killed)
+end
+
+local cheatToggleActions = {
+    toggle_god = { key = "god", label = "God mode" },
+    toggle_noclip = { key = "noclip", label = "Noclip" },
+    toggle_notarget = { key = "notarget", label = "Zombies ignore you" },
+    toggle_infinite_ammo = { key = "infiniteAmmo", label = "Infinite ammo" },
+    toggle_survival_lock = { key = "survivalLock", label = "Survival lock" }
+}
+
+local cheatWeatherActions = {
+    weather_clear = "clear",
+    weather_rain = "rain",
+    weather_snow = "snow"
+}
 
 net.Receive("ZM.RequestPreviewCheat", function(_, playerEntity)
     local action = net.ReadString()
@@ -427,21 +503,27 @@ net.Receive("ZM.RequestPreviewCheat", function(_, playerEntity)
 
     local state = Preview:GetCheatState(playerEntity)
     local accepted, message
-    if action == "toggle_god" then
-        state.god = not state.god
+    local toggle = cheatToggleActions[action]
+    if toggle then
+        state[toggle.key] = not state[toggle.key]
         Preview:ApplyCheatState(playerEntity)
+        Preview:SaveCheatStates()
         accepted = true
-        message = state.god and "God mode enabled" or "God mode disabled"
-    elseif action == "toggle_noclip" then
-        state.noclip = not state.noclip
-        Preview:ApplyCheatState(playerEntity)
-        accepted = true
-        message = state.noclip and "Noclip enabled" or "Noclip disabled"
+        message = toggle.label .. (state[toggle.key] and " enabled" or " disabled")
     elseif action == "refill" then
         accepted, message = refillPlayer(playerEntity)
         message = message or "Health and survival reserves restored"
-    elseif cheatDirections[action] then
-        accepted, message = movePlayerToNeighbour(playerEntity, cheatDirections[action])
+    elseif action == "kill_nearby" then
+        accepted, message = killNearbyZombies(playerEntity)
+    elseif action == "grant_level" then
+        accepted, message = grantPreviewLevel(playerEntity)
+    elseif cheatWeatherActions[action] then
+        if not ZM_AtmosphereService or not ZM_AtmosphereService.SetWeather then
+            accepted, message = false, "The atmosphere service is unavailable"
+        else
+            accepted, message = ZM_AtmosphereService.SetWeather(cheatWeatherActions[action])
+            message = message or ("Weather set to " .. cheatWeatherActions[action])
+        end
     else
         accepted = false
         message = "Unknown preview cheat action"

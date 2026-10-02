@@ -143,6 +143,7 @@ $staleSourceMapCount = 0
 
 $width = $GridCells * $CellSize
 $height = $GridCells * $CellSize
+Write-Host "[WorldGen][Init] Profile=$($worldGenerationProfile.Name); grid=${GridCells}x${GridCells}; cellSize=$CellSize px; seed=$Seed; roadDepth=$RoadDepth; output=$Output; data=$([System.IO.Path]::ChangeExtension($Output, '.json')); exportLayers=$([bool]$ExportLayers)"
 $worldOriginX = 0
 $worldOriginY = 0
 $originXOffset = -$width / 2
@@ -193,6 +194,12 @@ for ($sourceIndex = 0; $sourceIndex -lt $radiationSourceCount; $sourceIndex++) {
     if (-not $sourcePlaced) { continue }
     $radiationSources += [ordered]@{ name = 'The Epicenter'; x = $sourceX; y = $sourceY; worldX = $sourceX; worldY = $sourceY - $originCellY; falloutRadiusCells = $radiationFalloutRadiusCells; falloutRadiusMiles = $radiationFalloutMiles; loreYieldMegatons = $radiationLoreYieldMegatons }
 }
+if ($radiationSources.Count -gt 0) {
+    $radiationSummary = @($radiationSources | ForEach-Object { "$($_.name) cell=($($_.x),$($_.y)) yield=$($_.loreYieldMegatons)Mt fallout=$($_.falloutRadiusCells) cells/$($_.falloutRadiusMiles) miles" }) -join '; '
+} else {
+    $radiationSummary = 'disabled'
+}
+Write-Host "[WorldGen][Radiation] Sources=$($radiationSources.Count); epicenter range X=$radiationEpicenterXFraction, Y=$radiationEpicenterYMinimumFraction-$radiationEpicenterYMaximumFraction; $radiationSummary"
 $roadBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(220, 82, 82, 88))
 $highwayBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(235, 35, 90, 190))
 $highwayLinePen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(255, 245, 245, 245), 3)
@@ -240,6 +247,7 @@ $roadCells = @{}
 $highwayCells = @{}
 $bridgeCells = @{}
 $bridgeCrossingDirections = @{}
+$roadBranchCount = 0
 $diagonalHighwayCells = @{}
 $diagonalRampConnections = @{}
 $diagonalUnderpasses = @()
@@ -247,6 +255,7 @@ $highwayRamps = @()
 $usedHighwayRampConnections = @{}
 $blockadeConnections = @{}
 $blockadeMarkers = @()
+$blockadeReachabilityChecks = 0
 $terrainCells = @{}
 $terrainTypes = @{}
 $buildingCells = @{}
@@ -420,6 +429,7 @@ function Grow-Road {
         $cellY = $nextY
 
         if ($Depth -gt 1 -and $random.NextDouble() -lt $BranchChance) {
+            $script:roadBranchCount++
             $branchDirection = Get-TurnDirection $Direction $(if ($random.Next(0, 2) -eq 0) { -1 } else { 1 })
             Grow-Road $cellX $cellY $branchDirection ($Depth - 1)
         }
@@ -1725,6 +1735,7 @@ function Add-HighwayRun {
 
 function Repair-RoadDeadEnds {
     $deadEnds = @($roadCells.Keys | Where-Object { (Get-RoadDegree $roadCells[$_]) -eq 1 })
+    $repairedDeadEnds = 0
     foreach ($deadEndKey in $deadEnds) {
         $coordinates = $deadEndKey -split ","
         $startX = [int]$coordinates[0]
@@ -1803,7 +1814,9 @@ function Repair-RoadDeadEnds {
             $direction = if ([int]$toCoordinates[0] -gt [int]$fromCoordinates[0]) { "E" } elseif ([int]$toCoordinates[0] -lt [int]$fromCoordinates[0]) { "W" } elseif ([int]$toCoordinates[1] -gt [int]$fromCoordinates[1]) { "S" } else { "N" }
             [void](Add-RoadConnection ([int]$fromCoordinates[0]) ([int]$fromCoordinates[1]) $direction)
         }
+        $repairedDeadEnds++
     }
+    return $repairedDeadEnds
 }
 
 # Main arterial: each cell is an individual straight road tile.
@@ -1814,13 +1827,17 @@ for ($cellX = 0; $cellX -lt ($GridCells - 1); $cellX++) {
 # Recursively grow branches from the origin and along the arterial.
 Grow-Road 0 $originCellY "N" $RoadDepth
 Grow-Road 0 $originCellY "S" $RoadDepth
+$centralSpineSeeds = 0
 for ($cellX = 6; $cellX -lt ($GridCells - 2); $cellX += 6) {
     if ($random.NextDouble() -lt [double]$mapSettings.road.centralSpineChance) {
+        $centralSpineSeeds++
         $direction = if ($random.Next(0, 2) -eq 0) { "N" } else { "S" }
         Grow-Road $cellX $originCellY $direction $RoadDepth
     }
 }
+Write-Host "[WorldGen][Roads] Seeded main arterial across $($GridCells - 1) links; recursive growth depth=$RoadDepth, branchChance=$BranchChance; branch passes=$roadBranchCount; central spine seeds=$centralSpineSeeds; road cells before repair=$($roadCells.Count)."
 
+$repairedHighwayCrossings = 0
 if ($highwaysEnabled) {
     # Deterministic interstate grid: straight corridors with only deliberate 90-degree jogs.
     $westInterstateX = [int](($GridCells - 1) * 0.24)
@@ -1869,6 +1886,7 @@ function Repair-DeadEndsAcrossHighways {
     $deadEnds = @($roadCells.Keys | Where-Object {
         -not $highwayCells.ContainsKey($_) -and (Get-RoadDegree $roadCells[$_]) -eq 1
     })
+    $repairedHighwayCrossings = 0
 
     foreach ($deadEndKey in $deadEnds) {
         $coordinates = $deadEndKey -split ","
@@ -1899,9 +1917,11 @@ function Repair-DeadEndsAcrossHighways {
                 $bridgeCells[$highwayKey] = $true
                 $bridgeCrossingDirections[$highwayKey] = $direction
             }
+            $repairedHighwayCrossings++
             break
         }
     }
+    return $repairedHighwayCrossings
 }
 
 function Add-HighwayRamp {
@@ -2041,6 +2061,7 @@ function Test-BlockadePlacement {
     $neighborKey = Get-RoadNeighborKey ([int]$coordinates[0]) ([int]$coordinates[1]) $Direction
     if ($null -eq $neighborKey -or -not $roadCells.ContainsKey($neighborKey)) { return $false }
 
+    $script:blockadeReachabilityChecks += 2
     Add-BlockadeConnection $CellKey $Direction
     $sourceHasExit = Test-RouteToHighwayOrWorldEdge $CellKey
     $targetHasExit = Test-RouteToHighwayOrWorldEdge $neighborKey
@@ -2050,16 +2071,20 @@ function Test-BlockadePlacement {
 }
 
 # Close nearby dead ends where possible; isolated ends remain valid roads.
-Repair-RoadDeadEnds
+$repairedRoadDeadEnds = Repair-RoadDeadEnds
 if ($highwaysEnabled) {
     Restrict-HighwayCrossings
-    Repair-DeadEndsAcrossHighways
+    $repairedHighwayCrossings = Repair-DeadEndsAcrossHighways
 
     # Every district receives an on/off-ramp, preferably merging with an existing local road.
     for ($districtIndex = 0; $districtIndex -lt $zones.Count; $districtIndex++) {
         Add-DistrictHighwayRamp $zones[$districtIndex] $districtIndex | Out-Null
     }
+    Write-Host "[WorldGen][Highways] Interstate grid placed; crossing restrictions applied; overpasses/bridges=$($bridgeCells.Count); repaired street crossings=$repairedHighwayCrossings; district ramps=$($highwayRamps.Count)."
+} else {
+    Write-Host '[WorldGen][Highways] Disabled by mapGeneration.highways.enabled.'
 }
+Write-Host "[WorldGen][Repairs] Nearby dead ends repaired=$repairedRoadDeadEnds; dead ends reconnected across highways=$repairedHighwayCrossings; road cells after repairs=$($roadCells.Count); highway cells=$($highwayCells.Count)."
 
 # A district without any ordinary road cannot support homes, landmarks, or a metro stop.
 foreach ($zone in $zones) {
@@ -2132,6 +2157,7 @@ function Get-ConnectedRoadCells {
 function Repair-DisconnectedSafeZoneEntrances {
     $reachableRoadCells = Get-ConnectedRoadCells $originKey -RespectBlockades
     $districtDenEntries = @($denCells.GetEnumerator() | Where-Object { $_.Value.District -ge 0 })
+    $repairedEntrances = 0
     foreach ($denEntry in $districtDenEntries) {
         $oldKey = [string]$denEntry.Key
         if ($reachableRoadCells.ContainsKey($oldKey)) { continue }
@@ -2164,8 +2190,9 @@ function Repair-DisconnectedSafeZoneEntrances {
         $spacingCandidates = @($candidates | Where-Object { $_.nearestDenDistance -ge $safeZoneMinimumSpacingCells })
         $selectionPool = if ($spacingCandidates.Count -gt 0) { $spacingCandidates } else { $candidates }
         $replacement = @($selectionPool | Sort-Object @{ Expression = { ($_.nearestDenDistance * $safeZoneSpacingWeight) - ($_.districtDistance * $safeZoneDistrictCenterWeight) }; Descending = $true }, key | Select-Object -First 1)[0]
-        $denCells.Remove($oldKey)
+        [void]$denCells.Remove($oldKey)
         $denCells[$replacement.key] = $denEntry.Value
+        $repairedEntrances++
         $denEntry.Value.RepairedFrom = $oldKey
         $diagnostic = @($safeZonePlacementDiagnostics | Where-Object { $_.district -eq $zone.Name })[0]
         if ($null -ne $diagnostic) {
@@ -2193,6 +2220,7 @@ function Repair-DisconnectedSafeZoneEntrances {
         $diagnostic.nearestSafeZoneDistance = [Math]::Round($nearestDistance, 3)
         $diagnostic.meetsMinimumSpacing = $nearestDistance -ge $safeZoneMinimumSpacingCells
     }
+    return $repairedEntrances
 }
 
 function Repair-MetroAccessPaths {
@@ -2444,6 +2472,10 @@ function Move-RadiationSourcesToReachableRoadCells {
 }
 
 Move-RadiationSourcesToReachableRoadCells
+if ($radiationSources.Count -gt 0) {
+    $finalRadiationSummary = @($radiationSources | ForEach-Object { "cell=($($_.x),$($_.y)) yield=$($_.loreYieldMegatons)Mt" }) -join '; '
+    Write-Host "[WorldGen][Radiation] Reachable-road placement finalized: $finalRadiationSummary"
+}
 
 # Generate irregular district cells behind the roads.
 $biomeOpacity = [Math]::Max(0, [Math]::Min(255, $BiomeOpacity))
@@ -2785,12 +2817,22 @@ foreach ($source in $radiationSources) {
     $sourceKey = "$($source.x),$($source.y)"
     $landmarkCells[$sourceKey] = @($epicenterLandmark)
 }
+$landmarkNameCounts = @{}
+foreach ($landmarkGroup in $landmarkCells.Values) {
+    foreach ($landmark in $landmarkGroup) {
+        if (-not $landmarkNameCounts.ContainsKey($landmark.Name)) { $landmarkNameCounts[$landmark.Name] = 0 }
+        $landmarkNameCounts[$landmark.Name]++
+    }
+}
+$landmarkSummary = @($landmarkNameCounts.Keys | Sort-Object | ForEach-Object { "$_=$($landmarkNameCounts[$_])" }) -join ', '
+Write-Host "[WorldGen][Landmarks] Placed special locations in $($landmarkCells.Count) cells: $landmarkSummary"
 
 # The world origin and every district receive a named safe-zone den on a reachable local road.
 # Prefer Hospital, Army Base, and Bunker cells so their standalone safe-room variants are reachable.
 $denCells[$originKey] = @{ Name = "The Storm Drain"; District = -1; Difficult = $false }
 $safeRoomLandmarkPriority = @("Hospital", "Army Base", "Bunker")
 $safeZonePlacementDiagnostics = [System.Collections.Generic.List[object]]::new()
+Write-Host "[WorldGen][SafeZones] Selecting one den per district plus the world-origin Storm Drain; minimum spacing=$safeZoneMinimumSpacingCells cells; candidate weights spacing=$safeZoneSpacingWeight, districtCenter=$safeZoneDistrictCenterWeight, landmarkPreference=$safeZoneLandmarkPreferenceWeight."
 $districtPlacementOrder = @(
     for ($districtIndex = 0; $districtIndex -lt $zones.Count; $districtIndex++) {
         $zone = $zones[$districtIndex]
@@ -2842,6 +2884,7 @@ foreach ($districtPlacement in @($districtPlacementOrder | Sort-Object candidate
     $selectedDen = @($selectionPool | Sort-Object @{ Expression = 'score'; Descending = $true }, @{ Expression = 'key'; Descending = $false } | Select-Object -First 1)[0]
     if ($null -eq $selectedDen) { continue }
     $denCells[$selectedDen.key] = @{ Name = Get-DistrictDenName $districtIndex $isDifficultDistrict; District = $districtIndex; Difficult = $isDifficultDistrict }
+    Write-Host "[WorldGen][SafeZones] $($zone.Name): selected $($denCells[$selectedDen.key].Name) at $($selectedDen.key); candidates=$($districtCandidates.Count); nearest den=$([Math]::Round($selectedDen.nearestDenDistance, 2)) cells; spacing requirement met=$($selectedDen.nearestDenDistance -ge $safeZoneMinimumSpacingCells)."
     $safeZonePlacementDiagnostics.Add([pscustomobject]@{
         district = $zone.Name
         x = [int](($selectedDen.key -split ',')[0])
@@ -2893,6 +2936,11 @@ if ($metroEnabled) {
         "56,41",
         "Raven Reach"
     )
+    $metroTrackSegments = 0
+    foreach ($line in $metroLines) { $metroTrackSegments += [Math]::Max(0, $line.RouteCells.Count - 1) }
+    Write-Host "[WorldGen][Metro] Routed $($metroLines.Count) configured A* lines; stations=$($metroStations.Count); track segments=$metroTrackSegments."
+} else {
+    Write-Host '[WorldGen][Metro] Disabled by mapGeneration.metro.enabled.'
 }
 
 # Radiation contamination is rendered as discrete grid cells beneath travel markings.
@@ -3069,7 +3117,9 @@ foreach ($key in $roadCells.Keys) {
     }
 }
 
-Repair-DisconnectedSafeZoneEntrances
+$repairedSafeZoneEntrances = Repair-DisconnectedSafeZoneEntrances
+Write-Host "[WorldGen][Blockades] Candidate exits checked with $blockadeReachabilityChecks reachability tests; placed $($blockadeMarkers.Count) barriers that preserve routes to a highway or world edge."
+Write-Host "[WorldGen][SafeZones] Final safe-zone count=$($denCells.Count); disconnected entrances repaired=$repairedSafeZoneEntrances; configured minimum spacing=$safeZoneMinimumSpacingCells cells."
 Repair-MetroAccessPaths
 
 # Mark remaining dead ends with a question mark.
@@ -3113,6 +3163,17 @@ $populationRoundToNearest = if ($populationSettings.ContainsKey('roundToNearest'
 $population = $populationBase + ($buildingCells.Count * $populationPerBuildingCell)
 if ($populationSeedVariation -gt 0) { $population += $seedMagnitude % $populationSeedVariation }
 if ($populationRoundToNearest -gt 1) { $population = [int]([Math]::Round($population / [double]$populationRoundToNearest) * $populationRoundToNearest) }
+$terrainSummary = @($terrainTypes.Values | Group-Object | Sort-Object Name | ForEach-Object { "$($_.Name)=$($_.Count)" }) -join ', '
+$dangerTierCounts = @{}
+for ($cellY = 0; $cellY -lt $GridCells; $cellY++) {
+    for ($cellX = 0; $cellX -lt $GridCells; $cellX++) {
+        $tier = (Get-CellDangerData $cellX $cellY).tierIndex
+        if (-not $dangerTierCounts.ContainsKey($tier)) { $dangerTierCounts[$tier] = 0 }
+        $dangerTierCounts[$tier]++
+    }
+}
+$dangerSummary = @($dangerTierCounts.Keys | Sort-Object | ForEach-Object { "tier$_=$($dangerTierCounts[$_])" }) -join ', '
+Write-Host "[WorldGen][Environment] Terrain cells: $terrainSummary; building footprints=$($buildingCells.Count); danger enabled=$dangerEnabled with $dangerTierCount tiers ($dangerSummary); population=$population."
 
 $gridPen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(100, 95, 100, 105), 1)
 for ($coordinate = 0; $coordinate -le $width; $coordinate += $CellSize) {
@@ -3282,11 +3343,13 @@ if ($outputDirectory) {
     }
 }
 
+Write-Host "[WorldGen][Export] Writing overview PNG and map JSON; layer export enabled=$([bool]$ExportLayers); destination=$outputDirectory"
 $bitmap.Save($Output, [System.Drawing.Imaging.ImageFormat]::Png)
 $mapDataOutput = Export-MapData
 
 $layerOutputs = @()
 if ($ExportLayers) {
+    Write-Host '[WorldGen][Export] Rendering terrain, radiation, danger, buildings, roads, highways, landmarks, safe zones, metro, districts, grid, labels, and key layers.'
     $layerOutputs += Export-MapLayer "terrain" { param($targetGraphics) Draw-TerrainLayer $targetGraphics } $true
     $layerOutputs += Export-MapLayer "radiation" { param($targetGraphics) Draw-RadiationLayer $targetGraphics }
     $layerOutputs += Export-MapLayer "danger" { param($targetGraphics) Draw-DangerLayer $targetGraphics }
@@ -3340,7 +3403,7 @@ $graphics.Dispose()
 $bitmap.Dispose()
 
 if ($ExportLayers) {
-    Write-Output "Generated $Output ($width x $height); map data: $mapDataOutput; pruned stale source maps/layers: $staleSourceMapCount; exported layers: $($layerOutputs -join ', ')."
+    Write-Output "[WorldGen][Complete] Cells=$($GridCells * $GridCells); population=$population; roads=$($roadCells.Count); highways=$($highwayCells.Count); safeZones=$($denCells.Count); landmarks=$($landmarkCells.Count); metroLines=$($metroLines.Count); roadDensity=$([Math]::Round($roadCells.Count / [double]($GridCells * $GridCells), 4)); image=$Output; data=$mapDataOutput; staleOutputsPruned=$staleSourceMapCount; layers=$($layerOutputs -join ', ')."
 } else {
-    Write-Output "Generated $Output ($width x $height); map data: $mapDataOutput; pruned stale source maps/layers: $staleSourceMapCount; The Storm Drain is at world origin (0, 0); Metro network has $($metroLines.Count) lines and $($metroStations.Count) stations."
+    Write-Output "[WorldGen][Complete] Cells=$($GridCells * $GridCells); population=$population; roads=$($roadCells.Count); highways=$($highwayCells.Count); safeZones=$($denCells.Count); landmarks=$($landmarkCells.Count); metroLines=$($metroLines.Count); roadDensity=$([Math]::Round($roadCells.Count / [double]($GridCells * $GridCells), 4)); image=$Output; data=$mapDataOutput; staleOutputsPruned=$staleSourceMapCount; Storm Drain at origin; metro stations=$($metroStations.Count)."
 }

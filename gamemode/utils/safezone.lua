@@ -4,6 +4,14 @@ ZM_SafeZones = ZM_SafeZones or {}
 
 local SafeZones = ZM_SafeZones
 
+// Entering a den sets this before travel; city entrance cells alone do not holster weapons.
+function SafeZones:IsPlayerInside(target)
+	if not IsValid(target) then return false end
+	local id = SERVER and target.CurrentSafeZoneId or nil
+	if not SERVER then id = target:GetNWString("CurrentSafeZoneId", "") end
+	return type(id) == "string" and id ~= "" and id ~= "NULL"
+end
+
 // Retrieves the complete runtime record for a safe-zone id, or nil when it is unknown.
 function SafeZones:Get(id)
 	return ZM_World:GetSafeZoneById(id)

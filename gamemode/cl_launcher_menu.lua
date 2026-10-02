@@ -339,7 +339,7 @@ function Menu:Render()
         button("BACK", function() self:Back() end)
         local panel = vgui.Create("DPanel", content)
         panel:Dock(TOP)
-        panel:SetTall(math.min(ScrH() - 230, 540))
+        panel:SetTall(640)
         panel.Paint = function() end
         ZM_Options:BuildPanel(panel)
     elseif self.Page == "load" then

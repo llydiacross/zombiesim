@@ -137,6 +137,68 @@ function ZM_Options:BuildPanel(panel)
         cookie.Set("zombiesim_quick_menu_scale", tostring(math.Round(value, 1)))
     end
 
+    for _, setting in ipairs({
+        { label = "Compass height", convar = "zombiesim_compass_height", minimum = 0.55, maximum = 1.5 },
+        { label = "Minimap size", convar = "zombiesim_minimap_size", minimum = 0.7, maximum = 1.75 },
+        {
+            label = "Rain density",
+            convar = "zombiesim_atmosphere_rain_density",
+            minimum = 0.5,
+            maximum = 2,
+            decimals = 1,
+            tooltip = "Adjusts the density of locally rendered rain."
+        },
+        {
+            label = "Puddle opacity",
+            convar = "zombiesim_atmosphere_puddle_opacity",
+            minimum = 0.05,
+            maximum = 0.45,
+            decimals = 2,
+            tooltip = "Lower values let more of the ground show through."
+        },
+        {
+            label = "Puddle amount",
+            convar = "zombiesim_atmosphere_puddle_amount",
+            minimum = 0.5,
+            maximum = 3,
+            decimals = 1,
+            tooltip = "Scales how many puddles form in the rain. Higher values cost more frame time."
+        },
+        {
+            label = "Debris amount",
+            convar = "zombiesim_ambient_debris_amount",
+            minimum = 0,
+            maximum = 3,
+            decimals = 1,
+            tooltip = "Scales ambient paper, bottles, litter and tumbleweeds. 0 disables them; higher values cost more frame time."
+        },
+        {
+            label = "Gore (0 off, 1 reduced, 2 full)",
+            convar = "zombiesim_gore_quality",
+            minimum = 0,
+            maximum = 2,
+            decimals = 0,
+            tooltip = "Controls blood, severed limbs and stump effects. Crawlers still lose their legs when gore is off."
+        }
+    }) do
+        local slider = vgui.Create("DNumSlider", panel)
+        slider:Dock(TOP)
+        slider:DockMargin(4, 0, 4, 4)
+        setSliderLabel(slider, setting.label)
+        slider:SetMin(setting.minimum)
+        slider:SetMax(setting.maximum)
+        slider:SetDecimals(setting.decimals or 2)
+        if setting.tooltip then slider:SetTooltip(setting.tooltip) end
+        slider:SetConVar(setting.convar)
+    end
+
+    local filmGrain = vgui.Create("DCheckBoxLabel", panel)
+    filmGrain:Dock(TOP)
+    filmGrain:DockMargin(4, 4, 4, 8)
+    filmGrain:SetText("Subtle film grain")
+    filmGrain:SetTextColor(ZM_DermaSkin.Palette.text)
+    filmGrain:SetConVar("zombiesim_atmosphere_grain")
+
     if ZM_GetMouseSensitivity then
         local minimumSensitivity, maximumSensitivity = ZM_GetMouseSensitivityRange()
         local sensitivity = vgui.Create("DNumSlider", panel)
@@ -230,6 +292,13 @@ function ZM_Options:BuildPanel(panel)
             displayedPopulationPerZombie = settings.populationPerZombie
         end
     end
+    // Size to the docked children so new options never fall off the bottom of the scroll area.
+    local contentHeight = 8
+    for _, child in ipairs(panel:GetChildren()) do
+        local _, marginTop, _, marginBottom = child:GetDockMargin()
+        contentHeight = contentHeight + child:GetTall() + marginTop + marginBottom
+    end
+    panel:SetTall(contentHeight)
     self:RequestWalkerSettings()
 end
 
@@ -237,15 +306,64 @@ function ZM_Options:Open()
     local frame = openFrame(self, "OPTIONS", 480, 550)
     if frame.OptionsBuilt then return end
     frame.OptionsBuilt = true
-    local panel = vgui.Create("DPanel", frame)
-    panel:Dock(FILL)
-    panel:DockMargin(12, 36, 12, 12)
+    local scroll = vgui.Create("DScrollPanel", frame)
+    scroll:Dock(FILL)
+    scroll:DockMargin(12, 36, 12, 12)
+    local panel = vgui.Create("DPanel", scroll)
+    panel:Dock(TOP)
+    panel:SetTall(640)
     panel.Paint = function() end
     self:BuildPanel(panel)
 end
 
+// Cheat toggles mirror Preview.CheatToggles on the server; the status message reads them in this order.
+local previewCheatToggles = {
+    { key = "god", action = "toggle_god", label = "GOD MODE" },
+    { key = "noclip", action = "toggle_noclip", label = "NOCLIP" },
+    { key = "notarget", action = "toggle_notarget", label = "ZOMBIES IGNORE ME" },
+    { key = "infiniteAmmo", action = "toggle_infinite_ammo", label = "INFINITE AMMO" },
+    { key = "survivalLock", action = "toggle_survival_lock", label = "SURVIVAL LOCK" }
+}
+
+local function addCheatSection(parent, title)
+    local label = vgui.Create("DLabel", parent)
+    label:Dock(TOP)
+    label:DockMargin(0, 8, 0, 4)
+    label:SetTall(18)
+    label:SetFont("DermaDefaultBold")
+    label:SetTextColor(ZM_DermaSkin.Palette.muted)
+    label:SetText(title)
+end
+
+// Lays out buttons in equal-width columns, wrapping into as many rows as needed.
+local function addCheatButtonGrid(parent, columns, entries, onCreate)
+    local rowHeight, gap = 38, 6
+    local rows = math.ceil(#entries / columns)
+    local grid = vgui.Create("DPanel", parent)
+    grid:Dock(TOP)
+    grid:SetTall(rows * rowHeight + (rows - 1) * gap)
+    grid.Paint = function() end
+    local buttons = {}
+    for index, entry in ipairs(entries) do
+        local button = vgui.Create("DButton", grid)
+        button:SetText(entry.label)
+        onCreate(button, entry)
+        buttons[index] = button
+    end
+    grid.PerformLayout = function(_, width)
+        local buttonWidth = math.floor((width - (columns - 1) * gap) / columns)
+        for index, button in ipairs(buttons) do
+            local column = (index - 1) % columns
+            local row = math.floor((index - 1) / columns)
+            button:SetPos(column * (buttonWidth + gap), row * (rowHeight + gap))
+            button:SetSize(buttonWidth, rowHeight)
+        end
+    end
+    return buttons
+end
+
 function ZM_PreviewCheats:Open()
-    local frame = openFrame(self, "CHEATS", 470, 430)
+    local frame = openFrame(self, "CHEATS", 500, 470)
     if frame.CheatsBuilt then return end
     frame.CheatsBuilt = true
 
@@ -261,58 +379,34 @@ function ZM_PreviewCheats:Open()
     status:SetTextColor(ZM_DermaSkin.Palette.muted)
     status:SetContentAlignment(5)
 
-    local god = vgui.Create("DButton", panel)
-    god:Dock(TOP)
-    god:DockMargin(0, 4, 0, 6)
-    god:SetTall(42)
-    god.DoClick = function() self:Request("toggle_god") end
+    addCheatSection(panel, "TOGGLES  (kept across levels)")
+    local toggleButtons = addCheatButtonGrid(panel, 2, previewCheatToggles, function(button, entry)
+        button.DoClick = function() self:Request(entry.action) end
+    end)
 
-    local noclip = vgui.Create("DButton", panel)
-    noclip:Dock(TOP)
-    noclip:DockMargin(0, 0, 0, 6)
-    noclip:SetTall(42)
-    noclip.DoClick = function() self:Request("toggle_noclip") end
+    addCheatSection(panel, "ACTIONS")
+    addCheatButtonGrid(panel, 3, {
+        { action = "refill", label = "RESTORE VITALS" },
+        { action = "grant_level", label = "LEVEL UP" },
+        { action = "kill_nearby", label = "KILL NEARBY ZOMBIES" }
+    }, function(button, entry)
+        button.DoClick = function() self:Request(entry.action) end
+    end)
 
-    local refill = vgui.Create("DButton", panel)
-    refill:Dock(TOP)
-    refill:DockMargin(0, 0, 0, 12)
-    refill:SetTall(36)
-    refill:SetText("RESTORE VITALS")
-    refill.DoClick = function() self:Request("refill") end
-
-    local directions = vgui.Create("DPanel", panel)
-    directions:Dock(FILL)
-    directions.Paint = function() end
-    local directionButtons = {}
-    for _, direction in ipairs({
-        { id = "north", label = "NORTH" },
-        { id = "west", label = "WEST" },
-        { id = "east", label = "EAST" },
-        { id = "south", label = "SOUTH" }
-    }) do
-        local button = vgui.Create("DButton", directions)
-        button:SetText(direction.label)
-        button.DoClick = function() self:Request("move_" .. direction.id) end
-        directionButtons[direction.id] = button
-    end
-    directions.PerformLayout = function(currentPanel, width)
-        local buttonWidth = math.min(130, math.max(96, math.floor(width * 0.32)))
-        local buttonHeight = 34
-        local centerX = math.floor((width - buttonWidth) * 0.5)
-        directionButtons.north:SetPos(centerX, 0)
-        directionButtons.north:SetSize(buttonWidth, buttonHeight)
-        directionButtons.west:SetPos(math.max(0, centerX - buttonWidth - 12), buttonHeight + 12)
-        directionButtons.west:SetSize(buttonWidth, buttonHeight)
-        directionButtons.east:SetPos(math.min(width - buttonWidth, centerX + buttonWidth + 12), buttonHeight + 12)
-        directionButtons.east:SetSize(buttonWidth, buttonHeight)
-        directionButtons.south:SetPos(centerX, (buttonHeight + 12) * 2)
-        directionButtons.south:SetSize(buttonWidth, buttonHeight)
-    end
+    addCheatSection(panel, "WEATHER")
+    addCheatButtonGrid(panel, 3, {
+        { action = "weather_clear", label = "CLEAR" },
+        { action = "weather_rain", label = "RAIN" },
+        { action = "weather_snow", label = "SNOW" }
+    }, function(button, entry)
+        button.DoClick = function() self:Request(entry.action) end
+    end)
 
     frame.Think = function()
         local state = self.State or {}
-        god:SetText(state.god and "GOD MODE: ON" or "GOD MODE: OFF")
-        noclip:SetText(state.noclip and "NOCLIP: ON" or "NOCLIP: OFF")
+        for index, entry in ipairs(previewCheatToggles) do
+            toggleButtons[index]:SetText(entry.label .. (state[entry.key] and ": ON" or ": OFF"))
+        end
         local playerEntity = LocalPlayer()
         local cellX = IsValid(playerEntity) and playerEntity:GetNWInt("CellX", 0) or 0
         local cellY = IsValid(playerEntity) and playerEntity:GetNWInt("CellY", 0) or 0
@@ -323,7 +417,11 @@ end
 net.Receive("ZM.PreviewCheatStatus", function()
     local accepted = net.ReadBool()
     local message = net.ReadString()
-    ZM_PreviewCheats.State = { god = net.ReadBool(), noclip = net.ReadBool() }
+    local state = {}
+    for _, entry in ipairs(previewCheatToggles) do
+        state[entry.key] = net.ReadBool()
+    end
+    ZM_PreviewCheats.State = state
     ZM_PreviewCheats.Message = message
     if not accepted and message ~= "" then
         surface.PlaySound("buttons/button10.wav")

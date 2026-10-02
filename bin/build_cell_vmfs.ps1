@@ -32,6 +32,7 @@ $topologyTemplates = $generatorSettings.cellPlanning.topologyTemplates
 $transportTemplates = $generatorSettings.cellPlanning.transportTemplates
 if (-not $PSBoundParameters.ContainsKey('PruneStaleGenerated')) { $PruneStaleGenerated = $true }
 Import-Module (Join-Path $PSScriptRoot 'carpark_endcaps.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'vmf_source_dependencies.psm1') -Force
 if ($borderEnabled) {
     if (-not $borderSettings.ContainsKey('wallVariationTemplates') -or @($borderSettings.wallVariationTemplates).Count -eq 0) {
         throw 'vmfBuild.border must define at least one wallVariationTemplates entry when borders are enabled.'
@@ -959,6 +960,7 @@ $refreshed = 0
 $skipped = 0
 $pruned = 0
 $safeZoneMapsWritten = 0
+$unchanged = 0
 $safeZoneMapsSkipped = 0
 $prunedStandaloneDenMaps = 0
 $cubemapProbeCount = 0
@@ -1016,9 +1018,14 @@ foreach ($recipe in $recipes) {
 
     $vmf = New-CellVmf $recipe $plan.cellTileGridSize $TileSize $TileZOffset $CellDirectory $TileDirectory $BaseCellTemplate $cubemapAnchors $borderPlacements
     if (-not $WhatIf) {
-        [System.IO.File]::WriteAllText($outputPath, $vmf, [System.Text.UTF8Encoding]::new($false))
+        # Unchanged recipes keep their timestamps so compilers skip them.
+        $vmfChanged = Write-TextFileIfChanged -Path $outputPath -Content $vmf
         if (-not (Test-GeneratedCellVmf $outputPath $expectedInteriorInstanceCount $expectedBorderInstanceCount $transitionGates.Count)) {
             throw "Generated VMF failed border structure validation: $outputPath"
+        }
+        if (-not $vmfChanged) {
+            $unchanged++
+            continue
         }
     }
     $created++
@@ -1036,11 +1043,15 @@ foreach ($safeZoneMap in ($safeZoneSourceMaps.Values | Sort-Object mapFilename))
     }
 
     if (-not $WhatIf) {
-        Copy-Item -LiteralPath $templateVmfPath -Destination $outputVmfPath -Force
+        $denChanged = Copy-FileIfChanged -Source $templateVmfPath -Destination $outputVmfPath
         $templateVmxPath = [System.IO.Path]::ChangeExtension($templateVmfPath, '.vmx')
         if (Test-Path -LiteralPath $templateVmxPath -PathType Leaf) {
             $outputVmxPath = Join-Path $CellDirectory ([System.IO.Path]::ChangeExtension([string]$safeZoneMap.mapFilename, '.vmx'))
-            Copy-Item -LiteralPath $templateVmxPath -Destination $outputVmxPath -Force
+            Copy-FileIfChanged -Source $templateVmxPath -Destination $outputVmxPath | Out-Null
+        }
+        if (-not $denChanged) {
+            $safeZoneMapsSkipped++
+            continue
         }
     }
     $safeZoneMapsWritten++
@@ -1051,4 +1062,4 @@ if ($WhatIf) {
         Write-Output $line
     }
 }
-Write-Output "Cell recipes: $($recipes.Count); cubemap probes: $cubemapProbeCount; written: $created; refreshed generated: $refreshed; skipped existing: $skipped; safe-room entrances: $($safeZoneMaps.Count); reusable safe-room maps: $($safeZoneSourceMaps.Count); maps copied: $safeZoneMapsWritten; maps skipped: $safeZoneMapsSkipped; pruned stale safe-room files: $prunedStandaloneDenMaps; pruned stale generated: $pruned; cleared source items: $clearedItems; output: $CellDirectory"
+Write-Output "Cell recipes: $($recipes.Count); cubemap probes: $cubemapProbeCount; written: $created; unchanged: $unchanged; refreshed generated: $refreshed; skipped existing: $skipped; safe-room entrances: $($safeZoneMaps.Count); reusable safe-room maps: $($safeZoneSourceMaps.Count); maps copied: $safeZoneMapsWritten; maps skipped: $safeZoneMapsSkipped; pruned stale safe-room files: $prunedStandaloneDenMaps; pruned stale generated: $pruned; cleared source items: $clearedItems; output: $CellDirectory"

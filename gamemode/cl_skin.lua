@@ -29,19 +29,21 @@ function ZM_DermaSkin.StyleComboBox(combo)
     return combo
 end
 
-// The stock DNumSlider label is unreadable on the dark skin; draw a full-width label above the slider instead.
+// Keep the stock label's number scratch visible so convar changes still update the thumb.
 function ZM_DermaSkin.LabelSlider(slider, text)
-    slider:SetText("")
+    slider:SetText(text)
     slider:SetTall(52)
-    if IsValid(slider.Label) then slider.Label:SetVisible(false) end
-    local label = vgui.Create("DLabel", slider)
+    local label = slider.Label
+    label:Dock(NODOCK)
+    slider.Slider:Dock(NODOCK)
+    slider.TextArea:Dock(NODOCK)
+    // The skin paints image buttons over their parent label even without a background.
+    slider.Scratch.Paint = function() end
     label:SetFont("DermaDefaultBold")
     label:SetTextColor(palette.text)
     label:SetContentAlignment(4)
-    label:SetText(text)
     slider.ZM_Label = label
     slider.PerformLayout = function(current, width, height)
-        current.Label:SetVisible(false)
         label:SetPos(0, 0)
         label:SetSize(width, 20)
         current.Slider:SetPos(0, 24)

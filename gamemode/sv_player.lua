@@ -1,6 +1,7 @@
 // Server-only Player persistence, network synchronization, stamina, and XP behavior.
 local ply = FindMetaTable("Player")
 local maxPlayerBioLength = 280
+util.AddNetworkString("ZM.HudLevelUp")
 
 local function normalizePlayerBio(bio)
     bio = string.Trim(tostring(bio or ""))
@@ -112,6 +113,7 @@ end
 function ply:SendPlayerData()
     local snapshot = {
         XP = tonumber(self.XP) or 0,
+        ExperiencePerLevel = tonumber(self.ExperiencePerLevel) or 1000,
         Level = tonumber(self.Level) or 1,
         MaxLevel = tonumber(self.MaxLevel) or 300,
         Difficulty = tonumber(self.Difficulty) or 1,
@@ -272,6 +274,7 @@ function ply:ResetForWorldOrigin()
         Mechanics = 0
     }
     self.XP = 0
+    self.ExperiencePerLevel = 1000
     self.Level = 1
     self.MaxLevel = 300
     self.Difficulty = 1
@@ -352,6 +355,7 @@ function ply:FetchPlayerData()
         data.CellY = originY
     end
 
+    self.ExperiencePerLevel = 1000
     self.XP = tonumber(data.XP) or 0
     self.Level = tonumber(data.Level) or 1
     self.MaxLevel = tonumber(data.MaxLevel) or 300
@@ -406,6 +410,7 @@ end
 // Copies progression, logical world cell, health, and stamina to replicated NW values.
 function ply:SetNetworkPlayerData()
     self:SetNWInt("XP", self.XP)
+    self:SetNWInt("ExperiencePerLevel", self.ExperiencePerLevel or 1000)
     self:SetNWInt("Level", self.Level)
     self:SetNWInt("MaxLevel", self.MaxLevel)
     self:SetNWInt("Difficulty", self.Difficulty)
@@ -536,6 +541,8 @@ hook.Add("Think", "ZM.RadiationDamage", function()
 
         local damagePerTick = highIntensity and 2 or 1
         ply.RadiationNextDamageAt = CurTime() + damageInterval
+        // The preview survival-lock cheat keeps exposure tracking but suppresses the damage.
+        if ply.ZM_CheatSurvivalLock then continue end
         local healthFloor = ply:GetRadiationHealthFloor()
         local appliedDamage = math.min(damagePerTick, math.max(ply:Health() - healthFloor, 0))
         if appliedDamage <= 0 then continue end
@@ -555,9 +562,15 @@ function ply:AddXP(amount)
     if ZM_ImplantService then
         amount = ZM_ImplantService:ScaleXP(self, amount)
     end
+    local previousLevel = self.Level
     self.XP = self.XP + amount
     while( self:CanLevelUp() ) do
         self:LevelUp()
+    end
+    if self.Level > previousLevel and IsValid(self) and self:IsPlayer() then
+        net.Start("ZM.HudLevelUp")
+            net.WriteUInt(math.Clamp(self.Level, 0, 65535), 16)
+        net.Send(self)
     end
 end
 

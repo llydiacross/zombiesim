@@ -15,7 +15,7 @@ if ([string]::IsNullOrWhiteSpace($GarrysModRoot)) {
 }
 
 if ($Console) {
-    $logPath = Join-Path $GarrysModRoot 'console.log'
+    $logPath = Join-Path $GarrysModRoot 'garrysmod\console.log'
 } else {
     $logDirectory = Join-Path $GarrysModRoot 'garrysmod\logs'
     $logPath = Get-ChildItem -LiteralPath $logDirectory -Filter 'L-*.log' -File |

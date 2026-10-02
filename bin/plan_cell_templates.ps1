@@ -464,6 +464,9 @@ function Get-SafeZoneEntrancePlan {
     if (-not $templateFiles.ContainsKey($template.ToLowerInvariant())) {
         throw "Safe-zone entrance template does not exist: $template"
     }
+    if (@(Get-CellLandmarks $Cell) -contains $epicenterLandmarkName) {
+        throw "No valid safe-zone entrance placement at $($Cell.x),$($Cell.y): the exclusive $epicenterLandmarkName footprint covers every entrance slot."
+    }
     $roads = @(Get-CellConnections $Cell)
     if ($roads.Count -eq 0) {
         throw "Safe zone at $($Cell.x),$($Cell.y) has no adjacent road for its entrance."
@@ -987,7 +990,7 @@ function Get-CarparkCoveragePlan {
         carparksPerRegion = $coverageCarparksPerRegion
         minimumCellSeparation = $minimumCellSeparation
         eligibleCells = @($eligibleCells)
-        selectedCells = $selectedCells
+        selectedCells = @($selectedCells)
         selectedCoordinates = $selectedCoordinates
     }
 }
@@ -1030,7 +1033,7 @@ function Get-RotatedCardinalDirection {
     $directions = @('N', 'E', 'S', 'W')
     $directionIndex = [array]::IndexOf($directions, $Direction)
     if ($directionIndex -lt 0 -or ($RotationYaw % 90) -ne 0) { return $null }
-    return $directions[($directionIndex + (($RotationYaw / 90) % 4)) % 4]
+    return $directions[($directionIndex - (($RotationYaw / 90) % 4) + 4) % 4]
 }
 
 function Get-DirectionalAdjacentCoordinate {
@@ -1077,12 +1080,6 @@ function Get-DirectionToCoordinate {
     if ($deltaX -eq 0 -and $deltaY -eq -1) { return 'N' }
     if ($deltaX -eq 0 -and $deltaY -eq 1) { return 'S' }
     return $null
-}
-
-function Get-BuildingEntranceRotation {
-    param([string]$EntranceDirection)
-
-    return @{ N = 0; E = 90; S = 180; W = 270 }[$EntranceDirection]
 }
 
 function Test-RoadPlacementFacesCoordinate {
@@ -1393,9 +1390,9 @@ function Get-MarkedRoadConnectionCandidates {
                     $rotatedTileX = $localTileX
                     $rotatedTileY = $localTileY
                     switch ($rotationYaw) {
-                        90 { $rotatedTileX = $FootprintHeight - 1 - $localTileY; $rotatedTileY = $localTileX }
+                        90 { $rotatedTileX = $localTileY; $rotatedTileY = $FootprintWidth - 1 - $localTileX }
                         180 { $rotatedTileX = $FootprintWidth - 1 - $localTileX; $rotatedTileY = $FootprintHeight - 1 - $localTileY }
-                        270 { $rotatedTileX = $localTileY; $rotatedTileY = $FootprintWidth - 1 - $localTileX }
+                        270 { $rotatedTileX = $FootprintHeight - 1 - $localTileY; $rotatedTileY = $localTileX }
                     }
                     $frontageDirection = Get-RotatedCardinalDirection $localDirection $rotationYaw
                     $footprintCoordinate = [pscustomobject]@{ tileX = [int]$anchor.tileX + $rotatedTileX; tileY = [int]$anchor.tileY + $rotatedTileY }
@@ -1421,20 +1418,12 @@ function Get-MarkedRoadConnectionCandidates {
                     }
                 }
                 if ($targetKeys.Count -ne $junctionMarkers.Count) { continue }
-                    $candidateRotationYaw = $rotationYaw
-                    $templateName = [System.IO.Path]::GetFileName($Template)
-                    $touchesGridBorder = [int]$anchor.tileX -eq 0 -or [int]$anchor.tileY -eq 0 -or
-                        ([int]$anchor.tileX + $FootprintWidth) -eq $TileGridSize -or
-                        ([int]$anchor.tileY + $FootprintHeight) -eq $TileGridSize
-                    if ($templateName -eq 'tile_commercial_2a_2x.vmf' -and $touchesGridBorder) {
-                        $candidateRotationYaw = Get-TemplateRoadConnectionRotation $Template $frontageDirection
-                    }
-                    $candidates.Add([pscustomobject]@{
+                $candidates.Add([pscustomobject]@{
                     tileX = [int]$anchor.tileX
                     tileY = [int]$anchor.tileY
                     centerDistance = [double]$anchor.centerDistance
                     frontageDirection = Get-RotatedCardinalDirection $localConnectionDirection $rotationYaw
-                        rotationYaw = $candidateRotationYaw
+                    rotationYaw = $rotationYaw
                     roadConnections = @($roadConnections)
                 })
             }
@@ -1455,7 +1444,7 @@ function Get-MarkedRoadConnectionCandidates {
                     $roadAxisIsVertical = ([int]$roadPlacement.rotationYaw % 180) -eq 0
                     if (($roadAxisIsVertical -and $frontageDirection -in @('N', 'S')) -or (-not $roadAxisIsVertical -and $frontageDirection -in @('E', 'W'))) { continue }
                 }
-                $rotationYaw = ((Get-BuildingEntranceRotation $frontageDirection) - (Get-BuildingEntranceRotation $localConnectionDirection) + 360) % 360
+                $rotationYaw = Get-TemplateRoadConnectionRotation $Template $frontageDirection
                 if ((Get-RotatedCardinalDirection $localConnectionDirection $rotationYaw) -ne $frontageDirection) { continue }
                 $candidates.Add([pscustomobject]@{
                     tileX = [int]$anchor.tileX
@@ -2039,7 +2028,7 @@ function Get-CellTilePlacements {
     $hasNamedLandmark = @($Landmarks | Where-Object { $_ -ne 'none' }).Count -gt 0
     $carparkTemplateSet = Get-CarparkTemplateSet $CarparkTemplates
     $carparkRoll = Get-PlacementVariationRoll $PlacementSeed
-    if ($Topology -eq 'road-straight' -and $Orientation -in @('vertical', 'horizontal') -and $TileGridSize -ge 5 -and -not $hasNamedLandmark -and $null -ne $carparkTemplateSet -and ($ForceCarpark -or $carparkRoll -lt [int]$plannerSettings.carparks.roadStraightChancePercent)) {
+    if ($Topology -eq 'road-straight' -and $Orientation -in @('vertical', 'horizontal') -and $TileGridSize -ge 5 -and -not $hasNamedLandmark -and $null -eq $SafeZoneEntrance -and $null -ne $carparkTemplateSet -and ($ForceCarpark -or $carparkRoll -lt [int]$plannerSettings.carparks.roadStraightChancePercent)) {
         $branchDirections = if ($Orientation -eq 'vertical') { @('E', 'W') } else { @('N', 'S') }
         $branchDirection = $branchDirections[[Math]::Abs($PlacementSeed) % $branchDirections.Count]
         $entranceCoordinate = Get-DirectionalAdjacentCoordinate $branchDirection $center
@@ -2108,7 +2097,7 @@ function Get-CellTilePlacements {
         }
     }
 
-    if ($ForceCarpark -and $Topology -in @('road-tjunction', 'road-crossjunction') -and $TileGridSize -ge 5 -and -not $hasNamedLandmark -and $null -ne $carparkTemplateSet) {
+    if ($ForceCarpark -and $Topology -in @('road-tjunction', 'road-crossjunction') -and $TileGridSize -ge 5 -and -not $hasNamedLandmark -and $null -eq $SafeZoneEntrance -and $null -ne $carparkTemplateSet) {
         $carparkAccess = Get-JunctionCarparkAccess $placements $TileGridSize
         if ($null -eq $carparkAccess) { throw "No sidecar carpark space is available for forced junction coverage at $($Cell.x),$($Cell.y)." }
         $carparkYaw = Get-CarparkAssemblyRotation $carparkAccess.branchDirection
@@ -2779,7 +2768,7 @@ foreach ($recipeGroup in @($planCells | Group-Object baseCellTemplateFilename | 
         $mapCell = @($map.cells | Where-Object { $_.x -eq $variantCell.x -and $_.y -eq $variantCell.y } | Select-Object -First 1)[0]
         if ($null -eq $mapCell) { throw "Map cell was not found for variant at $($variantCell.x),$($variantCell.y)" }
         $variantTerrainTemplate = Get-TerrainTemplate $mapCell.environment.terrain
-        $variantCell.tilePlacements = @(Get-CellTilePlacements $mapCell $variantTerrainTemplate $variantCell.buildingTemplates $variantCell.landmarkTemplate $variantCell.landmarks $variantCell.environmentProfile $carparkTemplates $decorationTemplates $variantCell.placementSeed $variantCell.buildingDensityTier $variantCell.transportFeature $variantCell.topology $variantCell.orientation $CellTileSize $templateFiles ([bool]$variantCell.forceCarpark))
+        $variantCell.tilePlacements = @(Get-CellTilePlacements $mapCell $variantTerrainTemplate $variantCell.buildingTemplates $variantCell.landmarkTemplate $variantCell.landmarks $variantCell.environmentProfile $carparkTemplates $decorationTemplates $variantCell.placementSeed $variantCell.buildingDensityTier $variantCell.transportFeature $variantCell.topology $variantCell.orientation $CellTileSize $templateFiles ([bool]$variantCell.forceCarpark) $variantCell.safeZoneEntrance)
     }
 }
 

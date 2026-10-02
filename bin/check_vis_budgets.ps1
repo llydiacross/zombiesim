@@ -17,6 +17,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'vmf_source_dependencies.psm1') -Force
 
 function Get-BudgetValue {
     param(
@@ -179,10 +180,10 @@ if ([string]::IsNullOrWhiteSpace($ReportPath)) {
     $ReportPath = Join-Path $BuildDirectory 'vis-budget-report.json'
 }
 if ($MaxPortalClusters -lt 1) {
-    $MaxPortalClusters = Get-BudgetValue $worldGenerationProfile.Settings 'maxPortalClusters' 500
+    $MaxPortalClusters = Get-BudgetValue $worldGenerationProfile.Settings 'maxPortalClusters' 750
 }
 if ($MaxPortals -lt 1) {
-    $MaxPortals = Get-BudgetValue $worldGenerationProfile.Settings 'maxPortals' 900
+    $MaxPortals = Get-BudgetValue $worldGenerationProfile.Settings 'maxPortals' 1350
 }
 if ($MaxPortalClusters -lt 1 -or $MaxPortals -lt 1) {
     throw 'Visibility budgets must be greater than zero.'
@@ -217,7 +218,7 @@ if ($RefreshPortalData) {
         $portalMetrics = Get-PortalMetrics $portalPath
         $needsRefresh = $ForcePortalData -or $null -eq $portalMetrics -or -not (Test-Path -LiteralPath $buildBspPath -PathType Leaf)
         if (-not $needsRefresh -and (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
-            $sourceWriteTime = (Get-Item -LiteralPath $sourcePath).LastWriteTimeUtc
+            $sourceWriteTime = Get-VmfSourceWriteTimeUtc $sourcePath
             $needsRefresh = $sourceWriteTime -gt (Get-Item -LiteralPath $portalPath).LastWriteTimeUtc -or $sourceWriteTime -gt (Get-Item -LiteralPath $buildBspPath).LastWriteTimeUtc
         }
         if ($needsRefresh) { $portalRefreshVmfFiles.Add($vmfFilename) }

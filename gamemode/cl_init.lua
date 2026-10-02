@@ -8,13 +8,17 @@ include( "cl_thirdpersoncamera.lua" )
 include( "cl_transitions.lua" )
 include( "cl_hud.lua" )
 include( "cl_crosshair.lua" )
+include( "cl_weapon_effects.lua" )
 include( "cl_atmosphere.lua" )
 include( "cl_preview.lua" )
 include( "cl_dependency_prompts.lua" )
 include( "cl_launcher_menu.lua" )
 include( "cl_launcher_scene.lua" )
 include( "cl_pause_log.lua" )
+include( "cl_dev_profiler.lua" )
 include( "cl_scoreboard.lua" )
+include( "cl_foliage.lua" )
+include( "cl_gore.lua" )
 include( "cl_world_map.lua" )
 include( "cl_map_batch.lua" )
 include( "cl_quick_menu.lua" )
@@ -29,11 +33,14 @@ include( "cl_loot_popup.lua" )
 // The server has updated NWInts; mirror them into the local Player extension table.
 net.Receive("ZM.RefreshPlayerAttributes", function(len, ply)
     LocalPlayer():SetPlayerAttributes()
+    ZM_Loading:Step("Synced survivor attributes")
 end)
 
 // The server sends an authoritative core-data snapshot with each player-data refresh.
 net.Receive("ZM.RefreshPlayerData", function()
-    LocalPlayer():SetPlayerData(util.JSONToTable(net.ReadString()) or {})
+    local snapshot = util.JSONToTable(net.ReadString()) or {}
+    LocalPlayer():SetPlayerData(snapshot)
+    ZM_Loading:Step("Synced survivor data")
     if ZM_Atmosphere and ZM_Atmosphere.ApplyPlayerProfile then
         ZM_Atmosphere:ApplyPlayerProfile("player data refresh")
     end

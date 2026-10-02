@@ -18,8 +18,105 @@ local function sameMap(left, right)
     return transitionMapName(left) ~= "" and transitionMapName(left) == transitionMapName(right)
 end
 
+local function getReturnKey()
+    return "zombiesim_safezone_return_" .. tostring(ZM_World and ZM_World.ActiveProfile or "city")
+end
+
+// The zn_safezone_door marker is the authored doorstep in front of the door; the visible door is the nearest
+// prop_dynamic within this reach. Tunnel exits have no door prop.
+Doors.DoorPropSearchRadius = 128
+// Den exit places the player this far out from the doorstep, so the exit walk carries them out of the use radius.
+Doors.ReturnStepOut = 16
+// Minimum distance from the door plane to the return point; the player hull is 32 units wide, so this leaves a gap.
+Doors.ReturnDoorClearance = 48
+
+function Doors:FindDoorProp(door)
+    local origin = door:GetPos()
+    local nearest
+    local nearestDistance
+    for _, entity in ipairs(ents.FindInSphere(origin, self.DoorPropSearchRadius)) do
+        if entity ~= door and IsValid(entity) and string.StartWith(entity:GetClass(), "prop_dynamic") and entity.WorldSpaceAABB then
+            local mins, maxs = entity:WorldSpaceAABB()
+            local size = maxs - mins
+            local distance = origin:DistToSqr((mins + maxs) * 0.5)
+            if math.max(size.x, size.y) >= 8 and (nearestDistance == nil or distance < nearestDistance) then
+                nearest = entity
+                nearestDistance = distance
+            end
+        end
+    end
+    return nearest
+end
+
+// The point a door transition faces: the door prop's centre (its origin is off-centre), else the marker.
+function Doors:GetDoorTarget(door)
+    local prop = self:FindDoorProp(door)
+    if prop then
+        local mins, maxs = prop:WorldSpaceAABB()
+        return (mins + maxs) * 0.5
+    end
+    return door:GetPos()
+end
+
+// A door prop is a thin slab: its thin horizontal axis is the doorway normal, pointing toward the doorstep marker
+// (or toward the player when the marker sits in the door plane). The return point keeps the marker's position
+// along the door but is pushed at least ReturnDoorClearance out from the plane so the hull never overlaps the door.
+// Without a prop, outward is from the marker toward the player.
+local function doorwayReturnPoint(door, playerPosition)
+    local doorstep = door:GetPos()
+    local prop = Doors:FindDoorProp(door)
+    local outward
+    if prop then
+        local mins, maxs = prop:WorldSpaceAABB()
+        local size = maxs - mins
+        local centre = (mins + maxs) * 0.5
+        outward = size.x <= size.y and Vector(1, 0, 0) or Vector(0, 1, 0)
+        local doorstepOffset = (doorstep - centre):Dot(outward)
+        local sideOffset = math.abs(doorstepOffset) >= 4 and doorstepOffset or (playerPosition - centre):Dot(outward)
+        if sideOffset < 0 then
+            outward = -outward
+        end
+        local planeDistance = math.max((doorstep - centre):Dot(outward) + Doors.ReturnStepOut, Doors.ReturnDoorClearance)
+        local position = doorstep + outward * (planeDistance - (doorstep - centre):Dot(outward))
+        return position, outward:Angle().y
+    end
+    outward = playerPosition - doorstep
+    outward.z = 0
+    if outward:LengthSqr() < 1 then
+        return nil
+    end
+    outward:Normalize()
+    local position = doorstep + outward * Doors.ReturnStepOut
+    return position, outward:Angle().y
+end
+
+// Remembers the spot outside the used city door, facing away from it, so den exit returns the player there.
+function Doors:RecordReturnPoint(playerEntity, door, cityMap)
+    if not IsValid(door) then
+        return
+    end
+    local position, yaw = doorwayReturnPoint(door, playerEntity:GetPos())
+    if not position then
+        return
+    end
+    playerEntity:SetPData(getReturnKey(), util.TableToJSON({
+        map = transitionMapName(cityMap),
+        position = { position.x, position.y, position.z },
+        yaw = yaw
+    }, false))
+end
+
+function Doors:GetReturnPoint(playerEntity, cityMap)
+    local record = util.JSONToTable(playerEntity:GetPData(getReturnKey(), "") or "")
+    if type(record) ~= "table" or not sameMap(record.map, cityMap) or tonumber(record.yaw) == nil
+        or type(record.position) ~= "table" then
+        return nil
+    end
+    return record
+end
+
 function Doors:GetDoorDetails(entity)
-    if not IsValid(entity) or entity:GetClass() ~= "zn_safezone_door" then
+    if not IsValid(entity) or entity:GetClass() ~= "zn_safezone_door" or entity.ZM_RemovedInstanceCopy then
         return nil
     end
 
@@ -54,23 +151,36 @@ function Doors:RemoveUntransformedInstanceCopies()
             end
         end
         if transformed then
-            for _, entity in ipairs(raw) do entity:Remove() end
+            // Entity:Remove is deferred to the end of the frame, so flag the copies for callers in this frame.
+            for _, entity in ipairs(raw) do
+                entity.ZM_RemovedInstanceCopy = true
+                entity:Remove()
+            end
         end
     end
 end
 
+// Door markers leave the client PVS, so their positions and roles are also published as Global2 values
+// (ZMSafeZoneDoor_<index>, ZMSafeZoneDoorRole_<index>, count in ZMSafeZoneDoorCount) for always-visible map markers.
 function Doors:InitializeDoors()
     self:RemoveUntransformedInstanceCopies()
+    local published = 0
     for _, entity in ipairs(ents.FindByClass("zn_safezone_door")) do
         local role, radius = self:GetDoorDetails(entity)
-        if role then
+        if entity.ZM_RemovedInstanceCopy then
+            // Template-local copy pending removal this frame.
+        elseif role then
             entity:SetNWBool("ZMSafeZoneDoor", true)
             entity:SetNWString("ZMSafeZoneDoorRole", role)
             entity:SetNWFloat("ZMSafeZoneDoorRadius", radius)
+            published = published + 1
+            SetGlobal2Vector("ZMSafeZoneDoor_" .. published, entity:GetPos())
+            SetGlobal2String("ZMSafeZoneDoorRole_" .. published, role)
         else
             ErrorNoHalt("[ZombieSim] Ignoring zn_safezone_door " .. entity:EntIndex() .. " with an invalid role or use_radius.\n")
         end
     end
+    SetGlobal2Int("ZMSafeZoneDoorCount", published)
 end
 
 function Doors:FindNearbyDoor(playerEntity)
@@ -117,12 +227,30 @@ function Doors:CancelTransition(playerEntity, previousSafeZoneId, message, previ
             return false
         end
     end
-    self:Notify(playerEntity, message)
+    if message then
+        self:Notify(playerEntity, message)
+    end
     return false
 end
 
-function Doors:StartMapTransition(playerEntity, destination, previousSafeZoneId, previousWorldX, previousWorldY)
-    local queued = GAMEMODE:EnsurePlayerWorldMap(playerEntity)
+function Doors:StartMapTransition(playerEntity, destination, previousSafeZoneId, previousWorldX, previousWorldY, door)
+    local facingYaw
+    if IsValid(door) then
+        local offset = self:GetDoorTarget(door) - playerEntity:GetPos()
+        offset.z = 0
+        if offset:LengthSqr() > 1 then
+            facingYaw = offset:Angle().y
+        end
+    end
+    local queued = GAMEMODE:EnsurePlayerWorldMap(playerEntity, nil, {
+        cinematic = true,
+        yaw = facingYaw,
+        // Leaving a den says goodbye; entering one keeps the standard loading title.
+        loadingTitle = previousSafeZoneId ~= nil and "GOODBYE" or nil,
+        onCancel = function(cancelledPlayer)
+            self:CancelTransition(cancelledPlayer, previousSafeZoneId, nil, previousWorldX, previousWorldY)
+        end
+    })
     if queued then
         return true
     end
@@ -135,7 +263,7 @@ function Doors:StartMapTransition(playerEntity, destination, previousSafeZoneId,
     return self:CancelTransition(playerEntity, previousSafeZoneId, "Could not queue the safe-zone transition.", previousWorldX, previousWorldY)
 end
 
-function Doors:Enter(playerEntity)
+function Doors:Enter(playerEntity, door)
     if type(playerEntity.CurrentSafeZoneId) == "string" and playerEntity.CurrentSafeZoneId ~= "" then
         self:Notify(playerEntity, "You are already inside a safe zone.")
         return false
@@ -181,10 +309,11 @@ function Doors:Enter(playerEntity)
         ErrorNoHalt("[ZombieSim] Could not persist safe-zone entry: " .. tostring(saveError) .. "\n")
         return false
     end
-    return self:StartMapTransition(playerEntity, destination, nil)
+    self:RecordReturnPoint(playerEntity, door, cityMap)
+    return self:StartMapTransition(playerEntity, destination, nil, nil, nil, door)
 end
 
-function Doors:Exit(playerEntity)
+function Doors:Exit(playerEntity, door)
     local safeZoneId = playerEntity.CurrentSafeZoneId
     if type(safeZoneId) ~= "string" or safeZoneId == "" then
         self:Notify(playerEntity, "You are not inside a safe zone.")
@@ -210,9 +339,13 @@ function Doors:Exit(playerEntity)
         return false
     end
 
-    local pending, pendingError = Transitions:SetPendingEntryRecord(playerEntity, {
-        anchorClass = "zn_safezone_arrival"
-    })
+    local exitEntry = { anchorClass = "zn_safezone_arrival" }
+    local returnPoint = self:GetReturnPoint(playerEntity, destination)
+    if returnPoint then
+        exitEntry.position = returnPoint.position
+        exitEntry.yaw = returnPoint.yaw
+    end
+    local pending, pendingError = Transitions:SetPendingEntryRecord(playerEntity, exitEntry)
     if not pending then
         self:Notify(playerEntity, "Could not prepare the safe-zone exit.")
         ErrorNoHalt("[ZombieSim] Could not save pending safe-zone exit: " .. tostring(pendingError) .. "\n")
@@ -234,7 +367,7 @@ function Doors:Exit(playerEntity)
         return false
     end
     return self:StartMapTransition(playerEntity, destination, safeZoneId,
-        movedCell and currentX or nil, movedCell and currentY or nil)
+        movedCell and currentX or nil, movedCell and currentY or nil, door)
 end
 
 function Doors:TryUseDoor(playerEntity, entity)
@@ -259,9 +392,9 @@ function Doors:TryUseDoor(playerEntity, entity)
     end
 
     if role == "enter" then
-        return self:Enter(playerEntity)
+        return self:Enter(playerEntity, entity)
     end
-    return self:Exit(playerEntity)
+    return self:Exit(playerEntity, entity)
 end
 
 hook.Add("InitPostEntity", "ZM.InitializeSafeZoneDoors", function()

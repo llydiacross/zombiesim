@@ -772,6 +772,39 @@ function ZM_DeleteLootCells(profile)
     return runQuery("DELETE FROM loot_cells WHERE profile = " .. sql.SQLStr(profile))
 end
 
+// Harvest cooldowns are shared per world profile and logical cell, and survive server restarts.
+function ZM_CreateFoliageTables()
+    return runQuery("CREATE TABLE IF NOT EXISTS foliage_harvests (profile TEXT NOT NULL, cellId INTEGER NOT NULL, nodeKey TEXT NOT NULL, availableAt INTEGER NOT NULL, PRIMARY KEY (profile, cellId, nodeKey))")
+end
+
+function ZM_GetFoliageHarvests(profile, cellId)
+    profile = getPlayerDataProfile(profile)
+    if not profile then
+        return nil, "Invalid foliage profile"
+    end
+    local result = sql.Query("SELECT nodeKey, availableAt FROM foliage_harvests WHERE profile = " .. sql.SQLStr(profile) .. " AND cellId = " .. integerValue(cellId) .. " ORDER BY nodeKey")
+    if result == false then
+        return nil, sql.LastError() or "Could not read foliage harvests"
+    end
+    return result or {}
+end
+
+function ZM_SetFoliageHarvest(profile, cellId, nodeKey, availableAt)
+    profile = getPlayerDataProfile(profile)
+    if not profile or type(nodeKey) ~= "string" or nodeKey == "" then
+        return false, "Invalid foliage harvest identity"
+    end
+    return runQuery("INSERT OR REPLACE INTO foliage_harvests (profile, cellId, nodeKey, availableAt) VALUES (" .. sql.SQLStr(profile) .. ", " .. integerValue(cellId) .. ", " .. sql.SQLStr(nodeKey) .. ", " .. integerValue(availableAt) .. ")")
+end
+
+function ZM_DeleteFoliageHarvest(profile, cellId, nodeKey)
+    profile = getPlayerDataProfile(profile)
+    if not profile or type(nodeKey) ~= "string" or nodeKey == "" then
+        return false, "Invalid foliage harvest identity"
+    end
+    return runQuery("DELETE FROM foliage_harvests WHERE profile = " .. sql.SQLStr(profile) .. " AND cellId = " .. integerValue(cellId) .. " AND nodeKey = " .. sql.SQLStr(nodeKey))
+end
+
 // Replaces one profile-scoped attribute row and advances its revision.
 function ZM_SetPlayerAttributes(steamid, profile, attributes)
     profile = getPlayerDataProfile(profile)

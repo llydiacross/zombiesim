@@ -248,6 +248,20 @@
       "value": 4,
       "maxStack": 20
     },
+    "itemWood": {
+      "name": "Wood",
+      "entityClass": "generic",
+      "value": 0,
+      "maxStack": 20,
+      "lootCategory": "materials"
+    },
+    "itemBerries": {
+      "name": "Berries",
+      "entityClass": "generic",
+      "value": 0,
+      "maxStack": 20,
+      "lootCategory": "materials"
+    },
     "itemCloth": {
       "name": "Cloth",
       "entityClass": "generic",

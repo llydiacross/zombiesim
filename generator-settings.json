@@ -116,9 +116,10 @@
   "compilation": {
     "activeProfile": "stock-gmod",
     "progressRefreshMilliseconds": 1000,
+    "maxParallelProcesses": 4,
     "visibilityBudget": {
-      "maxPortalClusters": 500,
-      "maxPortals": 900
+      "maxPortalClusters": 750,
+      "maxPortals": 1350
     },
     "stageTimeoutSeconds": {
       "vbsp": 300,
@@ -126,6 +127,16 @@
       "vrad": 1800
     },
     "deferredGraceSeconds": 300,
+    "stagePresets": {
+      "fast": {
+        "vvis": ["-game", "{gameDirectory}", "-fast", "{mapBsp}"],
+        "vrad": ["-game", "{gameDirectory}", "-fast", "{mapBsp}"]
+      },
+      "final": {
+        "vvis": ["-game", "{gameDirectory}", "{mapBsp}"],
+        "vrad": ["-game", "{gameDirectory}", "-final", "-staticproplighting", "-staticproppolys", "{mapBsp}"]
+      }
+    },
     "profiles": {
       "stock-gmod": {
         "toolDirectory": "",

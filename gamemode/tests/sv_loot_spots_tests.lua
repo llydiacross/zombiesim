@@ -92,7 +92,114 @@ test("semantic_container_rules_limit_loot_to_intended_families", function(check)
         check(item and (item.food or item.medical or item.lootCategory == "medical" or item.lootCategory == "materials"), "ordinary crates exclude weapons, cash, and implants")
     end
 
-    check(ZM_StaticData:GetEntityLootRule("prop_physics", "models/props_junk/cardboard_box004a.mdl") == nil, "an unsupported generic prop does not fall through to loot")
+    check(ZM_StaticData:GetEntityLootRule("prop_physics", "models/props_junk/trafficcone001a.mdl") == nil, "an unsupported generic prop does not fall through to loot")
+end)
+
+test("ragdoll_rules_match_bodies_only", function(check)
+    local civilian = ZM_StaticData:GetEntityLootRule("prop_ragdoll", "models/humans/group01/male_01.mdl")
+    check(civilian ~= nil and #civilian.entries > 0, "a civilian body has loot")
+    check(civilian and civilian.lootGroups[1] == "lootBodyCivilian", "civilian bodies use the civilian body group")
+    local rebel = ZM_StaticData:GetEntityLootRule("prop_ragdoll", "models/humans/group03/male_01.mdl")
+    local hasWeaponOrAmmo = false
+    for _, entry in ipairs(rebel and rebel.entries or {}) do
+        local item = ZM_StaticData:GetItem(entry.item)
+        if item and (item.lootCategory == "weapons" or item.lootCategory == "ammo") then
+            hasWeaponOrAmmo = true
+        end
+    end
+    check(hasWeaponOrAmmo, "rebel bodies favour weapons and ammunition")
+    check(ZM_StaticData:GetEntityLootRule("prop_physics", "models/humans/group01/male_01.mdl") == nil, "a body rule does not match physics props")
+    check(ZM_StaticData:GetEntityLootRule("prop_ragdoll", "models/not_a_body.mdl") == nil, "unlisted ragdolls are not lootable")
+end)
+
+test("spot_keys_cover_bodies_but_never_enemy_corpses", function(check)
+    local body = { ZM_LootSpotKey = "b1_07", MapCreationID = function() return -1 end }
+    check(Spots.GetSpotKey(body) == "b1_07", "a fallen body uses its deterministic key")
+    local corpse = { ZM_EnemyCorpse = true, MapCreationID = function() return 42 end }
+    check(Spots.GetSpotKey(corpse) == nil, "an enemy corpse is never a generic candidate")
+    local runtime = { MapCreationID = function() return -1 end }
+    check(Spots.GetSpotKey(runtime) == nil, "other runtime props are never spots")
+    check(Spots.GetSpotKey({ MapCreationID = function() return 12 end }) == "m12", "map props keep their map key")
+end)
+
+local function targetingPlayer(aimed)
+    local ply = fakePlayer(Vector(0, 0, 0))
+    ply.GetLevelAimTrace = function() return { Entity = aimed } end
+    return ply
+end
+
+local function withTargeting(nearby, obstructed, body)
+    local Targeting = ZM_LootTargeting
+    local findNearby, isObstructed = Targeting.FindNearby, Targeting.IsObstructed
+    Targeting.FindNearby = function() return nearby end
+    Targeting.IsObstructed = function(_, entity) return obstructed[entity] == true end
+    local ok, problem = pcall(body)
+    Targeting.FindNearby, Targeting.IsObstructed = findNearby, isObstructed
+    if not ok then
+        error(problem, 0)
+    end
+end
+
+test("targeting_prefers_the_aimed_spot_and_reports_why_it_cannot_be_searched", function(check)
+    local Targeting = ZM_LootTargeting
+    local near = fakeEntity(Vector(40, 0, 0))
+    local aimed = fakeEntity(Vector(90, 0, 0))
+    local far = fakeEntity(Vector(400, 0, 0))
+    local states = { [near] = "available", [aimed] = "declined", [far] = "available" }
+    local stateOf = function(entity) return states[entity] end
+    withTargeting({ near, aimed, far }, {}, function()
+        local chosen = Targeting.Select(targetingPlayer(aimed), stateOf)
+        check(chosen and chosen.entity == aimed and chosen.aimed and not chosen.reason, "an aimed spot in range beats the nearest one")
+        chosen = Targeting.Select(targetingPlayer(nil), stateOf)
+        check(chosen and chosen.entity == near and not chosen.aimed, "without an aimed spot the nearest searchable spot is used")
+        states[near] = "looted"
+        chosen = Targeting.Select(targetingPlayer(far), stateOf)
+        check(chosen and chosen.entity == aimed and not chosen.reason, "an unusable aimed spot falls back to a searchable one in range")
+        states[aimed] = "looted"
+        chosen = Targeting.Select(targetingPlayer(far), stateOf)
+        check(chosen and chosen.entity == far and chosen.reason == "far", "an aimed spot out of range reports far")
+        chosen = Targeting.Select(targetingPlayer(aimed), stateOf)
+        check(chosen and chosen.reason == "empty", "an aimed looted spot reports empty")
+        check(Targeting.Select(targetingPlayer(nil), stateOf) == nil, "nothing is selected when no spot is searchable")
+    end)
+    states[near] = "available"
+    withTargeting({ near }, { [near] = true }, function()
+        local chosen = Targeting.Select(targetingPlayer(near), stateOf)
+        check(chosen and chosen.reason == "blocked", "an obstructed aimed spot reports blocked")
+        check(Targeting.Select(targetingPlayer(nil), stateOf) == nil, "an obstructed spot is never the nearest fallback")
+    end)
+end)
+
+test("fallen_body_plans_are_deterministic", function(check)
+    local Bodies = ZM_LootBodies
+    local pool = {
+        { group = "lootBodyCivilian", weight = 3, models = { "models/humans/group01/male_01.mdl" } },
+        { group = "lootBodyBird", weight = 1, models = { "models/crow.mdl" } }
+    }
+    local bounds = { minimum = Vector(-4096, -4096, -512), maximum = Vector(4096, 4096, 1024) }
+    local ground = function(x, y)
+        return { Hit = true, HitSky = false, HitNormal = Vector(0, 0, 1), HitTexture = "concrete/floor", HitPos = Vector(x, y, 0) }
+    end
+    local open = function() return false end
+    local first = Bodies.Plan(Generation.NewRng(99), bounds, pool, ground, open)
+    local second = Bodies.Plan(Generation.NewRng(99), bounds, pool, ground, open)
+    check(#first >= Bodies.MinCount and #first <= Bodies.MaxCount, "a cell gets the configured number of bodies")
+    local same = #first == #second
+    for index, plan in ipairs(first) do
+        local other = second[index]
+        same = same and other and other.key == plan.key and other.model == plan.model and other.position == plan.position
+        check(string.match(plan.key, "^b%d+_%d+$") ~= nil, "body keys are deterministic spot keys")
+        for otherIndex = index + 1, #first do
+            check(plan.position:Distance(first[otherIndex].position) >= Bodies.MinSpacing, "bodies keep their spacing")
+        end
+    end
+    check(same, "the same seed recreates the same bodies under the same keys")
+    local sky = function(x, y)
+        local trace = ground(x, y)
+        trace.HitSky = true
+        return trace
+    end
+    check(#Bodies.Plan(Generation.NewRng(99), bounds, pool, sky, open) == 0, "sky and unsuitable ground never receive bodies")
 end)
 
 test("activation_generates_and_persists_spots", function(check)

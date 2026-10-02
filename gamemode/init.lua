@@ -1,15 +1,19 @@
 // Server entry point: distributes shared/client code, loads server systems, and owns persistence.
 AddCSLuaFile( "shared.lua" )
 AddCSLuaFile( "sh_player.lua" )
+AddCSLuaFile( "sh_loading.lua" )
 AddCSLuaFile( "sh_compass.lua" )
 AddCSLuaFile( "sh_preview.lua" )
 AddCSLuaFile( "sh_static_data.lua" )
 AddCSLuaFile( "sh_items.lua" )
+AddCSLuaFile( "sh_weapon_effects.lua" )
+AddCSLuaFile( "cl_weapon_effects.lua" )
 AddCSLuaFile( "sh_food.lua" )
 AddCSLuaFile( "sh_professions.lua" )
 AddCSLuaFile( "sh_characters.lua" )
 AddCSLuaFile( "sh_launcher_scene.lua" )
 AddCSLuaFile( "sh_implants.lua" )
+AddCSLuaFile( "sh_loot_targeting.lua" )
 AddCSLuaFile( "cl_item_icons.lua" )
 AddCSLuaFile( "cl_inventory.lua" )
 AddCSLuaFile( "cl_crafting.lua" )
@@ -25,6 +29,8 @@ AddCSLuaFile( "cl_transitions.lua" )
 AddCSLuaFile( "cl_hud.lua" )
 AddCSLuaFile( "cl_crosshair.lua" )
 AddCSLuaFile( "cl_atmosphere.lua" )
+AddCSLuaFile( "cl_foliage.lua" )
+AddCSLuaFile( "cl_gore.lua" )
 AddCSLuaFile( "cl_world_map.lua" )
 AddCSLuaFile( "cl_scoreboard.lua" )
 AddCSLuaFile( "cl_map_batch.lua" )
@@ -33,6 +39,7 @@ AddCSLuaFile( "cl_dependency_prompts.lua" )
 AddCSLuaFile( "cl_launcher_menu.lua" )
 AddCSLuaFile( "cl_launcher_scene.lua" )
 AddCSLuaFile( "cl_pause_log.lua" )
+AddCSLuaFile( "cl_dev_profiler.lua" )
 AddCSLuaFile( "cl_quick_menu.lua" )
 AddCSLuaFile( "utils/world.lua" )
 AddCSLuaFile( "utils/safezone.lua" )
@@ -63,10 +70,12 @@ if not characterBackupReady then
     end)
     return
 end
-include( "sv_characters_tests.lua" )
+include( "tests/sv_characters_tests.lua" )
 include( "sv_static_data.lua" )
-include( "sv_static_data_tests.lua" )
-include( "sv_weapon_catalog_tests.lua" )
+include( "tests/sv_static_data_tests.lua" )
+include( "tests/sv_weapon_catalog_tests.lua" )
+include( "sv_weapon_physics.lua" )
+include( "tests/sv_weapon_effects_tests.lua" )
 include( "sv_player.lua" )
 include( "sv_item_generation.lua" )
 include( "sv_inventory.lua" )
@@ -78,20 +87,25 @@ include( "sv_credits.lua" )
 include( "sv_mastercraft.lua" )
 include( "sv_den_npcs.lua" )
 include( "sv_trading.lua" )
-include( "sv_inventory_tests.lua" )
-include( "sv_crafting_tests.lua" )
-include( "sv_professions_tests.lua" )
-include( "sv_implants_tests.lua" )
-include( "sv_mastercraft_tests.lua" )
-include( "sv_trading_tests.lua" )
+include( "tests/sv_inventory_tests.lua" )
+include( "tests/sv_crafting_tests.lua" )
+include( "tests/sv_professions_tests.lua" )
+include( "tests/sv_implants_tests.lua" )
+include( "tests/sv_mastercraft_tests.lua" )
+include( "tests/sv_trading_tests.lua" )
 include( "sv_loot.lua" )
-include( "sv_loot_tests.lua" )
+include( "tests/sv_loot_tests.lua" )
 include( "sv_enemies.lua" )
-include( "sv_enemies_tests.lua" )
+include( "tests/sv_enemies_tests.lua" )
 include( "sv_bosses.lua" )
-include( "sv_bosses_tests.lua" )
+include( "tests/sv_bosses_tests.lua" )
+include( "sv_gore.lua" )
+include( "tests/sv_gore_tests.lua" )
 include( "sv_loot_spots.lua" )
-include( "sv_loot_spots_tests.lua" )
+include( "tests/sv_loot_spots_tests.lua" )
+include( "sv_foliage.lua" )
+include( "tests/sv_foliage_tests.lua" )
+include( "sv_loot_bodies.lua" )
 include( "sv_map_batch.lua" )
 include( "sv_preview.lua" )
 include( "sv_dev_console.lua" )
@@ -101,13 +115,17 @@ include( "sv_walker_sim.lua" )
 include( "sv_walker_materialization.lua" )
 include( "sv_transitions.lua" )
 include( "sv_safezone_doors.lua" )
-include( "sv_safezone_doors_tests.lua" )
+include( "sv_atmosphere.lua" )
+include( "tests/sv_safezone_doors_tests.lua" )
+include( "tests/sv_atmosphere_tests.lua" )
 
 // Ensure the SQLite schema exists before any PlayerSpawn handler performs a lookup.
 local attributesReady, attributesError = ZM_CreatePlayerAttributesTable()
 local playerDataReady, playerDataError = ZM_CreatePlayerDataTable()
 local playerItemsReady, playerItemsError = ZM_CreatePlayerItemsTable()
 local lootSpotsReady, lootSpotsError = ZM_CreateLootSpotTables()
+local foliageReady, foliageError = ZM_CreateFoliageTables()
+ZM_Foliage.StorageReady = foliageReady
 local professionsReady, professionsError = ZM_CreateProfessionTables()
 local implantsReady, implantsError = ZM_CreateImplantTables()
 local creditsReady, creditsError = ZM_CreateCreditTables()
@@ -133,6 +151,9 @@ if not playerItemsReady then
 end
 if not lootSpotsReady then
     ErrorNoHalt("[ZombieSim] Could not prepare loot spots: " .. tostring(lootSpotsError) .. "\n")
+end
+if not foliageReady then
+    ErrorNoHalt("[ZombieSim] Could not prepare foliage harvests: " .. tostring(foliageError) .. "\n")
 end
 if not professionsReady then
     ErrorNoHalt("[ZombieSim] Could not prepare profession claims: " .. tostring(professionsError) .. "\n")
@@ -366,7 +387,11 @@ function GM:GetExpectedPlayerMap(ply)
 end
 
 // Changes level only when the loaded map differs from the player's persisted city or safe-room state.
-function GM:EnsurePlayerWorldMap(ply, entryLandmark)
+// options.cinematic runs the gate/door exit sequence (face, rise, fade) before the level change;
+// options.yaw sets the facing and options.onCancel rolls back persisted state if the change never happens.
+// options.forceReload reloads the current map when it is already the destination: neighbouring cells can share a
+// recipe BSP, and gate travel must still reset cell-scoped state. Spawn-time callers must not set it.
+function GM:EnsurePlayerWorldMap(ply, entryLandmark, options)
     if self.PlayerWorldMapTransitionQueued then
         return false
     end
@@ -379,7 +404,8 @@ function GM:EnsurePlayerWorldMap(ply, entryLandmark)
 
     local expectedMapName = string.lower(string.match(expectedMap, "([^/]+)$") or expectedMap)
     local currentMapName = string.lower(string.match(game.GetMap(), "([^/]+)$") or game.GetMap())
-    if currentMapName == expectedMapName then
+    local forceReload = type(options) == "table" and options.forceReload == true
+    if currentMapName == expectedMapName and not forceReload then
         return false
     end
 
@@ -392,7 +418,12 @@ function GM:EnsurePlayerWorldMap(ply, entryLandmark)
     end
     self.PlayerWorldMapTransitionQueued = true
     local landmark = type(entryLandmark) == "string" and string.match(entryLandmark, "^[A-Z]+_ENTRANCE$") or nil
-    game.ConsoleCommand("changelevel " .. expectedMap .. (landmark and " " .. landmark or "") .. "\n")
+    local command = "changelevel " .. expectedMap .. (landmark and " " .. landmark or "") .. "\n"
+    if type(options) == "table" and options.cinematic and IsValid(ply) and ZM_Transitions then
+        ZM_Transitions:BeginExitSequence(ply, command, options)
+    else
+        game.ConsoleCommand(command)
+    end
     return true
 end
 
@@ -519,6 +550,10 @@ function GM:PlayerSpawn( ply )
     if not ready then ErrorNoHalt("[ZombieSim] Could not hydrate active character: " .. tostring(readyError) .. "\n") end
 end
 
+local function logLoading(ply, text)
+    ZM_Loading:Step(ply, text)
+end
+
 function GM:LoadSelectedCharacter(ply, profile)
     if ply.ZM_PersistentStateLoaded then return false, "Character already loaded" end
     // fetch the player attributes and data from the database
@@ -531,6 +566,7 @@ function GM:LoadSelectedCharacter(ply, profile)
         return false, playerDataError
     end
     ply.PreviouslyConnected = previouslyConnected
+    logLoading(ply, "Loaded survivor record")
     ply.ZM_PersistentStateLoaded = true
     ply.ZM_InventoryProfile = profile
     local inventoryLoaded, inventoryError = ZM_InventoryService:Load(ply)
@@ -538,6 +574,7 @@ function GM:LoadSelectedCharacter(ply, profile)
         ply.ZM_PersistentStateLoaded = false
         return false, inventoryError
     end
+    logLoading(ply, "Loaded inventory")
     local implantsLoaded, implantsError = ZM_ImplantService:Load(ply)
     if not implantsLoaded then
         ply.ZM_PersistentStateLoaded = false
@@ -548,7 +585,10 @@ function GM:LoadSelectedCharacter(ply, profile)
         ply.ZM_PersistentStateLoaded = false
         return false, creditsError
     end
+    logLoading(ply, "Loaded implants and credits")
     self:ReconcilePlayerOriginCell(ply)
+    local cellX, cellY = ply:GetWorldCellCoordinates()
+    logLoading(ply, cellX and cellY and string.format("Resolved world cell %s, %s", cellX, cellY) or "Resolved world cell")
     ply:SetHealth(math.max(ply.SavedHealth, 1))
     ply.Stamina = math.Clamp(tonumber(ply.Stamina) or ply:GetMaxStamina(), 0, ply:GetMaxStamina())
 
@@ -570,14 +610,27 @@ function GM:LoadSelectedCharacter(ply, profile)
     ply:SendPlayerData()
     self:PlayerSetModel(ply)
     self:SendPlayerAtmosphereProfile(ply)
+    logLoading(ply, "Applied atmosphere")
     ZM_Preview:SendCapabilities(ply)
     ZM_Preview:ApplyCheatState(ply)
     ZM_Preview:SendCheatStatus(ply, true, "")
     ZM_Bosses:SendSnapshot(ply)
-    if ZM_Transitions then
-        ZM_Transitions:ApplyPendingEntry(ply)
+    if ZM_Transitions and not ZM_Transitions:ApplyPendingEntry(ply) then
+        ZM_Transitions:HoldForEngineInputLock(ply)
+    end
+    // Fallen bodies must exist before the cell's loot spots are collected, and must never block a character load.
+    local bodiesOk, bodiesError = pcall(ZM_LootBodies.OnPlayerReady, ZM_LootBodies, ply)
+    if not bodiesOk then
+        ErrorNoHalt("[ZombieSim] Fallen bodies failed to spawn: " .. tostring(bodiesError) .. "\n")
     end
     ZM_LootSpots:OnPlayerReady(ply)
+    logLoading(ply, "Prepared loot spots")
+    // Cosmetic/harvest foliage must never block a character load.
+    local foliageOk, foliageError = pcall(ZM_Foliage.OnPlayerReady, ZM_Foliage, ply)
+    if not foliageOk then
+        ErrorNoHalt("[ZombieSim] Runtime foliage failed to start: " .. tostring(foliageError) .. "\n")
+    end
+    logLoading(ply, "Prepared runtime foliage")
 
     if ZM_DependencyPrompts and ZM_DependencyPrompts:HoldLauncherTransition(ply, profile, previouslyConnected) then
         return true, previouslyConnected

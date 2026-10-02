@@ -3,6 +3,9 @@ ZM_DevConsole = ZM_DevConsole or {}
 local DevConsole = ZM_DevConsole
 // Commands run synchronously by the bridge so their DevConsole:Report output reaches the result file.
 DevConsole.DirectCommands = DevConsole.DirectCommands or {}
+local atmosphereStatusPath = "zombiesim/atmosphere_status.json"
+local nextAtmosphereStatusRequestId = 0
+local writeJson
 
 // Bridge-only: game.ConsoleCommand blocks lua_run, so death-path tests need a direct kill.
 DevConsole.DirectCommands.zombiesim_dev_kill_player = function()
@@ -13,6 +16,109 @@ DevConsole.DirectCommands.zombiesim_dev_kill_player = function()
     target:Kill()
     return true
 end
+
+DevConsole.DirectCommands.zombiesim_dev_character_slots = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() then
+        return false, "character slot inspection requires a connected admin"
+    end
+
+    local characters = {}
+    for slot = 1, 3 do
+        local character, characterError = ZM_CharacterService:GetOwnedCharacter(target, slot)
+        if characterError then
+            return false, characterError
+        end
+        if character then
+            table.insert(characters, {
+                slot = slot,
+                name = character.name,
+                level = tonumber(character.level) or 1,
+                appearanceRequired = tonumber(character.appearanceRequired) == 1,
+                originCellX = tonumber(character.originCellX),
+                originCellY = tonumber(character.originCellY)
+            })
+        end
+    end
+
+    DevConsole:Report("characterSlots", characters)
+    print(string.format("[ZombieSim] Found %d existing preview character slot(s).", #characters))
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_deploy_character = function(argumentString)
+    local target = ZM_Util.FirstHuman()
+    local slot = tonumber(string.Trim(argumentString or ""))
+    if not IsValid(target) or not target:IsAdmin() then
+        return false, "character deployment requires a connected admin"
+    end
+    if ZM_World.ActiveProfile ~= "preview" or not ZM_World.LauncherMapProfiles[game.GetMap()] then
+        return false, "character deployment is restricted to the preview launcher"
+    end
+    if not slot or slot ~= math.floor(slot) or slot < 1 or slot > 3 then
+        return false, "usage: zombiesim_dev_deploy_character <slot 1-3>"
+    end
+
+    local deployed, deployError = ZM_Launcher:Select(target, slot)
+    if not deployed then
+        return false, deployError or "character deployment failed"
+    end
+    print(string.format("[ZombieSim] Deploying preview character from slot %d.", slot))
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_atmosphere_status = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() then
+        return false, "atmosphere diagnostics require a connected admin"
+    end
+    if ZM_World.ActiveProfile ~= "preview" then
+        return false, "atmosphere diagnostics are restricted to the preview profile"
+    end
+
+    nextAtmosphereStatusRequestId = (nextAtmosphereStatusRequestId % 65535) + 1
+    target.ZM_DevAtmosphereStatusRequestId = nextAtmosphereStatusRequestId
+    target.ZM_DevAtmosphereStatusMap = game.GetMap()
+    net.Start("ZM.AtmosphereStatus.Request")
+        net.WriteUInt(nextAtmosphereStatusRequestId, 16)
+    net.Send(target)
+    print("[ZombieSim] Requested client atmosphere status.")
+    return true
+end
+
+net.Receive("ZM.AtmosphereStatus.Result", function(_, target)
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        return
+    end
+
+    local requestId = net.ReadUInt(16)
+    local encoded = net.ReadString()
+    if requestId ~= target.ZM_DevAtmosphereStatusRequestId or
+        target.ZM_DevAtmosphereStatusMap ~= game.GetMap() then
+        return
+    end
+    if #encoded > 16384 then
+        ErrorNoHalt("[ZombieSim] Atmosphere status report exceeded 16 KiB.\n")
+        return
+    end
+
+    local clientStatus = util.JSONToTable(encoded)
+    if type(clientStatus) ~= "table" or clientStatus.map ~= game.GetMap() then
+        ErrorNoHalt("[ZombieSim] Atmosphere status report was invalid or from another map.\n")
+        return
+    end
+
+    writeJson(atmosphereStatusPath, {
+        requestId = requestId,
+        receivedAt = os.time(),
+        map = game.GetMap(),
+        activeProfile = ZM_World.ActiveProfile,
+        client = clientStatus
+    })
+    target.ZM_DevAtmosphereStatusRequestId = nil
+    target.ZM_DevAtmosphereStatusMap = nil
+    print("[ZombieSim] Client atmosphere status saved to data/" .. atmosphereStatusPath)
+end)
 
 // Bridge-only: moves the first player to a raw grid cell through the normal world-map transition.
 DevConsole.DirectCommands.zombiesim_dev_teleport_cell = function(argumentString)
@@ -29,6 +135,206 @@ DevConsole.DirectCommands.zombiesim_dev_teleport_cell = function(argumentString)
     end
     if not GAMEMODE:EnsurePlayerWorldMap(target) then
         return false, "the player is already on that cell's map or a transition is queued"
+    end
+    return true
+end
+
+local function previewAdmin()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() then
+        return nil, "requires a connected admin"
+    end
+    if ZM_World.ActiveProfile ~= "preview" then
+        return nil, "restricted to the preview profile"
+    end
+    return target
+end
+
+// Bridge-only: uses a cell transition gate through the normal gate service, as if the player pressed Use.
+DevConsole.DirectCommands.zombiesim_dev_use_gate = function(argumentString)
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    local directionNames = { N = "north", E = "east", S = "south", W = "west" }
+    local directionName = directionNames[string.upper(string.Trim(argumentString or ""))]
+    if not directionName then
+        return false, "usage: zombiesim_dev_use_gate <N|E|S|W>"
+    end
+    for _, entity in ipairs(ents.FindByClass("trigger_multiple")) do
+        if entity:GetNWBool("ZMTransitionGate", false) and entity:GetNWString("ZMTransitionDirection", "") == directionName then
+            ZM_Transitions:TryUseGate(target, entity)
+            return true, string.format("used %s gate; exit sequence active: %s", directionName,
+                tostring(ZM_Transitions:IsExitSequenceActive()))
+        end
+    end
+    return false, "no " .. directionName .. " transition gate on this map"
+end
+
+// Bridge-only: reports every transition gate, the nearest gate, the transition guard and neighbour availability.
+DevConsole.DirectCommands.zombiesim_dev_gate_report = function()
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    local function vectorTable(value) return { value.x, value.y, value.z } end
+    local canTransition, guardError = ZM_Transitions:CheckDoorTransition(target)
+    local nearest = ZM_Transitions:FindNearbyGate(target)
+    local report = {
+        map = game.GetMap(),
+        player = vectorTable(target:GetPos()),
+        cell = { target:GetWorldCellCoordinates() },
+        guard = { ok = canTransition, reason = guardError },
+        flags = {
+            worldMapQueued = GAMEMODE.PlayerWorldMapTransitionQueued == true,
+            originQueued = GAMEMODE.OriginSafeZoneTransitionQueued == true,
+            mapBatch = ZM_MapBatch and ZM_MapBatch:IsActive() or false,
+            exitSequence = ZM_Transitions:IsExitSequenceActive(),
+            stateLoaded = target.ZM_PersistentStateLoaded == true
+        },
+        nearbyGate = IsValid(nearest) and nearest:GetNWString("ZMTransitionDirection", "") or nil,
+        neighbours = {},
+        neighbourMaps = {},
+        gates = {}
+    }
+    for _, code in ipairs({ "N", "E", "S", "W" }) do
+        for _, mode in ipairs({ "any", "road", "highway" }) do
+            local cellOk = target:CanTravelToNeighbour(code, mode, false)
+            report.neighbours[code .. "_" .. mode] = cellOk and true or false
+            if cellOk and mode == "any" then
+                report.neighbourMaps[code] = tostring(ZM_World:GetMapPath(cellOk))
+            end
+        end
+    end
+    for _, entity in ipairs(ents.FindByClass("trigger_multiple")) do
+        local keys = entity:GetKeyValues()
+        local name = entity:GetName() or ""
+        if entity:GetNWBool("ZMTransitionGate", false) or string.find(name, "transition", 1, true) or keys.zm_transition_gate then
+            local mins, maxs = entity:WorldSpaceAABB()
+            table.insert(report.gates, {
+                name = name,
+                direction = entity:GetNWString("ZMTransitionDirection", ""),
+                published = entity:GetNWBool("ZMTransitionGate", false),
+                keyDirection = tostring(keys.zm_transition_direction or ""),
+                mode = tostring(keys.zm_transition_mode or ""),
+                boundsMin = vectorTable(mins),
+                boundsMax = vectorTable(maxs),
+                distance = target:GetPos():Distance(entity:NearestPoint(target:GetPos()))
+            })
+        end
+    end
+    DevConsole:Report("gateReport", report)
+    return true
+end
+
+// Bridge-only: reports live safe-zone door/arrival entities and the first player's pose for placement diagnosis.
+DevConsole.DirectCommands.zombiesim_dev_door_report = function()
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    local function vectorTable(value) return { value.x, value.y, value.z } end
+    local report = {
+        map = game.GetMap(),
+        player = { position = vectorTable(target:GetPos()), eyeAngles = vectorTable(Vector(target:EyeAngles().p, target:EyeAngles().y, 0)) },
+        entities = {},
+        published = {}
+    }
+    for index = 1, GetGlobal2Int("ZMSafeZoneDoorCount", 0) do
+        table.insert(report.published, {
+            role = GetGlobal2String("ZMSafeZoneDoorRole_" .. index, ""),
+            position = vectorTable(GetGlobal2Vector("ZMSafeZoneDoor_" .. index, vector_origin))
+        })
+    end
+    for _, className in ipairs({ "zn_safezone_door", "zn_safezone_arrival" }) do
+        for _, entity in ipairs(ents.FindByClass(className)) do
+            local mins, maxs = entity:WorldSpaceAABB()
+            table.insert(report.entities, {
+                class = className,
+                index = entity:EntIndex(),
+                role = (ZM_SafeZoneDoors:GetDoorDetails(entity)),
+                position = vectorTable(entity:GetPos()),
+                yaw = entity:GetAngles().y,
+                boundsMin = vectorTable(mins),
+                boundsMax = vectorTable(maxs),
+                distance = target:GetPos():Distance(entity:GetPos())
+            })
+        end
+    end
+    DevConsole:Report("doorReport", report)
+    return true
+end
+
+// Bridge-only: arms a movement trace for the first seconds after the next map load. The arm file survives the
+// level change; the trace is written to DATA zombiesim/arrival_trace.json.
+local arrivalTraceArmPath = "zombiesim/arrival_trace.arm.txt"
+local arrivalTracePath = "zombiesim/arrival_trace.json"
+local arrivalTraceSeconds = 4
+DevConsole.DirectCommands.zombiesim_dev_trace_arrival = function()
+    local _, targetError = previewAdmin()
+    if targetError then return false, targetError end
+    file.CreateDir("zombiesim")
+    file.Write(arrivalTraceArmPath, "1")
+    file.Write("zombiesim/arrival_trace_client.arm.txt", "1")
+    file.Delete(arrivalTracePath)
+    file.Delete("zombiesim/arrival_trace_client.json")
+    return true, "arrival trace armed for the next map load"
+end
+
+local arrivalTrace
+if file.Exists(arrivalTraceArmPath, "DATA") then
+    file.Delete(arrivalTraceArmPath)
+    arrivalTrace = { map = game.GetMap(), samples = {} }
+end
+
+hook.Add("StartCommand", "ZM.DevArrivalTrace", function(playerEntity, cmd)
+    local trace = arrivalTrace
+    if not trace or playerEntity:IsBot() then return end
+    trace.startedAt = trace.startedAt or CurTime()
+    trace.realStartedAt = trace.realStartedAt or SysTime()
+    local elapsed = CurTime() - trace.startedAt
+    if elapsed > arrivalTraceSeconds then
+        arrivalTrace = nil
+        writeJson(arrivalTracePath, trace)
+        return
+    end
+    local velocity = playerEntity:GetVelocity()
+    table.insert(trace.samples, {
+        t = math.Round(elapsed, 3),
+        real = math.Round(SysTime() - trace.realStartedAt, 3),
+        command = cmd:CommandNumber(),
+        tick = cmd:TickCount(),
+        forced = cmd:IsForced(),
+        buttons = cmd:GetButtons(),
+        forwardMove = cmd:GetForwardMove(),
+        sideMove = cmd:GetSideMove(),
+        speed = math.Round(Vector(velocity.x, velocity.y, 0):Length(), 1),
+        frozen = playerEntity:IsFrozen(),
+        flags = playerEntity:GetFlags(),
+        moveType = playerEntity:GetMoveType(),
+        walkSpeed = playerEntity:GetWalkSpeed(),
+        maxSpeed = playerEntity:GetMaxSpeed(),
+        loaded = playerEntity.ZM_PersistentStateLoaded == true,
+        entryWalk = playerEntity.ZM_TransitionEntry ~= nil,
+        stamina = tonumber(playerEntity.Stamina)
+    })
+end)
+
+// Bridge-only: uses this map's safe-zone door (enter or exit) through the normal door service.
+DevConsole.DirectCommands.zombiesim_dev_use_door = function()
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    for _, entity in ipairs(ents.FindByClass("zn_safezone_door")) do
+        local role = ZM_SafeZoneDoors:GetDoorDetails(entity)
+        if role then
+            ZM_SafeZoneDoors:TryUseDoor(target, entity)
+            return true, string.format("used %s door; exit sequence active: %s", role,
+                tostring(ZM_Transitions:IsExitSequenceActive()))
+        end
+    end
+    return false, "no safe-zone door on this map"
+end
+
+// Bridge-only: cancels an active gate/door exit sequence to exercise view, input, and state recovery.
+DevConsole.DirectCommands.zombiesim_dev_cancel_transition = function()
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    if not ZM_Transitions:CancelExitSequence("Transition cancelled.") then
+        return false, "no active exit sequence"
     end
     return true
 end
@@ -64,7 +370,12 @@ end
 local inputPath = "data_static/consolecommands.txt"
 local outputPath = "zombiesim/consolecommands.result.json"
 local statePath = "zombiesim/consolecommands.state.json"
+local heartbeatPath = "zombiesim/consolecommands.heartbeat.json"
+local bridgeLoadedAt = os.time()
 local pollInterval = 0.25
+
+util.AddNetworkString("ZM.AtmosphereStatus.Request")
+util.AddNetworkString("ZM.AtmosphereStatus.Result")
 
 CreateConVar(
     "zombiesim_dev_console_enabled",
@@ -84,7 +395,7 @@ local function readState()
     return type(state) == "table" and state or {}
 end
 
-local function writeJson(path, value)
+writeJson = function(path, value)
     file.CreateDir("zombiesim")
     file.Write(path, util.TableToJSON(value, true) or "{}")
 end
@@ -334,6 +645,7 @@ end
 
 local lastFingerprint
 local nextPollAt = 0
+local nextHeartbeatAt = 0
 hook.Add("Think", "ZombieSim.DevelopmentConsoleBridge", function()
     if CurTime() < nextPollAt then
         return
@@ -342,6 +654,13 @@ hook.Add("Think", "ZombieSim.DevelopmentConsoleBridge", function()
 
     if not isEnabled() then
         return
+    end
+
+    // Server Think stops while singleplayer is paused or loading; a stale heartbeat tells external tooling why
+    // a request is not being acknowledged.
+    if RealTime() >= nextHeartbeatAt then
+        nextHeartbeatAt = RealTime() + 1
+        writeJson(heartbeatPath, { map = game.GetMap(), writtenAt = os.time(), loadedAt = bridgeLoadedAt })
     end
 
     local contents = file.Read(inputPath, "GAME")

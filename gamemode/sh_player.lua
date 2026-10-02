@@ -206,12 +206,22 @@ function ply:CanLevelUp()
     return self.XP >= self.ExperiencePerLevel
 end
 
-// Top-down aim: the camera's downward pitch is ignored, so attacks leave the centre of mass level with the ground.
+// Outdoor commands carry weapon aim, not camera pitch: top-down/orbit send level aim, shoulder sends cursor aim.
 function ply:GetLevelAim()
-    return self:WorldSpaceCenter(), Angle(0, self:EyeAngles().y, 0):Forward()
+    local angles = self:EyeAngles()
+    local weapon = self.GetActiveWeapon and self:GetActiveWeapon()
+    if IsValid(weapon) and weapon.GetAimRecoil then
+        local recoil = weapon:GetAimRecoil()
+        angles = Angle(math.Clamp(math.NormalizeAngle(angles.p) + recoil.p, -89, 89), angles.y + recoil.y, 0)
+    end
+    local safeZoneId = self:GetNWString("CurrentSafeZoneId", "")
+    if safeZoneId ~= "" and safeZoneId ~= "NULL" then
+        angles = Angle(0, angles.y, 0)
+    end
+    return self:WorldSpaceCenter(), angles:Forward()
 end
 
-// Returns the trace of a level shot from the centre of mass, used by weapons and the crosshair.
+// Weapons and the crosshair share the same recoil-adjusted aim trace.
 function ply:GetLevelAimTrace(range)
     local origin, direction = self:GetLevelAim()
     return util.TraceLine({

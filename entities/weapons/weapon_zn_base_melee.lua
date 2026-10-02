@@ -10,6 +10,7 @@ SWEP.MeleeRange = 72
 SWEP.MeleeDelay = 0.5
 SWEP.MeleeForce = 4000
 SWEP.MeleeDamageType = DMG_CLUB
+SWEP.GoreSeverFactor = 1.4
 SWEP.SwingSound = "Weapon_Crowbar.Single"
 SWEP.HitSound = "Weapon_Crowbar.Melee_Hit"
 SWEP.HitWorldSound = "Weapon_Crowbar.Melee_HitWorld"
@@ -19,7 +20,7 @@ local hullMaxs = Vector(10, 10, 8)
 
 function SWEP:PrimaryAttack()
     local owner = self:GetOwner()
-    if not IsValid(owner) then
+    if not IsValid(owner) or self:IsSafeZoneHolstered() then
         return
     end
     self:SetNextPrimaryFire(CurTime() + self:GetScaledDelay(self.MeleeDelay))

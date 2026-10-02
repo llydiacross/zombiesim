@@ -411,6 +411,31 @@ test("scales_and_value_follow_attributes", function(check)
     check(Items:GetInstanceValue({ itemId = "itemBandage", count = 3, level = 1 }) == 6, "3 bandages at $2 should be worth $6")
 end)
 
+test("weapon_aim_uses_cursor_pitch_outdoors_and_preserves_level_den_aim", function(check)
+    local angles = Angle(0, 90, 0)
+    local safeZone = ""
+    local origin = Vector(10, 20, 36)
+    local target = {
+        EyeAngles = function() return angles end,
+        GetNWString = function() return safeZone end,
+        WorldSpaceCenter = function() return origin end
+    }
+    local getAim = FindMetaTable("Player").GetLevelAim
+    local source, direction = getAim(target)
+    check(source == origin and direction:DistToSqr(Vector(0, 1, 0)) < 0.000001,
+        "level top-down/orbit commands must keep their horizontal trajectory and origin")
+    for _, pitch in ipairs({ -35, 25 }) do
+        angles = Angle(pitch, 40, 0)
+        source, direction = getAim(target)
+        check(source == origin and direction:DistToSqr(angles:Forward()) < 0.000001,
+            "shoulder cursor aim must retain both yaw and pitch for weapons")
+    end
+    safeZone = "den"
+    source, direction = getAim(target)
+    check(direction:DistToSqr(Angle(0, 40, 0):Forward()) < 0.000001,
+        "den aiming must retain its existing level-shot behavior")
+end)
+
 test("rolled_attributes_apply_to_a_spawned_weapon", function(check)
     local instance = Generation:CreateInstance("weaponHandgun9mm", { seed = 5, level = 20, mastercraft = true })
     local weapon = ents.Create("weapon_zn_handgun_9mm")
@@ -426,6 +451,64 @@ test("rolled_attributes_apply_to_a_spawned_weapon", function(check)
     check(weapon:GetItemInstanceId() == instance.instanceId, "the weapon should remember its instance")
     check(weapon:GetMaxClip() > weapon.BaseClipSize and weapon:Clip1() == 0, "a mastercraft clip should exceed the base and restore its persisted empty clip")
     weapon:Remove()
+end)
+
+test("switch_and_unequip_only_sync_firearm_ammunition", function(check)
+    local target = stubPlayer()
+    local meleeInstance = instance("weaponMeleeCrowbar")
+    local pistolInstance = instance("weaponUsp9mm", 1, { clip = 4 })
+    target.ZM_Inventory.equipped[1] = meleeInstance
+    target.ZM_Inventory.equipped[2] = pistolInstance
+    target.ZM_WeaponSlots = {
+        [1] = { instanceId = meleeInstance.instanceId, selected = true },
+        [2] = { instanceId = pistolInstance.instanceId, selected = false }
+    }
+    local melee = ents.Create("weapon_zn_melee_crowbar")
+    local pistol = ents.Create("weapon_zn_usp_9mm")
+    local originalSync = ZM_AmmoService.SyncWeapon
+    local syncCalls = {}
+    local ok, err = pcall(function()
+        melee:Spawn()
+        pistol:Spawn()
+        Items:ApplyInstanceToWeapon(melee, meleeInstance)
+        Items:ApplyInstanceToWeapon(pistol, pistolInstance)
+        target.GetWeapons = function() return { melee, pistol } end
+        local stripped
+        target.StripWeapon = function(_, class) stripped = class end
+        ZM_AmmoService.SyncWeapon = function(self, owner, weapon)
+            table.insert(syncCalls, weapon)
+            return originalSync(self, owner, weapon)
+        end
+
+        local switch = hook.GetTable().PlayerSwitchWeapon["ZM.Inventory.PersistSelectedWeapon"]
+        switch(target, melee, pistol)
+        check(#syncCalls == 0, "leaving melee must not attempt ammunition persistence")
+        check(target.ZM_WeaponSlots[2].selected, "switching from melee must still select the pistol")
+        pistol:SetClip1(2)
+        switch(target, pistol, melee)
+        check(#syncCalls == 1 and syncCalls[1] == pistol, "leaving a pistol must synchronize its clip")
+        check(target.ZM_Inventory.equipped[2].clip == 2, "switching to melee must persist the fired pistol clip")
+        check(target.ZM_WeaponSlots[1].selected, "switching to melee must still select it")
+
+        local unequipped, reason = Service:UnequipWeapon(target, meleeInstance.instanceId)
+        check(unequipped, "melee must unequip without an ammunition error: " .. tostring(reason))
+        check(#syncCalls == 1, "unequipping melee must not attempt ammunition persistence")
+        check(stripped == melee:GetClass(), "unequipping melee must strip the live weapon")
+        check(Ops.FindInstance(target.ZM_Inventory, meleeInstance.instanceId) == "backpack", "melee must return to the backpack")
+
+        stripped = nil
+        target.ZM_InventoryProfile = "INVALID PROFILE"
+        pistol:SetClip1(1)
+        local removed, removeError = Service:UnequipWeapon(target, pistolInstance.instanceId)
+        check(not removed and string.find(removeError, "could not save weapon ammunition", 1, true),
+            "genuine firearm persistence failures must still be reported")
+        check(stripped == nil and target.ZM_Inventory.equipped[2].clip == 2,
+            "a failed firearm sync must not strip the weapon or change its stored clip")
+    end)
+    ZM_AmmoService.SyncWeapon = originalSync
+    if IsValid(melee) then melee:Remove() end
+    if IsValid(pistol) then pistol:Remove() end
+    if not ok then error(err) end
 end)
 
 test("reload_conserves_inventory_ammo_and_persists_clip", function(check)

@@ -4,6 +4,48 @@ ZM_Enemies = ZM_Enemies or {}
 local Enemies = ZM_Enemies
 local Generation = ZM_ItemGeneration
 
+util.AddNetworkString("ZM.EnemyHitMarker")
+
+function Enemies.IsHitMarkerTarget(victim)
+    return IsValid(victim) and (victim.EnemyId ~= nil or victim.BossInstanceId ~= nil)
+end
+
+Enemies.BossHeadshotScale = 3
+
+// A bullet to the head puts a walker down outright; bosses take extra damage instead.
+function Enemies.ApplyHeadshot(victim, damageInfo)
+    if not Enemies.IsHitMarkerTarget(victim) or victim.HeadHitTick ~= engine.TickCount() then
+        return false
+    end
+    if not damageInfo:IsBulletDamage() and not damageInfo:IsDamageType(DMG_BUCKSHOT) then
+        return false
+    end
+    if victim.BossInstanceId ~= nil or victim:GetClass() == "zn_boss_zombie" then
+        damageInfo:ScaleDamage(Enemies.BossHeadshotScale)
+    else
+        damageInfo:SetDamage(math.max(damageInfo:GetDamage(), victim:Health()))
+    end
+    return true
+end
+
+hook.Add("EntityTakeDamage", "ZM.EnemyHeadshots", function(victim, damageInfo)
+    Enemies.ApplyHeadshot(victim, damageInfo)
+end)
+
+hook.Add("PostEntityTakeDamage", "ZM.EnemyHitFeedback", function(victim, damageInfo, tookDamage)
+    if not tookDamage or not Enemies.IsHitMarkerTarget(victim) or damageInfo:GetDamage() <= 0 then
+        return
+    end
+
+    local attacker = Enemies.ResolveKiller(damageInfo:GetAttacker())
+    if not IsValid(attacker) then
+        return
+    end
+
+    net.Start("ZM.EnemyHitMarker")
+    net.Send(attacker)
+end)
+
 local function clampDanger(danger)
     return math.Clamp(tonumber(danger) or 0, 0, 1)
 end
@@ -143,6 +185,7 @@ function Enemies:RegisterCorpseLoot(corpse, item, key)
         return false, "the loot-spot service is unavailable"
     end
 
+    corpse.ZM_EnemyCorpse = true
     key = type(key) == "string" and key ~= "" and key or ("enemycorpse_" .. corpse:EntIndex())
     local spot, spotError = ZM_LootSpots:RegisterRuntimeSpot(corpse, item, key)
     if not spot then

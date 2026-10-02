@@ -41,6 +41,49 @@ function SWEP:Initialize()
     self:SetHoldType(self.HoldType)
 end
 
+function SWEP:IsSafeZoneHolstered()
+    return ZM_SafeZones:IsPlayerInside(self:GetOwner())
+end
+
+function SWEP:UpdateSafeZoneHolster()
+    local holstered = self:IsSafeZoneHolstered()
+    if self.SafeZoneHolstered ~= holstered then
+        self.SafeZoneHolstered = holstered
+        self:SetHoldType(holstered and "normal" or self.HoldType)
+    end
+    if holstered then
+        local finish = self:GetReloadFinishTime()
+        if finish > 0 then
+            self:SetReloadFinishTime(0)
+            if self:GetNextPrimaryFire() == finish then self:SetNextPrimaryFire(CurTime()) end
+        end
+        self.NextCycleSoundAt = nil
+        if self.SetRecoilUpdatedAt then
+            self:SetRecoilPitchOffset(0)
+            self:SetRecoilYawOffset(0)
+        end
+    end
+    return holstered
+end
+
+function SWEP:Think()
+    self:UpdateSafeZoneHolster()
+end
+
+if CLIENT then
+    function SWEP:PreDrawViewModel()
+        if self:IsSafeZoneHolstered() then return true end
+    end
+
+    function SWEP:DrawWorldModel()
+        if not self:IsSafeZoneHolstered() then self:DrawModel() end
+    end
+
+    function SWEP:DrawWorldModelTranslucent()
+        if not self:IsSafeZoneHolstered() then self:DrawModel() end
+    end
+end
+
 function SWEP:GetScale(name)
     local value = self["Get" .. name](self)
     return value > 0 and value or 1

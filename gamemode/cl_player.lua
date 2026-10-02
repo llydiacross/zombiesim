@@ -31,6 +31,7 @@ function ply:SetPlayerData(snapshot)
     end
 
     self.XP = integer("XP", self:GetNWInt("XP"))
+    self.ExperiencePerLevel = integer("ExperiencePerLevel", self:GetNWInt("ExperiencePerLevel", 1000))
     self.Level = integer("Level", self:GetNWInt("Level", 1))
     self.MaxLevel = integer("MaxLevel", self:GetNWInt("MaxLevel", 300))
     self.Difficulty = integer("Difficulty", self:GetNWInt("Difficulty", 1))
