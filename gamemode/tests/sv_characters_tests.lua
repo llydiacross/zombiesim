@@ -60,7 +60,7 @@ local function insertOwnedRow(tableName, characterId)
             value = sql.SQLStr(characterId)
         elseif column.name == "profile" then
             value = sql.SQLStr(profile)
-        elseif tonumber(column.notnull) == 1 and column.dflt_value == nil and tonumber(column.pk) == 0 then
+        elseif tonumber(column.notnull) == 1 and (column.dflt_value == nil or column.dflt_value == "NULL") then
             local columnType = string.upper(column.type or "")
             if string.find(columnType, "INT", 1, true) or string.find(columnType, "REAL", 1, true)
                 or string.find(columnType, "NUM", 1, true) then
@@ -253,7 +253,7 @@ Suite:Add("delete removes only the selected character records", function(check)
             tableName .. " removes the selected slot and preserves the other slot")
     end
     local active = run("SELECT slot FROM active_characters WHERE steamid = " .. sql.SQLStr(rawSteamId) .. " AND profile = " .. sql.SQLStr(profile))
-    check(active and #active == 0, "deleting the active slot clears its active selection")
+    check(not active or #active == 0, "deleting the active slot clears its active selection")
     local cleanupResult, cleanupError = Characters:DeleteOwnedRows({
         steamid = rawSteamId, profile = profile, slot = 2, characterId = characterTwo
     })

@@ -120,6 +120,21 @@ net.Receive("ZM.AtmosphereStatus.Result", function(_, target)
     print("[ZombieSim] Client atmosphere status saved to data/" .. atmosphereStatusPath)
 end)
 
+// Bridge-only: starts the client hook profiler; the client writes data/zombiesim/hook_profile.json when it ends.
+DevConsole.DirectCommands.zombiesim_dev_profile_client = function(argumentString)
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() then
+        return false, "client profiling requires a connected admin"
+    end
+    if ZM_World.ActiveProfile ~= "preview" then
+        return false, "client profiling is restricted to the preview profile"
+    end
+    local seconds = math.Clamp(math.floor(tonumber(argumentString) or 15), 1, 120)
+    target:ConCommand("zombiesim_dev_profile_hooks " .. seconds)
+    print(string.format("[ZombieSim] Requested a %d s client hook profile.", seconds))
+    return true
+end
+
 // Bridge-only: moves the first player to a raw grid cell through the normal world-map transition.
 DevConsole.DirectCommands.zombiesim_dev_teleport_cell = function(argumentString)
     local gridX, gridY = string.match(argumentString or "", "^(%-?%d+)%s+(%-?%d+)$")

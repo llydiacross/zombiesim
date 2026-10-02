@@ -137,6 +137,29 @@ function ZM_Options:BuildPanel(panel)
         cookie.Set("zombiesim_quick_menu_scale", tostring(math.Round(value, 1)))
     end
 
+    local qualityPreset
+    if ZM_Quality then
+        local qualityLabel = vgui.Create("DLabel", panel)
+        qualityLabel:Dock(TOP)
+        qualityLabel:DockMargin(4, 6, 4, 2)
+        qualityLabel:SetTall(18)
+        qualityLabel:SetText("Graphics quality preset")
+        qualityLabel:SetTextColor(ZM_DermaSkin.Palette.text)
+
+        qualityPreset = ZM_DermaSkin.StyleComboBox(vgui.Create("DComboBox", panel))
+        qualityPreset:Dock(TOP)
+        qualityPreset:DockMargin(4, 0, 4, 6)
+        qualityPreset:SetTall(24)
+        qualityPreset:SetTooltip("Sets the weather, puddle, snow, debris and screen-effect options below. Changing any of them makes the preset Custom.")
+        for _, preset in ipairs(ZM_Quality.PresetOrder) do
+            qualityPreset:AddChoice(ZM_Quality.PresetLabels[preset], preset)
+        end
+        qualityPreset:SetValue(ZM_Quality.PresetLabels[ZM_Quality:GetPreset()])
+        qualityPreset.OnSelect = function(_, _, _, preset)
+            ZM_Quality:ApplyPreset(preset)
+        end
+    end
+
     for _, setting in ipairs({
         { label = "Compass height", convar = "zombiesim_compass_height", minimum = 0.55, maximum = 1.5 },
         { label = "Minimap size", convar = "zombiesim_minimap_size", minimum = 0.7, maximum = 1.75 },
@@ -145,7 +168,7 @@ function ZM_Options:BuildPanel(panel)
             convar = "zombiesim_atmosphere_rain_density",
             minimum = 0.5,
             maximum = 2,
-            decimals = 1,
+            decimals = 2,
             tooltip = "Adjusts the density of locally rendered rain."
         },
         {
@@ -161,7 +184,7 @@ function ZM_Options:BuildPanel(panel)
             convar = "zombiesim_atmosphere_puddle_amount",
             minimum = 0.5,
             maximum = 3,
-            decimals = 1,
+            decimals = 2,
             tooltip = "Scales how many puddles form in the rain. Higher values cost more frame time."
         },
         {
@@ -169,8 +192,32 @@ function ZM_Options:BuildPanel(panel)
             convar = "zombiesim_ambient_debris_amount",
             minimum = 0,
             maximum = 3,
-            decimals = 1,
+            decimals = 2,
             tooltip = "Scales ambient paper, bottles, litter and tumbleweeds. 0 disables them; higher values cost more frame time."
+        },
+        {
+            label = "Rain ripples",
+            convar = "zombiesim_atmosphere_ripple_amount",
+            minimum = 0.1,
+            maximum = 1,
+            decimals = 2,
+            tooltip = "Scales the rain ripples drawn on puddles."
+        },
+        {
+            label = "Snow detail",
+            convar = "zombiesim_snow_detail",
+            minimum = 0.25,
+            maximum = 1,
+            decimals = 2,
+            tooltip = "Density of lying snow. Changing it rebuilds the snow cover over a few seconds."
+        },
+        {
+            label = "Snow draw distance (0 = fog)",
+            convar = "zombiesim_snow_draw_distance",
+            minimum = 0,
+            maximum = 8000,
+            decimals = 0,
+            tooltip = "Hides lying snow beyond this distance. 0 draws it as far as the fog allows."
         },
         {
             label = "Gore (0 off, 1 reduced, 2 full)",
@@ -198,6 +245,16 @@ function ZM_Options:BuildPanel(panel)
     filmGrain:SetText("Subtle film grain")
     filmGrain:SetTextColor(ZM_DermaSkin.Palette.text)
     filmGrain:SetConVar("zombiesim_atmosphere_grain")
+
+    if GetConVar("zombiesim_screen_effects") then
+        local screenEffects = vgui.Create("DCheckBoxLabel", panel)
+        screenEffects:Dock(TOP)
+        screenEffects:DockMargin(4, 0, 4, 8)
+        screenEffects:SetText("Weather colour grading")
+        screenEffects:SetTextColor(ZM_DermaSkin.Palette.text)
+        screenEffects:SetTooltip("Full-screen colour correction for weather and time of day. Turning it off also hides film grain.")
+        screenEffects:SetConVar("zombiesim_screen_effects")
+    end
 
     if ZM_GetMouseSensitivity then
         local minimumSensitivity, maximumSensitivity = ZM_GetMouseSensitivityRange()
@@ -276,7 +333,15 @@ function ZM_Options:BuildPanel(panel)
 
     local displayedActiveCap
     local displayedPopulationPerZombie
+    local displayedPreset
     panel.Think = function()
+        if qualityPreset and ZM_Quality then
+            local preset = ZM_Quality:GetPreset()
+            if preset ~= displayedPreset and not qualityPreset:IsMenuOpen() then
+                qualityPreset:SetValue(ZM_Quality.PresetLabels[preset] or preset)
+                displayedPreset = preset
+            end
+        end
         local settings = self.WalkerSettings or {}
         activeCap:SetEnabled(settings.canEdit == true)
         populationPerZombie:SetEnabled(settings.canEdit == true)
@@ -438,7 +503,10 @@ net.Receive("ZM.WalkerMaterializationSettings", function()
 end)
 
 function QuickMenu:OpenDestination(entryId)
-    if entryId == "inventory" then
+    // Inventory, scoreboard and options open after the AFK countdown; cheats enter AFK immediately.
+    if ZM_AFK and ZM_AFK:IsMenu(entryId) then
+        ZM_AFK:OpenMenu(entryId)
+    elseif entryId == "inventory" then
         ZM_Inventory:Open()
     elseif entryId == "scoreboard" then
         ZM_Scoreboard:Open()
@@ -554,6 +622,9 @@ end
 hook.Add("PlayerBindPress", "ZM.QuickMenu.ControlScoreboardBind", function(_, bind, pressed)
     local command = string.lower(bind or "")
     if command == "+showscores" then
+        if pressed and ZM_AFK and ZM_AFK:CancelFromInput() then
+            return true
+        end
         if pressed then
             QuickMenu:BeginTabHold()
         else

@@ -392,29 +392,56 @@ function Debris:OnShot(source, direction, impacts)
     end
 end
 
+// Moving players are gathered once per frame; most frames nobody is moving fast enough and nothing is allocated.
+local kickers = {}
+local kickerCount = 0
+
+local function gatherKickers()
+    kickerCount = 0
+    for _, target in ipairs(player.GetAll()) do
+        if IsValid(target) and target:Alive() then
+            local velocity = target:GetVelocity()
+            local speedSqr = velocity.x * velocity.x + velocity.y * velocity.y
+            if speedSqr > 50 * 50 then
+                kickerCount = kickerCount + 1
+                local kicker = kickers[kickerCount]
+                if not kicker then
+                    kicker = {}
+                    kickers[kickerCount] = kicker
+                end
+                local feet = target:GetPos()
+                kicker.x, kicker.y = feet.x, feet.y
+                kicker.vx, kicker.vy = velocity.x, velocity.y
+                kicker.speed = math.sqrt(speedSqr)
+            end
+        end
+    end
+end
+
 local function kickFromPlayers(record, now)
-    if now < record.nextKickAt then
+    if kickerCount == 0 or now < record.nextKickAt then
         return
     end
     local radius = record.definition.kickRadius
-    for _, target in ipairs(player.GetAll()) do
-        if IsValid(target) and target:Alive() then
-            local velocity = horizontal(target:GetVelocity())
-            if velocity:LengthSqr() > 50 * 50 then
-                local feet = target:GetPos()
-                feet.z = record.position.z
-                if feet:DistToSqr(record.position) <= radius * radius then
-                    local away = horizontal(record.position - feet)
-                    if away:LengthSqr() < 1 then
-                        away = velocity
-                    end
-                    local push = away:GetNormalized() * 0.5 + velocity:GetNormalized() * 0.5
-                    local speed = math.min(velocity:Length(), 320)
-                    applyImpulse(record, push * speed * 0.55 + upVector * (record.kind == "paper" and 50 or 20))
-                    record.nextKickAt = now + 0.5
-                    return
-                end
+    local position = record.position
+    for index = 1, kickerCount do
+        local kicker = kickers[index]
+        local awayX, awayY = position.x - kicker.x, position.y - kicker.y
+        local distanceSqr = awayX * awayX + awayY * awayY
+        if distanceSqr <= radius * radius then
+            local speed = kicker.speed
+            local moveX, moveY = kicker.vx / speed, kicker.vy / speed
+            if distanceSqr < 1 then
+                awayX, awayY = moveX, moveY
+            else
+                local distance = math.sqrt(distanceSqr)
+                awayX, awayY = awayX / distance, awayY / distance
             end
+            local strength = math.min(speed, 320) * 0.55
+            applyImpulse(record, Vector((awayX * 0.5 + moveX * 0.5) * strength, (awayY * 0.5 + moveY * 0.5) * strength,
+                record.kind == "paper" and 50 or 20))
+            record.nextKickAt = now + 0.5
+            return
         end
     end
 end
@@ -425,35 +452,56 @@ local function applyWind(record, now, frameTime)
     local withinLeash = drift < record.definition.leash
     if record.kind == "tumbleweed" then
         local wind = gusting and Debris.GustDirection or Debris.WindDirection
-        local target = wind * (gusting and 140 or 40)
+        local speed = gusting and 140 or 40
+        local targetX, targetY = wind.x * speed, wind.y * speed
         if not withinLeash then
             // Roll back toward home once a tumbleweed has blown too far away.
-            target = horizontal(record.home - record.position):GetNormalized() * 40
+            local homeX, homeY = record.home.x - record.position.x, record.home.y - record.position.y
+            local homeLength = math.sqrt(homeX * homeX + homeY * homeY)
+            if homeLength > 0 then
+                targetX, targetY = homeX / homeLength * 40, homeY / homeLength * 40
+            else
+                targetX, targetY = 0, 0
+            end
         end
-        local current = horizontal(record.velocity)
-        local change = (target - current) * math.min(1, 1.2 * frameTime)
-        record.velocity = record.velocity + change
+        local velocity = record.velocity
+        local currentSpeed = math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
+        local blend = math.min(1, 1.2 * frameTime)
+        velocity.x = velocity.x + (targetX - velocity.x) * blend
+        velocity.y = velocity.y + (targetY - velocity.y) * blend
         record.moving = true
-        if record.grounded and current:Length() > 60 and math.random() < frameTime * 1.2 then
-            record.velocity.z = math.Rand(60, 110)
+        if record.grounded and currentSpeed > 60 and math.random() < frameTime * 1.2 then
+            velocity.z = math.Rand(60, 110)
             record.grounded = false
         end
     elseif gusting and withinLeash then
+        local velocity = record.velocity
+        local gust = Debris.GustDirection
         if record.kind == "paper" then
-            record.velocity = record.velocity + Debris.GustDirection * 60 * frameTime
+            velocity.x = velocity.x + gust.x * 60 * frameTime
+            velocity.y = velocity.y + gust.y * 60 * frameTime
             if record.grounded and math.random() < frameTime * 1.5 then
-                record.velocity.z = math.Rand(40, 70)
+                velocity.z = math.Rand(40, 70)
                 record.grounded = false
             end
             record.moving = true
-        elseif record.kind == "litter" and horizontal(record.velocity):LengthSqr() < 25 * 25 then
-            record.velocity = record.velocity + Debris.GustDirection * 18 * frameTime
+        elseif record.kind == "litter" and velocity.x * velocity.x + velocity.y * velocity.y < 25 * 25 then
+            velocity.x = velocity.x + gust.x * 18 * frameTime
+            velocity.y = velocity.y + gust.y * 18 * frameTime
             record.moving = true
         end
     end
 end
 
 local collisionFilter = {}
+// Trace inputs and results are reused through the trace `output` field.
+local wallResult = {}
+local wallTrace = { mask = MASK_SOLID, filter = collisionFilter, output = wallResult }
+local groundResult = {}
+local groundStart = Vector()
+local groundEnd = Vector()
+local groundTrace = { mask = MASK_SOLID_BRUSHONLY, output = groundResult, start = groundStart, endpos = groundEnd }
+local tumbleAxis = Vector()
 
 local function simulate(record, now, frameTime)
     local definition = record.definition
@@ -465,27 +513,35 @@ local function simulate(record, now, frameTime)
     velocity.x = velocity.x * friction
     velocity.y = velocity.y * friction
 
+    // Each record alternates between two position vectors, so stepping does not allocate.
     local oldPosition = record.position
-    local nextPosition = oldPosition + velocity * frameTime
-    local wall = util.TraceLine({ start = oldPosition, endpos = nextPosition, mask = MASK_SOLID, filter = collisionFilter })
+    local nextPosition = record.spare or Vector()
+    nextPosition:SetUnpacked(oldPosition.x + velocity.x * frameTime, oldPosition.y + velocity.y * frameTime,
+        oldPosition.z + velocity.z * frameTime)
+    record.spare = nil
+    wallTrace.start = oldPosition
+    wallTrace.endpos = nextPosition
+    local wall = util.TraceLine(wallTrace)
     if wall.Hit or wall.StartSolid then
         local normal = wall.HitNormal or -velocity:GetNormalized()
         record.velocity = (velocity - normal * 2 * velocity:Dot(normal)) * 0.35
+        record.spare = nextPosition
         nextPosition = oldPosition
         velocity = record.velocity
     end
 
-    local ground = util.TraceLine({
-        start = nextPosition + upVector * 20,
-        endpos = nextPosition - upVector * (record.restHeight + 64),
-        mask = MASK_SOLID_BRUSHONLY
-    })
+    groundStart:SetUnpacked(nextPosition.x, nextPosition.y, nextPosition.z + 20)
+    groundEnd:SetUnpacked(nextPosition.x, nextPosition.y, nextPosition.z - (record.restHeight + 64))
+    local ground = util.TraceLine(groundTrace)
     if ground.Hit and not ground.StartSolid then
         local groundZ = ground.HitPos.z + record.restHeight
         if groundZ - nextPosition.z > 18 then
             // A step this tall is a wall for debris; stay put and bounce off it.
-            record.velocity = Vector(-velocity.x * 0.35, -velocity.y * 0.35, velocity.z)
-            nextPosition = oldPosition
+            velocity.x, velocity.y = -velocity.x * 0.35, -velocity.y * 0.35
+            if not rawequal(nextPosition, oldPosition) then
+                record.spare = nextPosition
+                nextPosition = oldPosition
+            end
         elseif nextPosition.z <= groundZ + 0.5 and velocity.z <= 0 then
             nextPosition.z = groundZ
             record.normal = ground.HitNormal
@@ -502,31 +558,37 @@ local function simulate(record, now, frameTime)
     else
         record.grounded = false
         if nextPosition.z < record.home.z - 600 then
+            if not rawequal(nextPosition, oldPosition) then
+                record.spare = nextPosition
+            end
             nextPosition = Vector(record.home)
-            record.velocity = Vector(0, 0, 0)
+            velocity:Zero()
             record.grounded = true
         end
     end
 
-    local travelled = horizontal(nextPosition - oldPosition)
-    local distance = travelled:Length()
+    local travelledX, travelledY = nextPosition.x - oldPosition.x, nextPosition.y - oldPosition.y
+    local distance = math.sqrt(travelledX * travelledX + travelledY * travelledY)
     record.position = nextPosition
+    if not rawequal(nextPosition, oldPosition) and not record.spare then
+        record.spare = oldPosition
+    end
     if distance > 0.01 then
-        local moveDirection = travelled / distance
         if record.kind == "rolling" then
             local axis = record.angles:Up()
             local rollDirection = axis:Cross(upVector)
             if rollDirection:LengthSqr() > 0.01 then
                 rollDirection:Normalize()
-                local rolled = travelled:Dot(rollDirection)
+                local rolled = travelledX * rollDirection.x + travelledY * rollDirection.y
                 record.angles:RotateAroundAxis(axis, -math.deg(rolled / record.restHeight))
             end
             if not record.grounded then
                 record.angles:RotateAroundAxis(upVector, record.spin * 360 * frameTime)
             end
         elseif record.kind == "tumbleweed" then
-            local axis = upVector:Cross(moveDirection)
-            record.angles:RotateAroundAxis(axis, math.deg(distance / record.restHeight))
+            // upVector x moveDirection, written out for a horizontal move.
+            tumbleAxis:SetUnpacked(-travelledY / distance, travelledX / distance, 0)
+            record.angles:RotateAroundAxis(tumbleAxis, math.deg(distance / record.restHeight))
         elseif record.kind == "paper" then
             record.angles.y = record.angles.y + (record.spin * 120 + 35) * frameTime
             local flutter = record.grounded and 0 or 15
@@ -544,7 +606,7 @@ local function simulate(record, now, frameTime)
     placeEntity(record)
 
     if record.grounded and record.kind ~= "tumbleweed" and record.velocity:LengthSqr() < 4 then
-        record.velocity = Vector(0, 0, 0)
+        record.velocity:Zero()
         record.moving = false
         if record.kind == "paper" then
             record.angles.p = 0
@@ -579,6 +641,7 @@ hook.Add("Think", "ZM.Foliage.AmbientDebris", function()
     for _, target in ipairs(player.GetAll()) do
         table.insert(collisionFilter, target)
     end
+    gatherKickers()
 
     local frameTime = math.min(FrameTime(), 0.05)
     local viewer = localPlayer:GetPos()

@@ -1,2 +1,3 @@
-# request: bridge-20261002-080552-200
-zn_test_loot_spots
+# request: bridge-20261002-100514-485
+zombiesim_quality_preset low
+zombiesim_weather clear

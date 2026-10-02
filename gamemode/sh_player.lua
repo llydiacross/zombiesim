@@ -206,19 +206,81 @@ function ply:CanLevelUp()
     return self.XP >= self.ExperiencePerLevel
 end
 
+// Level shots from the centre of mass pass over crawlers, so a level command (top-down/orbit) dips onto the
+// nearest crawler in its line of fire. The target comes from networked entity state on both realms, never from
+// the client, and shoulder aim (a cursor pitch) is left unchanged.
+ZM_LowTargetAim = ZM_LowTargetAim or {}
+ZM_LowTargetAim.Classes = { "zn_walker_zombie" }
+ZM_LowTargetAim.LegsMaskKey = "ZM_GoreSevered"
+ZM_LowTargetAim.LegsBit = 4
+ZM_LowTargetAim.AimHeight = 16
+ZM_LowTargetAim.LateralRadius = 24
+ZM_LowTargetAim.Range = 2048
+ZM_LowTargetAim.LevelTolerance = 0.001
+
+function ZM_LowTargetAim.IsLowTarget(entity)
+    return IsValid(entity) and entity:Health() > 0
+        and bit.band(entity:GetNWInt(ZM_LowTargetAim.LegsMaskKey, 0), ZM_LowTargetAim.LegsBit) ~= 0
+end
+
+// Returns the aim point of the nearest crawler the level ray passes over, unless a wall or another entity
+// intercepts the level ray first.
+function ZM_LowTargetAim.Find(origin, yaw, filter, candidates)
+    local forward = Angle(0, yaw, 0):Forward()
+    local bestDepth, bestPoint
+    if not candidates then
+        candidates = {}
+        for _, class in ipairs(ZM_LowTargetAim.Classes) do
+            for _, entity in ipairs(ents.FindByClass(class)) do
+                candidates[#candidates + 1] = entity
+            end
+        end
+    end
+    for _, entity in ipairs(candidates) do
+        if entity ~= filter and ZM_LowTargetAim.IsLowTarget(entity) then
+            local point = entity:GetPos() + Vector(0, 0, ZM_LowTargetAim.AimHeight)
+            local offset = point - origin
+            offset.z = 0
+            local depth = offset:Dot(forward)
+            local lateral = offset - forward * depth
+            if depth > 0 and depth <= ZM_LowTargetAim.Range and point.z < origin.z
+                and lateral:LengthSqr() <= ZM_LowTargetAim.LateralRadius * ZM_LowTargetAim.LateralRadius
+                and (not bestDepth or depth < bestDepth) then
+                bestDepth, bestPoint = depth, point
+            end
+        end
+    end
+    if not bestPoint then
+        return nil
+    end
+    local level = util.TraceLine({ start = origin, endpos = origin + forward * bestDepth, filter = filter, mask = MASK_SHOT })
+    if level.Hit then
+        return nil
+    end
+    return bestPoint
+end
+
 // Outdoor commands carry weapon aim, not camera pitch: top-down/orbit send level aim, shoulder sends cursor aim.
 function ply:GetLevelAim()
     local angles = self:EyeAngles()
+    local origin = self:WorldSpaceCenter()
+    local safeZoneId = self:GetNWString("CurrentSafeZoneId", "")
+    local inSafeZone = safeZoneId ~= "" and safeZoneId ~= "NULL"
+    if not inSafeZone and math.abs(math.NormalizeAngle(angles.p)) < ZM_LowTargetAim.LevelTolerance then
+        local point = ZM_LowTargetAim.Find(origin, angles.y, self)
+        if point then
+            angles = Angle((point - origin):Angle().p, angles.y, 0)
+        end
+    end
     local weapon = self.GetActiveWeapon and self:GetActiveWeapon()
     if IsValid(weapon) and weapon.GetAimRecoil then
         local recoil = weapon:GetAimRecoil()
         angles = Angle(math.Clamp(math.NormalizeAngle(angles.p) + recoil.p, -89, 89), angles.y + recoil.y, 0)
     end
-    local safeZoneId = self:GetNWString("CurrentSafeZoneId", "")
-    if safeZoneId ~= "" and safeZoneId ~= "NULL" then
+    if inSafeZone then
         angles = Angle(0, angles.y, 0)
     end
-    return self:WorldSpaceCenter(), angles:Forward()
+    return origin, angles:Forward()
 end
 
 // Weapons and the crosshair share the same recoil-adjusted aim trace.

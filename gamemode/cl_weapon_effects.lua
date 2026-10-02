@@ -163,6 +163,8 @@ hook.Add("Think", "ZM.WeaponEffects", function()
     end
 end)
 
+local smokeBeamColor = Color(205, 215, 225, 155)
+
 local function drawSmoke(shot, now)
     if #shot.smoke < 2 then return end
     local fade = math.Clamp((limits.smokeLifetime - (now - shot.started)) / 0.6, 0, 1)
@@ -174,11 +176,13 @@ local function drawSmoke(shot, now)
         local drift = (1 - math.exp(-age * 10)) * 3
         local rise = age * 20 + age * age * 8
         local curl = math.sin(age * 8 + shot.started * 3) * math.min(age * 5, 4)
-        local position = node.position + shot.direction * drift + side * curl + Vector(0, 0, rise)
+        local position = node.position + shot.direction * drift + side * curl
+        position.z = position.z + rise
         local along = (index - 1) / (#shot.smoke - 1)
         local taper = 0.25 + 0.75 * math.sin(along * math.pi) ^ 0.5
         local width = (0.5 + age * 2.5) * math.Clamp(shot.profile.smoke / 6, 1, 1.8)
-        render.AddBeam(position, width, along, Color(205, 215, 225, 155 * fade * taper))
+        smokeBeamColor.a = 155 * fade * taper
+        render.AddBeam(position, width, along, smokeBeamColor)
     end
     render.EndBeam()
 end

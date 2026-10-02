@@ -27,6 +27,7 @@ local nextWeatherParticleAt = 0
 local nextBoundaryParticleAt = 0
 local nextShelterCheckAt = 0
 local nextPuddleAt = 0
+local puddleSiteDebt = 0
 local puddleSites = Atmosphere.PuddleSites or {}
 Atmosphere.PuddleSites = puddleSites
 local puddleSiteMap = Atmosphere.PuddleSiteMap
@@ -79,6 +80,14 @@ local snowCoverMaxStep = 6
 local snowCoverChunkQuads = 16
 local snowCoverChunksPerFrame = 6
 local snowCoverRebuildsPerFrame = 4
+// Snow sampling, chunk meshing, chunk re-bakes and the puddle site scan share one per-frame time budget.
+// Each step always makes at least one unit of progress; the per-frame counts above remain upper caps.
+local atmosphereWorkBudgetSeconds = 0.0015
+// The loading screen hides a fresh map, so the preload may spend most of each frame building the cover.
+local atmospherePreloadWorkBudgetSeconds = 0.05
+// Chunks are drawn only inside a slightly widened view cone, and not beyond an opaque fog end.
+local snowCoverCullConeMargin = math.rad(6)
+local snowCoverFogCullDistance = nil
 // While the loading screen hides a fresh map, the cover is built much faster and the fade-in waits for it.
 local snowPreloadPointsPerFrame = 4000
 local snowPreloadChunksPerFrame = 40
@@ -86,10 +95,26 @@ local snowPreloadWindowSeconds = 15
 local snowPreloadMaxSeconds = 12
 local snowCarveRadius = 34
 local snowCarveInterval = 10
-local snowTrailRefillInterval = 3
 local snowFootprintFillSeconds = 150
+// Refilling footprints only re-bake when a point's depth crosses one of these steps; the refill runs once per
+// step so each pass re-bakes every trodden chunk once instead of a few points' chunks every 3 s.
+local snowTrailRefillSteps = 12
+local snowTrailRefillInterval = snowFootprintFillSeconds / snowTrailRefillSteps
 local snowCover = Atmosphere.SnowCover or { status = "not built" }
 Atmosphere.SnowCover = snowCover
+
+local atmosphereWorkFrame = -1
+local atmosphereWorkDeadline = 0
+
+local function getAtmosphereWorkDeadline()
+    local frame = FrameNumber()
+    if frame ~= atmosphereWorkFrame then
+        atmosphereWorkFrame = frame
+        local budget = snowCover.preloadStep ~= nil and atmospherePreloadWorkBudgetSeconds or atmosphereWorkBudgetSeconds
+        atmosphereWorkDeadline = SysTime() + budget
+    end
+    return atmosphereWorkDeadline
+end
 Atmosphere.SessionStart = Atmosphere.SessionStart or SysTime()
 // Until the server's weather sync arrives, the last known state (saved by this client) lets a new map start
 // building the settled cover behind the loading screen straight away.
@@ -112,7 +137,7 @@ local snowCoverMaterial = CreateMaterial("zombiesim_atmosphere_snow_cover_v3", "
     ["$nocull"] = "1",
     ["$alpha"] = "1"
 })
-local snowCoverMeshVersion = 7
+local snowCoverMeshVersion = 8
 local snowCoverLift = 4
 local frostEdgeStrips = 18
 Atmosphere.WinterBlend = Atmosphere.WinterBlend or 0
@@ -193,6 +218,8 @@ local function getVisiblePuddleLobeLimit()
 end
 local puddleLifetime = 60
 local puddleMeshSegments = 32
+// Lobes beyond this distance draw every second outline segment; the outline points themselves are unchanged.
+local puddleMeshLodDistanceSqr = 900 * 900
 local puddleProbeDirections = {
     Vector(1, 0, 0),
     Vector(0.707, 0.707, 0),
@@ -400,10 +427,22 @@ function Atmosphere:SetStormIntensity(intensity)
     self.StormIntensity = math.Clamp(getNumber(intensity, 0), 0, 1)
 end
 
+// Fog settings are read by several hooks per frame, so they are computed once per frame into reused tables.
+local fogSettingsCache = { color = {} }
+local fogWinterColor = {}
+local fogSettingsFrame = -1
+local fogSettingsResult
+
 function Atmosphere:GetFogSettings()
+    local frame = FrameNumber()
+    if frame == fogSettingsFrame then
+        return fogSettingsResult
+    end
+    fogSettingsFrame = frame
     local profile = self:GetActiveProfile()
     local fog = profile and profile.fog
     if type(fog) ~= "table" then
+        fogSettingsResult = nil
         return nil
     end
 
@@ -417,18 +456,18 @@ function Atmosphere:GetFogSettings()
     if winter > 0.001 then
         visibilityMultiplier = visibilityMultiplier * (1 - 0.22 * winter)
         density = math.Clamp(density + (1 - density) * 0.25 * winter, 0, 1)
-        color = {
-            Lerp(winter * 0.75, getColorComponent(color, 1), 212),
-            Lerp(winter * 0.75, getColorComponent(color, 2), 222),
-            Lerp(winter * 0.75, getColorComponent(color, 3), 234)
-        }
+        fogWinterColor[1] = Lerp(winter * 0.75, getColorComponent(color, 1), 212)
+        fogWinterColor[2] = Lerp(winter * 0.75, getColorComponent(color, 2), 222)
+        fogWinterColor[3] = Lerp(winter * 0.75, getColorComponent(color, 3), 234)
+        color = fogWinterColor
     end
-    return {
-        color = color,
-        start = math.max(0, getNumber(fog.start, 0) * visibilityMultiplier),
-        finish = math.max(1, getNumber(fog["end"], 1) * visibilityMultiplier),
-        maxDensity = density
-    }
+    local settings = fogSettingsCache
+    settings.color = color
+    settings.start = math.max(0, getNumber(fog.start, 0) * visibilityMultiplier)
+    settings.finish = math.max(1, getNumber(fog["end"], 1) * visibilityMultiplier)
+    settings.maxDensity = density
+    fogSettingsResult = settings
+    return settings
 end
 
 function Atmosphere:GetDiagnosticSnapshot()
@@ -530,6 +569,13 @@ function Atmosphere:GetDiagnosticSnapshot()
         snowCoverTextureReapplied = snowCover.textureReapplied or 0,
         snowTrailPoints = snowCover.troddenCount or 0,
         snowCoverDraws = snowCover.drawCount or 0,
+        snowCoverChunks = snowCover.chunkList and #snowCover.chunkList or 0,
+        snowCoverDrawnChunks = snowCover.lastDrawnChunks or 0,
+        snowCoverCulledChunks = snowCover.lastCulledChunks or 0,
+        snowCoverRebuilds = snowCover.rebuildCount or 0,
+        snowCoverRebuildMsAverage = (snowCover.rebuildCount or 0) > 0
+            and (snowCover.rebuildSeconds or 0) * 1000 / snowCover.rebuildCount or 0,
+        snowCoverFogCullDistance = snowCoverFogCullDistance,
         windSoundActive = self.WindSoundPatch ~= nil,
         windSoundMounted = file.Exists("sound/" .. windSoundPath, "GAME"),
         snowStepSoundMounted = file.Exists("sound/" .. snowStepSoundPaths[1], "GAME"),
@@ -584,16 +630,24 @@ local function isOutdoorCityCell(player)
     return not ZM_SafeZones:IsPlayerInside(player)
 end
 
+local shelterTraceStart = Vector()
+local shelterTraceEnd = Vector()
+local shelterTraceResult = {}
+local shelterTrace = {
+    start = shelterTraceStart,
+    endpos = shelterTraceEnd,
+    mask = MASK_SOLID_BRUSHONLY,
+    output = shelterTraceResult
+}
+
 local function checkShelter(player, now)
     if now < nextShelterCheckAt then return isSheltered end
     nextShelterCheckAt = now + 0.5
-    local start = player:GetPos() + Vector(0, 0, 32)
-    local trace = util.TraceLine({
-        start = start,
-        endpos = start + Vector(0, 0, 4096),
-        mask = MASK_SOLID_BRUSHONLY,
-        filter = player
-    })
+    local origin = player:GetPos()
+    shelterTraceStart:SetUnpacked(origin.x, origin.y, origin.z + 32)
+    shelterTraceEnd:SetUnpacked(origin.x, origin.y, origin.z + 32 + 4096)
+    shelterTrace.filter = player
+    local trace = util.TraceLine(shelterTrace)
     isSheltered = trace.Hit and not trace.HitSky
     weatherDiagnostics.shelterCheckedAt = RealTime()
     weatherDiagnostics.shelterTraceHit = trace.Hit == true
@@ -847,18 +901,25 @@ local function ensurePuddleMapSites()
     return true
 end
 
+local puddleGroundStart = Vector()
+local puddleGroundEnd = Vector()
+// Ground results are retained and compared by callers, so only the request is reused.
+local puddleGroundTrace = {
+    start = puddleGroundStart,
+    endpos = puddleGroundEnd,
+    mask = MASK_SOLID_BRUSHONLY
+}
+
 local function tracePuddleGround(position, player)
     local minimumZ = puddleWorldMinimum.z
     local startZ = puddleWorldMaximum.z - 1
     local trace
+    puddleGroundTrace.filter = IsValid(player) and player or nil
     // Step through sky ceilings and thin overhead brushes until real ground is found.
     for _ = 1, 4 do
-        trace = util.TraceLine({
-            start = Vector(position.x, position.y, startZ),
-            endpos = Vector(position.x, position.y, minimumZ - 64),
-            mask = MASK_SOLID_BRUSHONLY,
-            filter = IsValid(player) and player or nil
-        })
+        puddleGroundStart:SetUnpacked(position.x, position.y, startZ)
+        puddleGroundEnd:SetUnpacked(position.x, position.y, minimumZ - 64)
+        trace = util.TraceLine(puddleGroundTrace)
         if not trace.Hit then return nil end
         if not trace.StartSolid and not trace.HitSky then break end
         local exitZ = trace.StartSolid and (startZ + (minimumZ - 64 - startZ) * trace.FractionLeftSolid) or trace.HitPos.z
@@ -870,14 +931,24 @@ local function tracePuddleGround(position, player)
     return trace
 end
 
+local puddleOverheadStart = Vector()
+local puddleOverheadEnd = Vector()
+local puddleOverheadResult = {}
+local puddleOverheadTrace = {
+    start = puddleOverheadStart,
+    endpos = puddleOverheadEnd,
+    mask = MASK_SOLID_BRUSHONLY,
+    output = puddleOverheadResult
+}
+
 local function isPuddleSurfaceExposed(trace, player)
-    local surface = trace.HitPos + trace.HitNormal * 12
-    local overhead = util.TraceLine({
-        start = surface,
-        endpos = Vector(surface.x, surface.y, puddleWorldMaximum.z + 64),
-        mask = MASK_SOLID_BRUSHONLY,
-        filter = IsValid(player) and player or nil
-    })
+    local hitPos, hitNormal = trace.HitPos, trace.HitNormal
+    local surfaceX = hitPos.x + hitNormal.x * 12
+    local surfaceY = hitPos.y + hitNormal.y * 12
+    puddleOverheadStart:SetUnpacked(surfaceX, surfaceY, hitPos.z + hitNormal.z * 12)
+    puddleOverheadEnd:SetUnpacked(surfaceX, surfaceY, puddleWorldMaximum.z + 64)
+    puddleOverheadTrace.filter = IsValid(player) and player or nil
+    local overhead = util.TraceLine(puddleOverheadTrace)
     return not overhead.Hit or overhead.HitSky
 end
 
@@ -1105,21 +1176,39 @@ local function updateWetPuddles()
         table.remove(puddles, oldestIndex)
     end
 
-    if now < nextPuddleAt then return end
-    nextPuddleAt = now + puddleSiteInterval
-    if not raining or not hasOutdoorCityCells() or not ensurePuddleMapSites() then return end
+    if not raining then
+        puddleSiteDebt = 0
+        return
+    end
+    if now >= nextPuddleAt then
+        nextPuddleAt = now + puddleSiteInterval
+        if not hasOutdoorCityCells() or not ensurePuddleMapSites() then
+            puddleSiteDebt = 0
+            return
+        end
+        // Visit every active site about once per 35 seconds, well inside the 60-second puddle lifetime.
+        // Each tick's sites become debt that is paid off within the shared frame budget instead of in one burst.
+        local activeSites = getActivePuddleSiteCount()
+        puddleSiteDebt = math.min(puddleSiteDebt + math.ceil(activeSites / puddleSiteCycleTicks), activeSites)
+    end
+    if puddleSiteDebt <= 0 then return end
 
-    // Visit every active site about once per 35 seconds, well inside the 60-second puddle lifetime.
     local activeSites = getActivePuddleSiteCount()
-    local sitesPerTick = math.ceil(activeSites / puddleSiteCycleTicks)
+    if activeSites <= 0 then
+        puddleSiteDebt = 0
+        return
+    end
+    local deadline = getAtmosphereWorkDeadline()
     local player = LocalPlayer()
-    for _ = 1, sitesPerTick do
+    while puddleSiteDebt > 0 do
         if puddleSiteCursor > activeSites then puddleSiteCursor = 1 end
         local site = puddleSites[puddleSiteCursor]
         puddleSiteCursor = puddleSiteCursor % activeSites + 1
+        puddleSiteDebt = puddleSiteDebt - 1
         if site and not site.unusable then
             addWetPuddle(site, player, now)
         end
+        if SysTime() >= deadline then break end
     end
     Atmosphere.PuddleSiteCursor = puddleSiteCursor
 end
@@ -1207,7 +1296,15 @@ local function destroySnowCoverMeshes()
     snowCover.chunks = {}
     snowCover.chunkList = {}
     snowCover.dirtyChunks = {}
+    snowCover.urgentChunks = {}
     snowCover.meshCount = 0
+end
+
+// Quality settings come from cl_quality.lua; the fallbacks keep the original high-quality behaviour.
+function Atmosphere.GetQualityNumber(key, fallback, minimum, maximum)
+    local convar = ZM_Quality and ZM_Quality.ConVars and ZM_Quality.ConVars[key]
+    if not convar then return fallback end
+    return math.Clamp(convar:GetFloat(), minimum, maximum)
 end
 
 local function beginSnowCover(mapName)
@@ -1215,9 +1312,12 @@ local function beginSnowCover(mapName)
     local minimum, maximum = puddleWorldMinimum, puddleWorldMaximum
     local width = maximum.x - minimum.x
     local height = maximum.y - minimum.y
-    local spacing = math.max(snowCoverMinimumSpacing, math.ceil(math.sqrt(width * height / snowCoverTargetPoints)))
+    local detail = Atmosphere.GetQualityNumber("snowDetail", 1, 0.25, 1)
+    local spacing = math.max(snowCoverMinimumSpacing,
+        math.ceil(math.sqrt(width * height / (snowCoverTargetPoints * detail))))
     snowCover.map = mapName
     snowCover.meshVersion = snowCoverMeshVersion
+    snowCover.detail = detail
     snowCover.status = "sampling"
     snowCover.spacing = spacing
     snowCover.originX = minimum.x
@@ -1253,7 +1353,9 @@ end
 local function sampleSnowCover(budget)
     local columns = snowCover.columns
     local spacing = snowCover.spacing
-    for _ = 1, budget do
+    local deadline = getAtmosphereWorkDeadline()
+    for sampled = 1, budget do
+        if sampled > 1 and SysTime() >= deadline then return end
         local cursor = snowCover.cursor
         if cursor >= snowCover.total then
             snowCover.status = "meshing"
@@ -1266,9 +1368,13 @@ local function sampleSnowCover(budget)
         if trace and isPuddleSurfaceExposed(trace, nil) then
             local normal = trace.HitNormal
             local light = render.GetLightColor(trace.HitPos + normal * 4)
+            local position = trace.HitPos + normal * snowCoverLift
             snowCover.points[cursor + 1] = {
-                position = trace.HitPos + normal * snowCoverLift,
+                position = position,
                 normal = normal,
+                // Plain numbers let chunk re-bakes update pooled vertices without Vector temporaries.
+                px = position.x, py = position.y, pz = position.z,
+                nx = normal.x, ny = normal.y, nz = normal.z,
                 // Unlit material: keep snow bright and only dim it modestly in darker spots.
                 brightness = math.Clamp(0.72 + (light.x + light.y + light.z) / 3 * 0.8, 0.72, 1),
                 drift = 0.7 + 0.3 * snowHash(column * 0.37, row * 0.71),
@@ -1307,14 +1413,35 @@ local function collectSnowCoverQuads()
                     local key = getSnowChunkKey(index)
                     local chunk = chunks[key]
                     if not chunk then
-                        chunk = { key = key, quads = {} }
+                        chunk = { key = key, quads = {},
+                            minX = math.huge, minY = math.huge, minZ = math.huge,
+                            maxX = -math.huge, maxY = -math.huge, maxZ = -math.huge,
+                            patchMin = math.huge, patchMax = -math.huge }
                         chunks[key] = chunk
                         chunkList[#chunkList + 1] = chunk
                     end
                     chunk.quads[#chunk.quads + 1] = index
+                    for _, point in ipairs({ a, b, c, d }) do
+                        chunk.minX = math.min(chunk.minX, point.px)
+                        chunk.minY = math.min(chunk.minY, point.py)
+                        chunk.minZ = math.min(chunk.minZ, point.pz)
+                        chunk.maxX = math.max(chunk.maxX, point.px)
+                        chunk.maxY = math.max(chunk.maxY, point.py)
+                        chunk.maxZ = math.max(chunk.maxZ, point.pz)
+                        chunk.patchMin = math.min(chunk.patchMin, point.patch)
+                        chunk.patchMax = math.max(chunk.patchMax, point.patch)
+                    end
                 end
             end
         end
+    end
+    // Bounding spheres for draw culling.
+    for _, chunk in ipairs(chunkList) do
+        chunk.centerX = (chunk.minX + chunk.maxX) * 0.5
+        chunk.centerY = (chunk.minY + chunk.maxY) * 0.5
+        chunk.centerZ = (chunk.minZ + chunk.maxZ) * 0.5
+        local dx, dy, dz = chunk.maxX - chunk.centerX, chunk.maxY - chunk.centerY, chunk.maxZ - chunk.centerZ
+        chunk.radius = math.sqrt(dx * dx + dy * dy + dz * dz) + snowCoverLift
     end
     snowCover.validQuads = valid
     snowCover.chunks = chunks
@@ -1334,50 +1461,86 @@ local function getSnowVertexAlpha(index)
     return 0
 end
 
-local function makeSnowVertex(index)
+// Rewrites a pooled vertex in place: no tables, Vectors or Colors are allocated per re-bake.
+local function updateSnowVertex(vertex, index)
     local point = snowCover.points[index]
     local trodden = snowCover.trodden[index] or 0
     // Each point fills in over its own slice of the build: patches settle first, then the cover joins up and thickens.
     local coverage = math.Clamp((snowCover.stage - point.patch * 0.6) / 0.4, 0, 1)
     local depth = 1 + (snowCoverLift - 1) * coverage
-    local ground = point.position - point.normal * snowCoverLift
-    local brightness = point.brightness * (1 - 0.28 * trodden)
     // Trodden snow is pressed down towards the ground, greyer, and thin enough to show the road through.
-    return {
-        pos = ground + point.normal * (depth - (depth - 0.5) * trodden),
-        normal = point.normal,
-        u = point.position.x / 192,
-        v = point.position.y / 192,
-        color = Color(236 * brightness, 241 * brightness, 250 * brightness,
-            getSnowVertexAlpha(index) * coverage * (1 - 0.72 * trodden))
-    }
+    local offset = depth - (depth - 0.5) * trodden - snowCoverLift
+    vertex.pos:SetUnpacked(point.px + point.nx * offset, point.py + point.ny * offset, point.pz + point.nz * offset)
+    local brightness = point.brightness * (1 - 0.28 * trodden)
+    local color = vertex.color
+    color.r = 236 * brightness
+    color.g = 241 * brightness
+    color.b = 250 * brightness
+    color.a = point.edgeAlpha * coverage * (1 - 0.72 * trodden)
+end
+
+local function getSnowChunkVertex(chunk, index)
+    local vertex = chunk.vertices[index]
+    if not vertex then
+        local point = snowCover.points[index]
+        if point.edgeAlpha == nil then
+            point.edgeAlpha = getSnowVertexAlpha(index)
+        end
+        vertex = {
+            pos = Vector(point.px, point.py, point.pz),
+            normal = point.normal,
+            u = point.px / 192,
+            v = point.py / 192,
+            color = Color(255, 255, 255, 0)
+        }
+        chunk.vertices[index] = vertex
+        chunk.vertexList[#chunk.vertexList + 1] = index
+    end
+    return vertex
+end
+
+// The triangle list references shared pooled vertices, so it is built once per chunk and reused.
+local function prepareSnowChunkVertices(chunk)
+    chunk.vertices = {}
+    chunk.vertexList = {}
+    local triangles = {}
+    local columns = snowCover.columns
+    for _, index in ipairs(chunk.quads) do
+        local a, b = getSnowChunkVertex(chunk, index), getSnowChunkVertex(chunk, index + 1)
+        local c, d = getSnowChunkVertex(chunk, index + columns + 1), getSnowChunkVertex(chunk, index + columns)
+        triangles[#triangles + 1] = a
+        triangles[#triangles + 1] = c
+        triangles[#triangles + 1] = b
+        triangles[#triangles + 1] = a
+        triangles[#triangles + 1] = d
+        triangles[#triangles + 1] = c
+    end
+    chunk.triangleList = triangles
 end
 
 local function buildSnowChunkMesh(chunk)
+    local startedAt = SysTime()
     if chunk.imesh then
         chunk.imesh:Destroy()
         chunk.imesh = nil
         snowCover.meshCount = snowCover.meshCount - 1
         snowCover.triangleCount = snowCover.triangleCount - (chunk.triangles or 0)
     end
-    local columns = snowCover.columns
-    local vertices = {}
-    for _, index in ipairs(chunk.quads) do
-        local a, b = makeSnowVertex(index), makeSnowVertex(index + 1)
-        local c, d = makeSnowVertex(index + columns + 1), makeSnowVertex(index + columns)
-        vertices[#vertices + 1] = a
-        vertices[#vertices + 1] = c
-        vertices[#vertices + 1] = b
-        vertices[#vertices + 1] = a
-        vertices[#vertices + 1] = d
-        vertices[#vertices + 1] = c
+    if not chunk.triangleList then
+        prepareSnowChunkVertices(chunk)
     end
-    if #vertices == 0 then return end
+    if #chunk.triangleList == 0 then return end
+    local vertices = chunk.vertices
+    for _, index in ipairs(chunk.vertexList) do
+        updateSnowVertex(vertices[index], index)
+    end
     local imesh = Mesh(snowCoverMaterial)
-    imesh:BuildFromTriangles(vertices)
+    imesh:BuildFromTriangles(chunk.triangleList)
     chunk.imesh = imesh
     chunk.triangles = #chunk.quads * 2
     snowCover.meshCount = snowCover.meshCount + 1
+    snowCover.rebuildCount = (snowCover.rebuildCount or 0) + 1
+    snowCover.rebuildSeconds = (snowCover.rebuildSeconds or 0) + SysTime() - startedAt
     snowCover.triangleCount = snowCover.triangleCount + chunk.triangles
 end
 
@@ -1387,7 +1550,9 @@ local function buildSnowCoverChunks(budget)
         return
     end
     local chunkList = snowCover.chunkList
-    for _ = 1, budget do
+    local deadline = getAtmosphereWorkDeadline()
+    for built = 1, budget do
+        if built > 1 and SysTime() >= deadline then return end
         local chunk = chunkList[snowCover.buildCursor]
         if not chunk then
             snowCover.status = "ready"
@@ -1398,27 +1563,57 @@ local function buildSnowCoverChunks(budget)
     end
 end
 
-local function markSnowPointDirty(index)
-    if not snowCover.validQuads or not snowCover.dirtyChunks then return end
-    local columns = snowCover.columns
-    for _, quadIndex in ipairs({ index, index - 1, index - columns, index - columns - 1 }) do
-        if snowCover.validQuads[quadIndex] then
-            snowCover.dirtyChunks[getSnowChunkKey(quadIndex)] = true
+local function markSnowQuadDirty(quadIndex, urgent)
+    if snowCover.validQuads[quadIndex] then
+        local key = getSnowChunkKey(quadIndex)
+        if urgent then
+            snowCover.urgentChunks[key] = true
+        else
+            snowCover.dirtyChunks[key] = true
         end
     end
 end
 
+// A point is shared by up to four quads; footprints are urgent so they jump the background re-bake queue.
+local function markSnowPointDirty(index, urgent)
+    if not snowCover.validQuads or not snowCover.dirtyChunks then return end
+    snowCover.urgentChunks = snowCover.urgentChunks or {}
+    local columns = snowCover.columns
+    markSnowQuadDirty(index, urgent)
+    markSnowQuadDirty(index - 1, urgent)
+    markSnowQuadDirty(index - columns, urgent)
+    markSnowQuadDirty(index - columns - 1, urgent)
+end
+
 local function rebuildDirtySnowChunks(budget)
+    local limit = budget or snowCoverRebuildsPerFrame
+    local deadline = getAtmosphereWorkDeadline()
     local rebuilt = 0
-    for key in pairs(snowCover.dirtyChunks) do
-        snowCover.dirtyChunks[key] = nil
+    local urgent = snowCover.urgentChunks or {}
+    local dirty = snowCover.dirtyChunks
+    while rebuilt < limit do
+        local key = next(urgent)
+        local queue = urgent
+        if key == nil then
+            key = next(dirty)
+            queue = dirty
+        end
+        if key == nil then return end
+        queue[key] = nil
+        dirty[key] = nil
         local chunk = snowCover.chunks[key]
         if chunk then
             buildSnowChunkMesh(chunk)
         end
         rebuilt = rebuilt + 1
-        if rebuilt >= (budget or snowCoverRebuildsPerFrame) then return end
+        if SysTime() >= deadline then return end
     end
+end
+
+// Coverage only changes for points whose settle window [0.6 * patch, 0.6 * patch + 0.4] overlaps the stage move.
+local function isSnowChunkAffectedByStage(chunk, from, to)
+    local low, high = math.min(from, to), math.max(from, to)
+    return high > chunk.patchMin * 0.6 and low < chunk.patchMax * 0.6 + 0.4
 end
 
 local function getSnowCoverPointAt(position)
@@ -1454,7 +1649,7 @@ local function carveSnowAt(position)
                     if not current or current < depth - 0.05 then
                         if not current then snowCover.troddenCount = snowCover.troddenCount + 1 end
                         trodden[index] = depth
-                        markSnowPointDirty(index)
+                        markSnowPointDirty(index, true)
                     end
                 end
             end
@@ -1493,14 +1688,17 @@ local function updateSnowTrail(weather)
         local fill = elapsed / snowFootprintFillSeconds
         if fill > 0 then
             for index, depth in pairs(snowCover.trodden) do
-                depth = depth - fill
-                if depth <= 0.02 then
+                local updated = depth - fill
+                if updated <= 0.02 then
                     snowCover.trodden[index] = nil
                     snowCover.troddenCount = snowCover.troddenCount - 1
+                    markSnowPointDirty(index)
                 else
-                    snowCover.trodden[index] = depth
+                    snowCover.trodden[index] = updated
+                    if math.floor(updated * snowTrailRefillSteps) ~= math.floor(depth * snowTrailRefillSteps) then
+                        markSnowPointDirty(index)
+                    end
                 end
-                markSnowPointDirty(index)
             end
         end
     elseif weather ~= "snow" then
@@ -1538,7 +1736,8 @@ local function updateSnowPreload(amount, outdoorMap)
     if snowCover.preloadDone then return false end
     local mapName = game.GetMap()
     local needed = outdoorMap and amount > 0.002
-        and (snowCover.map ~= mapName or snowCover.meshVersion ~= snowCoverMeshVersion or snowCover.status ~= "ready")
+        and (snowCover.map ~= mapName or snowCover.meshVersion ~= snowCoverMeshVersion
+            or snowCover.detail ~= Atmosphere.GetQualityNumber("snowDetail", 1, 0.25, 1) or snowCover.status ~= "ready")
     if snowCover.preloadStep ~= nil then
         if not needed or SysTime() - snowCover.preloadStartedAt > snowPreloadMaxSeconds then
             setSnowPreload(false)
@@ -1587,7 +1786,9 @@ local function updateSnowCover()
     end
 
     local mapName = game.GetMap()
-    if snowCover.map ~= mapName or snowCover.meshVersion ~= snowCoverMeshVersion then
+    // A changed snow-detail setting resamples the cover in the background, like a new map would.
+    if snowCover.map ~= mapName or snowCover.meshVersion ~= snowCoverMeshVersion
+        or snowCover.detail ~= Atmosphere.GetQualityNumber("snowDetail", 1, 0.25, 1) then
         if not outdoorMap or not ensurePuddleMapSites() then return end
         beginSnowCover(mapName)
     end
@@ -1597,12 +1798,16 @@ local function updateSnowCover()
         snowCover.stage = math.Round(amount * snowCoverStages) / snowCoverStages
         buildSnowCoverChunks(preloading and snowPreloadChunksPerFrame or snowCoverChunksPerFrame)
     elseif snowCover.status == "ready" then
-        // A new coverage stage re-bakes every chunk, a few per frame, so the cover fills in (or thins) gradually.
+        // A new coverage stage re-bakes only the chunks whose points it changes, a few per frame, so the cover
+        // fills in (or thins) gradually.
         local stage = math.Round(amount * snowCoverStages) / snowCoverStages
         if stage ~= snowCover.stage then
+            local previous = snowCover.stage or 0
             snowCover.stage = stage
-            for key in pairs(snowCover.chunks) do
-                snowCover.dirtyChunks[key] = true
+            for key, chunk in pairs(snowCover.chunks) do
+                if isSnowChunkAffectedByStage(chunk, previous, stage) then
+                    snowCover.dirtyChunks[key] = true
+                end
             end
         end
         updateSnowTrail(weather)
@@ -1876,11 +2081,58 @@ hook.Add("PreDrawTranslucentRenderables", "ZM.Atmosphere.SnowCover", function(dr
         end
         snowCoverMaterial:SetFloat("$alpha", coverAlpha)
         render.SetMaterial(snowCoverMaterial)
-        for _, chunk in ipairs(snowCover.chunkList) do
-            if chunk.imesh then
-                chunk.imesh:Draw()
+        // IMesh:Draw is not engine-culled: skip chunks outside the view cone or hidden by opaque fog.
+        local eyeX, eyeY, eyeZ = EyePos():Unpack()
+        local forwardX, forwardY, forwardZ = EyeVector():Unpack()
+        local view = render.GetViewSetup and render.GetViewSetup() or nil
+        local coneSin, coneCos
+        if view and view.fov and not view.ortho then
+            local tanHorizontal = math.tan(math.rad(math.Clamp(view.fov, 1, 170)) * 0.5)
+            local aspect = view.aspect
+            if not aspect or aspect <= 0 then
+                aspect = (view.w or view.width or ScrW()) / math.max(1, view.h or view.height or ScrH())
+            end
+            local tanVertical = tanHorizontal / aspect
+            local halfAngle = math.atan(math.sqrt(tanHorizontal * tanHorizontal + tanVertical * tanVertical))
+                + snowCoverCullConeMargin
+            if halfAngle < math.pi * 0.5 then
+                coneSin, coneCos = math.sin(halfAngle), math.cos(halfAngle)
             end
         end
+        local maxDistance = (view and view.ortho) and nil or snowCoverFogCullDistance
+        local qualityDistance = Atmosphere.GetQualityNumber("snowDrawDistance", 0, 0, 100000)
+        if qualityDistance > 0 and not (view and view.ortho) then
+            maxDistance = maxDistance and math.min(maxDistance, qualityDistance) or qualityDistance
+        end
+        local drawn, culled = 0, 0
+        for _, chunk in ipairs(snowCover.chunkList) do
+            if chunk.imesh then
+                local radius = chunk.radius
+                local visible = true
+                if radius then
+                    local dx, dy, dz = chunk.centerX - eyeX, chunk.centerY - eyeY, chunk.centerZ - eyeZ
+                    local distanceSqr = dx * dx + dy * dy + dz * dz
+                    local along = dx * forwardX + dy * forwardY + dz * forwardZ
+                    visible = along >= -radius
+                    if visible and maxDistance then
+                        local reach = maxDistance + radius
+                        visible = distanceSqr <= reach * reach
+                    end
+                    if visible and coneSin and distanceSqr > radius * radius then
+                        local lateral = math.sqrt(math.max(0, distanceSqr - along * along))
+                        visible = lateral * coneCos - along * coneSin <= radius
+                    end
+                end
+                if visible then
+                    chunk.imesh:Draw()
+                    drawn = drawn + 1
+                else
+                    culled = culled + 1
+                end
+            end
+        end
+        snowCover.lastDrawnChunks = drawn
+        snowCover.lastCulledChunks = culled
         snowCover.drawCount = (snowCover.drawCount or 0) + 1
     end
     cam.PopModelMatrix()
@@ -1910,6 +2162,7 @@ hook.Add("PreCleanupMap", "ZM.Atmosphere.WeatherCleanup", function()
     isSheltered = nil
     nextShelterCheckAt = 0
     nextPuddleAt = 0
+    puddleSiteDebt = 0
 end)
 hook.Add("ShutDown", "ZM.Atmosphere.WeatherCleanup", function()
     Atmosphere:StopWeatherEffects()
@@ -1918,20 +2171,29 @@ end)
 
 hook.Remove("PlayerFootstep", "ZM.Atmosphere.RainFootstepSplash")
 
-local function emitPuddleVertex(position, normal, color, alpha)
-    mesh.Position(position)
-    mesh.Normal(normal)
-    mesh.TexCoord(0, 0.5, 0.5)
-    mesh.Color(color[1], color[2], color[3], alpha)
-    mesh.AdvanceVertex()
+// Per-frame puddle render scratch lives in one table to stay under the chunk's local-variable limit.
+local puddleRender = {}
+// Candidate records, selection lists and per-lobe render centres are reused; results only live for one frame.
+puddleRender.candidatePool = {}
+puddleRender.candidates = {}
+puddleRender.selected = {}
+puddleRender.selectedClusters = {}
+
+local function comparePuddleCandidates(left, right)
+    return left.distance < right.distance
 end
 
 local function getVisiblePuddleLobes(now)
-    if #puddles == 0 or not puddleMaterial then return {}, 0 end
+    local candidates, selected, selectedClusters = puddleRender.candidates, puddleRender.selected, puddleRender.selectedClusters
+    for index = #candidates, 1, -1 do candidates[index] = nil end
+    for index = #selected, 1, -1 do selected[index] = nil end
+    for key in pairs(selectedClusters) do selectedClusters[key] = nil end
+    if #puddles == 0 or not puddleMaterial then return selected, 0 end
 
     local cameraPosition = EyePos()
     local viewDirection = EyeVector()
-    local candidates = {}
+    local cameraX, cameraY, cameraZ = cameraPosition.x, cameraPosition.y, cameraPosition.z
+    local viewX, viewY, viewZ = viewDirection.x, viewDirection.y, viewDirection.z
     for _, puddle in ipairs(puddles) do
         if not puddle.removed then
             local fade = 1
@@ -1952,29 +2214,39 @@ local function getVisiblePuddleLobes(now)
                         lobe.createdAt = lobe.createdAt or now - 1.25
                     end
 
-                    local center = puddle.position + (lobe.position - puddle.position) * spread
-                    center.z = lobe.position.z
+                    local origin, lobePosition = puddle.position, lobe.position
+                    local centerX = origin.x + (lobePosition.x - origin.x) * spread
+                    local centerY = origin.y + (lobePosition.y - origin.y) * spread
+                    local centerZ = lobePosition.z
                     local radius = math.max(lobe.targetWidth or 0, lobe.targetHeight or 0) * 0.6 * spread
-                    if (center - cameraPosition):Dot(viewDirection) > -radius then
-                        candidates[#candidates + 1] = {
-                            puddle = puddle,
-                            lobe = lobe,
-                            fade = fade,
-                            center = center,
-                            spread = spread,
-                            distance = center:DistToSqr(cameraPosition)
-                        }
+                    local dx, dy, dz = centerX - cameraX, centerY - cameraY, centerZ - cameraZ
+                    if dx * viewX + dy * viewY + dz * viewZ > -radius then
+                        local center = lobe.renderCenter
+                        if not center then
+                            center = Vector()
+                            lobe.renderCenter = center
+                        end
+                        center:SetUnpacked(centerX, centerY, centerZ)
+                        local candidateIndex = #candidates + 1
+                        local candidate = puddleRender.candidatePool[candidateIndex]
+                        if not candidate then
+                            candidate = {}
+                            puddleRender.candidatePool[candidateIndex] = candidate
+                        end
+                        candidate.puddle = puddle
+                        candidate.lobe = lobe
+                        candidate.fade = fade
+                        candidate.center = center
+                        candidate.spread = spread
+                        candidate.distance = dx * dx + dy * dy + dz * dz
+                        candidates[candidateIndex] = candidate
                     end
                 end
             end
         end
     end
 
-    table.sort(candidates, function(left, right)
-        return left.distance < right.distance
-    end)
-    local selected = {}
-    local selectedClusters = {}
+    table.sort(candidates, comparePuddleCandidates)
     local clusterCount = 0
     local clusterLimit = getVisiblePuddleClusterLimit()
     local lobeLimit = getVisiblePuddleLobeLimit()
@@ -1990,28 +2262,30 @@ local function getVisiblePuddleLobes(now)
     return selected, clusterCount
 end
 
-local function emitPuddleRing(innerA, innerB, outerA, outerB, normal, color, innerAlpha)
-    emitPuddleVertex(innerA, normal, color, innerAlpha)
-    emitPuddleVertex(outerA, normal, color, 0)
-    emitPuddleVertex(outerB, normal, color, 0)
-    emitPuddleVertex(innerA, normal, color, innerAlpha)
-    emitPuddleVertex(outerB, normal, color, 0)
-    emitPuddleVertex(innerB, normal, color, innerAlpha)
-end
+local puddleUpNormal = Vector(0, 0, 1)
+puddleRender.tangent = Vector()
+puddleRender.bitangent = Vector()
+// Shapes and their ring vertices are pooled; they only live for the frame that builds them.
+puddleRender.shapePool = {}
+puddleRender.shapes = {}
 
 local function buildPuddleGeometry(candidates, now, opacity)
-    local shapes = {}
+    local shapes = puddleRender.shapes
+    for index = #shapes, 1, -1 do shapes[index] = nil end
+    local tangent, bitangent = puddleRender.tangent, puddleRender.bitangent
     for _, candidate in ipairs(candidates) do
         local lobe = candidate.lobe
-        local normal = lobe.normal or Vector(0, 0, 1)
-        local tangent = Vector(1, 0, 0)
-        tangent = tangent - normal * tangent:Dot(normal)
+        local normal = lobe.normal or puddleUpNormal
+        local nx, ny, nz = normal.x, normal.y, normal.z
+        tangent:SetUnpacked(1 - nx * nx, -ny * nx, -nz * nx)
         if tangent:LengthSqr() < 0.01 then
-            tangent = Vector(0, 1, 0) - normal * normal.y
+            tangent:SetUnpacked(-nx * ny, 1 - ny * ny, -nz * ny)
         end
         tangent:Normalize()
-        local bitangent = normal:Cross(tangent)
+        local tx, ty, tz = tangent.x, tangent.y, tangent.z
+        bitangent:SetUnpacked(ny * tz - nz * ty, nz * tx - nx * tz, nx * ty - ny * tx)
         bitangent:Normalize()
+        local bx, by, bz = bitangent.x, bitangent.y, bitangent.z
 
         local progress = math.Clamp((now - (lobe.createdAt or now - 1.25)) / 1.25, 0, 1)
         local growth = progress * progress * (3 - 2 * progress)
@@ -2023,15 +2297,36 @@ local function buildPuddleGeometry(candidates, now, opacity)
         local width = lobe.width * growth * spread
         local height = lobe.height * growth * spread
         local alpha = math.Clamp(255 * math.min(opacity * 3.5, 0.85) * lobe.opacityScale * candidate.fade * growth, 0, 220)
-        local inner, outer = {}, {}
+        local shapeIndex = #shapes + 1
+        local shape = puddleRender.shapePool[shapeIndex]
+        if not shape then
+            shape = { inner = {}, outer = {} }
+            puddleRender.shapePool[shapeIndex] = shape
+        end
+        local inner, outer = shape.inner, shape.outer
+        local cx, cy, cz = center.x, center.y, center.z
         for segment = 1, puddleMeshSegments do
             local angle = math.rad((segment - 1) * 360 / puddleMeshSegments + lobe.rotation)
             local edgeFactor = lobe.edgeFactors[segment] or 1
-            local offset = tangent * (math.cos(angle) * edgeFactor * width * 0.5) + bitangent * (math.sin(angle) * edgeFactor * height * 0.5)
-            inner[segment] = center + offset * 0.7
-            outer[segment] = center + offset
+            local along = math.cos(angle) * edgeFactor * width * 0.5
+            local across = math.sin(angle) * edgeFactor * height * 0.5
+            local ox = tx * along + bx * across
+            local oy = ty * along + by * across
+            local oz = tz * along + bz * across
+            local innerPoint, outerPoint = inner[segment], outer[segment]
+            if not innerPoint then
+                innerPoint, outerPoint = Vector(), Vector()
+                inner[segment], outer[segment] = innerPoint, outerPoint
+            end
+            innerPoint:SetUnpacked(cx + ox * 0.7, cy + oy * 0.7, cz + oz * 0.7)
+            outerPoint:SetUnpacked(cx + ox, cy + oy, cz + oz)
         end
-        shapes[#shapes + 1] = { center = center, normal = normal, inner = inner, outer = outer, alpha = alpha }
+        shape.center = center
+        shape.normal = normal
+        shape.step = (candidate.distance or 0) > puddleMeshLodDistanceSqr and 2 or 1
+        shape.alpha = alpha
+        shape.reflectAlpha = nil
+        shapes[shapeIndex] = shape
     end
     return shapes
 end
@@ -2043,16 +2338,42 @@ local puddleReflectionColor = { 255, 255, 255 }
 local function drawPuddlePass(shapes, material, color, alphaScale, alphaKey)
     if #shapes == 0 then return end
     render.SetMaterial(material)
-    mesh.Begin(MATERIAL_TRIANGLES, #shapes * puddleMeshSegments * 3)
+    local segments = puddleMeshSegments
+    local segmentCount = 0
     for _, shape in ipairs(shapes) do
+        segmentCount = segmentCount + math.ceil(segments / shape.step)
+    end
+    local position, normalFn, texCoord, vertexColor, advance = mesh.Position, mesh.Normal, mesh.TexCoord, mesh.Color, mesh.AdvanceVertex
+    // Solid centre fan as triangles, then the feathered rim as quads. Source splits a quad (0,1,2)/(0,2,3),
+    // so innerA, outerA, outerB, innerB reproduces the former two rim triangles with 4 vertices instead of 6.
+    mesh.Begin(MATERIAL_TRIANGLES, segmentCount)
+    for _, shape in ipairs(shapes) do
+        local step = shape.step
         local alpha = (shape[alphaKey or "alpha"] or shape.alpha) * alphaScale
         local shapeColor = color or shape.color
-        for segment = 1, puddleMeshSegments do
-            local nextSegment = segment % puddleMeshSegments + 1
-            emitPuddleVertex(shape.center, shape.normal, shapeColor, alpha)
-            emitPuddleVertex(shape.inner[segment], shape.normal, shapeColor, alpha)
-            emitPuddleVertex(shape.inner[nextSegment], shape.normal, shapeColor, alpha)
-            emitPuddleRing(shape.inner[segment], shape.inner[nextSegment], shape.outer[segment], shape.outer[nextSegment], shape.normal, shapeColor, alpha)
+        local red, green, blue = shapeColor[1], shapeColor[2], shapeColor[3]
+        local center, normal, inner = shape.center, shape.normal, shape.inner
+        for segment = 1, segments, step do
+            local nextSegment = (segment + step - 1) % segments + 1
+            position(center) normalFn(normal) texCoord(0, 0.5, 0.5) vertexColor(red, green, blue, alpha) advance()
+            position(inner[segment]) normalFn(normal) texCoord(0, 0.5, 0.5) vertexColor(red, green, blue, alpha) advance()
+            position(inner[nextSegment]) normalFn(normal) texCoord(0, 0.5, 0.5) vertexColor(red, green, blue, alpha) advance()
+        end
+    end
+    mesh.End()
+    mesh.Begin(MATERIAL_QUADS, segmentCount)
+    for _, shape in ipairs(shapes) do
+        local step = shape.step
+        local alpha = (shape[alphaKey or "alpha"] or shape.alpha) * alphaScale
+        local shapeColor = color or shape.color
+        local red, green, blue = shapeColor[1], shapeColor[2], shapeColor[3]
+        local normal, inner, outer = shape.normal, shape.inner, shape.outer
+        for segment = 1, segments, step do
+            local nextSegment = (segment + step - 1) % segments + 1
+            position(inner[segment]) normalFn(normal) texCoord(0, 0.5, 0.5) vertexColor(red, green, blue, alpha) advance()
+            position(outer[segment]) normalFn(normal) texCoord(0, 0.5, 0.5) vertexColor(red, green, blue, 0) advance()
+            position(outer[nextSegment]) normalFn(normal) texCoord(0, 0.5, 0.5) vertexColor(red, green, blue, 0) advance()
+            position(inner[nextSegment]) normalFn(normal) texCoord(0, 0.5, 0.5) vertexColor(red, green, blue, alpha) advance()
         end
     end
     mesh.End()
@@ -2070,10 +2391,15 @@ local function drawPuddleMesh(candidates, now, opacity)
 
     // Schlick-style Fresnel: shallow viewing angles reflect strongly, looking straight down mostly shows the wet ground.
     local eye = EyePos()
+    local ex, ey, ez = eye.x, eye.y, eye.z
     for _, shape in ipairs(shapes) do
-        local toEye = eye - shape.center
-        toEye:Normalize()
-        local facing = math.Clamp(math.abs(toEye:Dot(shape.normal)), 0, 1)
+        local center, normal = shape.center, shape.normal
+        local dx, dy, dz = ex - center.x, ey - center.y, ez - center.z
+        local length = math.sqrt(dx * dx + dy * dy + dz * dz)
+        local facing = 0
+        if length > 0 then
+            facing = math.Clamp(math.abs((dx * normal.x + dy * normal.y + dz * normal.z) / length), 0, 1)
+        end
         local fresnel = 0.2 + 0.8 * (1 - facing) ^ 3
         shape.reflectAlpha = shape.alpha * fresnel
     end
@@ -2091,18 +2417,34 @@ local function hashUnit(first, second)
     return value - math.floor(value)
 end
 
+local ringQuadCorners = { { -1, -1, 0, 0 }, { 1, -1, 1, 0 }, { 1, 1, 1, 1 }, { -1, 1, 0, 1 } }
+puddleRender.ringPosition = Vector()
+
 local function emitRingQuad(center, normal, tangent, bitangent, size, red, green, blue, alpha)
     local half = size * 0.5
-    local right = tangent * half
-    local up = bitangent * half
-    for _, corner in ipairs({ { -1, -1, 0, 0 }, { 1, -1, 1, 0 }, { 1, 1, 1, 1 }, { -1, 1, 0, 1 } }) do
-        mesh.Position(center + right * corner[1] + up * corner[2])
+    local position = puddleRender.ringPosition
+    local cx, cy, cz = center.x, center.y, center.z
+    local rx, ry, rz = tangent.x * half, tangent.y * half, tangent.z * half
+    local ux, uy, uz = bitangent.x * half, bitangent.y * half, bitangent.z * half
+    for index = 1, 4 do
+        local corner = ringQuadCorners[index]
+        local sx, sy = corner[1], corner[2]
+        position:SetUnpacked(cx + rx * sx + ux * sy, cy + ry * sx + uy * sy, cz + rz * sx + uz * sy)
+        mesh.Position(position)
         mesh.Normal(normal)
         mesh.TexCoord(0, corner[3], corner[4])
         mesh.Color(red, green, blue, alpha)
         mesh.AdvanceVertex()
     end
 end
+
+// Drop records are pooled across frames; each frame overwrites the first #drops entries.
+puddleRender.dropPool = {}
+puddleRender.drops = {}
+puddleRender.dropTangent = Vector()
+puddleRender.dropBitangent = Vector()
+puddleRender.crownEnd = Vector()
+puddleRender.crownColor = Color(200, 215, 225, 0)
 
 // Each lobe owns deterministic drop slots; every slot re-rolls its impact point each cycle,
 // so the count scales with rain density and puddle area without allocating per-drop state.
@@ -2113,8 +2455,11 @@ local function drawPuddleRainImpacts(candidates, now)
     end
 
     local density = math.Clamp(rainDensityConVar:GetFloat(), 0.5, 2)
+    local rippleAmount = Atmosphere.GetQualityNumber("rippleAmount", 1, 0.1, 1)
+    local maxRings = math.max(1, math.floor(maxPuddleDropRings * rippleAmount))
     local cameraPosition = EyePos()
-    local drops = {}
+    local drops = puddleRender.drops
+    for index = #drops, 1, -1 do drops[index] = nil end
     for candidateIndex, candidate in ipairs(candidates) do
         local lobe = candidate.lobe
         local spread = candidate.spread or 1
@@ -2122,26 +2467,36 @@ local function drawPuddleRainImpacts(candidates, now)
         local height = (lobe.height or 0) * spread
         if width > 4 and height > 4 then
             local area = width * height / (110 * 90)
-            local slots = math.Clamp(math.Round(6 * density * area * candidate.fade), 2, 30)
+            local slots = math.Clamp(math.Round(6 * density * rippleAmount * area * candidate.fade), 1, 30)
             local seed = (lobe.rotation or candidateIndex) * 1.37
-            local normal = lobe.normal or Vector(0, 0, 1)
+            local normal = lobe.normal or puddleUpNormal
+            local center = candidate.center
             for slot = 1, slots do
                 local offset = hashUnit(seed, slot) * puddleDropLifetime
                 local cycle = math.floor((now + offset) / puddleDropLifetime)
                 local phase = ((now + offset) % puddleDropLifetime) / puddleDropLifetime
                 local angle = hashUnit(cycle + seed, slot * 3.1) * math.pi * 2
                 local radius = math.sqrt(hashUnit(slot * 1.7, cycle + seed * 0.5)) * 0.42
-                drops[#drops + 1] = {
-                    position = candidate.center + Vector(math.cos(angle) * width * radius, math.sin(angle) * height * radius, 0) + normal * 1.1,
-                    normal = normal,
-                    phase = phase,
-                    weight = 0.6 + hashUnit(cycle, slot + seed) * 0.6,
-                    fade = candidate.fade
-                }
-                if #drops >= maxPuddleDropRings then break end
+                local dropIndex = #drops + 1
+                local drop = puddleRender.dropPool[dropIndex]
+                if not drop then
+                    drop = { position = Vector() }
+                    puddleRender.dropPool[dropIndex] = drop
+                end
+                drop.position:SetUnpacked(
+                    center.x + math.cos(angle) * width * radius + normal.x * 1.1,
+                    center.y + math.sin(angle) * height * radius + normal.y * 1.1,
+                    center.z + normal.z * 1.1
+                )
+                drop.normal = normal
+                drop.phase = phase
+                drop.weight = 0.6 + hashUnit(cycle, slot + seed) * 0.6
+                drop.fade = candidate.fade
+                drops[dropIndex] = drop
+                if #drops >= maxRings then break end
             end
         end
-        if #drops >= maxPuddleDropRings then break end
+        if #drops >= maxRings then break end
     end
 
     // One faint ripple per drop: it expands quickly with an ease-out and fades before it can overlap much.
@@ -2154,9 +2509,12 @@ local function drawPuddleRainImpacts(candidates, now)
     mesh.Begin(MATERIAL_QUADS, #drops)
     for _, drop in ipairs(drops) do
         local normal = drop.normal
-        local tangent = Vector(1, 0, 0) - normal * normal.x
+        local nx, ny, nz = normal.x, normal.y, normal.z
+        local tangent, bitangent = puddleRender.dropTangent, puddleRender.dropBitangent
+        tangent:SetUnpacked(1 - nx * nx, -ny * nx, -nz * nx)
         tangent:Normalize()
-        local bitangent = normal:Cross(tangent)
+        local tx, ty, tz = tangent.x, tangent.y, tangent.z
+        bitangent:SetUnpacked(ny * tz - nz * ty, nz * tx - nx * tz, nx * ty - ny * tx)
         local inverse = 1 - drop.phase
         local growth = 1 - inverse * inverse
         local size = (2 + growth * 9) * drop.weight
@@ -2175,13 +2533,18 @@ local function drawPuddleRainImpacts(candidates, now)
             crowns = crowns + 1
             local progress = drop.phase / 0.18
             local lift = math.sin(progress * math.pi) * 4 * drop.weight
-            local color = Color(200, 215, 225, 110 * (1 - progress) * drop.fade)
-            render.DrawBeam(drop.position, drop.position + drop.normal * (1 + lift), 0.6, 0, 1, color)
+            local position, normal = drop.position, drop.normal
+            local length = 1 + lift
+            puddleRender.crownEnd:SetUnpacked(position.x + normal.x * length, position.y + normal.y * length, position.z + normal.z * length)
+            puddleRender.crownColor.a = 110 * (1 - progress) * drop.fade
+            render.DrawBeam(position, puddleRender.crownEnd, 0.6, 0, 1, puddleRender.crownColor)
         end
     end
     Atmosphere.PuddleDropRings = #drops
     Atmosphere.PuddleDropCrowns = crowns
 end
+
+puddleRender.splashColor = Color(170, 205, 218, 0)
 
 hook.Add("PostDrawTranslucentRenderables", "ZM.Atmosphere.WetSurfaceEffects", function(drawingDepth, drawingSkybox)
     if drawingDepth or drawingSkybox then return end
@@ -2205,7 +2568,8 @@ hook.Add("PostDrawTranslucentRenderables", "ZM.Atmosphere.WetSurfaceEffects", fu
             table.remove(splashRings, index)
         elseif splash.position:ToScreen().visible then
             local size = (splash.size or 44) * (1 - life) + 8
-            render.DrawQuadEasy(splash.position, Vector(0, 0, 1), size, size, Color(170, 205, 218, 90 * life), splash.rotation)
+            puddleRender.splashColor.a = 90 * life
+            render.DrawQuadEasy(splash.position, puddleUpNormal, size, size, puddleRender.splashColor, splash.rotation)
         end
     end
 end)
@@ -2217,6 +2581,8 @@ hook.Add("SetupWorldFog", "ZM.Atmosphere.WorldFog", function()
     end
     local settings = Atmosphere:GetFogSettings()
     local applied = settings and applyFog(settings) or false
+    // Only fully opaque fog hides geometry beyond its end, so only then may the snow draw cull by distance.
+    snowCoverFogCullDistance = (applied and settings.maxDensity >= 0.999) and settings.finish or nil
     local reason
     if not settings then reason = "no active profile" end
     recordHookResult("SetupWorldFog", applied, applied, settings, 1, reason)
@@ -2236,6 +2602,9 @@ hook.Add("SetupSkyboxFog", "ZM.Atmosphere.SkyboxFog", function(scale)
     return applied
 end)
 
+local colourCorrectionSettings = {}
+local emptyTable = {}
+
 hook.Add("RenderScreenspaceEffects", "ZM.Atmosphere.ColourCorrection", function()
     if ZM_LauncherMenu and ZM_LauncherMenu.Active then
         recordHookResult("RenderScreenspaceEffects", nil, false, nil, nil, "launcher menu active")
@@ -2248,19 +2617,18 @@ hook.Add("RenderScreenspaceEffects", "ZM.Atmosphere.ColourCorrection", function(
         return
     end
 
-    local add = correction.add or {}
-    local multiply = correction.multiply or {}
-    local colorSettings = {
-        ["$pp_colour_addr"] = getNumber(add[1], 0),
-        ["$pp_colour_addg"] = getNumber(add[2], 0),
-        ["$pp_colour_addb"] = getNumber(add[3], 0),
-        ["$pp_colour_brightness"] = getNumber(correction.brightness, 0),
-        ["$pp_colour_contrast"] = getNumber(correction.contrast, 1),
-        ["$pp_colour_colour"] = getNumber(correction.colour, 1),
-        ["$pp_colour_mulr"] = getNumber(multiply[1], 1),
-        ["$pp_colour_mulg"] = getNumber(multiply[2], 1),
-        ["$pp_colour_mulb"] = getNumber(multiply[3], 1)
-    }
+    local add = correction.add or emptyTable
+    local multiply = correction.multiply or emptyTable
+    local colorSettings = colourCorrectionSettings
+    colorSettings["$pp_colour_addr"] = getNumber(add[1], 0)
+    colorSettings["$pp_colour_addg"] = getNumber(add[2], 0)
+    colorSettings["$pp_colour_addb"] = getNumber(add[3], 0)
+    colorSettings["$pp_colour_brightness"] = getNumber(correction.brightness, 0)
+    colorSettings["$pp_colour_contrast"] = getNumber(correction.contrast, 1)
+    colorSettings["$pp_colour_colour"] = getNumber(correction.colour, 1)
+    colorSettings["$pp_colour_mulr"] = getNumber(multiply[1], 1)
+    colorSettings["$pp_colour_mulg"] = getNumber(multiply[2], 1)
+    colorSettings["$pp_colour_mulb"] = getNumber(multiply[3], 1)
     // Cold grade: desaturate, cool the shadows and lift the mids slightly while snow is falling.
     local winter = Atmosphere.WinterBlend or 0
     if winter > 0.001 then
@@ -2270,6 +2638,12 @@ hook.Add("RenderScreenspaceEffects", "ZM.Atmosphere.ColourCorrection", function(
         colorSettings["$pp_colour_addr"] = colorSettings["$pp_colour_addr"] - 0.01 * winter
         colorSettings["$pp_colour_addb"] = colorSettings["$pp_colour_addb"] + 0.025 * winter
         colorSettings["$pp_colour_mulb"] = colorSettings["$pp_colour_mulb"] + 0.08 * winter
+    end
+    // The low preset turns off the full-screen grade and grain; frost edges remain because they convey the weather.
+    if Atmosphere.GetQualityNumber("screenEffects", 1, 0, 1) < 0.5 then
+        recordHookResult("RenderScreenspaceEffects", nil, false, nil, nil, "screen effects disabled by quality setting")
+        drawFrostEdges()
+        return
     end
     DrawColorModify(colorSettings)
     recordHookResult("RenderScreenspaceEffects", nil, true, Atmosphere:GetFogSettings(), nil,

@@ -7,7 +7,7 @@ ZombieSim is an installed Garry's Mod gamemode with realm-specific GLua gameplay
 - Read [AGENTS.md](../AGENTS.md) for the active milestone, repository-specific asset boundaries, detailed validation rules, and environment constraints.
 - Read [readme.md](../readme.md) for supported in-game, build, staging, test, and Walker commands.
 - Read [docs.md](../docs.md) for generator behavior and [docs/gdd.md](../docs/gdd.md) before changing progression or survival behavior.
-- Treat the active Alpha tracker named in `AGENTS.md` as authoritative. Do not infer unfinished work from historical trackers or checkpoints.
+- Treat the active Alpha tracker named in `AGENTS.md` as authoritative. When none is active, confirm the next scope with the user. Do not infer unfinished work from historical trackers or checkpoints.
 - Honor explicit user deferrals and tracker constraints. In particular, distinguish implementation completion from static verification, live verification, visual review, and explicitly deferred work.
 - When asked to continue milestone work, read the latest relevant checkpoint as well as the active tracker, then resume at the first unfinished acceptance item. Preserve explicit deferrals and do not repeat completed work unless new evidence shows a regression.
 - Follow the active tracker's phase order. Run each phase's relevant static/automated checks as changes land and fix failures before taking on more feature work; do not save these checks for final integration.

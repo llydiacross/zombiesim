@@ -527,6 +527,11 @@ hook.Add("CreateMove", "ZM.RotateThirdPersonModel", function(cmd)
 end)
 
 // Positions the camera with a hull trace so walls cannot clip through the view.
+local cameraHullMins = Vector(-4, -4, -4)
+local cameraHullMaxs = Vector(4, 4, 4)
+local cameraTraceResult = {}
+local cameraTrace = { mins = cameraHullMins, maxs = cameraHullMaxs, output = cameraTraceResult }
+
 hook.Add("CalcView", "ZM.CustomThirdPersonView", function(ply, pos, angles, fov)
     lockedCameraObstructed = false
     if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
@@ -547,13 +552,12 @@ hook.Add("CalcView", "ZM.CustomThirdPersonView", function(ply, pos, angles, fov)
         cameraEndPos = LerpVector(shoulderWeight * shoulderWeight * (3 - 2 * shoulderWeight), orbitPos, shoulderPos)
     end
 
-    local tr = util.TraceHull({
-        start = ply:EyePos(),
-        endpos = cameraEndPos,
-        filter = ply,
-        mins = Vector(-4, -4, -4),
-        maxs = Vector(4, 4, 4),
-    })
+    local eyePos = ply:EyePos()
+    cameraTrace.start = eyePos
+    cameraTrace.endpos = cameraEndPos
+    cameraTrace.filter = ply
+    util.TraceHull(cameraTrace)
+    local tr = cameraTraceResult
 
     lockedCameraObstructed = tr.Hit
     local collisionAwareOrigin = LerpVector(lockBlend, tr.HitPos, cameraEndPos)

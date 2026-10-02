@@ -436,6 +436,51 @@ test("weapon_aim_uses_cursor_pitch_outdoors_and_preserves_level_den_aim", functi
         "den aiming must retain its existing level-shot behavior")
 end)
 
+test("level_aim_dips_onto_crawlers_in_the_line_of_fire_only", function(check)
+    local Low = ZM_LowTargetAim
+    local function enemy(pos, mask, health)
+        return {
+            IsValid = function() return true end,
+            Health = function() return health or 50 end,
+            GetNWInt = function() return mask end,
+            GetPos = function() return pos end
+        }
+    end
+    local origin = Vector(0, 0, 36)
+    local blocked = false
+    local traceLine = util.TraceLine
+    util.TraceLine = function() return { Hit = blocked } end
+    local crawler = enemy(Vector(200, 0, 0), Low.LegsBit)
+    local point = Low.Find(origin, 0, nil, { enemy(Vector(100, 0, 0), 0), crawler, enemy(Vector(150, 0, 0), Low.LegsBit, 0) })
+    check(point == Vector(200, 0, Low.AimHeight), "level aim should select the live crawler, not standing or dead enemies")
+    check(Low.Find(origin, 0, nil, { enemy(Vector(300, 0, 0), Low.LegsBit), crawler }) == Vector(200, 0, Low.AimHeight),
+        "the nearest crawler in the line of fire should win")
+    check(not Low.Find(origin, 0, nil, { enemy(Vector(200, 60, 0), Low.LegsBit), enemy(Vector(-200, 0, 0), Low.LegsBit) }),
+        "crawlers beside or behind the level ray must not be targeted")
+    blocked = true
+    check(not Low.Find(origin, 0, nil, { crawler }), "a wall or entity in front of the crawler must keep the shot level")
+    util.TraceLine = traceLine
+
+    local find = Low.Find
+    Low.Find = function() return Vector(200, 0, Low.AimHeight) end
+    local angles, safeZone = Angle(0, 0, 0), ""
+    local target = {
+        EyeAngles = function() return angles end,
+        GetNWString = function() return safeZone end,
+        WorldSpaceCenter = function() return origin end
+    }
+    local getAim = FindMetaTable("Player").GetLevelAim
+    local _, direction = getAim(target)
+    check(direction.z < -0.05 and direction.x > 0, "top-down/orbit level aim should dip onto the crawler")
+    angles = Angle(-10, 0, 0)
+    _, direction = getAim(target)
+    check(direction:DistToSqr(angles:Forward()) < 0.000001, "shoulder cursor pitch must be left unchanged")
+    angles, safeZone = Angle(0, 0, 0), "den"
+    _, direction = getAim(target)
+    check(direction.z == 0, "den aim must stay level")
+    Low.Find = find
+end)
+
 test("rolled_attributes_apply_to_a_spawned_weapon", function(check)
     local instance = Generation:CreateInstance("weaponHandgun9mm", { seed = 5, level = 20, mastercraft = true })
     local weapon = ents.Create("weapon_zn_handgun_9mm")

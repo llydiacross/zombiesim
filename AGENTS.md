@@ -4,13 +4,12 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Active Task Tracker
 
-- `todo-alpha-2.9.md` is the active tracker for Alpha 2.9 acceptance work. Preserve its explicit live-verification and preview-build gates; a successful map compile alone does not establish in-game acceptance.
-- Alpha 2.9 phases are a strict sequence: complete and record A before B, then B before C, continuing in order through J. Do not skip ahead or implement later phases in parallel, even when they appear independent. Existing out-of-order changes are not phase acceptance.
-- Run the focused static/automated checks inside each phase immediately after its changes, and fix failures before beginning more feature work or advancing. Never defer static tests to Phase J; final integration does not replace phase-local validation. Record static and live results separately in the tracker.
+- [todo-alpha-2.9.2.md](todo-alpha-2.9.2.md) is the active tracker: client performance and quality presets, promoted from the "Post-Alpha 2.9" section of the archived [docs/todo-alpha-2.9.md](docs/todo-alpha-2.9.md) (accepted 2026-10-02), which keeps the full research notes. It is Lua-only; no world generation or map builds are in scope.
+- When a milestone runs, keep the Alpha 2.9 working rules: phases run in their stated order, each phase runs its focused static/automated checks as its changes land, and static and live results are recorded separately. A phase is accepted only on the user's confirmation; a successful map compile alone does not establish in-game acceptance.
 - [docs/todo-alpha-2.9.1.md](docs/todo-alpha-2.9.1.md) archives the completed compiler-pool, preset, generation-diagnostics, portal-budget, and test-organization milestone.
 - `docs/todo-alpha-2.8.6.md` remains as milestone history and source context for the safe-zone contract and Storm Drain work that landed before the current cycle.
 - `docs/todo-alpha-2.8.5.md` and `docs/todo-alpha-2.8.md` are historical context only unless explicitly promoted back into the active tracker.
-- When the active milestone changes, update this guide and the root tracker together; do not infer current work from historical phase labels.
+- When the active milestone changes, update this guide and the root tracker together; do not infer current work from historical phase labels. Archive a completed tracker in `docs/` and re-root its relative links.
 
 ## Read First
 

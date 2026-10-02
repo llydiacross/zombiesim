@@ -258,6 +258,7 @@ function Transitions:ApplyPendingEntry(playerEntity)
         or (entry.yaw ~= nil and tonumber(entry.yaw) == nil) then
         return false
     end
+    if ZM_AFK then ZM_AFK:Clear(playerEntity) end
 
     local entryAnchor = self:FindPendingEntryAnchor(entry)
     local position = type(entry.position) == "table" and tonumber(entry.position[1]) and tonumber(entry.position[2])
@@ -398,6 +399,7 @@ function Transitions:BeginExitSequence(playerEntity, command, options)
     local sequenceId = self.ExitSequenceId + 1
     self.ExitSequenceId = sequenceId
     self.ActiveExit = { player = playerEntity, onCancel = options.onCancel, id = sequenceId }
+    if ZM_AFK then ZM_AFK:Clear(playerEntity) end
 
     playerEntity.ZM_TransitionExit = { untilTime = CurTime() + duration, yaw = yaw }
     // The client turns the view toward the exit smoothly; snapping eye angles here would flip a player who backs in.

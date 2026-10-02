@@ -204,21 +204,47 @@ hook.Add("PreDrawHalos", "ZM.LootPopup.Target", function()
     halo.Add({ target.entity }, color, 2, 2, 1, true, false)
 end)
 
+// Loot spots in marker range are gathered four times a second rather than with a sphere query every frame.
+local markerSpotRefreshSeconds = 0.25
+local markerSpots = {}
+local nextMarkerSpotRefresh = 0
+local markerDeclinedColor = Color(160, 160, 160, 255)
+local markerAvailableColor = Color(255, 220, 90, 255)
+local markerOutlineColor = Color(0, 0, 0, 200)
+local hintOutlineColor = Color(0, 0, 0, 220)
+
+local function refreshMarkerSpots(origin)
+    local now = RealTime()
+    if now < nextMarkerSpotRefresh then
+        return
+    end
+    nextMarkerSpotRefresh = now + markerSpotRefreshSeconds
+    table.Empty(markerSpots)
+    for _, entity in ipairs(ents.FindInSphere(origin, markerRange)) do
+        if entity:GetNWBool("ZM_LootSpot", false) then
+            markerSpots[#markerSpots + 1] = entity
+        end
+    end
+end
+
 hook.Add("HUDPaint", "ZM.LootPopup.Markers", function()
     local ply = LocalPlayer()
     if not IsValid(ply) then
         return
     end
     local origin = ply:GetPos()
-    for _, entity in ipairs(ents.FindInSphere(origin, markerRange)) do
-        if entity:GetNWBool("ZM_LootSpot", false) then
-            local top = entity:WorldSpaceCenter() + Vector(0, 0, entity:OBBMaxs().z - entity:OBBCenter().z + 12)
+    refreshMarkerSpots(origin)
+    local pulse = 200 + math.sin(CurTime() * 4) * 55
+    markerAvailableColor.a = pulse
+    for _, entity in ipairs(markerSpots) do
+        if IsValid(entity) and entity:GetNWBool("ZM_LootSpot", false) then
+            local top = entity:WorldSpaceCenter()
+            top.z = top.z + entity:OBBMaxs().z - entity:OBBCenter().z + 12
             local screen = top:ToScreen()
             if screen.visible then
-                local pulse = 200 + math.sin(CurTime() * 4) * 55
-            local declined = entity:GetNWString("ZM_LootSpotState", "") == "declined"
-            local color = declined and Color(160, 160, 160, 255) or Color(255, 220, 90, pulse)
-            draw.SimpleTextOutlined("?", "ZM_LootMarker", screen.x, screen.y, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 2, Color(0, 0, 0, 200))
+                local declined = entity:GetNWString("ZM_LootSpotState", "") == "declined"
+                local color = declined and markerDeclinedColor or markerAvailableColor
+                draw.SimpleTextOutlined("?", "ZM_LootMarker", screen.x, screen.y, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 2, markerOutlineColor)
             end
         end
     end
@@ -230,7 +256,7 @@ hook.Add("HUDPaint", "ZM.LootPopup.Markers", function()
         local screen = anchor:ToScreen()
         if screen.visible then
             local hint = targetHints[target.reason] or { text = "[" .. string.upper(input.LookupBinding("+use") or "E") .. "] Search", color = color_white }
-            draw.SimpleTextOutlined(hint.text, "ZM_LootLevel", screen.x, screen.y + 22, hint.color, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, Color(0, 0, 0, 220))
+            draw.SimpleTextOutlined(hint.text, "ZM_LootLevel", screen.x, screen.y + 22, hint.color, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, hintOutlineColor)
         end
     end
 

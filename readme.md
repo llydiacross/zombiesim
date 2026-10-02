@@ -40,6 +40,10 @@ Run `zn_test_weapon_effects` for profile/asset, trace, ballistic, single-shot an
 
 Short-lived dust appears only on concrete, dirt, sand, wood or tile impacts and nearby brush ground. It supplements the engine's normal impact effects rather than replacing them; no dust is added for flesh, metal, glass, water or sky. Each shot retains at most four dust puffs for 0.45 seconds (128 globally under the shot cap). The effects suite also checks recoil recovery, blast exclusions/walls/bounds, mounted audio and dust surface selection without moving live world props.
 
+## AFK menus
+
+Choosing **Inventory**, **Scoreboard** or **Options** from the Tab radial starts a three-second server countdown ("OPENING INVENTORY 2.4"). You can move during it; pressing Tab again or taking any damage cancels it. When it finishes the menu opens and you are AFK: zombies drop you as a target and cannot damage you. **Cheats** opens instantly and makes operators AFK at once. Switching between AFK menus does not restart the countdown. Closing the last AFK menu leaves AFK with three seconds of protection, shown as "PROTECTED"; firing ends it early, moving does not. Death, respawn and cell/den transitions clear all AFK state without grace. The server owns the state (`gamemode/sv_afk.lua`); the client (`gamemode/cl_afk.lua`) reports when the last menu closes and sends a heartbeat, so a client that stops reporting loses AFK after six seconds. The world map and den service windows are not AFK menus.
+
 # Folder Structure
 
 - `tiletemplates/` and `celltemplates/` contain authored VMFs, including launcher sources in `celltemplates/launchers`.
@@ -355,7 +359,7 @@ Each gameplay service has a server-side suite that uses throwaway SteamIDs and p
 ```
 zn_test_static_data zn_test_weapon_catalog zn_test_inventory zn_test_loot zn_test_loot_spots zn_test_enemies
 zn_test_bosses zn_test_crafting zn_test_implants zn_test_professions zn_test_mastercraft zn_test_trading zn_test_foliage
-zn_test_atmosphere zn_test_gore
+zn_test_atmosphere zn_test_gore zn_test_afk
 ```
 
 New suites use `ZM_TestHarness` (`gamemode/utils/test_harness.lua`): `NewSuite()`, `suite:Add(name, function(check) ... end)`, `suite:Run({ before, after })`, and `ZM_TestHarness.Register({ command, label, file, report, help, run })`. Shared server helpers for command runners (first human, profile, whole-number checks, replies, admin gates, command registration) are in `ZM_Util` (`gamemode/utils/server.lua`).
@@ -582,11 +586,29 @@ The mounted models are `models/props/de_inferno/tree_small.mdl` and `models/prop
 
 Ambient debris is client-local, limited to nearby deterministic sites, does not collide with players, and cannot be harvested. Kinds: paper (`props_c17/paper01`, newspaper) flutters and lifts in gusts; bottles and cans (`cs_militia/bottle01`, HL2 glass/plastic bottles, cans) lie on their side and roll; cartons and cardboard slide; rare tumbleweeds (HL2 `props_foliage/bramble001a`, scaled 0.5) roll and bounce with the prevailing wind within a leash of their site. Moving players kick nearby debris, and bullet impacts from any player's `ZM.WeaponShot` broadcast throw debris away from the hit point. Debris only simulates (gravity, wall collision, ground following) while moving and within 2000 units. The client setting `zombiesim_ambient_debris_amount` (0 disables, 1 default, up to 3; quick-menu **Debris amount** slider) scales site density and the model cap (20 × amount, at most 60). `zn_foliage_status` reports current server placement, rejection reasons and the most-sampled surface props/textures; `zn_foliage_rebuild` clears and re-places foliage for the current cell without a map reload. `zombiesim_ambient_debris_status` reports client debris amount, counts per kind and how many are moving. `zn_test_foliage` covers deterministic placement filters, seasonal rewards, cooldowns, tool checks, duplicate harvests and persistence; run `zn_test_inventory` for inventory regression. Live model, appearance, exclusion, sharing and repeat-visit checks remain required.
 
+# Client Graphics Quality Presets
+
+`gamemode/cl_quality.lua` defines archived, client-only quality settings and the `zombiesim_quality_preset` convar (`low`, `medium`, `high` or `custom`). Choosing a preset in the quick-menu **Options** dropdown, or with the convar, writes the individual settings below. Changing any of them by hand switches the preset to `custom`, unless the new values exactly match another preset. High matches the visuals from before presets existed.
+
+| Setting | Low | Medium | High |
+| --- | --- | --- | --- |
+| `zombiesim_atmosphere_rain_density` | 0.6 | 1.0 | 1.5 |
+| `zombiesim_atmosphere_puddle_amount` | 0.5 | 0.75 | 1 |
+| `zombiesim_atmosphere_ripple_amount` (puddle rain ripples, 0.1–1) | 0.35 | 0.65 | 1 |
+| `zombiesim_snow_detail` (lying-snow sample density, 0.25–1; a change re-samples the cover in the background) | 0.4 | 0.7 | 1 |
+| `zombiesim_snow_draw_distance` (units; 0 culls only at opaque fog) | 2500 | 4500 | 0 |
+| `zombiesim_screen_effects` (weather colour grading and film grain; frost edges remain) | 0 | 1 | 1 |
+| `zombiesim_ambient_debris_amount` | 0.5 | 0.75 | 1 |
+
+Gore quality, puddle opacity and film grain are preferences rather than performance settings, so the presets leave them unchanged.
+
 # Dismemberment and Gore
 
 `ZM_Gore` (`gamemode/sv_gore.lua`) decides every sever on the server. Bullets record their hitgroup in the zombie's `OnTraceAttack` (pellets in one tick are combined; the region with the most damage wins); melee resolves the nearest bone to the damage position. Regions are the left and right forearm, the legs, the head and the torso. A living zombie can lose a forearm (cosmetic stump) or its legs; legs turn it into a crawler (half walk speed, same damage, low hull) that keeps its model: the root bone is lowered by `Gore.CrawlerBodyOffset` so server hitboxes match the forward `swimming_all` crawl, and clients hide the leg chains. The head pops (blood burst plus the severed head) and the torso splits only on a killing blow. Living severs need accumulated region damage (arms 25% and legs 40% of max health); the chance is `damage / maxHealth × GoreSeverFactor × 1.6` (×1.5 on a kill, capped at 85%). `GoreSeverFactor` is set per weapon: melee 1.4, pistols 0.5, MP5 0.8, M4A1 1.2, AK-47 1.3, Scout 2, AWP and M3 2.5; other damage falls back by type (buckshot 2.5, slash 1.8, club 1.2, otherwise 0.6). Bosses can lose arms while alive and gib as corpses but never become crawlers. Severed regions are networked as the `ZM_GoreSevered` bitmask and carried onto the corpse, which keeps the zombie model, skin and pose and hides the severed regions. Rewards still happen once in `OnEnemyKilled`, and only the main corpse can be a loot spot.
 
 `cl_gore.lua` draws everything cosmetic from `ZM.Gore` messages: `BloodImpact` effects, exit and floor `Blood` decals, sever bursts, short stump spurts, blood trails behind maimed zombies and pools under gored corpses. Severed regions (forearms, both leg chains, head) pin every bone of the chain to its root at a near-zero scale (0.001; a zero matrix is singular and its hitbox gives NaN results to aim traces) in a `BuildBonePositions` callback; each write is guarded by a successful `GetBoneMatrix` read because only bones in the current setup pass are writable (others print `Bone is unwriteable`, even under `pcall`). The callback also holds a ragdoll's physics bones in place so the skin does not stretch (bone scale alone does not, because ragdoll bones are positioned by physics). A severed region's pose is captured inside that same bone-setup callback (reading bones from a net message or `Think` raises `Bone access not allowed`), then spawned as a client copy of the same model whose other bones are pinned to the cut point (the centre of the chain roots) at near-zero scale, so skin weighted to the hidden body closes at the cut instead of stretching, moved by a small rigid simulation; spurts follow the zombie by a local offset rather than a bone. Limbs fade after 60 seconds and are capped (12 Full, 4 Reduced). Engine decals cannot be faded individually, so blood stays until the next cell change. The client setting `zombiesim_gore_quality` (0 off, 1 reduced, 2 full; quick-menu **Gore** slider) only changes these cosmetic effects; a crawler's legs stay hidden when gore is off. `zn_gore_sever <leftArm|rightArm|legs|head|torso>` severs a region on the aimed or nearest enemy for testing; `zn_test_gore` covers region mapping, chances, crawlers, boss limits and corpse transfer.
+
+Top-down and orbit cameras send level aim from the centre of mass, which passes over a crawler. `ply:GetLevelAim` (`gamemode/sh_player.lua`) therefore dips a level command onto the nearest live crawler (`ZM_GoreSevered` legs bit) whose position lies within 24 units of the facing line and 2048 units ahead, unless a wall or another entity blocks the level line first. The target comes from networked entity state on both realms, never from the client, so the crosshair, shots, melee and recoil share one result; shoulder aim (a cursor pitch) and den aim are unchanged. `zn_test_inventory` covers the rule.
 # Runtime World Data
 
 `ZM_World` loads `data_static/zombiesim_world.json` from the `GAME` mount during gamemode initialization. It returns `nil` or `false, error` when the index is unavailable, so gameplay code can fail safely while a release is being assembled.

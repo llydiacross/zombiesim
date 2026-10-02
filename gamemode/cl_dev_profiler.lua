@@ -36,7 +36,8 @@ local function finishProfile()
             calls = stats.calls,
             totalMs = stats.total * 1000,
             msPerFrame = stats.total * 1000 / frames,
-            maxMs = stats.max * 1000
+            maxMs = stats.max * 1000,
+            allocatedKbPerFrame = stats.allocated / frames
         }
     end
     table.sort(results, function(a, b) return a.totalMs > b.totalMs end)
@@ -66,6 +67,8 @@ local function finishProfile()
         allocatedKbPerFrame = session.allocated / frames,
         weather = ZM_Atmosphere and ZM_Atmosphere.Weather or nil,
         snowCover = ZM_Atmosphere and ZM_Atmosphere.SnowCoverAmount or nil,
+        puddleRenderLobes = ZM_Atmosphere and ZM_Atmosphere.PuddleRenderLobes or nil,
+        puddleDropRings = ZM_Atmosphere and ZM_Atmosphere.PuddleDropRings or nil,
         hooks = results
     }
     file.CreateDir("zombiesim")
@@ -75,7 +78,8 @@ local function finishProfile()
         report.luaHookMsPerFrame, report.allocatedKbPerFrame))
     for index = 1, math.min(12, #results) do
         local result = results[index]
-        print(string.format("  %-60s %7.3f ms/frame  max %6.2f ms", result.hook, result.msPerFrame, result.maxMs))
+        print(string.format("  %-60s %7.3f ms/frame  max %6.2f ms  %6.2f KB/frame", result.hook, result.msPerFrame,
+            result.maxMs, result.allocatedKbPerFrame))
     end
     print("[ZombieSim] Hook profile saved to data/" .. outputPath)
 end
@@ -94,14 +98,18 @@ function Profiler:Start(seconds)
         for name, original in pairs(hooks[event] or {}) do
             if isstring(name) and isfunction(original) then
                 local key = event .. " / " .. name
-                local stats = { calls = 0, total = 0, max = 0 }
+                local stats = { calls = 0, total = 0, max = 0, allocated = 0 }
                 session.stats[key] = stats
                 local wrapper = function(...)
+                    local memoryBefore = collectgarbage("count")
                     local started = SysTime()
                     local a, b, c, d, e, f = original(...)
                     local elapsed = SysTime() - started
+                    local allocated = collectgarbage("count") - memoryBefore
                     stats.calls = stats.calls + 1
                     stats.total = stats.total + elapsed
+                    // A collection inside the call makes the delta negative; those calls are skipped.
+                    if allocated > 0 then stats.allocated = stats.allocated + allocated end
                     if elapsed > stats.max then stats.max = elapsed end
                     return a, b, c, d, e, f
                 end

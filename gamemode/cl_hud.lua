@@ -178,67 +178,94 @@ local function getHudAmmoAndDefinition(weapon)
     return nil, nil
 end
 
+// Static per-weapon HUD data (definition, name, reserve, slot) only changes with the inventory snapshot,
+// so it is cached per weapon; clip values are refreshed every frame.
+local hudWeaponEntryCache = setmetatable({}, { __mode = "k" })
+local hudWeaponEntries = {}
+local hudOtherWeaponEntries = {}
+
+local function compareHudWeaponEntries(left, right)
+    if left.active ~= right.active then
+        return left.active
+    end
+    return left.name == right.name and left.className < right.className or left.name < right.name
+end
+
+local function getHudWeaponEntry(player, weapon, snapshot)
+    local instanceId = weapon.GetItemInstanceId and weapon:GetItemInstanceId()
+    local entry = hudWeaponEntryCache[weapon]
+    if entry and entry.snapshot == snapshot and entry.instanceId == instanceId then
+        return entry
+    end
+
+    local className = weapon:GetClass() or ""
+    local reserveAmmo, definition = getHudAmmoAndDefinition(weapon)
+    local name = definition and definition.name or weapon:GetPrintName()
+    local selectionSlot
+    for slot = 1, 3 do
+        local loadout = snapshot and snapshot.weaponSlots and snapshot.weaponSlots[slot]
+        if instanceId and instanceId ~= "" and loadout and loadout.instanceId == instanceId then
+            selectionSlot = slot
+            break
+        end
+    end
+    entry = {
+        snapshot = snapshot,
+        instanceId = instanceId,
+        className = className,
+        selectionSlot = selectionSlot,
+        iconKey = className .. ":" .. tostring(instanceId or ""),
+        name = name and name ~= "" and name or className,
+        inventoryReserve = reserveAmmo,
+        definition = definition
+    }
+    hudWeaponEntryCache[weapon] = entry
+    return entry
+end
+
 local function getHudWeaponEntries(player)
-    local entries = {}
+    local entries = hudWeaponEntries
+    table.Empty(entries)
     if not IsValid(player) then
         return entries
     end
 
     local activeWeapon = player:GetActiveWeapon()
+    local snapshot = ZM_Inventory and ZM_Inventory.Snapshot
     for _, weapon in ipairs(player:GetWeapons() or {}) do
-        if IsValid(weapon) then
-            local className = weapon:GetClass() or ""
-            if className ~= "" then
-                local instanceId = weapon.GetItemInstanceId and weapon:GetItemInstanceId()
-                local clip = tonumber(weapon:Clip1()) or 0
-                local maxClip = tonumber(weapon.GetMaxClip and weapon:GetMaxClip() or weapon:GetMaxClip1()) or -1
-                local reserveAmmo, definition = getHudAmmoAndDefinition(weapon)
-                if reserveAmmo == nil and not weapon.GetItemInstanceId then
-                    local ammoType = weapon:GetPrimaryAmmoType()
-                    if ammoType and ammoType >= 0 then
-                        reserveAmmo = player:GetAmmoCount(ammoType)
-                    end
+        if IsValid(weapon) and (weapon:GetClass() or "") ~= "" then
+            local entry = getHudWeaponEntry(player, weapon, snapshot)
+            local maxClip = tonumber(weapon.GetMaxClip and weapon:GetMaxClip() or weapon:GetMaxClip1()) or -1
+            local reserveAmmo = entry.inventoryReserve
+            if reserveAmmo == nil and not weapon.GetItemInstanceId then
+                local ammoType = weapon:GetPrimaryAmmoType()
+                if ammoType and ammoType >= 0 then
+                    reserveAmmo = player:GetAmmoCount(ammoType)
                 end
-                local name = definition and definition.name or weapon:GetPrintName()
-                local selectionSlot
-                local snapshot = ZM_Inventory and ZM_Inventory.Snapshot
-                for slot = 1, 3 do
-                    local loadout = snapshot and snapshot.weaponSlots and snapshot.weaponSlots[slot]
-                    if instanceId and instanceId ~= "" and loadout and loadout.instanceId == instanceId then
-                        selectionSlot = slot
-                        break
-                    end
-                end
-                table.insert(entries, {
-                    className = className,
-                    selectionSlot = selectionSlot,
-                    iconKey = className .. ":" .. tostring(instanceId or ""),
-                    name = name and name ~= "" and name or className,
-                    clip = clip,
-                    maxClip = math.floor(maxClip),
-                    reserve = reserveAmmo,
-                    definition = definition,
-                    active = IsValid(activeWeapon) and weapon == activeWeapon
-                })
             end
+            entry.clip = tonumber(weapon:Clip1()) or 0
+            entry.maxClip = math.floor(maxClip)
+            entry.reserve = reserveAmmo
+            entry.active = IsValid(activeWeapon) and weapon == activeWeapon
+            entries[#entries + 1] = entry
         end
     end
 
-    table.sort(entries, function(left, right)
-        if left.active ~= right.active then
-            return left.active
-        end
-            return left.name == right.name and left.className < right.className or left.name < right.name
-    end)
-
+    table.sort(entries, compareHudWeaponEntries)
     return entries
 end
+
+local weaponSlotKeyActiveColor = Color(255, 208, 92)
+local weaponSlotKeyIdleColor = Color(200, 200, 200)
+local weaponHudLabelColor = Color(230, 230, 230)
+local weaponHudClipColor = Color(255, 206, 98)
+local weaponHudWhite = Color(255, 255, 255)
 
 local function drawWeaponSlotKey(entry, x, y, height)
     if not entry.selectionSlot then return end
     local size = 20
     local badgeX, badgeY = x - size - 4, y + (height - size) * 0.5
-    local color = entry.active and Color(255, 208, 92) or Color(200, 200, 200)
+    local color = entry.active and weaponSlotKeyActiveColor or weaponSlotKeyIdleColor
     surface.SetDrawColor(10, 12, 16, 230)
     surface.DrawRect(badgeX, badgeY, size, size)
     surface.SetDrawColor(color)
@@ -317,10 +344,11 @@ local function drawWeaponHudPanel()
             break
         end
     end
-    local otherWeapons = {}
+    local otherWeapons = hudOtherWeaponEntries
+    table.Empty(otherWeapons)
     for _, entry in ipairs(weaponEntries) do
         if not entry.active then
-            table.insert(otherWeapons, entry)
+            otherWeapons[#otherWeapons + 1] = entry
         end
     end
 
@@ -347,10 +375,10 @@ local function drawWeaponHudPanel()
             until #label == 0 or surface.GetTextSize(label .. "...") <= slotWidth - 12
             label = label .. "..."
         end
-        draw.SimpleText(label, "ZM_WeaponHudReserve", x + 6, y + 4, Color(230, 230, 230), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        draw.SimpleText(label, "ZM_WeaponHudReserve", x + 6, y + 4, weaponHudLabelColor, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
         local clipText = entry.maxClip > 0 and entry.clip >= 0 and (math.max(0, entry.clip) .. "/" .. entry.maxClip) or "--"
-        draw.SimpleText(clipText, "ZM_WeaponHudReserve", x + 6, y + 25, Color(255, 206, 98), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-        draw.SimpleText(entry.reserve and tostring(entry.reserve) or "--", "ZM_WeaponHudReserve", x + slotWidth - 6, y + 25, Color(200, 200, 200), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+        draw.SimpleText(clipText, "ZM_WeaponHudReserve", x + 6, y + 25, weaponHudClipColor, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        draw.SimpleText(entry.reserve and tostring(entry.reserve) or "--", "ZM_WeaponHudReserve", x + slotWidth - 6, y + 25, weaponSlotKeyIdleColor, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
         drawWeaponSlotKey(entry, x, y, slotHeight)
     end
 
@@ -367,15 +395,15 @@ local function drawWeaponHudPanel()
     surface.DrawOutlinedRect(activeX, activeY, activeWidth, activeHeight, 1)
     drawWeaponSlotKey(activeWeapon, activeX, activeY, activeHeight)
 
-    draw.SimpleText(string.sub(activeWeapon.name, 1, 24), "ZM_WeaponHudName", activeX + 12, activeY + 8, Color(255, 255, 255), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+    draw.SimpleText(string.sub(activeWeapon.name, 1, 24), "ZM_WeaponHudName", activeX + 12, activeY + 8, weaponHudWhite, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
     local clipText = activeWeapon.maxClip > 0 and activeWeapon.clip >= 0 and (math.max(0, activeWeapon.clip) .. "/" .. activeWeapon.maxClip) or "--"
-    draw.SimpleText(clipText, "ZM_WeaponHudValue", activeX + 12, activeY + 30, Color(255, 255, 255), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+    draw.SimpleText(clipText, "ZM_WeaponHudValue", activeX + 12, activeY + 30, weaponHudWhite, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
     local weaponIconSize = activeWidth >= 200 and 44 or 34
     local weaponIconX = activeX + activeWidth - weaponIconSize - 8
     local weaponIconY = activeY + 20
     local reserveRight = weaponIconX - 8
-    draw.SimpleText("RESERVE", "ZM_WeaponHudReserve", reserveRight, activeY + 30, Color(200, 200, 200), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
-    draw.SimpleText(activeWeapon.reserve and tostring(activeWeapon.reserve) or "--", "ZM_WeaponHudValue", reserveRight, activeY + 47, Color(255, 208, 92), TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+    draw.SimpleText("RESERVE", "ZM_WeaponHudReserve", reserveRight, activeY + 30, weaponSlotKeyIdleColor, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+    draw.SimpleText(activeWeapon.reserve and tostring(activeWeapon.reserve) or "--", "ZM_WeaponHudValue", reserveRight, activeY + 47, weaponSlotKeyActiveColor, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
     if activeWeapon.maxClip > 0 and activeWeapon.clip >= 0 then
         drawWeaponHudBullets(activeX + 12, activeY + 77, activeWidth - 24, math.max(0, activeWeapon.clip), activeWeapon.maxClip, true)
     end
@@ -445,9 +473,17 @@ local function getCellCompassLandmark(cell)
     return landmark
 end
 
+local landmarkTargetCacheCell
+local landmarkTargetCacheData
+local landmarkTargetCache
+
 local function getNearbyLandmarkCompassTargets(playerCell)
-    local targets = {}
+    // Landmarks only change with the player's cell, so the scan of every world cell runs once per cell change.
     local worldData = ZM_World:GetData()
+    if landmarkTargetCache and playerCell == landmarkTargetCacheCell and worldData == landmarkTargetCacheData then
+        return landmarkTargetCache
+    end
+    local targets = {}
     if not worldData then
         return targets
     end
@@ -470,8 +506,33 @@ local function getNearbyLandmarkCompassTargets(playerCell)
     while #targets > 5 do
         table.remove(targets)
     end
+    landmarkTargetCacheCell = playerCell
+    landmarkTargetCacheData = worldData
+    landmarkTargetCache = targets
     return targets
 end
+
+// Marker entities and den residents are gathered twice a second rather than walking every entity each frame.
+local compassEntityRefreshSeconds = 0.5
+local compassMarkerEntities = {}
+local compassDenNpcs = {}
+local nextCompassEntityRefreshAt = 0
+
+local function refreshCompassEntities()
+    local now = RealTime()
+    if now < nextCompassEntityRefreshAt then return end
+    nextCompassEntityRefreshAt = now + compassEntityRefreshSeconds
+    table.Empty(compassMarkerEntities)
+    for _, entity in ipairs(ents.GetAll()) do
+        local marker = IsValid(entity) and entity:GetZMCompassMarker() or nil
+        if marker then
+            compassMarkerEntities[#compassMarkerEntities + 1] = { entity = entity, marker = marker }
+        end
+    end
+    compassDenNpcs = ents.FindByClass("zn_den_npc")
+end
+
+local compassMarkerScratchColor = Color(255, 255, 255)
 
 local function drawCompassMarker(x, y, width, heading, targetYaw, icon, color, pulse, showAtEdge, occupiedLabelRows)
     if not targetYaw then
@@ -490,7 +551,8 @@ local function drawCompassMarker(x, y, width, heading, targetYaw, icon, color, p
     if pulse then
         alpha = math.floor(110 + 145 * (math.sin(CurTime() * 7) + 1) * 0.5)
     end
-    local markerColor = Color(color.r, color.g, color.b, alpha)
+    local markerColor = compassMarkerScratchColor
+    markerColor.r, markerColor.g, markerColor.b, markerColor.a = color.r, color.g, color.b, alpha
     surface.SetDrawColor(markerColor)
     surface.DrawRect(markerX - (isVisible and 1 or 2), y + 4, isVisible and 3 or 4, 19)
     if isVisible then
@@ -545,15 +607,21 @@ local function getMinimapRect()
     return minimapMargin, ScrH() - height - minimapMargin, width, height
 end
 
+// Cached per frame: the crosshair clip queries these rects many times while searching for an edge.
+local hudReservedRects = { {}, {}, {} }
+local hudReservedRectsFrame = -1
+
 function ZM_GetHudReservedRects()
-    local rects = {}
-    for _, getRect in ipairs({ getCompassRect, getMinimapRect }) do
-        local x, y, width, height = getRect()
-        table.insert(rects, { x = x, y = y, w = width, h = height })
+    local frame = FrameNumber()
+    if frame == hudReservedRectsFrame then
+        return hudReservedRects
     end
-    local x, y, width, height = getCompassRect()
-    table.insert(rects, { x = x, y = y + height + 5, w = width, h = 18 })
-    return rects
+    hudReservedRectsFrame = frame
+    local compass, minimap, xpBar = hudReservedRects[1], hudReservedRects[2], hudReservedRects[3]
+    compass.x, compass.y, compass.w, compass.h = getCompassRect()
+    minimap.x, minimap.y, minimap.w, minimap.h = getMinimapRect()
+    xpBar.x, xpBar.y, xpBar.w, xpBar.h = compass.x, compass.y + compass.h + 5, compass.w, 18
+    return hudReservedRects
 end
 
 // Displayed compass heading eases toward the player's facing along the shortest turn, hiding cursor jitter.
@@ -569,6 +637,16 @@ local function getSmoothedCompassHeading(player)
     compassHeading = math.NormalizeAngle(compassHeading + math.AngleDifference(target, compassHeading) * blend)
     return compassHeading
 end
+
+local compassDirections = {
+    { yaw = 90, label = "N" },
+    { yaw = 0, label = "E" },
+    { yaw = -90, label = "S" },
+    { yaw = 180, label = "W" }
+}
+local compassWaypointColor = Color(246, 210, 48)
+local compassEntityMarkerColor = Color(239, 57, 72)
+local compassXpTextColor = Color(255, 255, 255)
 
 local function drawPlayerCompass()
     if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
@@ -590,12 +668,6 @@ local function drawPlayerCompass()
     surface.SetDrawColor(173, 28, 43, 255)
     surface.DrawRect(x + width * 0.5 - 1, y, 3, height)
 
-    local compassDirections = {
-        { yaw = 90, label = "N" },
-        { yaw = 0, label = "E" },
-        { yaw = -90, label = "S" },
-        { yaw = 180, label = "W" }
-    }
     for _, direction in ipairs(compassDirections) do
         local relativeYaw = normalizeCompassAngle(direction.yaw - heading)
         if math.abs(relativeYaw) <= 105 then
@@ -611,7 +683,7 @@ local function drawPlayerCompass()
         local direction = ZM_WorldMap:GetWaypointDirection(playerCell)
         local yaw = waypointDirectionYaw[direction]
         if yaw then
-            drawCompassMarker(x, y, width, heading, yaw, getCompassMarkerLabel("waypoint"), Color(246, 210, 48), true, true, occupiedLabelRows)
+            drawCompassMarker(x, y, width, heading, yaw, getCompassMarkerLabel("waypoint"), compassWaypointColor, true, true, occupiedLabelRows)
         end
     end
     if not isInDen and playerCell then
@@ -619,18 +691,20 @@ local function drawPlayerCompass()
             drawCompassMarker(x, y, width, heading, getCellCompassYaw(player, target.cell), target.landmark.label, target.landmark.color, false, false, occupiedLabelRows)
         end
     end
-    for _, entity in ipairs(ents.GetAll()) do
-        local marker = IsValid(entity) and entity:GetZMCompassMarker() or nil
-        if marker then
-            local offset = entity:WorldSpaceCenter() - player:EyePos()
+    refreshCompassEntities()
+    local eyePosition = player:EyePos()
+    for _, entry in ipairs(compassMarkerEntities) do
+        local entity, marker = entry.entity, entry.marker
+        if IsValid(entity) then
+            local offset = entity:WorldSpaceCenter() - eyePosition
             if offset:LengthSqr() > 2500 then
-                drawCompassMarker(x, y, width, heading, offset:Angle().y, getCompassMarkerLabel(marker.icon, marker.label), Color(239, 57, 72), false, false, occupiedLabelRows)
+                drawCompassMarker(x, y, width, heading, offset:Angle().y, getCompassMarkerLabel(marker.icon, marker.label), compassEntityMarkerColor, false, false, occupiedLabelRows)
             end
         end
     end
-    for _, npc in ipairs(ents.FindByClass("zn_den_npc")) do
+    for _, npc in ipairs(compassDenNpcs) do
         if IsValid(npc) and not npc:IsDormant() then
-            local offset = npc:WorldSpaceCenter() - player:EyePos()
+            local offset = npc:WorldSpaceCenter() - eyePosition
             if offset:LengthSqr() > 2500 then
                 drawCompassMarker(x, y, width, heading, offset:Angle().y, npc:GetNWString("ZM_NpcName", "Den Resident"), denNpcColor, false, false, occupiedLabelRows)
             end
@@ -653,7 +727,7 @@ local function drawPlayerCompass()
         "ZM_MinimapLabel",
         x + width * 0.5,
         xpY + xpHeight * 0.5,
-        Color(255, 255, 255),
+        compassXpTextColor,
         TEXT_ALIGN_CENTER,
         TEXT_ALIGN_CENTER
     )
@@ -772,11 +846,18 @@ local function changeMinimapZoom(factor)
     cookie.Set("zombiesim_minimap_" .. profile .. "_zoom", tostring(minimapZoom))
 end
 
+local minimapCardinalColor = Color(244, 244, 246, 235)
+local minimapBarAlertColor = Color(239, 57, 72, 255)
+
 local function drawMinimapBar(x, y, width, height, label, value, color)
     local intensity = math.Clamp(tonumber(value) or 0, 0, 1)
     local isLow = intensity <= 0.25
     local alertAlpha = math.floor(125 + (math.sin(CurTime() * 8) + 1) * 65)
-    local borderColor = isLow and Color(239, 57, 72, alertAlpha) or color
+    local borderColor = color
+    if isLow then
+        borderColor = minimapBarAlertColor
+        borderColor.a = alertAlpha
+    end
     surface.SetDrawColor(4, 5, 6, 255)
     surface.DrawRect(x, y, width, height)
     surface.SetDrawColor(borderColor.r, borderColor.g, borderColor.b, borderColor.a or 255)
@@ -791,7 +872,7 @@ end
 local function drawMinimapCardinalDirections(x, y, width, height)
     local top, right, bottom, left = "N", "E", "S", "W"
 
-    local color = Color(244, 244, 246, 235)
+    local color = minimapCardinalColor
     draw.SimpleText(top, "ZM_MinimapLabel", x + width * 0.5, y + 2, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
     draw.SimpleText(right, "ZM_MinimapLabel", x + width - 3, y + height * 0.5, color, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
     draw.SimpleText(bottom, "ZM_MinimapLabel", x + width * 0.5, y + height - 2, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
@@ -979,7 +1060,8 @@ local function drawPlayerMinimap()
     end
     if drewMap then
         if minimapViewMode == "map" and ZM_WorldMap and ZM_WorldMap.ProjectLocalMapPosition then
-            for _, npc in ipairs(ents.FindByClass("zn_den_npc")) do
+            refreshCompassEntities()
+            for _, npc in ipairs(compassDenNpcs) do
                 if IsValid(npc) and not npc:IsDormant() then
                     local npcX, npcY = ZM_WorldMap:ProjectLocalMapPosition(mapX, mapY, mapWidth, mapHeight, position, localMapViewHeight, npc:GetPos())
                     if npcX and npcY then drawDenNpcMinimapMarker(mapX, mapY, mapWidth, mapHeight, npcX, npcY, npc) end

@@ -117,6 +117,9 @@ function ENT:IsValidTarget(target)
     if not IsValid(target) or not target:IsPlayer() or not target:Alive() or target:IsFlagSet(FL_NOTARGET) then
         return false
     end
+    if ZM_AFK and ZM_AFK:IsProtected(target) then
+        return false
+    end
     local cell = target:GetWorldCell()
     return cell and cell.id == self.WalkerSourceCellId
 end
