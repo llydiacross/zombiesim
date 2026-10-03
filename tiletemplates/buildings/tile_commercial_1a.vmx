@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "27"
+	"mapversion" "28"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "27"
+	"mapversion" "28"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -2132,7 +2132,7 @@ entity
 				"v" "-128 256 262"
 				"v" "-128 0 262"
 			}
-			"material" "DE_TRAIN/TRAIN_GLASSWINDOW_01"
+			"material" "CS_ITALY/TILEROOF01"
 			"uaxis" "[0 -1 0 8] 0.25"
 			"vaxis" "[-0.897258 0 -0.441508 -280.741] 0.25"
 			"rotation" "0"
@@ -2250,9 +2250,9 @@ entity
 				"v" "128 0 262"
 				"v" "128 256 262"
 			}
-			"material" "DE_TRAIN/TRAIN_GLASSWINDOW_01"
+			"material" "CS_ITALY/TILEROOF01"
 			"uaxis" "[0 1 0 -504] 0.25"
-			"vaxis" "[0.897258 -0 -0.441508 -280.741] 0.25"
+			"vaxis" "[0.897258 0 -0.441508 -280.741] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -2703,7 +2703,7 @@ entity
 				"v" "-128 160 262"
 				"v" "128 160 262"
 			}
-			"material" "DE_TRAIN/TRAIN_GLASSWINDOW_01"
+			"material" "CS_ITALY/TILEROOF01"
 			"uaxis" "[1 0 0 8] 0.25"
 			"vaxis" "[0 -0.836111 -0.54856 340.095] 0.25"
 			"rotation" "0"

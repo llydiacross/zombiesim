@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "11"
+	"mapversion" "12"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "11"
+	"mapversion" "12"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -136,9 +136,9 @@ world
 				}
 				distances
 				{
-					"row0" "39.4737 40.5736 30.3062 38.8648 24.1901 47.4323 34.8128 32.3626 20.2345"
+					"row0" "39.4737 40.5736 30.3062 54.8647 24.1901 47.4323 34.8128 32.3626 20.2345"
 					"row1" "38.2835 39.776 1.86481 1.45021 5.84931 27.5698 5.3852 24.113 16.006"
-					"row2" "34.1148 25.9194 45.0672 73.4952 75.0142 43.4288 48.5175 0.714989 13.8318"
+					"row2" "34.1148 25.9194 45.0672 73.4952 70.0142 43.4288 48.5175 0.714989 13.8318"
 					"row3" "35.3778 3.7516 80.414 116.989 93.0845 101.402 91.2431 30.7371 16.9107"
 					"row4" "36.9825 42.1598 111.17 125.388 126.893 122.728 100.206 49.9934 22.6436"
 					"row5" "31.5955 54.9264 117.612 143.863 142.345 138.8 115.074 48.4077 24.9217"
@@ -186,7 +186,7 @@ world
 				{
 					"row0" "9 9 9 0 1 0 0 1 0 9 9 1 1 9 9 9"
 					"row1" "9 9 0 0 0 0 0 0 0 0 0 0 0 0 1 9"
-					"row2" "9 1 0 0 0 0 0 9 9 0 0 0 0 0 1 1"
+					"row2" "9 1 0 0 0 0 0 1 9 0 0 0 0 0 1 1"
 					"row3" "9 0 0 0 0 9 9 0 0 9 1 9 1 1 0 1"
 					"row4" "0 0 0 1 9 9 9 9 9 9 9 9 0 1 0 0"
 					"row5" "0 0 0 1 9 9 9 9 9 9 9 9 0 0 1 0"
@@ -240,8 +240,8 @@ world
 					"row0" "35.6062 35.9666 22.2 23.4225 24.9825 19.5955 16.5422 19.5206 26.937"
 					"row1" "41.6762 39.4719 27.6316 5.84266 25.0972 49.1338 37.988 20.712 23.2482"
 					"row2" "29.7337 3.41415 38.1209 83.3717 110.795 119.976 112.709 39.4506 10.1131"
-					"row3" "26.9099 0.530312 61.726 123.75 132.455 150.112 153.947 117.343 7.76147"
-					"row4" "16.2264 9.17907 74.7233 88.3322 131.473 151.767 152.424 91.2618 10.9428"
+					"row3" "42.9099 0.530312 61.726 123.75 132.455 150.112 153.947 117.343 7.76147"
+					"row4" "16.2264 9.17907 73.0803 88.3322 131.473 151.767 152.424 91.2618 10.9428"
 					"row5" "42.3352 25.9264 35.5921 108.31 133.59 150.109 159.844 133.816 52.104"
 					"row6" "38.4005 10.6679 46.2015 94.9503 108.317 121.003 125.73 71.3088 38.7485"
 					"row7" "32.5175 27.4034 3.11634 28.5977 45.8638 38.5942 8.35529 26.5977 40.3855"
@@ -641,15 +641,15 @@ world
 				}
 				distances
 				{
-					"row0" "35.6062 41.6762 29.7337 26.9099 16.2264 42.3352 38.4005 32.5175 17.8617"
-					"row1" "36.1888 41.6381 29.9569 28.3874 17.2166 42.966 38.4815 32.6719 18.2615"
-					"row2" "36.7441 41.5693 30.1371 29.8874 18.2076 43.5972 38.3976 32.8184 18.6326"
-					"row3" "37.2716 41.4707 30.2741 31.3874 19.1998 44.2296 38.0312 32.9579 18.9744"
-					"row4" "37.7707 41.3435 30.3675 32.8874 20.1936 44.8637 37.5258 33.0913 19.2868"
-					"row5" "38.241 41.1889 30.4173 34.3874 21.1892 45.5005 36.9516 33.0906 19.5693"
-					"row6" "38.6818 41.0081 30.4235 35.8874 22.187 46.1404 36.3081 32.8441 19.8217"
-					"row7" "39.0929 40.8025 30.3864 37.3874 23.1872 46.7841 35.5952 32.601 20.0435"
-					"row8" "39.4737 40.5736 30.3062 38.8648 24.1901 47.4323 34.8128 32.3626 20.2345"
+					"row0" "35.6062 41.6762 29.7337 42.9099 16.2264 42.3352 38.4005 32.5175 17.8617"
+					"row1" "36.1888 41.6381 29.9569 44.3874 17.2166 42.966 38.4815 32.6719 18.2615"
+					"row2" "36.7441 41.5693 30.1371 45.8874 18.2076 43.5972 38.3976 32.8184 18.6326"
+					"row3" "37.2716 41.4707 30.2741 47.3874 19.1998 44.2296 38.0312 32.9579 18.9744"
+					"row4" "37.7707 41.3435 30.3675 48.8874 20.1936 44.8637 37.5258 33.0913 19.2868"
+					"row5" "38.241 41.1889 30.4173 50.3874 21.1892 45.5005 36.9516 33.0906 19.5693"
+					"row6" "38.6818 41.0081 30.4235 51.8874 22.187 46.1404 36.3081 32.8441 19.8217"
+					"row7" "39.0929 40.8025 30.3864 53.3874 23.1872 46.7841 35.5952 32.601 20.0435"
+					"row8" "39.4737 40.5736 30.3062 54.8647 24.1901 47.4323 34.8128 32.3626 20.2345"
 				}
 				offsets
 				{
@@ -1797,48 +1797,6 @@ entity
 }
 entity
 {
-	"id" "374"
-	"classname" "prop_static"
-	"angles" "0 180 0"
-	"fademindist" "-1"
-	"fadescale" "1"
-	"lightmapresolutionx" "32"
-	"lightmapresolutiony" "32"
-	"model" "models/props_foliage/tree_deciduous_02a.mdl"
-	"skin" "0"
-	"solid" "6"
-	"origin" "136 192 32"
-	editor
-	{
-		"color" "255 255 0"
-		"visgroupshown" "1"
-		"visgroupautoshown" "1"
-		"logicalpos" "[0 9000]"
-	}
-}
-entity
-{
-	"id" "381"
-	"classname" "prop_static"
-	"angles" "0 260.5 0"
-	"fademindist" "-1"
-	"fadescale" "1"
-	"lightmapresolutionx" "32"
-	"lightmapresolutiony" "32"
-	"model" "models/props_vehicles/truck002a_cab.mdl"
-	"skin" "0"
-	"solid" "6"
-	"origin" "-112 176 96"
-	editor
-	{
-		"color" "255 255 0"
-		"visgroupshown" "1"
-		"visgroupautoshown" "1"
-		"logicalpos" "[0 9500]"
-	}
-}
-entity
-{
 	"id" "438"
 	"classname" "func_detail"
 	solid
@@ -2209,6 +2167,236 @@ entity
 	"classname" "zn_tile_direction"
 	"direction" "north"
 	"origin" "0 320 32"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "990096"
+	"classname" "prop_physics_override"
+	"angles" "0 59.5 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"inertiaScale" "1.0"
+	"model" "models/items/ammocrate_ar2.mdl"
+	"modelscale" "1.0"
+	"physdamagescale" "0.1"
+	"skin" "0"
+	"spawnflags" "256"
+	"origin" "112 64 48.281"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "990106"
+	"classname" "prop_physics_override"
+	"angles" "0 103 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"inertiaScale" "1.0"
+	"model" "models/items/ammocrate_rockets.mdl"
+	"modelscale" "1.0"
+	"physdamagescale" "0.1"
+	"skin" "0"
+	"spawnflags" "256"
+	"origin" "189.962 63.3087 48.281"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "990126"
+	"classname" "prop_physics_override"
+	"angles" "0 103 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"inertiaScale" "1.0"
+	"model" "models/props/de_dust/du_crate_64x80.mdl"
+	"modelscale" "1.0"
+	"physdamagescale" "0.1"
+	"skin" "0"
+	"spawnflags" "256"
+	"origin" "211.75 188.998 72.2186"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "990130"
+	"classname" "prop_physics_override"
+	"angles" "0 154.5 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"inertiaScale" "1.0"
+	"model" "models/props/de_dust/du_crate_64x80.mdl"
+	"modelscale" "1.0"
+	"physdamagescale" "0.1"
+	"skin" "0"
+	"spawnflags" "256"
+	"origin" "140.537 250.303 72.2186"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "990156"
+	"classname" "prop_physics_override"
+	"angles" "0 154.5 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"inertiaScale" "1.0"
+	"model" "models/props_junk/wood_crate001a.mdl"
+	"modelscale" "1.0"
+	"physdamagescale" "0.1"
+	"skin" "0"
+	"spawnflags" "256"
+	"origin" "-176 96 52.2271"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "990160"
+	"classname" "prop_physics_override"
+	"angles" "0 154.5 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"inertiaScale" "1.0"
+	"model" "models/props_junk/wood_crate001a.mdl"
+	"modelscale" "1.0"
+	"physdamagescale" "0.1"
+	"skin" "0"
+	"spawnflags" "256"
+	"origin" "-223.448 125.461 52.227"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "990164"
+	"classname" "prop_physics_override"
+	"angles" "0 174.5 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"inertiaScale" "1.0"
+	"model" "models/props_junk/wood_crate001a.mdl"
+	"modelscale" "1.0"
+	"physdamagescale" "0.1"
+	"skin" "0"
+	"spawnflags" "256"
+	"origin" "-177.193 152.345 52.2271"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "990187"
+	"classname" "prop_physics_override"
+	"angles" "0 174.5 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"inertiaScale" "1.0"
+	"model" "models/props_c17/oildrum001.mdl"
+	"modelscale" "1.0"
+	"physdamagescale" "0.1"
+	"skin" "0"
+	"spawnflags" "256"
+	"origin" "-143.917 246.546 32.2812"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "990196"
+	"classname" "prop_physics_override"
+	"angles" "0 174.5 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"inertiaScale" "1.0"
+	"model" "models/props_c17/oildrum001.mdl"
+	"modelscale" "1.0"
+	"physdamagescale" "0.1"
+	"skin" "0"
+	"spawnflags" "256"
+	"origin" "-166.449 267.638 32.2812"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "990200"
+	"classname" "prop_physics_override"
+	"angles" "0 174.5 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"inertiaScale" "1.0"
+	"model" "models/props_c17/oildrum001.mdl"
+	"modelscale" "1.0"
+	"physdamagescale" "0.1"
+	"skin" "0"
+	"spawnflags" "256"
+	"origin" "-133.462 276.089 32.2812"
 	editor
 	{
 		"color" "220 30 220"
