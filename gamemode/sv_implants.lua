@@ -81,21 +81,10 @@ function Svc:ScaleXP(target, amount)
     return math.floor(amount * (1 + gain) + 0.5)
 end
 
-// Scales walk and run speed from the speeds the player had without implants.
+// Apply balance and implant scaling once from the unmodified engine/external speeds.
 function Svc:ApplyMovement(target)
     if not isPlayerEntity(target) then return end
-    // Speeds are stored as floats, so compare with a tolerance; anything else set them since, which becomes the new base.
-    local walk, run = target:GetWalkSpeed(), target:GetRunSpeed()
-    local changed = not target.ZM_BaseWalkSpeed
-        or math.abs(walk - target.ZM_AppliedWalkSpeed) > 0.01 or math.abs(run - target.ZM_AppliedRunSpeed) > 0.01
-    if changed then
-        target.ZM_BaseWalkSpeed, target.ZM_BaseRunSpeed = walk, run
-    end
-    local scale = 1 + self:GetEffect(target, "moveSpeed")
-    target.ZM_AppliedWalkSpeed = target.ZM_BaseWalkSpeed * scale
-    target.ZM_AppliedRunSpeed = target.ZM_BaseRunSpeed * scale
-    target:SetWalkSpeed(target.ZM_AppliedWalkSpeed)
-    target:SetRunSpeed(target.ZM_AppliedRunSpeed)
+    ZM_Movement.Apply(target, self:GetEffect(target, "moveSpeed"))
 end
 
 function Svc:BuildState(target)

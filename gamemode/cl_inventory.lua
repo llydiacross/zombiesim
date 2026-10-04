@@ -75,6 +75,7 @@ function Inventory:SendAction(request)
 end
 
 function Inventory:IsEquipped(instanceId)
+    if self.Snapshot.armour and self.Snapshot.armour.instanceId == instanceId then return true end
     for _, equippedId in ipairs(self.Snapshot.equipped or {}) do
         if equippedId == instanceId then
             return true
@@ -142,6 +143,10 @@ local function describe(instance)
     if definition.food then
         describeFood(lines, instance)
     end
+    if definition.radiationProtection then
+        table.insert(lines, "While worn: blocks all radiation damage and radiation screen effects.")
+        table.insert(lines, "The radiation meter and Geiger counter still warn about exposure.")
+    end
     if definition.type == "bullet_weapon" then
         table.insert(lines, "Loaded: " .. tostring(tonumber(instance.clip) or 0))
         table.insert(lines, "Ammo: " .. tostring(definition.ammoId))
@@ -191,7 +196,7 @@ local function primaryAction(instance)
     end
     if definition.entityClass == "entity" then
         Inventory:SendAction({ action = "use", instanceId = instance.instanceId })
-    elseif definition.entityClass == "weapon" then
+    elseif definition.entityClass == "weapon" or definition.entityClass == "armour" then
         Inventory:SendAction({ action = Inventory:IsEquipped(instance.instanceId) and "unequip" or "equip", instanceId = instance.instanceId })
     end
 end
@@ -202,7 +207,7 @@ local function openContextMenu(instance, container, allowStashMoves)
     if definition and container == "backpack" then
         if definition.entityClass == "entity" then
             menu:AddOption("Use", function() Inventory:SendAction({ action = "use", instanceId = instance.instanceId }) end)
-        elseif definition.entityClass == "weapon" then
+        elseif definition.entityClass == "weapon" or definition.entityClass == "armour" then
             if Inventory:IsEquipped(instance.instanceId) then
                 menu:AddOption("Unequip", function() Inventory:SendAction({ action = "unequip", instanceId = instance.instanceId }) end)
             else
@@ -233,6 +238,9 @@ local function openContextMenu(instance, container, allowStashMoves)
                     end)
             end
         end)
+    end
+    if definition and definition.entityClass == "armour" and container == "equipped" then
+        menu:AddOption("Unequip", function() Inventory:SendAction({ action = "unequip", instanceId = instance.instanceId }) end)
     end
     if allowStashMoves and Inventory.Snapshot.canAccessStash then
         local other = container == "backpack" and "stash" or "backpack"
@@ -481,12 +489,35 @@ function Inventory:Rebuild(frame)
         box:Dock(LEFT)
         box:SetWide(slotSize)
         box:DockMargin(0, 0, slotGap, 0)
+        local instance = label == "ARMOR" and snapshot.armour or nil
         box.Paint = function(_, width, height)
             surface.SetDrawColor(ZM_DermaSkin.Palette.black)
             surface.DrawRect(0, 0, width, height)
             surface.SetDrawColor(ZM_DermaSkin.Palette.border)
             surface.DrawOutlinedRect(0, 0, width, height, 1)
-            draw.SimpleText(label, "ZM_InventorySmall", width * 0.5, height * 0.5, ZM_DermaSkin.Palette.muted, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+            draw.SimpleText(label, "ZM_InventorySmall", width * 0.5, instance and 3 or height * 0.5,
+                ZM_DermaSkin.Palette.muted, TEXT_ALIGN_CENTER, instance and TEXT_ALIGN_TOP or TEXT_ALIGN_CENTER)
+        end
+        if label == "ARMOR" then
+            box:Receiver(dragName, function(_, panels, dropped)
+                local source = panels[1]
+                local definition = source and source.Instance and ZM_Items:GetDefinition(source.Instance.itemId)
+                if dropped and definition and definition.entityClass == "armour" then
+                    Inventory:SendAction({ action = "equip", instanceId = source.Instance.instanceId })
+                end
+            end)
+        end
+        if instance then
+            local tile = vgui.Create("DButton", box)
+            tile:Dock(FILL)
+            tile:DockMargin(2, 16, 2, 2)
+            tile:SetText("")
+            tile:SetTooltip(describe(instance))
+            tile.Instance, tile.Container, tile.Slot = instance, "equipped", ZM_Items.ArmourSlot
+            decorateTile(tile, instance)
+            tile:Droppable(dragName)
+            tile.DoDoubleClick = function() primaryAction(instance) end
+            tile.DoRightClick = function() openContextMenu(instance, "equipped", false) end
         end
     end
 end

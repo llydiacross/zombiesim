@@ -4,7 +4,8 @@ ZM_Items = ZM_Items or {}
 local Items = ZM_Items
 
 Items.Containers = { backpack = true, stash = true, equipped = true }
-Items.ContainerCapacity = { backpack = 20, stash = 60, equipped = 3 }
+Items.ContainerCapacity = { backpack = 20, stash = 60, equipped = 4 }
+Items.ArmourSlot = 4
 Items.DefaultJob = "Civilian"
 Items.MaximumWeaponClip = 64
 
@@ -40,6 +41,25 @@ end
 
 function Items:GetDefinition(itemId)
     return ZM_StaticData:GetItem(itemId)
+end
+
+function Items:IsEquipmentSlot(instance, slot)
+    if type(slot) ~= "number" or slot ~= math.floor(slot) then return false end
+    local definition = instance and self:GetDefinition(instance.itemId)
+    if not definition then return false end
+    if definition.entityClass == "armour" then return slot == self.ArmourSlot end
+    return definition.entityClass == "weapon" and slot >= 1 and slot <= 3
+end
+
+function Items:HasRadiationProtection(inventory)
+    local instance = inventory and inventory.equipped and inventory.equipped[self.ArmourSlot]
+    local definition = instance and self:GetDefinition(instance.itemId)
+    return definition ~= nil and definition.entityClass == "armour" and definition.radiationProtection == true
+end
+
+function ply:HasRadiationProtection()
+    if SERVER then return Items:HasRadiationProtection(self.ZM_Inventory) end
+    return self:GetNWBool("ZM_RadiationProtected", false)
 end
 
 function Items:GetRequiredLevel(itemId, instance)

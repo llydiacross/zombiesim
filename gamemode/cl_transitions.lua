@@ -29,6 +29,7 @@ end
 // The screen fades to black over fadeSeconds and stays black until the level changes. The step log is hidden because
 // the level change would cut it off; title replaces "LOADING" (for example "GOODBYE" when leaving a den).
 function LoadingScreen:BeginFadeOut(fadeSeconds, title)
+    hook.Run("ZM.MusicDeparture", fadeSeconds)
     local now = CurTime()
     self.Title = title ~= "" and title or nil
     self.ShowLog = false

@@ -5,6 +5,7 @@ include("sh_compass.lua")
 include("utils/world.lua")
 include("utils/safezone.lua")
 include("sh_preview.lua")
+include("sh_music.lua")
 include("sh_static_data.lua")
 include("sh_items.lua")
 include("sh_weapon_effects.lua")
@@ -12,6 +13,8 @@ include("sh_food.lua")
 include("sh_professions.lua")
 include("sh_implants.lua")
 include("sh_loot_targeting.lua")
+include("sh_radiation_feedback.lua")
+include("sh_gore_effects.lua")
 
 // Item behaviour classes; each file registers itself in ZM_EntityClasses.
 for _, itemFile in ipairs(file.Find(GM.FolderName .. "/gamemode/items/*.lua", "LUA")) do

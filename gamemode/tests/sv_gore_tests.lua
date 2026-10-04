@@ -197,6 +197,101 @@ test("killing_through_damage_creates_exactly_one_server_corpse", function(check)
     remove(zombie)
 end)
 
+test("cosmetic_queues_are_bounded_and_release_evicted_resources", function(check)
+    local queue, removed = {}, 0
+    local function dispose() removed = removed + 1 end
+    for index = 1, 100 do
+        ZM_GoreEffects.PushBounded(queue, index, 12, dispose)
+    end
+    check(#queue == 12 and queue[1] == 89 and removed == 88, "oldest effects are evicted at the full cap")
+    ZM_GoreEffects.Trim(queue, 4, dispose)
+    check(#queue == 4 and removed == 96, "reduced quality immediately releases excess effects")
+    ZM_GoreEffects.Trim(queue, 0, dispose)
+    check(#queue == 0 and removed == 100, "off releases every cosmetic resource")
+    check(not ZM_GoreEffects.PushBounded(queue, 1, 0), "off accepts no new effects")
+end)
+
+test("living_severs_remain_on_the_final_corpse", function(check)
+    local zombie = spawnZombie()
+    if not zombie then check(false, "walker fixture exists") return end
+    for _, region in ipairs({ "leftArm", "legs" }) do
+        forceRegion(zombie, region)
+        zombie.GoreForcedRegion = region
+        check(Gore:HandleDamage(zombie, damageOf(50), false) == region, "living " .. region .. " sever applies")
+    end
+    forceRegion(zombie, "head")
+    zombie.GoreForcedRegion = "head"
+    Gore:HandleDamage(zombie, damageOf(100), true)
+    local corpse = zombie:CreateCorpse()
+    check(IsValid(corpse) and Gore:ApplyCorpse(zombie, corpse), "final corpse receives the sever state")
+    if IsValid(corpse) then
+        for _, region in ipairs({ "leftArm", "legs", "head" }) do
+            check(Gore.HasRegion(Gore.GetMask(corpse), region), "corpse retains " .. region .. " rather than regrowing it")
+        end
+    end
+    remove(corpse, zombie)
+end)
+
+test("spray_and_decal_rates_have_frame_and_refill_limits", function(check)
+    for quality = 0, 2 do
+        local budget = ZM_GoreEffects.Budget(quality)
+        for _, kind in ipairs({ "effects", "decals" }) do
+            local state, count = {}, 0
+            for _ = 1, 100 do
+                if ZM_GoreEffects.TakeToken(state, kind, 0, 1, quality) then count = count + 1 end
+            end
+            local frameKey = kind == "effects" and "frameEffects" or "frameDecals"
+            check(count == budget[frameKey], "packet bursts respect the " .. kind .. " frame cap at quality " .. quality)
+            local total = count
+            for frame = 2, 100 do
+                if ZM_GoreEffects.TakeToken(state, kind, 0, frame, quality) then total = total + 1 end
+            end
+            check(total == budget[kind], "same-time frames cannot bypass the " .. kind .. " refill budget")
+            check(ZM_GoreEffects.TakeToken(state, kind, 1, 101, quality) == (quality > 0), "one second refills enabled effects only")
+        end
+    end
+end)
+
+test("blood_pools_grow_fade_and_expire", function(check)
+    local Effects = ZM_GoreEffects
+    check(Effects.PoolAlpha(0) == 0 and Effects.PoolAlpha(1) == 0.5, "pools form smoothly over two seconds")
+    check(Effects.PoolAlpha(30) == 1, "settled pools remain visible")
+    check(Effects.PoolAlpha(85) == 0.5 and Effects.PoolAlpha(90) == 0, "pools fade completely by their deadline")
+    check(Effects.Budget(1).pools == 8 and Effects.Budget(2).pools == 24, "pool counts are quality capped")
+end)
+
+test("bloody_rebel_material_preserves_player_model_and_corpse", function(check)
+    local zombie = spawnZombie()
+    if not zombie then check(false, "walker fixture exists") return end
+    local model = "models/player/group03/male_01.mdl"
+    zombie:SetModel(model)
+    Gore:ApplyBloodyAppearance(zombie)
+    local overrides = 0
+    for index, material in ipairs(zombie:GetMaterials()) do
+        local replacement = ZM_GoreEffects.BloodyMaterial(model, material)
+        if replacement then
+            overrides = overrides + 1
+            check(zombie:GetSubMaterial(index - 1) == replacement, "rebel sheet uses its mounted bloody equivalent")
+        else
+            check(zombie:GetSubMaterial(index - 1) == "", "a model change leaves eyes/face/mouth materials untouched")
+        end
+    end
+    check(overrides > 0, "the actual mounted player model exposes the compatible rebel sheet: "
+        .. table.concat(zombie:GetMaterials(), ", "))
+    check(zombie:GetModel() == model and zombie:SelectWeightedSequence(zombie.IdleActivity) >= 0,
+        "the original player model retains its zombie idle animation")
+    local corpse = zombie:CreateCorpse()
+    check(IsValid(corpse), "a bloody corpse can be created")
+    if IsValid(corpse) then
+        for index in ipairs(zombie:GetMaterials()) do
+            check(corpse:GetSubMaterial(index - 1) == zombie:GetSubMaterial(index - 1), "corpse retains each material override")
+        end
+    end
+    check(ZM_GoreEffects.BloodyMaterial("models/player/group01/male_01.mdl",
+        "models/humans/male/group01/citizen_sheet") == nil, "different clothing UVs are not replaced speculatively")
+    remove(corpse, zombie)
+end)
+
 function Gore:RunTests()
     return suite:Run()
 end

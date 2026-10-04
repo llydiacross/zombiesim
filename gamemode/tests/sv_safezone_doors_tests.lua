@@ -61,6 +61,7 @@ local function playerEntity()
         Alive = function() return true end,
         IsBot = function() return false end,
         GetPos = function() return Vector(0, 0, 0) end,
+        WorldSpaceCenter = function() return Vector(0, 0, 32) end,
         PrintMessage = function(self, _, message) table.insert(self.messages, message) end
     }
 end

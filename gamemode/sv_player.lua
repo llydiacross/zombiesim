@@ -431,17 +431,12 @@ hook.Add("SetupMove", "ZM.StaminaMovement", function(ply, move)
 
     ply.ZM_IsSprinting = bit.band(move:GetButtons(), IN_SPEED) ~= 0
 
-    if ply.ZM_PersistentStateLoaded ~= true or (tonumber(ply.Stamina) or 0) > 0 then return end
-
-    move:SetMaxSpeed(ply:GetWalkSpeed())
-    move:SetMaxClientSpeed(ply:GetWalkSpeed())
-    move:SetButtons(bit.band(move:GetButtons(), bit.bnot(IN_SPEED)))
+    ZM_Movement.RestrictExhausted(ply, move)
 end)
 
 // Continuously drains sprint stamina and restores stamina while the player is not sprinting.
 hook.Add("Think", "ZM.Stamina", function()
     local delta = engine.TickInterval()
-    local baseSprintDrain = 80
 
     for _, ply in ipairs(player.GetAll()) do
         if IsValid(ply) and ply:Alive() and ply.ZM_PersistentStateLoaded == true then
@@ -450,16 +445,7 @@ hook.Add("Think", "ZM.Stamina", function()
             local agility = ply:GetStat("Agility")
             local strength = ply:GetStat("Strength")
             local stamina = tonumber(ply.Stamina) or maxStamina
-            local staminaRate = baseSprintDrain / (1 + agility * 0.05 + strength * 0.03)
-            local recoveryRate = 5 * (1 + agility * 0.05)
-
-            if isSprinting then
-                stamina = stamina - staminaRate * delta
-            else
-                stamina = stamina + recoveryRate * delta
-            end
-
-            ply.Stamina = math.Clamp(stamina, 0, maxStamina)
+            ply.Stamina = ZM_Movement.Step(stamina, maxStamina, isSprinting, agility, strength, delta)
 
             ply:SetNWFloat("Stamina", ply.Stamina)
             ply:SetNWFloat("MaxStamina", maxStamina)
@@ -489,7 +475,7 @@ hook.Add("Think", "ZM.Survival", function()
     end
 end)
 
-// Applies one ambient-radiation tick per exposure interval; standalone safe rooms remain protected.
+// Radiation owns the ambient and acute policies; this hook bounds their server update rate.
 local nextRadiationDamageAt = 0
 hook.Add("Think", "ZM.RadiationDamage", function()
     if CurTime() < nextRadiationDamageAt then return end
@@ -497,56 +483,7 @@ hook.Add("Think", "ZM.RadiationDamage", function()
 
     for _, ply in ipairs(player.GetAll()) do
         if not IsValid(ply) then continue end
-        if ply.ZM_PersistentStateLoaded ~= true then continue end
-        if not ply:Alive() then
-            ply.RadiationCellId = nil
-            ply.RadiationEnteredAt = nil
-            ply.RadiationNextDamageAt = nil
-            continue
-        end
-
-        local inSafeZone = type(ply.CurrentSafeZoneId) == "string" and ply.CurrentSafeZoneId ~= ""
-        local intensity = inSafeZone and 0 or ply:GetRadiationIntensity()
-        intensity = tonumber(intensity) or 0
-        ply:SetNWFloat("RadiationIntensity", intensity)
-        if intensity <= 0 then
-            ply.RadiationCellId = nil
-            ply.RadiationEnteredAt = nil
-            ply.RadiationNextDamageAt = nil
-            continue
-        end
-
-        local cell = ply:GetWorldCell()
-        local cellId = cell and cell.id or nil
-        local highIntensity = intensity >= 0.75
-        local damageInterval = highIntensity and 60 or 120
-        if ply.RadiationCellId ~= cellId then
-            ply.RadiationCellId = cellId
-            ply.RadiationEnteredAt = CurTime()
-            ply.RadiationNextDamageAt = CurTime() + damageInterval
-            continue
-        end
-        if not ply.RadiationNextDamageAt then
-            ply.RadiationEnteredAt = CurTime()
-            ply.RadiationNextDamageAt = CurTime() + damageInterval
-            continue
-        end
-        if CurTime() < ply.RadiationNextDamageAt then continue end
-
-        local damagePerTick = highIntensity and 2 or 1
-        ply.RadiationNextDamageAt = CurTime() + damageInterval
-        // The preview survival-lock cheat keeps exposure tracking but suppresses the damage.
-        if ply.ZM_CheatSurvivalLock then continue end
-        local healthFloor = ply:GetRadiationHealthFloor()
-        local appliedDamage = math.min(damagePerTick, math.max(ply:Health() - healthFloor, 0))
-        if appliedDamage <= 0 then continue end
-
-        local damageInfo = DamageInfo()
-        damageInfo:SetDamage(appliedDamage)
-        damageInfo:SetDamageType(DMG_RADIATION)
-        damageInfo:SetAttacker(game.GetWorld())
-        damageInfo:SetInflictor(game.GetWorld())
-        ply:TakeDamageInfo(damageInfo)
+        ZM_RadiationFeedback:TickDamage(ply, CurTime())
     end
 end)
 

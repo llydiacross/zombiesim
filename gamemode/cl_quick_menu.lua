@@ -219,6 +219,17 @@ function ZM_Options:BuildPanel(panel)
             decimals = 0,
             tooltip = "Hides lying snow beyond this distance. 0 draws it as far as the fog allows."
         },
+        { label = "Geiger volume (0 off)", convar = "zombiesim_geiger_volume", minimum = 0, maximum = 1, decimals = 2 },
+        { label = "Environment music (0 off)", convar = "zombiesim_music_enabled", minimum = 0, maximum = 1, decimals = 0 },
+        { label = "Game master volume", convar = "volume", minimum = 0, maximum = 1, decimals = 2 },
+        { label = "Game sound effects volume", convar = "volume_sfx", minimum = 0, maximum = 1, decimals = 2 },
+        { label = "Game music volume (0 pauses)", convar = "snd_musicvolume", minimum = 0, maximum = 1, decimals = 2 },
+        { label = "Geiger meter pulse (0 static)", convar = "zombiesim_geiger_visual", minimum = 0, maximum = 1, decimals = 2 },
+        { label = "Radiation corners (0 off)", convar = "zombiesim_radiation_corners", minimum = 0, maximum = 1, decimals = 2 },
+        { label = "Radiation warning symbol (0 off)", convar = "zombiesim_radiation_symbol", minimum = 0, maximum = 1, decimals = 0 },
+        { label = "Extreme radiation grayscale (15+ Sv, 0 off)", convar = "zombiesim_radiation_extreme_grayscale", minimum = 0, maximum = 1, decimals = 2 },
+        { label = "Extreme radiation shake (15+ Sv, 0 off)", convar = "zombiesim_radiation_extreme_shake", minimum = 0, maximum = 1, decimals = 2 },
+        { label = "Radiated sheen/eyes (0 off, 1 reduced, 2 full)", convar = "zombiesim_radiated_visuals", minimum = 0, maximum = 2, decimals = 0 },
         {
             label = "Gore (0 off, 1 reduced, 2 full)",
             convar = "zombiesim_gore_quality",

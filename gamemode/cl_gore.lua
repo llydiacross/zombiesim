@@ -3,6 +3,7 @@
 // crawler's hidden legs are gameplay state and stay hidden.
 ZM_GoreClient = ZM_GoreClient or {}
 local GoreClient = ZM_GoreClient
+local Effects = ZM_GoreEffects
 
 if GoreClient.Cleanup then
     GoreClient:Cleanup()
@@ -31,7 +32,6 @@ local trackedClasses = { "zn_walker_zombie", "zn_boss_zombie", "prop_ragdoll" }
 local limbLifetime = 60
 local limbFadeDuration = 2
 local pendingLifetime = 1.5
-local limbCaps = { 4, 12 }
 local trailIntervals = { 1.4, 0.6 }
 local trailDistance = 28
 // Hidden bones shrink to a near-zero (not zero) scale. A zero matrix is singular, and the hitbox of a zero-scaled
@@ -46,21 +46,50 @@ GoreClient.Spurts = {}
 GoreClient.Tracked = setmetatable({}, { __mode = "k" })
 GoreClient.ChainCache = {}
 GoreClient.LimbSpawns = {}
+GoreClient.Pools = {}
+GoreClient.Tokens = {}
+GoreClient.Statistics = { effects = 0, decals = 0, suppressed = 0, poolsCreated = 0, poolDraws = 0 }
+GoreClient.PoolBuildFrame, GoreClient.PoolBuildCount = -1, 0
+
+local poolMaterial = CreateMaterial("zombiesim_gore_pool_v1", "UnlitGeneric", {
+    ["$basetexture"] = "models/debug/debugwhite",
+    ["$translucent"] = "1", ["$vertexcolor"] = "1", ["$vertexalpha"] = "1", ["$nocull"] = "1"
+})
+local poolTexture = poolMaterial:GetTexture("$basetexture")
+local poolsAvailable = not poolMaterial:IsError() and poolTexture ~= nil and poolTexture:Width() > 0
+if not poolsAvailable then ErrorNoHalt("[ZombieSim] Blood pool material is unavailable.\n") end
 
 function GoreClient.Quality()
     return math.Clamp(math.floor(qualityConVar:GetInt()), 0, 2)
 end
 
+local function takeToken(kind)
+    local allowed = Effects.TakeToken(GoreClient.Tokens, kind, CurTime(), FrameNumber(), GoreClient.Quality())
+    if not allowed or kind == "decals" and GoreClient.Statistics.decals >= Effects.MaximumMapDecals then
+        GoreClient.Statistics.suppressed = GoreClient.Statistics.suppressed + 1
+        return false
+    end
+    return true
+end
+
+local function nearby(position)
+    local player = LocalPlayer()
+    return IsValid(player) and player:GetPos():DistToSqr(position) <= Effects.MaximumDistance * Effects.MaximumDistance
+end
+
 local function bloodImpact(position, normal, scale)
+    if not nearby(position) or not takeToken("effects") then return end
     local effect = EffectData()
     effect:SetOrigin(position)
     effect:SetNormal(normal or vector_up)
     effect:SetScale(scale or 1)
     effect:SetColor(BLOOD_COLOR_RED)
     util.Effect("BloodImpact", effect, true, true)
+    GoreClient.Statistics.effects = GoreClient.Statistics.effects + 1
 end
 
 local function bloodDecal(start, direction, distance, filter)
+    if not nearby(start) or not takeToken("decals") then return false end
     local trace = util.TraceLine({
         start = start,
         endpos = start + direction * distance,
@@ -69,9 +98,71 @@ local function bloodDecal(start, direction, distance, filter)
     })
     if trace.Hit then
         util.Decal("Blood", trace.HitPos + trace.HitNormal, trace.HitPos - trace.HitNormal)
+        GoreClient.Statistics.decals = GoreClient.Statistics.decals + 1
         return true
     end
     return false
+end
+
+local function removeLimb(limb)
+    if IsValid(limb.entity) then limb.entity:Remove() end
+end
+
+local function removePool(pool)
+    pool.mesh:Destroy()
+end
+
+// Ground overlays reuse the puddles' flat-ground/depth discipline, not their weather-driven lifetime.
+local function addPool(entity, now, cutPosition)
+    if GoreClient.PoolBuildFrame ~= FrameNumber() then
+        GoreClient.PoolBuildFrame, GoreClient.PoolBuildCount = FrameNumber(), 0
+    end
+    if GoreClient.PoolBuildCount >= GoreClient.Quality() then return false end
+    GoreClient.PoolBuildCount = GoreClient.PoolBuildCount + 1
+    if not poolsAvailable or not nearby(entity:GetPos()) then return true end
+    local start = cutPosition or entity:WorldSpaceCenter()
+    local trace = util.TraceLine({
+        start = start, endpos = start - Vector(0, 0, 120),
+        mask = MASK_SOLID_BRUSHONLY, filter = entity
+    })
+    if not trace.HitWorld or trace.HitSky or trace.HitNormal.z < 0.9 then return true end
+    local radius = math.Rand(16, 26)
+    for index = 1, 8 do
+        local angle = index * math.pi / 4
+        local point = trace.HitPos + Vector(math.cos(angle) * radius, math.sin(angle) * radius, 0)
+        local edge = util.TraceLine({
+            start = point + Vector(0, 0, 12), endpos = point - Vector(0, 0, 12),
+            mask = MASK_SOLID_BRUSHONLY, filter = entity
+        })
+        if not edge.HitWorld or edge.HitSky or edge.HitNormal.z < 0.9
+            or math.abs(edge.HitPos.z - trace.HitPos.z) > 2 then return true end
+    end
+    local center = trace.HitPos + trace.HitNormal * 2
+    local angles = trace.HitNormal:Angle()
+    local right, forward = angles:Right(), angles:Up()
+    local points = {}
+    local seed = math.Rand(0, math.pi * 2)
+    for index = 0, 24 do
+        local angle = index * math.pi / 12
+        local width = radius * (0.86 + 0.10 * math.sin(angle * 3 + seed) + 0.04 * math.cos(angle * 5))
+        points[index + 1] = center + (right * math.cos(angle) + forward * math.sin(angle)) * width
+    end
+    local vertices = {}
+    local coreColor, edgeColor = Color(65, 4, 3, 200), Color(65, 4, 3, 0)
+    local function vertex(position, color)
+        return { pos = position, normal = trace.HitNormal, u = 0.5, v = 0.5, color = color }
+    end
+    for index = 1, 24 do
+        vertices[#vertices + 1] = vertex(center, coreColor)
+        vertices[#vertices + 1] = vertex(points[index + 1], edgeColor)
+        vertices[#vertices + 1] = vertex(points[index], edgeColor)
+    end
+    local poolMesh = Mesh()
+    poolMesh:BuildFromTriangles(vertices)
+    Effects.PushBounded(GoreClient.Pools, { mesh = poolMesh, position = center, createdAt = now },
+        Effects.Budget(GoreClient.Quality()).pools, removePool)
+    GoreClient.Statistics.poolsCreated = GoreClient.Statistics.poolsCreated + 1
+    return true
 end
 
 // The bone named root and every descendant, cached per model.
@@ -168,7 +259,7 @@ local function captureRegion(entity, chains)
     cutMatrix:SetAngles(rootMatrix:GetAngles())
     local pin = inverse * cutMatrix
     pin:Scale(zeroScale)
-    return { root = rootMatrix, relative = relative, pin = pin }
+    return { root = rootMatrix, relative = relative, pin = pin, cutPosition = cutMatrix:GetTranslation() }
 end
 
 // Legs stay hidden at every quality because a crawler's missing legs are gameplay state; arms and head are
@@ -179,14 +270,21 @@ local function buildStumps(entity)
         return
     end
     local quality = GoreClient.Quality()
+    state.boneBuilds = (state.boneBuilds or 0) + 1
     if state.pendingRegions then
         for region, event in pairs(state.pendingRegions) do
             local capture = quality > 0 and CurTime() <= event.capturedBy and captureRegion(entity, regionChains(entity, region))
             if capture then
-                table.insert(GoreClient.LimbSpawns, {
+                local materials = {}
+                for index in ipairs(entity:GetMaterials()) do
+                    materials[index - 1] = entity:GetSubMaterial(index - 1)
+                end
+                Effects.PushBounded(GoreClient.LimbSpawns, {
                     model = entity:GetModel(), skin = entity:GetSkin(), region = region, capture = capture, event = event,
+                    materials = materials,
                     lift = region == "legs" and entity:GetClass() ~= "prop_ragdoll" and crawlerLift or nil
-                })
+                }, Effects.Budget(quality).limbs)
+                GoreClient.EmitSever(entity, region, event, capture.cutPosition)
             end
             state.localMask = bit.bor(state.localMask, regionBits[region])
         end
@@ -195,8 +293,17 @@ local function buildStumps(entity)
     local mask = bit.bor(entity:GetNWInt(maskKey, 0), state.localMask)
     for region, maskBit in pairs(regionBits) do
         if bit.band(mask, maskBit) ~= 0 and (quality > 0 or region == "legs") then
+            local position, count = Vector(0, 0, 0), 0
             for _, chain in ipairs(regionChains(entity, region)) do
+                local root = entity:GetBoneMatrix(chain[1])
+                if root then
+                    position = position + root:GetTranslation()
+                    count = count + 1
+                end
                 collapseChain(entity, chain)
+            end
+            if count > 0 then
+                state.stumps[region] = { position = position / count, sampledAt = CurTime() }
             end
         end
     end
@@ -207,13 +314,29 @@ local function trackEntity(entity)
     if state then
         return state
     end
-    state = { lastTrailAt = 0, localMask = 0 }
+    state = { localMask = 0, stumps = {}, trails = {} }
     state.callback = entity:AddCallback("BuildBonePositions", buildStumps)
+    if entity:GetClass() == "prop_ragdoll" then
+        state.previousRenderOverride = entity.RenderOverride
+        state.renderOverride = function(ragdoll)
+            // Physics ragdolls can reuse bones without invoking the registered callback on an ordinary draw.
+            state.renderDraws = (state.renderDraws or 0) + 1
+            local builds = state.boneBuilds or 0
+            ragdoll:SetupBones()
+            if (state.boneBuilds or 0) == builds then buildStumps(ragdoll) end
+            if state.previousRenderOverride then
+                state.previousRenderOverride(ragdoll)
+            else
+                ragdoll:DrawModel()
+            end
+        end
+        entity.RenderOverride = state.renderOverride
+    end
     GoreClient.Tracked[entity] = state
     return state
 end
 local function addLimb(limb)
-    local cap = limbCaps[GoreClient.Quality()] or 0
+    local cap = Effects.Budget(GoreClient.Quality()).limbs
     while #GoreClient.Limbs >= cap and #GoreClient.Limbs > 0 do
         local oldest = table.remove(GoreClient.Limbs, 1)
         if IsValid(oldest.entity) then
@@ -241,6 +364,9 @@ local function spawnLimb(spawn)
         return
     end
     limb:SetSkin(spawn.skin or 0)
+    for index, material in pairs(spawn.materials or {}) do
+        limb:SetSubMaterial(index, material)
+    end
     local relative, pin = capture.relative, capture.pin
     local hidden = {}
     for bone = 0, limb:GetBoneCount() - 1 do
@@ -270,8 +396,9 @@ local function spawnLimb(spawn)
         rigid = true,
         velocity = event.direction * event.force * (spawn.region == "legs" and 0.3 or 0.6) + Vector(0, 0, spawn.region == "head" and 200 or 140),
         angularVelocity = Angle(math.Rand(-spin, spin), math.Rand(-spin, spin), math.Rand(-spin, spin)),
-        bleeding = true
+        bleeding = true, cutLocal = capture.pin:GetTranslation(), nextTrailAt = 0
     })
+    GoreClient.AddSpurt(limb, nil, limb:LocalToWorld(capture.pin:GetTranslation()))
 end
 
 local function updateLimbSpawns()
@@ -279,9 +406,8 @@ local function updateLimbSpawns()
     if #spawns == 0 then
         return
     end
-    GoreClient.LimbSpawns = {}
-    for _, spawn in ipairs(spawns) do
-        spawnLimb(spawn)
+    for _ = 1, math.min(#spawns, GoreClient.Quality() * 2) do
+        spawnLimb(table.remove(spawns, 1))
     end
 end
 local function burst(position, direction, count, filter)
@@ -300,17 +426,21 @@ end
 
 // Spurts follow the entity through a local offset; reading bone positions from Think raises "Bone access not
 // allowed" on NextBots.
-local function addSpurt(source, position)
-    table.insert(GoreClient.Spurts, {
-        entity = source, offset = source:WorldToLocal(position), position = position,
+function GoreClient.AddSpurt(source, region, position)
+    Effects.PushBounded(GoreClient.Spurts, {
+        entity = source, region = region, offset = source:WorldToLocal(position), position = position,
         endsAt = CurTime() + 2, nextAt = 0
-    })
+    }, Effects.Budget(GoreClient.Quality()).spurts)
+end
+
+function GoreClient.EmitSever(source, region, event, position)
+    GoreClient.AddSpurt(source, region, position)
+    burst(position, event.direction, GoreClient.Quality() >= 2 and 6 or 2, source)
 end
 
 // The severed part is captured on the source's next bone setup, then spawned as a rigid copy and hidden on the
 // source. A torso split drops the legs.
 local function handleSever(source, region, event)
-    local full = GoreClient.Quality() >= 2
     region = severedRegion[region] or region
     if not regionBits[region] then
         return
@@ -319,8 +449,6 @@ local function handleSever(source, region, event)
     state.pendingRegions = state.pendingRegions or {}
     event.capturedBy = CurTime() + 1
     state.pendingRegions[region] = event
-    addSpurt(source, region == "legs" and event.origin + Vector(0, 0, source:GetClass() ~= "prop_ragdoll" and 8 or 36) or event.position)
-    burst(event.position, event.direction, full and 6 or 2, source)
 end
 local function handleWound(source, event)
     local quality = GoreClient.Quality()
@@ -367,9 +495,10 @@ net.Receive("ZM.Gore", function()
     if GoreClient.Quality() == 0 then
         return
     end
+    if not nearby(event.position) then return end
     if not dispatch(event) and event.kind == eventSever then
         event.expiresAt = CurTime() + pendingLifetime
-        table.insert(GoreClient.Pending, event)
+        Effects.PushBounded(GoreClient.Pending, event, Effects.Budget(GoreClient.Quality()).pending)
     end
 end)
 
@@ -395,7 +524,7 @@ local function simulateRigid(limb, delta)
         limb.angularVelocity = limb.angularVelocity * 0.5
         if limb.bleeding then
             limb.bleeding = false
-            util.Decal("Blood", trace.HitPos + normal, trace.HitPos - normal)
+            bloodDecal(trace.HitPos + normal * 2, -normal, 4, entity)
         end
         if normal.z > 0.7 and limb.velocity:LengthSqr() < 400 then
             limb.resting = true
@@ -420,6 +549,10 @@ local function updateLimbs(now, delta)
             if limb.rigid then
                 simulateRigid(limb, delta)
             end
+            if now >= (limb.nextTrailAt or 0) and limb.cutLocal and not limb.resting then
+                limb.nextTrailAt = now + trailIntervals[GoreClient.Quality()]
+                bloodDecal(entity:LocalToWorld(limb.cutLocal), Vector(0, 0, -1), 128, entity)
+            end
             if now >= limb.expiresAt then
                 local alpha = math.Clamp(1 - (now - limb.expiresAt) / limbFadeDuration, 0, 1)
                 entity:SetRenderMode(RENDERMODE_TRANSALPHA)
@@ -432,13 +565,15 @@ end
 local function updateSpurts(now)
     for index = #GoreClient.Spurts, 1, -1 do
         local spurt = GoreClient.Spurts[index]
-        if now >= spurt.endsAt then
+        if now >= spurt.endsAt or not IsValid(spurt.entity) then
             table.remove(GoreClient.Spurts, index)
         elseif now >= spurt.nextAt then
-            spurt.nextAt = now + 0.15
+            spurt.nextAt = now + (GoreClient.Quality() == 1 and 0.3 or 0.15)
             local position = spurt.position
             if IsValid(spurt.entity) then
-                position = spurt.entity:LocalToWorld(spurt.offset)
+                local state = GoreClient.Tracked[spurt.entity]
+                local stump = state and state.stumps[spurt.region]
+                position = stump and stump.position or spurt.entity:LocalToWorld(spurt.offset)
             end
             if position then
                 bloodImpact(position, (VectorRand() * 0.4 + vector_up):GetNormalized(), 1)
@@ -453,7 +588,7 @@ end
 local function updatePending(now)
     for index = #GoreClient.Pending, 1, -1 do
         local event = GoreClient.Pending[index]
-        if dispatch(event) or now >= event.expiresAt then
+        if now >= event.expiresAt or dispatch(event) then
             table.remove(GoreClient.Pending, index)
         end
     end
@@ -463,21 +598,33 @@ end
 local function updateTracked(now, quality)
     local interval = trailIntervals[quality]
     for entity, state in pairs(GoreClient.Tracked) do
-        if IsValid(entity) and not entity:IsDormant() then
-            local position = entity:GetPos()
+        if not IsValid(entity) then
+            GoreClient.Tracked[entity] = nil
+        elseif not entity:IsDormant() and nearby(entity:GetPos()) then
             if entity:GetClass() == "prop_ragdoll" then
-                if not state.pooled and now - (state.firstSeenAt or now) > 0.6 then
-                    state.pooled = true
-                    local center = entity:WorldSpaceCenter()
-                    for _ = 1, quality >= 2 and 3 or 1 do
-                        bloodDecal(center + Vector(math.Rand(-12, 12), math.Rand(-12, 12), 8), Vector(0, 0, -1), 96, entity)
+                if entity:GetVelocity():LengthSqr() >= 100 then
+                    state.restingAt = now
+                end
+                if not state.pooled and now - (state.restingAt or state.firstSeenAt or now) > 0.6 then
+                    local stump = state.stumps.head or state.stumps.leftArm or state.stumps.rightArm or state.stumps.legs
+                    local center = stump and stump.position or entity:WorldSpaceCenter()
+                    state.pooled = addPool(entity, now, center)
+                    if state.pooled then
+                        for _ = 1, quality >= 2 and 3 or 1 do
+                            bloodDecal(center, Vector(0, 0, -1), 96, entity)
+                        end
                     end
                 end
-            elseif now - state.lastTrailAt >= interval
-                and (not state.lastTrailPosition or state.lastTrailPosition:DistToSqr(position) >= trailDistance * trailDistance) then
-                state.lastTrailAt = now
-                state.lastTrailPosition = position
-                bloodDecal(position + Vector(math.Rand(-8, 8), math.Rand(-8, 8), 12), Vector(0, 0, -1), 64, entity)
+            else
+                for region, stump in pairs(state.stumps) do
+                    local trail = state.trails[region] or { nextAt = 0 }
+                    state.trails[region] = trail
+                    if now <= stump.sampledAt + 0.5 and now >= trail.nextAt
+                        and (not trail.position or trail.position:DistToSqr(stump.position) >= trailDistance * trailDistance) then
+                        trail.nextAt, trail.position = now + interval, stump.position
+                        bloodDecal(stump.position, Vector(0, 0, -1), 128, entity)
+                    end
+                end
             end
         end
     end
@@ -505,6 +652,18 @@ hook.Add("Think", "ZM.Gore", function()
     local delta = math.Clamp(now - (lastThinkAt or now), 0, 0.1)
     lastThinkAt = now
     local quality = GoreClient.Quality()
+    local budget = Effects.Budget(quality)
+    Effects.Trim(GoreClient.Limbs, budget.limbs, removeLimb)
+    Effects.Trim(GoreClient.Pending, budget.pending)
+    Effects.Trim(GoreClient.Spurts, budget.spurts)
+    Effects.Trim(GoreClient.LimbSpawns, budget.limbs)
+    Effects.Trim(GoreClient.Pools, budget.pools, removePool)
+    for index = #GoreClient.Pools, 1, -1 do
+        if now - GoreClient.Pools[index].createdAt >= Effects.PoolLifetime then
+            removePool(GoreClient.Pools[index])
+            table.remove(GoreClient.Pools, index)
+        end
+    end
     updateLimbs(now, delta)
     scanEntities(now)
     if quality == 0 then
@@ -522,6 +681,9 @@ function GoreClient:Cleanup()
     for entity, state in pairs(self.Tracked or {}) do
         if IsValid(entity) and state.callback then
             entity:RemoveCallback("BuildBonePositions", state.callback)
+            if entity.RenderOverride == state.renderOverride then
+                entity.RenderOverride = state.previousRenderOverride
+            end
         end
     end
     self.Tracked = setmetatable({}, { __mode = "k" })
@@ -534,8 +696,77 @@ function GoreClient:Cleanup()
     self.Pending = {}
     self.Spurts = {}
     self.LimbSpawns = {}
+    for _, pool in ipairs(self.Pools or {}) do removePool(pool) end
+    self.Pools = {}
+    self.Tokens = {}
+    self.Statistics = { effects = 0, decals = 0, suppressed = 0, poolsCreated = 0, poolDraws = 0 }
+end
+
+hook.Add("PreDrawTranslucentRenderables", "ZM.Gore.Pools", function(depth, skybox)
+    GoreClient.Statistics.poolDraws = 0
+    if depth or skybox or ZM_WorldMap and ZM_WorldMap.Capturing or GoreClient.Quality() == 0 then return end
+    local player = LocalPlayer()
+    if not IsValid(player) or ZM_SafeZones:IsPlayerInside(player) then return end
+    cam.PushModelMatrix(Matrix())
+    for _, pool in ipairs(GoreClient.Pools) do
+        if nearby(pool.position) then
+            poolMaterial:SetFloat("$alpha", Effects.PoolAlpha(CurTime() - pool.createdAt))
+            render.SetMaterial(poolMaterial)
+            pool.mesh:Draw()
+            GoreClient.Statistics.poolDraws = GoreClient.Statistics.poolDraws + 1
+        end
+    end
+    poolMaterial:SetFloat("$alpha", 1)
+    cam.PopModelMatrix()
+end)
+
+function GoreClient:GetDiagnosticSnapshot()
+    local tracked = {}
+    for entity, state in pairs(self.Tracked) do
+        if IsValid(entity) and nearby(entity:GetPos()) and #tracked < 8 then
+            tracked[#tracked + 1] = {
+                entityIndex = entity:EntIndex(), class = entity:GetClass(), mask = entity:GetNWInt(maskKey, 0),
+                localMask = state.localMask, boneBuilds = state.boneBuilds or 0,
+                renderDraws = state.renderDraws or 0, stumps = table.Count(state.stumps)
+            }
+        end
+    end
+    return {
+        quality = self.Quality(), budget = table.Copy(Effects.Budget(self.Quality())),
+        limbs = #self.Limbs, pending = #self.Pending, spurts = #self.Spurts,
+        limbSpawns = #self.LimbSpawns, pools = #self.Pools, statistics = table.Copy(self.Statistics),
+        poolMaterialAvailable = poolsAvailable, poolShader = poolMaterial:GetShader(),
+        poolTextureWidth = poolTexture and poolTexture:Width() or 0, poolTriangles = #self.Pools * 24,
+        maximumDistance = Effects.MaximumDistance, maximumMapDecals = Effects.MaximumMapDecals,
+        poolLifetime = Effects.PoolLifetime, tracked = tracked
+    }
 end
 
 hook.Add("PostCleanupMap", "ZM.Gore", function()
     GoreClient:Cleanup()
 end)
+
+function GoreClient:RestoreProbeQuality()
+    if self.ProbeQuality == nil then return end
+    qualityConVar:SetInt(self.ProbeQuality)
+    self.ProbeQuality = nil
+    timer.Remove("ZM.Gore.ProbeQuality")
+end
+
+concommand.Add("zombiesim_gore_quality_probe", function(_, _, arguments)
+    if ZM_World.ActiveProfile ~= "preview" or not IsValid(LocalPlayer()) or not LocalPlayer():IsAdmin() then
+        ErrorNoHalt("[ZombieSim] Gore quality probes require an admin preview session.\n")
+        return
+    end
+    local action = arguments[1]
+    if action == "restore" then GoreClient:RestoreProbeQuality() return end
+    if action ~= "0" and action ~= "1" and action ~= "2" then
+        ErrorNoHalt("[ZombieSim] Invalid gore quality probe; expected 0, 1, 2 or restore.\n")
+        return
+    end
+    if GoreClient.ProbeQuality == nil then GoreClient.ProbeQuality = qualityConVar:GetInt() end
+    qualityConVar:SetInt(tonumber(action))
+    timer.Create("ZM.Gore.ProbeQuality", 120, 1, function() GoreClient:RestoreProbeQuality() end)
+end)
+
+hook.Add("ShutDown", "ZM.Gore.ProbeQuality", function() GoreClient:RestoreProbeQuality() end)

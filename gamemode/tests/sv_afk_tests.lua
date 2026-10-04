@@ -164,9 +164,13 @@ suite:Add("request_validation_rejects_bad_and_rapid_requests", function(check)
 end)
 
 suite:Add("zombies_release_and_ignore_protected_players", function(check)
-    local ply = ZM_Util.FirstHuman()
+    local ply = fakePlayer()
+    ply.IsPlayer = function() return true end
+    ply.IsFlagSet = function(self) return self.notarget == true end
+    ply.GetWorldCell = function() return { id = 42 } end
+    ply.GetPos = function() return Vector(0, 0, 0) end
     local zombie = spawnZombie()
-    check(IsValid(ply), "a human player is connected")
+    check(IsValid(ply), "the isolated target fixture is valid")
     check(IsValid(zombie), "a test walker spawns")
     if not IsValid(ply) or not IsValid(zombie) then
         if IsValid(zombie) then zombie:Remove() end
@@ -181,12 +185,14 @@ suite:Add("zombies_release_and_ignore_protected_players", function(check)
     zombie.LastKnownTargetPosition = ply:GetPos()
     ply.ZM_AFKState = { afk = true, graceUntil = 0, heartbeatAt = CurTime() }
     AFK:ReleaseAttackers(ply)
-    check(validBefore or not ply:Alive(), "the player is a valid target before AFK")
+    check(validBefore, "the player is a valid target before AFK")
     check(not zombie:IsValidTarget(ply), "an AFK player is not a valid target")
     check(zombie.CurrentTarget == nil and zombie.LastKnownTargetPosition == nil, "existing attackers are released")
     ply.ZM_AFKState = { afk = false, graceUntil = CurTime() + 3, heartbeatAt = 0 }
     check(not zombie:IsValidTarget(ply), "a player in grace is not a valid target")
     ply.ZM_AFKState = saved
+    ply.notarget = true
+    check(not zombie:IsValidTarget(ply), "notarget remains protected independently of AFK")
     zombie:Remove()
 end)
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "tradeVersion": 1,
+  "tradeVersion": 2,
   "buyMultiplier": 1.5,
   "sellMultiplier": 0.4,
   "maximumPurchaseUnits": 20,
@@ -31,7 +31,7 @@
     },
     "quartermaster": {
       "name": "Quartermaster",
-      "buys": [ "ammo", "weapons" ],
+      "buys": [ "ammo", "weapons", "other" ],
       "essentialAmmo": true,
       "offers": [
         { "item": "weaponHandgun9mm", "minStock": 1, "maxStock": 2, "maxDanger": 0.6 },
@@ -45,7 +45,8 @@
         { "item": "ammo50Bmg", "bundle": 10, "minStock": 0, "maxStock": 3, "minDanger": 0.7 },
         { "item": "weaponHandgun9mm", "mastercraft": true, "credits": 30, "minStock": 0, "maxStock": 1, "maxDanger": 0.5 },
         { "item": "weaponMp5", "mastercraft": true, "credits": 45, "minStock": 0, "maxStock": 1, "minDanger": 0.4 },
-        { "item": "weaponAk47", "mastercraft": true, "credits": 60, "minStock": 0, "maxStock": 1, "minDanger": 0.7 }
+        { "item": "weaponAk47", "mastercraft": true, "credits": 60, "minStock": 0, "maxStock": 1, "minDanger": 0.7 },
+        { "item": "itemRadiationSuit", "minStock": 1, "maxStock": 2 }
       ]
     },
     "clinic": {

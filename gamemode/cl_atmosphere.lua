@@ -655,6 +655,9 @@ function Atmosphere:GetDiagnosticSnapshot()
         mapCaptureHideCount = self.MapCaptureHideCount or 0,
         retiredWeatherEmitters = #self.RetiredWeatherEmitters,
         shoulderCamera = ZM_IsShoulderCamera(),
+        radiationFeedback = ZM_RadiationFeedback:GetDiagnosticSnapshot(),
+        gore = ZM_GoreClient:GetDiagnosticSnapshot(),
+        music = ZM_Music:GetDiagnosticSnapshot(),
         hookResults = table.Copy(self.HookResults)
     }
 end
@@ -2730,7 +2733,27 @@ hook.Add("RenderScreenspaceEffects", "ZM.Atmosphere.ColourCorrection", function(
         colorSettings["$pp_colour_mulb"] = colorSettings["$pp_colour_mulb"] + 0.08 * winter
     end
     // The low preset turns off the full-screen grade and grain; frost edges remain because they convey the weather.
+    local radiationGray = ZM_RadiationFeedback.GetGrayscale()
+    local radiationSeverity = ZM_RadiationFeedback.GetExtremeVisualSeverity()
+    colorSettings["$pp_colour_colour"] = colorSettings["$pp_colour_colour"] * (1 - radiationGray)
+    if radiationGray > 0 then
+        colorSettings["$pp_colour_addr"] = colorSettings["$pp_colour_addr"] * (1 - radiationGray)
+        colorSettings["$pp_colour_addg"] = colorSettings["$pp_colour_addg"] * (1 - radiationGray)
+        colorSettings["$pp_colour_addb"] = colorSettings["$pp_colour_addb"] * (1 - radiationGray)
+        colorSettings["$pp_colour_mulr"] = colorSettings["$pp_colour_mulr"] * (1 - radiationGray)
+        colorSettings["$pp_colour_mulg"] = colorSettings["$pp_colour_mulg"] * (1 - radiationGray)
+        colorSettings["$pp_colour_mulb"] = colorSettings["$pp_colour_mulb"] * (1 - radiationGray)
+        colorSettings["$pp_colour_contrast"] = colorSettings["$pp_colour_contrast"] + 0.4 * radiationSeverity
+        colorSettings["$pp_colour_brightness"] = colorSettings["$pp_colour_brightness"] - 0.04 * radiationSeverity
+    end
     if Atmosphere.GetQualityNumber("screenEffects", 1, 0, 1) < 0.5 then
+        if ZM_RadiationFeedback.GetGrayscale() > 0 then
+            colorSettings["$pp_colour_addr"], colorSettings["$pp_colour_addg"], colorSettings["$pp_colour_addb"] = 0, 0, 0
+            colorSettings["$pp_colour_mulr"], colorSettings["$pp_colour_mulg"], colorSettings["$pp_colour_mulb"] = 0, 0, 0
+            colorSettings["$pp_colour_brightness"], colorSettings["$pp_colour_contrast"] = -0.04 * radiationSeverity, 1 + 0.4 * radiationSeverity
+            colorSettings["$pp_colour_colour"] = 1 - radiationGray
+            DrawColorModify(colorSettings)
+        end
         recordHookResult("RenderScreenspaceEffects", nil, false, nil, nil, "screen effects disabled by quality setting")
         drawFrostEdges()
         return

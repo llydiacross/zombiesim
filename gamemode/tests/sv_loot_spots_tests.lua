@@ -87,10 +87,14 @@ test("semantic_container_rules_limit_loot_to_intended_families", function(check)
 
     local crate = ZM_StaticData:GetEntityLootRule("prop_physics", "models/props_junk/wood_crate001a.mdl")
     check(crate ~= nil and #crate.entries > 0, "the ordinary crate has general supplies")
+    local hasSuit = false
     for _, entry in ipairs(crate and crate.entries or {}) do
         local item = ZM_StaticData:GetItem(entry.item)
-        check(item and (item.food or item.medical or item.lootCategory == "medical" or item.lootCategory == "materials"), "ordinary crates exclude weapons, cash, and implants")
+        hasSuit = hasSuit or entry.item == "itemRadiationSuit"
+        check(item and (item.food or item.medical or item.lootCategory == "medical" or item.lootCategory == "materials"
+            or entry.item == "itemRadiationSuit"), "ordinary crates contain supplies and the approved suit, not weapons, cash, or implants")
     end
+    check(hasSuit, "ordinary crates retain the approved radiation-suit drop")
 
     check(ZM_StaticData:GetEntityLootRule("prop_physics", "models/props_junk/trafficcone001a.mdl") == nil, "an unsupported generic prop does not fall through to loot")
 end)

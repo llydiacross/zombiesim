@@ -6,7 +6,7 @@ local Profiler = ZM_DevProfiler
 local profiledEvents = {
     "Think", "Tick", "PreRender", "PostRender", "CalcView", "SetupWorldFog", "SetupSkyboxFog",
     "PreDrawOpaqueRenderables", "PostDrawOpaqueRenderables", "PreDrawTranslucentRenderables",
-    "PostDrawTranslucentRenderables", "RenderScreenspaceEffects", "PreDrawHUD", "HUDPaint", "PostDrawHUD",
+    "PostDrawTranslucentRenderables", "RenderScreenspaceEffects", "PreDrawHUD", "HUDPaintBackground", "HUDPaint", "PostDrawHUD",
     "DrawOverlay", "HUDShouldDraw"
 }
 local outputPath = "zombiesim/hook_profile.json"

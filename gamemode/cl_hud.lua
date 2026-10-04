@@ -633,7 +633,8 @@ local function getRadiationHudState(player)
     local cell = not safeZone and getHudPlayerCell(player) or nil
     local hasCellData = safeZone or cell ~= nil
     local intensity = cell and ZM_World:GetRadiationIntensity(cell) or 0
-    return hasCellData, math.Clamp(intensity, 0, 1)
+    local proximity = not safeZone and player:GetNWFloat("ZM_RadiatedProximity", 0) or 0
+    return hasCellData, ZM_RadiationFeedback.DisplaySv(intensity, proximity) / radiationHudMaximumGameSv
 end
 
 local function getRadiationHudRect()
@@ -648,7 +649,7 @@ local function getRadiationHudRect()
 end
 
 // Cached per frame: the crosshair clip queries these rects many times while searching for an edge.
-local hudReservedRects = { {}, {}, {}, {}, {}, {} }
+local hudReservedRects = { {}, {}, {}, {}, {}, {}, {} }
 local hudReservedRectsFrame = -1
 
 function ZM_GetHudReservedRects()
@@ -677,6 +678,8 @@ function ZM_GetHudReservedRects()
     else
         indicators.x, indicators.y, indicators.w, indicators.h = 0, 0, 0, 0
     end
+    local warning = hudReservedRects[7]
+    warning.x, warning.y, warning.w, warning.h = ZM_RadiationFeedback.GetSymbolRect()
     return hudReservedRects
 end
 
@@ -1330,6 +1333,7 @@ local function drawRadiationHudPanel()
 
     local hasCellData, intensity = getRadiationHudState(player)
     local estimate = intensity * radiationHudMaximumGameSv
+    intensity = intensity * 0.5
     local roundedEstimate = math.floor(estimate * 10 + 0.5)
     if hasCellData and roundedEstimate <= 0 then return end
 
@@ -1344,7 +1348,7 @@ local function drawRadiationHudPanel()
     surface.DrawOutlinedRect(x, y, width, height, 1)
     surface.SetDrawColor(red, green, blue, 255)
     surface.DrawRect(x + 2, y + 2, 2, height - 4)
-    surface.SetDrawColor(126, 180, 133, 210)
+    surface.SetDrawColor(126, 180, 133, 160 + 95 * ZM_RadiationFeedback.GetMeterPulse())
     surface.DrawRect(x + 5, y + 1, width - 10, 1)
 
     draw.SimpleText("RADIATION", "ZM_MinimapLabel", x + 11, y + 17, radiationHudLabelColor,

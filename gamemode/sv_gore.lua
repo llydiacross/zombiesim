@@ -18,6 +18,24 @@ Gore.TorsoChanceScale = 0.8
 Gore.MaximumChance = 0.85
 Gore.DefaultFactor = 0.6
 
+function Gore:ApplyBloodyAppearance(entity)
+    for index, material in pairs(entity.GoreBloodyOverrides or {}) do
+        if entity:GetSubMaterial(index) == material then entity:SetSubMaterial(index, nil) end
+    end
+    entity.GoreBloodyOverrides = {}
+    for index, material in ipairs(entity:GetMaterials()) do
+        local replacement = ZM_GoreEffects.BloodyMaterial(entity:GetModel(), material)
+        if replacement then
+            if not file.Exists("materials/" .. replacement .. ".vmt", "GAME") then
+                ErrorNoHalt("[ZombieSim] Mounted bloody walker material is unavailable: " .. replacement .. "\n")
+            else
+                entity:SetSubMaterial(index - 1, replacement)
+                entity.GoreBloodyOverrides[index - 1] = replacement
+            end
+        end
+    end
+end
+
 // id is the network region id; bit is the ZM_GoreSevered mask bit. Torso splits share the legs bit because a
 // split leaves the same legless corpse as a crawler. The head pops (blood plus the severed head) only on a kill.
 Gore.Regions = {
@@ -364,6 +382,118 @@ local function findEnemy(target)
     end
     return nearest
 end
+
+ZM_Util.RegisterCommands({
+    zn_gore_probe = "Preview-only: on|off creates/removes two harmless bloody walker/corpse fixtures for 120 seconds.",
+    zn_gore_quality_probe = "Preview-only: 0|1|2|restore temporarily selects gore quality, with automatic restoration."
+}, function(caller, command, arguments)
+    local target = ZM_Util.ResolveCommandTarget(caller, command)
+    if not IsValid(target) then return false, "no admin player" end
+    if not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        ZM_Util.Reply(caller, "Gore probes require an admin preview session.")
+        return false, "admin preview required"
+    end
+    if command == "zn_gore_quality_probe" then
+        local action = arguments[1]
+        if action ~= "0" and action ~= "1" and action ~= "2" and action ~= "restore" then
+            ZM_Util.Reply(caller, "Usage: zn_gore_quality_probe 0|1|2|restore")
+            return false, "invalid gore quality probe"
+        end
+        target:ConCommand("zombiesim_gore_quality_probe " .. action)
+        return true
+    end
+    if arguments[1] ~= "on" and arguments[1] ~= "off" then
+        ZM_Util.Reply(caller, "Usage: " .. command .. " on|off")
+        return false, "expected on or off"
+    end
+    for _, entity in ipairs(target.ZM_GoreProbes or {}) do
+        if IsValid(entity) then entity:Remove() end
+    end
+    target.ZM_GoreProbes = {}
+    if arguments[1] == "off" then return true end
+    if not target:Alive() or not target:GetWorldCell() or ZM_SafeZones:IsPlayerInside(target) then
+        ZM_Util.Reply(caller, "Deploy into a city cell before running the gore probe.")
+        return false, "deployed city player required"
+    end
+    local origin, direction = target:GetLevelAim()
+    local aim = util.TraceLine({ start = origin, endpos = origin + direction * 250,
+        filter = target, mask = MASK_SOLID_BRUSHONLY })
+    local ground = util.TraceLine({ start = aim.HitPos - direction * 24,
+        endpos = aim.HitPos - direction * 24 - Vector(0, 0, 512), filter = target, mask = MASK_SOLID_BRUSHONLY })
+    if not ground.HitWorld or ground.HitSky or ground.HitNormal.z < 0.9 then
+        ZM_Util.Reply(caller, "No flat walkable ground for the gore probe.")
+        return false, "no walkable ground"
+    end
+    local report = {}
+    for index, sex in ipairs({ "male", "female" }) do
+        local entity = ents.Create("zn_walker_zombie")
+        if not IsValid(entity) then
+            for _, fixture in ipairs(target.ZM_GoreProbes) do if IsValid(fixture) then fixture:Remove() end end
+            ZM_Util.Reply(caller, "Could not create a gore fixture.")
+            return false, "entity creation failed"
+        end
+        entity:SetPos(ground.HitPos + Vector((index - 1) * 52, 0, 4))
+        entity:Spawn()
+        // Do not reward kills, acknowledge Walker tickets, or allow these presentation fixtures to attack.
+        entity.RunBehaviour = function() end
+        entity:SetModel("models/player/group03/" .. sex .. "_01.mdl")
+        entity:SetAngles(Angle(0, (target:GetPos() - entity:GetPos()):Angle().y, 0))
+        entity:StartActivity(entity.IdleActivity)
+        Gore:ApplyBloodyAppearance(entity)
+        local region = index == 1 and "leftArm" or "head"
+        entity.GoreForcedRegion = region
+        entity.GoreTraceTick = engine.TickCount()
+        entity.GoreTraceDamage = { [region] = 1 }
+        entity.GoreTraceHitPos = entity:WorldSpaceCenter()
+        local damage = DamageInfo()
+        damage:SetDamage(100)
+        damage:SetDamageType(DMG_SLASH)
+        damage:SetAttacker(game.GetWorld())
+        damage:SetInflictor(game.GetWorld())
+        Gore:HandleDamage(entity, damage, index == 2)
+        if index == 2 then
+            local corpse = entity:CreateCorpse()
+            if not IsValid(corpse) then
+                entity:Remove()
+                for _, fixture in ipairs(target.ZM_GoreProbes) do if IsValid(fixture) then fixture:Remove() end end
+                ZM_Util.Reply(caller, "Could not create a gore corpse fixture.")
+                return false, "corpse creation failed"
+            end
+            Gore:ApplyCorpse(entity, corpse)
+            entity:Remove()
+            entity = corpse
+        end
+        target.ZM_GoreProbes[#target.ZM_GoreProbes + 1] = entity
+        local materials = {}
+        for slot in ipairs(entity:GetMaterials()) do materials[slot] = entity:GetSubMaterial(slot - 1) end
+        report[#report + 1] = { entityIndex = entity:EntIndex(), model = entity:GetModel(), overrides = materials }
+        timer.Simple(120, function() if IsValid(entity) then entity:Remove() end end)
+    end
+    if ZM_DevConsole then ZM_DevConsole:Report("goreProbe", report) end
+    ZM_Util.Reply(caller, "Bloody walker and corpse ready for visual review; auto-remove in 120 seconds.")
+    return true
+end)
+
+ZM_Util.RegisterCommands({
+    zn_gore_materials = "Preview-only: inspect the mounted rebel and bloody clothing material definitions."
+}, function(caller, command)
+    local target = ZM_Util.ResolveCommandTarget(caller, command)
+    if not IsValid(target) then return false, "no admin player" end
+    if not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        ZM_Util.Reply(caller, "Gore material diagnostics require an admin preview session.")
+        return false, "admin preview required"
+    end
+    local report = {}
+    for _, sex in ipairs({ "male", "female" }) do
+        for _, suffix in ipairs({ "group03/players_sheet", "group03/citizen_sheet", "bloody/citizen_sheet" }) do
+            local path = "materials/models/humans/" .. sex .. "/" .. suffix .. ".vmt"
+            report[path] = file.Read(path, "GAME") or "unavailable"
+        end
+    end
+    if ZM_DevConsole then ZM_DevConsole:Report("goreMaterials", report) end
+    ZM_Util.Reply(caller, util.TableToJSON(report, true))
+    return true
+end)
 
 ZM_Util.RegisterCommands({
     zn_gore_sever = "zn_gore_sever <leftArm|rightArm|legs|head|torso>: severs a region on the aimed or nearest enemy; head and torso kill it."

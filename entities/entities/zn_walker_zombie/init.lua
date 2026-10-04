@@ -24,6 +24,7 @@ end
 function ENT:Initialize()
     self:SetModel(pickModel(self))
     self:SetSkin(math.random(0, math.max(0, self:SkinCount() - 1)))
+    ZM_Gore:ApplyBloodyAppearance(self)
     self.WalkActivity = self.WalkActivities[math.random(#self.WalkActivities)]
     self:SetHealth(self.DevelopmentHealth)
     self:SetCollisionBounds(collisionMins, collisionMaxs)
@@ -361,6 +362,9 @@ function ENT:CreateCorpse()
     if IsValid(corpse) then
         corpse:SetModel(self:GetModel())
         corpse:SetSkin(self:GetSkin())
+        for index in ipairs(self:GetMaterials()) do
+            corpse:SetSubMaterial(index - 1, self:GetSubMaterial(index - 1))
+        end
         corpse:SetPos(self:GetPos())
         corpse:SetAngles(self:GetAngles())
         corpse:Spawn()

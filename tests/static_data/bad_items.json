@@ -5,6 +5,7 @@
       "name": "Bandage",
       "entityClass": "entity",
       "maxStack": 3,
+      "radiationProtection": true,
       "mastercrafted": true,
       "statRequirements": { "Medical": 5 }
     },
@@ -24,6 +25,8 @@
     "itemVest": {
       "name": "Vest",
       "entityClass": "armour",
+      "maxStack": 2,
+      "radiationProtection": "yes",
       "iconModel": "props/vest.png"
     },
     "weaponhandgun": {

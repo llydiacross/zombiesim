@@ -47,6 +47,16 @@ The launcher presents three survivor slots for each world profile. Creating a su
 
 # Equippabe Items in the world
 
+## Movement and stamina
+
+Server-owned movement scales the unmodified walk speed by 0.90 and sprint speed by 0.85, then applies installed implant movement bonuses. Spawn resets and implant refreshes do not compound the reductions. Sprint drain is `60 / (1 + Agility * 0.05 + Strength * 0.03)` stamina per second (25% below the previous base 80); recovery is `5.5 * (1 + Agility * 0.05)` per second (10% above the previous base 5). Maximum stamina remains `100 + Agility * 5 + Strength * 3`. Holding sprint consumes stamina as before, including while stationary; releasing it restores stamina. At zero stamina the server caps movement to walking without removing forward or combat input.
+
+Radiation uses a fictional game meter: cell exposure contributes 0-10 Sv and the strongest nearby radiated walker contributes up to another 10 Sv within 600 units. Groups do not stack. Above 15 combined Sv, an unprotected survivor loses 1 HP every 2 seconds with no Strength-based health floor; this can kill. At lower readings, the existing slow ambient radiation damage retains its Strength floor. Extreme exposure brings black-and-white presentation and increasingly strong cosmetic camera tremor; normal exposure has no radiation shake or postprocessing.
+
+A Radiation Protection Suit occupies the dedicated armour slot independently of weapons, and must be worn rather than carried. It completely prevents radiation damage and radiation screen effects, while leaving the Geiger counter and meter available as warnings. It provides no immunity to ordinary combat damage. Armour follows character/profile-scoped inventory persistence and can be equipped/unequipped from the inventory.
+
+Unprotected survivors see a soft corner vignette that scales with combined radiation, even below the extreme-effect threshold. A top-left nuclear symbol pulses more frequently at higher exposure and remains available while protected. Warning pulses stay bounded to 1.5 Hz and can be disabled independently; the meter remains available.
+
 - Weapons
 - Hats
 - Implants
@@ -111,4 +121,4 @@ Zombies are hard to put down with body shots: an ordinary walker takes four to s
 
 # Dismemberment and gore
 
-Heavy hits can sever a zombie's forearms or legs; stronger weapons such as shotguns, rifles and melee sever more readily than pistols, and a limb usually needs some damage before it comes off. A zombie that loses its legs keeps crawling toward the player at half speed and still bites as hard. A killing headshot can burst the head off, and a heavy killing blow can split the body. Bosses can lose arms but never become crawlers. Blood sprays on hits, stains walls and floors, trails behind maimed zombies and stays until the player leaves the cell. Severed limbs are scenery only, never loot, and fade after a minute. Players can reduce or disable gore effects without changing how combat works.
+Heavy hits can sever a zombie's forearms or legs; stronger weapons such as shotguns, rifles and melee sever more readily than pistols, and a limb usually needs some damage before it comes off. A zombie that loses its legs keeps crawling toward the player at half speed and still bites as hard. A killing headshot can burst the head off, and a heavy killing blow can split the body. Bosses can lose arms but never become crawlers. Corpses retain the regions severed while alive. Compatible rebel clothing uses mounted bloody textures without replacing the human player models or animations. Blood sprays and trails originate at the stump and detached limb cuts. Engine wall/floor stains stay until the next cell change within a finite decal budget; separate feathered pools on level ground fade after 90 seconds. Severed limbs are scenery only, never loot, and fade after a minute. Players can reduce or disable gore effects without changing how combat works; spray, queues, limbs and pools have quality-dependent caps. Bloody footsteps are not added, and weather footprints/splashes are unchanged.

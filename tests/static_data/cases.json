@@ -59,7 +59,10 @@
         { "path": "denServices.mastercraft.baseCredits", "value": 5 },
         { "path": "denServices.mastercraft.ultraChance", "value": 0.01 },
         { "path": "denServices.jobChange.credits", "value": 25 },
-        { "path": "tradeVersion", "value": 1 },
+        { "path": "tradeVersion", "value": 2 },
+        { "path": "items.itemRadiationSuit.entityClass", "value": "armour" },
+        { "path": "items.itemRadiationSuit.radiationProtection", "value": true },
+        { "path": "items.itemRadiationSuit.maxStack", "value": 1 },
         { "path": "trade.buyMultiplier", "value": 1.5 },
         { "path": "trade.sellMultiplier", "value": 0.4 },
         { "path": "trade.npcServiceFees.cook", "value": 5 },
@@ -120,7 +123,9 @@
         { "file": "item_definitions.json", "path": "items.weaponHandgun9mm.maxStack", "message": "must be 1 for weapon items" },
         { "file": "item_definitions.json", "path": "items.itemBandage.mastercrafted", "message": "was removed" },
         { "file": "item_definitions.json", "path": "items.itemBandage.statRequirements.Medical", "message": "did you mean Medicine" },
-        { "file": "item_definitions.json", "path": "items.itemVest.entityClass", "message": "not implemented yet" },
+        { "file": "item_definitions.json", "path": "items.itemVest.maxStack", "message": "must be 1 for armour items" },
+        { "file": "item_definitions.json", "path": "items.itemVest.radiationProtection", "message": "must be true or false" },
+        { "file": "item_definitions.json", "path": "items.itemBandage.radiationProtection", "message": "only wearable armour" },
         { "file": "item_definitions.json", "path": "items.weaponhandgun", "message": "must start with 'weapon' followed by an uppercase letter" },
         { "file": "item_definitions.json", "path": "items.itemVest.iconModel", "message": "must be a normalized models/ .mdl path" }
       ]

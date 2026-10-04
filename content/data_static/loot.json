@@ -95,7 +95,8 @@
     "lootGeneralCrate": {
       "include": ["lootGenericFood", "lootGenericMaterials"],
       "items": {
-        "itemBandage": { "minWeight": 8, "maxWeight": 6, "maxCount": 2 }
+        "itemBandage": { "minWeight": 8, "maxWeight": 6, "maxCount": 2 },
+        "itemRadiationSuit": { "minWeight": 0.2, "maxWeight": 1 }
       }
     },
     "lootBarrelOil": {

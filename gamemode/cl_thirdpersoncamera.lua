@@ -587,6 +587,7 @@ hook.Add("CalcView", "ZM.CustomThirdPersonView", function(ply, pos, angles, fov)
     view.fov = fov
     view.drawplayer = not inDen and denCameraBlend < 0.5 and arrivalCameraRise >= 0.25
     lastViewOrigin = view.origin
+    if ZM_RadiationFeedback then ZM_RadiationFeedback.ApplyCamera(view) end
 
     return view
 end)

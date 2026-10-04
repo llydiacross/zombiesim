@@ -61,13 +61,15 @@ function Stop-Bridge([int]$Code, [string]$Message) {
 
 if (-not (Test-GameRunning)) { Stop-Bridge 3 'Garry''s Mod is not running.' }
 
+if ($Command.Count -gt 16) { throw 'A bridge request may contain at most 16 commands; split the commands into smaller batches.' }
+
 Set-Content -LiteralPath $requestPath -Encoding ASCII -Value (@("# request: $RequestId") + $Command)
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 $result = $null
 while ((Get-Date) -lt $deadline) {
     Start-Sleep -Milliseconds 500
     $candidate = Read-JsonFile $resultPath
-    if ($null -ne $candidate -and $candidate.requestId -eq $RequestId) { $result = $candidate; break }
+    if ($null -ne $candidate -and $null -ne $candidate.PSObject.Properties['requestId'] -and $candidate.requestId -eq $RequestId) { $result = $candidate; break }
     if (-not (Test-GameRunning)) { Stop-Bridge 3 'Garry''s Mod exited before acknowledging the request.' }
     $age = Get-HeartbeatAge
     if ($null -ne $age -and $age -gt $StaleSeconds) {

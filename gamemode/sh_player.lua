@@ -68,17 +68,19 @@ function ply:GetDangerIntensity()
     return ZM_World:GetDangerIntensity(cell)
 end
 
-// Returns radiation damage per second for the player's current city cell.
+// Nominal current radiation rate, before ambient health floors or preview cheats.
 function ply:GetRadiationDamagePerSecond()
     local intensity, loadError = self:GetRadiationIntensity()
     if intensity == nil then
         return nil, loadError
     end
 
-    return intensity * ZM_World:GetRadiationDamagePerSecondAtPeak()
+    local damage, interval = ZM_RadiationFeedback.DamagePolicy(intensity,
+        self:GetNWFloat("ZM_RadiatedProximity", 0), self:HasRadiationProtection())
+    return interval > 0 and damage / interval or 0
 end
 
-// Radiation cannot reduce health below the tier unlocked by Strength.
+// Ambient radiation's Strength floor; acute exposure above 15 Sv bypasses it.
 function ply:GetRadiationHealthFloor()
     local strength = self:GetStat("Strength")
     if strength >= 10 then

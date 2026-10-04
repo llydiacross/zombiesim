@@ -14,7 +14,8 @@ StaticData.Files = {
     recipes = "data_static/recipe_definitions.json",
     professions = "data_static/profession_definitions.json",
     denServices = "data_static/den_service_definitions.json",
-    trade = "data_static/trade_definitions.json"
+    trade = "data_static/trade_definitions.json",
+    music = "data_static/music_definitions.json"
 }
 StaticData.MaximumItemLevel = 300
 StaticData.DefaultMastercraftChance = 0.05
@@ -24,8 +25,8 @@ StaticData.PlayerAttributes = {
     WeaponCrafting = true, ArmorCrafting = true, Medicine = true, Farming = true,
     WeaponRepairing = true, ArmorRepairing = true, Mechanics = true
 }
-StaticData.ItemEntityClasses = { generic = true, entity = true, weapon = true }
-StaticData.ReservedItemEntityClasses = { armour = true, clothing = true }
+StaticData.ItemEntityClasses = { generic = true, entity = true, weapon = true, armour = true }
+StaticData.ReservedItemEntityClasses = { clothing = true }
 StaticData.AttributeTypes = {
     bullet_weapon = { "Damage", "Range", "FiringSpeed", "ReloadSpeed", "ClipSize" },
     melee_weapon = { "Damage", "Range", "Swiftness", "Crushing" }
@@ -244,7 +245,7 @@ local itemFields = {
     name = true, entityClass = true, type = true, thumbnail = true, value = true, maxStack = true,
     unit = true, minLevel = true, maxLevel = true, statRequirements = true, minAttributes = true, maxAttributes = true,
     weaponClass = true, cssFamily = true, viewModel = true, worldModel = true, ammoId = true, firingMode = true, rarity = true,
-    iconModel = true, food = true, medical = true, implant = true, lootCategory = true
+    iconModel = true, food = true, medical = true, implant = true, lootCategory = true, radiationProtection = true
 }
 
 // Loot categories are derived from each definition (see deriveLootCategory) unless an item sets lootCategory.
@@ -405,7 +406,14 @@ local function validateItem(context, itemId, raw)
     if StaticData.ReservedItemEntityClasses[item.entityClass] then
         context:Error(joinPath(path, "entityClass"), "'" .. item.entityClass .. "' items are not implemented yet (Alpha 2.7 Phase J)")
     elseif item.entityClass and not StaticData.ItemEntityClasses[item.entityClass] then
-        context:Error(joinPath(path, "entityClass"), "must be generic, entity, or weapon")
+        context:Error(joinPath(path, "entityClass"), "must be generic, entity, weapon, or armour")
+    end
+    if raw.radiationProtection ~= nil then
+        if item.entityClass ~= "armour" then
+            context:Error(joinPath(path, "radiationProtection"), "only wearable armour can protect against radiation")
+        else
+            item.radiationProtection = readBoolean(context, raw, "radiationProtection", path, false)
+        end
     end
 
     item.type = readString(context, raw, "type", path, {})
@@ -479,8 +487,8 @@ local function validateItem(context, itemId, raw)
     item.iconModel = iconModel or item.worldModel or StaticData.DefaultItemIconModel
     item.value = readNumber(context, raw, "value", path, { min = 0, default = 0 })
     item.maxStack = readNumber(context, raw, "maxStack", path, { integer = true, min = 1, default = 1 })
-    if item.entityClass == "weapon" and item.maxStack ~= 1 then
-        context:Error(joinPath(path, "maxStack"), "must be 1 for weapon items")
+    if (item.entityClass == "weapon" or item.entityClass == "armour") and item.maxStack ~= 1 then
+        context:Error(joinPath(path, "maxStack"), "must be 1 for " .. item.entityClass .. " items")
     end
     item.unit = readString(context, raw, "unit", path, {})
     item.minLevel = readNumber(context, raw, "minLevel", path, { integer = true, min = 1, max = StaticData.MaximumItemLevel, default = 1 })
@@ -1799,6 +1807,17 @@ local function validateRecipes(report, registry)
     end
 end
 
+local function validateMusic(report, registry)
+    local data, context = readJsonFile(report, "music")
+    if not data then return end
+    checkFields(context, data, { schemaVersion = true, tracks = true, sets = true, defaultSet = true,
+        idleSeconds = true, safeZones = true, environmentTags = true, tagPriority = true }, nil, "")
+    local tags, zones = ZM_Music.RoutingKeys()
+    local music, errors = ZM_Music.Validate(data, function(path) return file.Exists(path, "GAME") end, tags, zones)
+    for _, issue in ipairs(errors) do context:Error(issue.path, issue.message) end
+    registry.music = music
+end
+
 // Reads and validates every file into a new registry without touching the live one.
 // `files` optionally replaces StaticData.Files (used by fixture tests).
 // Returns the registry (nil when any error was found) and the report.
@@ -1836,6 +1855,7 @@ function StaticData:Build(files)
     validateRecipes(report, registry)
     validateDenServices(report, registry)
     validateTrade(report, registry)
+    validateMusic(report, registry)
     activeFiles = self.Files
     if #report.errors > 0 then
         return nil, report
@@ -1888,12 +1908,13 @@ function StaticData:GetSummary()
         if item.implant then implantCount = implantCount + 1 end
     end
     return string.format(
-        "%d items (%d implants), %d loot groups, %d entity loot rules, %d enemies, %d spawn groups, %d bosses, %d recipes (v%s), %d professions (v%s), den services v%s, %d traders (v%s)",
+        "%d items (%d implants), %d loot groups, %d entity loot rules, %d enemies, %d spawn groups, %d bosses, %d recipes (v%s), %d professions (v%s), den services v%s, %d traders (v%s), %d music tracks",
         table.Count(registry.items), implantCount, table.Count(registry.lootGroups), #registry.entityLoot.rules,
         table.Count(registry.enemies), table.Count(registry.spawnGroups), table.Count(registry.bosses),
         table.Count(registry.recipes or {}), tostring(registry.recipeVersion),
         table.Count(registry.professions or {}), tostring(registry.professionVersion), tostring(registry.denServiceVersion),
-        table.Count(registry.trade and registry.trade.traders or {}), tostring(registry.tradeVersion)
+        table.Count(registry.trade and registry.trade.traders or {}), tostring(registry.tradeVersion),
+        table.Count(registry.music and registry.music.tracks or {})
     )
 end
 
