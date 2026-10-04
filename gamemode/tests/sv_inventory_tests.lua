@@ -2,10 +2,14 @@
 local Service = ZM_InventoryService
 local Ops = Service.Ops
 local Items = ZM_Items
+local SafeZones = ZM_SafeZones
+local Drops = ZM_DroppedItems
 
 local testSteamId = "STEAM_TEST:0:2700"
 local testProfile = "zn_test"
 local otherProfile = "zn_test_other"
+local testDropCellId = 999990
+local testDropLocationId = "cell:" .. testDropCellId
 
 local function deepEqual(left, right)
     if type(left) ~= type(right) then
@@ -63,12 +67,38 @@ end
 local function cleanup()
     ZM_DeletePlayerItems(testSteamId, testProfile)
     ZM_DeletePlayerItems(testSteamId, otherProfile)
+    sql.Query("DELETE FROM world_dropped_items WHERE profile = " .. sql.SQLStr(testProfile) .. " AND cellId = " .. testDropCellId)
+    sql.Query("DELETE FROM world_drop_requests WHERE profile = " .. sql.SQLStr(testProfile) .. " AND cellId = " .. testDropCellId)
     sql.Query("DELETE FROM player_data WHERE steamid = " .. sql.SQLStr(testSteamId))
 end
 
 local suite = ZM_TestHarness.NewSuite()
 local function test(name, body)
     suite:Add(name, body)
+end
+
+local function withDropOverrides(overrides, callback)
+    local previous = {}
+    for key, value in pairs(overrides) do
+        previous[key] = Drops[key]
+        Drops[key] = value
+    end
+    local originalSend = Service.Send
+    Service.Send = function() end
+    local ok, result = pcall(callback)
+    Service.Send = originalSend
+    for key, value in pairs(previous) do
+        Drops[key] = value
+    end
+    if not ok then error(result) end
+end
+
+local function withCommitOverride(commitWriter, callback)
+    local originalCommit = ZM_CommitWrites
+    ZM_CommitWrites = commitWriter
+    local ok, result = pcall(callback)
+    ZM_CommitWrites = originalCommit
+    if not ok then error(result) end
 end
 
 test("stackables_merge_up_to_max_stack", function(check)
@@ -201,6 +231,322 @@ test("sqlite_round_trip_and_profile_isolation", function(check)
     check(#ZM_GetPlayerItems(testSteamId, otherProfile) == 0, "another profile must not see these items")
 end)
 
+test("safezone_and_city_drops_use_distinct_persistent_locations", function(check)
+    local originalLoaded = ZM_World.IsLoaded
+    local originalMapPath = ZM_World.GetMapPath
+    local originalProfile = ZM_World.ActiveProfile
+    local originalSafeZoneGet = ZM_SafeZones.Get
+    local originalSafeZoneMap = ZM_SafeZones.GetMap
+    local originalGameMap = game.GetMap
+    local target = { CurrentSafeZoneId = "den-alpha" }
+    target.GetWorldCell = function() return { id = 17 } end
+
+    local ok, testError = pcall(function()
+        ZM_World.IsLoaded = function() return true end
+        ZM_World.ActiveProfile = testProfile
+        ZM_World.GetMapPath = function() return "maps/city-cell-17" end
+        ZM_SafeZones.Get = function(_, safeZoneId) return { id = safeZoneId, cell = 17 } end
+        ZM_SafeZones.GetMap = function(_, safeZoneId) return "safezones/" .. safeZoneId end
+        game.GetMap = function() return "den-alpha" end
+        local profile, cellId, denLocation = Drops:GetTargetLocation(target)
+        check(profile == testProfile and cellId == 17 and denLocation == "safezone:den-alpha", "a den should get its own persistent location")
+
+        target.CurrentSafeZoneId = "den-beta"
+        game.GetMap = function() return "den-beta" end
+        local _, _, secondDenLocation = Drops:GetTargetLocation(target)
+        check(secondDenLocation == "safezone:den-beta" and secondDenLocation ~= denLocation, "two dens sharing one entrance cell must not share crates")
+
+        target.CurrentSafeZoneId = ""
+        game.GetMap = function() return "city-cell-17" end
+        local _, _, cityLocation = Drops:GetTargetLocation(target)
+        check(cityLocation == "cell:17" and cityLocation ~= denLocation, "the city entrance cell must not share its den's crates")
+    end)
+
+    ZM_World.IsLoaded = originalLoaded
+    ZM_World.GetMapPath = originalMapPath
+    ZM_World.ActiveProfile = originalProfile
+    ZM_SafeZones.Get = originalSafeZoneGet
+    ZM_SafeZones.GetMap = originalSafeZoneMap
+    game.GetMap = originalGameMap
+    if not ok then error(testError) end
+end)
+
+test("dropped_crate_entity_and_model_are_available", function(check)
+    check(util.IsValidModel(Drops.CrateModel), "the mounted crate model should be available")
+    local groundZ = 10000
+    local entity, entityError = Drops:CreateWorldEntity({
+        x = 0,
+        y = 0,
+        z = groundZ,
+        yaw = 0,
+        instance = { itemId = "itemBandage", count = 1 }
+    })
+    check(IsValid(entity), "the dropped-item entity should spawn: " .. tostring(entityError))
+    if IsValid(entity) then
+        local minimum = entity:GetModelBounds()
+        check(math.abs(entity:GetPos().z + minimum.z - groundZ) < 0.1, "the crate model bottom should sit at its saved ground position")
+        entity:Remove()
+    end
+end)
+
+test("drop_creation_failure_and_bad_quantities_preserve_inventory", function(check)
+    local target = stubPlayer()
+    target.Alive = function() return true end
+    local fakeEntitiesCreated = 0
+    withDropOverrides({
+        GetTargetLocation = function() return testProfile, testDropCellId, testDropLocationId, { id = testDropCellId } end,
+        FindPlacement = function() return { x = 10, y = 20, z = 30, yaw = 0 } end,
+        CreateWorldEntity = function()
+            fakeEntitiesCreated = fakeEntitiesCreated + 1
+            return nil, "simulated crate creation failure"
+        end
+    }, function()
+        check(Service:GiveItem(target, "itemBandage", 3), "test bandages should persist")
+        local instanceId = target.ZM_Inventory.backpack[1].instanceId
+        local before = table.Copy(target.ZM_Inventory)
+        local invalidCount = Drops:DropItem(target, instanceId, 0, "drop-invalid-quantity")
+        check(not invalidCount, "zero quantity should be rejected")
+        local blocked, blockError = Drops:DropItem(target, instanceId, 1, "drop-create-failure")
+        check(not blocked and string.find(blockError, "simulated crate creation failure", 1, true), "crate creation failure should be explicit")
+        local tooMany = Drops:DropItem(target, instanceId, 4, "drop-too-many")
+        check(not tooMany, "quantity above the selected stack should be rejected")
+        check(fakeEntitiesCreated == 1, "invalid quantities must be rejected before entity creation")
+        check(deepEqual(target.ZM_Inventory, before), "failed drops must leave the live inventory unchanged")
+        check(#ZM_GetWorldDroppedItems(testProfile, testDropLocationId) == 0, "failed drops must not persist a crate")
+    end)
+end)
+
+test("partial_drop_persists_once_and_retries_are_idempotent", function(check)
+    local target = stubPlayer()
+    target.Alive = function() return true end
+    local created = 0
+    withDropOverrides({
+        GetTargetLocation = function() return testProfile, testDropCellId, testDropLocationId, { id = testDropCellId } end,
+        FindPlacement = function() return { x = 10, y = 20, z = 30, yaw = 0 } end,
+        CreateWorldEntity = function()
+            created = created + 1
+            return { testEntity = true }
+        end
+    }, function()
+        check(Service:GiveItem(target, "itemBandage", 3), "test bandages should persist")
+        local instanceId = target.ZM_Inventory.backpack[1].instanceId
+        local dropped, dropMessage = Drops:DropItem(target, instanceId, 2, "drop-retry-once")
+        check(dropped, "partial drop should succeed: " .. tostring(dropMessage))
+        check(Service:Count(target, "itemBandage", "backpack") == 1, "the source stack should retain one bandage")
+        local rows = ZM_GetWorldDroppedItems(testProfile, testDropLocationId)
+        check(#rows == 1 and tonumber(rows[1].itemCount) == 2, "one persisted crate should contain the requested two bandages")
+        local request = ZM_GetWorldDropRequest(testProfile, "drop-retry-once")
+        check(request and request.sourceInstanceId == instanceId and tonumber(request.requestedCount) == 2, "the idempotency key should be stored with the transaction")
+
+        local retried, retryMessage = Drops:DropItem(target, instanceId, 2, "drop-retry-once")
+        check(retried and string.find(retryMessage, "already processed", 1, true), "an identical retry should report its prior success")
+        check(created == 1, "an identical retry must not spawn another crate")
+        check(Service:Count(target, "itemBandage", "backpack") == 1, "an identical retry must not consume another item")
+        check(#ZM_GetWorldDroppedItems(testProfile, testDropLocationId) == 1, "an identical retry must not persist another crate")
+
+        local pickupRow = rows[1]
+        pickupRow.profile = testProfile
+        pickupRow.cellId = testDropCellId
+        pickupRow.locationId = testDropLocationId
+        pickupRow.dropId = rows[1].dropId
+        pickupRow.instance = util.JSONToTable(rows[1].itemData)
+        local picked, pickupResult = Drops:ApplyPickup(target, pickupRow)
+        check(picked and pickupResult.pickedCount == 2, "the persisted crate should be claimable")
+        check(#ZM_GetWorldDroppedItems(testProfile, testDropLocationId) == 0, "a claimed crate should be removed")
+        local replayedAfterPickup, replayMessage = Drops:DropItem(target, instanceId, 2, "drop-retry-once")
+        check(replayedAfterPickup and string.find(replayMessage, "already processed", 1, true), "a retry after pickup should still be recognized")
+        check(created == 1 and #ZM_GetWorldDroppedItems(testProfile, testDropLocationId) == 0, "a post-pickup retry must not recreate the crate")
+        check(Service:Count(target, "itemBandage", "backpack") == 3, "a post-pickup retry must not remove the stack again")
+    end)
+end)
+
+test("failed_drop_transaction_removes_spawned_crate_and_keeps_item", function(check)
+    local target = stubPlayer()
+    target.Alive = function() return true end
+    local fakeEntity = { testEntity = true }
+    local removedEntity
+    withDropOverrides({
+        GetTargetLocation = function() return testProfile, testDropCellId, testDropLocationId, { id = testDropCellId } end,
+        FindPlacement = function() return { x = 10, y = 20, z = 30, yaw = 0 } end,
+        CreateWorldEntity = function() return fakeEntity end,
+        RemoveWorldEntity = function(_, entity) removedEntity = entity end
+    }, function()
+        check(Service:GiveItem(target, "itemBandage", 1), "test bandage should persist")
+        local instanceId = target.ZM_Inventory.backpack[1].instanceId
+        local before = table.Copy(target.ZM_Inventory)
+        withCommitOverride(function() return false, "simulated transaction failure" end, function()
+            local dropped, reason = Drops:DropItem(target, instanceId, 1, "drop-transaction-failure")
+            check(not dropped and string.find(reason, "simulated transaction failure", 1, true), "failed persistence should be reported")
+        end)
+        check(removedEntity == fakeEntity, "a crate should be removed when its inventory transaction fails")
+        check(deepEqual(target.ZM_Inventory, before), "failed persistence must leave the inventory unchanged")
+        check(#ZM_GetWorldDroppedItems(testProfile, testDropLocationId) == 0, "failed persistence must leave no crate row")
+        check(not ZM_GetWorldDropRequest(testProfile, "drop-transaction-failure"), "failed persistence must not reserve its retry key")
+    end)
+end)
+
+test("partial_pickup_is_atomic_and_preserves_the_crate_remainder", function(check)
+    local target = stubPlayer()
+    local inventory = target.ZM_Inventory
+    Ops.Add(inventory, "backpack", instance("itemBandage", 2))
+    for _ = 1, Items.ContainerCapacity.backpack - 1 do
+        Ops.Add(inventory, "backpack", instance("weaponMeleeCrowbar"))
+    end
+    local dropped = instance("itemBandage", 3)
+    local now = os.time()
+    local row = {
+        profile = testProfile,
+        cellId = testDropCellId,
+        locationId = testDropLocationId,
+        dropId = "pickup-test-crate",
+        instance = dropped,
+        x = 10,
+        y = 20,
+        z = 30,
+        yaw = 0,
+        createdAt = now,
+        expiresAt = now + Drops.Lifetime
+    }
+    local saved, saveError = ZM_CommitWrites(testProfile, {
+        {
+            kind = "worldDropInsert",
+            steamid = testSteamId,
+            cellId = row.cellId,
+            locationId = row.locationId,
+            dropId = row.dropId,
+            requestId = "pickup-test-request",
+            sourceInstanceId = "pickup-source-instance",
+            instance = row.instance,
+            x = row.x,
+            y = row.y,
+            z = row.z,
+            yaw = row.yaw,
+            createdAt = row.createdAt,
+            expiresAt = row.expiresAt
+        }
+    })
+    check(saved, "test crate should persist: " .. tostring(saveError))
+
+    withDropOverrides({}, function()
+        local picked, result = Drops:ApplyPickup(target, row)
+        check(picked, "partial pickup should commit: " .. tostring(result))
+        check(result.pickedCount == 1 and result.remainder.count == 2, "pickup should transfer only the one stack slot that fits")
+        check(Service:Count(target, "itemBandage", "backpack") == 3, "the backpack should gain exactly one bandage")
+        local rows = ZM_GetWorldDroppedItems(testProfile, testDropLocationId)
+        check(#rows == 1 and tonumber(rows[1].itemCount) == 2, "the remaining two bandages should stay in the crate")
+        check(Service:Count({ ZM_Inventory = Service.FromRows(ZM_GetPlayerItems(testSteamId, testProfile)) }, "itemBandage", "backpack") == 3,
+            "the stored backpack should match the live pickup")
+
+        target.ZM_Inventory.backpack[Items.ContainerCapacity.backpack] = nil
+        local stalePickup = Drops:ApplyPickup(target, row)
+        check(not stalePickup, "a stale pickup snapshot must not commit twice")
+        check(Service:Count(target, "itemBandage", "backpack") == 3, "a failed stale pickup must not add items")
+        rows = ZM_GetWorldDroppedItems(testProfile, testDropLocationId)
+        check(#rows == 1 and tonumber(rows[1].itemCount) == 2, "a stale pickup must leave the crate remainder unchanged")
+
+        local current = {
+            profile = testProfile,
+            cellId = testDropCellId,
+            locationId = testDropLocationId,
+            dropId = rows[1].dropId,
+            instance = util.JSONToTable(rows[1].itemData)
+        }
+        target.ZM_Inventory = Service.NewInventory()
+        local fullyPicked, fullResult = Drops:ApplyPickup(target, current)
+        check(fullyPicked and fullResult.pickedCount == 2, "an empty backpack should take the full remainder")
+        check(Service:Count(target, "itemBandage", "backpack") == 2, "the full pickup should add the remaining two")
+        check(#ZM_GetWorldDroppedItems(testProfile, testDropLocationId) == 0, "an empty crate should be deleted atomically")
+    end)
+end)
+
+test("expired_drops_and_request_keys_are_removed", function(check)
+    local now = os.time()
+    local saved = ZM_CommitWrites(testProfile, {
+        {
+            kind = "worldDropInsert",
+            steamid = testSteamId,
+            cellId = testDropCellId,
+            locationId = testDropLocationId,
+            dropId = "expired-test-crate",
+            requestId = "expired-test-request",
+            sourceInstanceId = "expired-source-instance",
+            instance = instance("itemBandage", 1),
+            x = 10,
+            y = 20,
+            z = 30,
+            yaw = 0,
+            createdAt = now - 100,
+            expiresAt = now - 1
+        }
+    })
+    check(saved, "expired test crate should persist before cleanup")
+    local expired, expireError = ZM_DeleteExpiredWorldDroppedItems(testProfile, testDropLocationId, now)
+    check(expired, "expired rows should be removed: " .. tostring(expireError))
+    check(#ZM_GetWorldDroppedItems(testProfile, testDropLocationId) == 0, "expired crates should no longer load")
+    local request = ZM_GetWorldDropRequest(testProfile, "expired-test-request")
+    check(not request, "the matching expired idempotency key should be removed")
+end)
+
+test("persisted_dropped_crates_restore_when_the_location_loads", function(check)
+    local now = os.time()
+    local dropId = "restore-test-crate"
+    local saved, saveError = ZM_CommitWrites(testProfile, {
+        {
+            kind = "worldDropInsert",
+            steamid = testSteamId,
+            cellId = testDropCellId,
+            locationId = testDropLocationId,
+            dropId = dropId,
+            requestId = "restore-test-request",
+            sourceInstanceId = "restore-test-source",
+            instance = instance("itemBandage", 2),
+            x = 10,
+            y = 20,
+            z = 30,
+            yaw = 0,
+            createdAt = now,
+            expiresAt = now + 86400
+        }
+    })
+    check(saved, "the restoration fixture should persist: " .. tostring(saveError))
+    if not saved then return end
+
+    local originalCell = Drops.Cell
+    local originalGetTargetLocation = Drops.GetTargetLocation
+    local originalCreateWorldEntity = Drops.CreateWorldEntity
+    local createdRows = {}
+    Drops.Cell = nil
+    Drops.GetTargetLocation = function()
+        return testProfile, testDropCellId, testDropLocationId, { id = testDropCellId }
+    end
+    Drops.CreateWorldEntity = function(_, row)
+        table.insert(createdRows, table.Copy(row))
+        return { testEntity = true }
+    end
+
+    local ok, testError = pcall(function()
+        local target = stubPlayer()
+        target.ZM_PersistentStateLoaded = true
+        local loaded, loadError = Drops:OnPlayerReady(target)
+        check(loaded, "a fresh location load should restore persisted crates: " .. tostring(loadError))
+        check(#createdRows == 1 and createdRows[1].dropId == dropId and createdRows[1].instance.count == 2,
+            "the saved crate entity should be recreated with its persisted item and count")
+        check(Drops.Cell and Drops.Cell.rows[dropId] and Drops.Cell.entities[dropId],
+            "the restored crate should be registered in the active location")
+
+        Drops.Cell = nil
+        local restoredAgain, restoreError = Drops:OnPlayerReady(target)
+        check(restoredAgain, "a fresh server-style location state should reload from storage: " .. tostring(restoreError))
+        check(#createdRows == 2 and createdRows[2].dropId == dropId,
+            "discarding active world state should recreate the crate from its durable row")
+    end)
+
+    Drops.Cell = originalCell
+    Drops.GetTargetLocation = originalGetTargetLocation
+    Drops.CreateWorldEntity = originalCreateWorldEntity
+    if not ok then error(testError) end
+end)
+
 test("failed_mutations_leave_live_and_stored_inventory_unchanged", function(check)
     local target = stubPlayer()
     Service:GiveItem(target, "itemBandage", 2)
@@ -226,6 +572,27 @@ test("failed_transaction_keeps_previous_rows", function(check)
     check(not ZM_ReplacePlayerItems(testSteamId, testProfile, duplicateSlot), "duplicate slots should fail the transaction")
     local rows = ZM_GetPlayerItems(testSteamId, testProfile)
     check(#rows == 1 and rows[1].instanceId == "keep1", "the previous rows must survive a rolled-back replace")
+end)
+
+test("stash_access_requires_the_players_current_den_map", function(check)
+    local originalGetMap = SafeZones.GetMap
+    local originalGetMapName = game.GetMap
+    SafeZones.GetMap = function(_, safeZoneId)
+        return safeZoneId == "inventory-test-den" and "safezones/den-test" or nil
+    end
+    game.GetMap = function() return "safezones/den-test" end
+    local target = { CurrentSafeZoneId = "inventory-test-den" }
+    local ok, errorMessage = pcall(function()
+        check(Service:CanAccessStash(target), "the stash is accessible on the current den map")
+        game.GetMap = function() return "city/another-map" end
+        check(not Service:CanAccessStash(target), "the stash is not accessible on a different map")
+        target.CurrentSafeZoneId = "missing-den"
+        game.GetMap = function() return "safezones/den-test" end
+        check(not Service:CanAccessStash(target), "an unknown den never grants stash access")
+    end)
+    SafeZones.GetMap = originalGetMap
+    game.GetMap = originalGetMapName
+    if not ok then error(errorMessage) end
 end)
 
 test("death_loses_backpack_but_keeps_stash", function(check)
@@ -684,6 +1051,8 @@ test("client_actions_are_validated_by_the_server", function(check)
     check(not act({ action = "use", instanceId = string.rep("x", 80) }), "oversized instance ids are rejected")
     check(not act({ action = "move", instanceId = instanceId, container = "vault" }), "unknown containers are rejected")
     check(not act({ action = "move", instanceId = instanceId, container = "backpack", slot = "two" }), "non-numeric slots are rejected")
+    check(not act({ action = "drop", instanceId = instanceId, count = 1 }), "drop actions require a retry-safe request id")
+    check(not act({ action = "drop", instanceId = instanceId, count = "many", requestId = "invalid-count" }), "drop actions reject non-numeric quantities")
 
     local moved, reason = act({ action = "move", instanceId = instanceId, container = "stash" })
     check(not moved and reason == "The stash is only available inside a den.", "stash moves outside a den are refused")

@@ -801,6 +801,9 @@ function WalkerSim:SpawnTicketZombie(ticket, cellId, relevancePosition, relevanc
     zombie:Spawn()
     zombie:Activate()
     zombie:ApplyEnemyDefinition(enemy, context.danger)
+    // A separate deterministic stream keeps variant selection from changing the enemy/reward draw sequence.
+    ZM_Enemies:ApplyRadiatedVariant(zombie, context, enemy,
+        ZM_ItemGeneration.NewRng((ZM_Enemies.GetTicketSeed(ticket) + 104729) % 2147483646 + 1))
     if not zombie:SetWalkerTicket(ticket, cellId) then
         zombie:Remove()
         return nil, "could not assign ticket metadata to zombie"

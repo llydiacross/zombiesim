@@ -118,8 +118,8 @@
     "progressRefreshMilliseconds": 1000,
     "maxParallelProcesses": 4,
     "visibilityBudget": {
-      "maxPortalClusters": 750,
-      "maxPortals": 1350
+      "maxPortalClusters": 1500,
+      "maxPortals": 2700
     },
     "stageTimeoutSeconds": {
       "vbsp": 300,
@@ -287,7 +287,7 @@
       "destroyedBuildings": "^buildings/tile_destroyed.*\\.vmf$",
       "warehouses": "^buildings/tile_warehouse_.*\\.vmf$",
       "commercial": "^buildings/tile_commercial_.*\\.vmf$",
-      "industry": "^buildings/tile_industry_[0-9]+[a-z]+\\.vmf$",
+      "industry": "^buildings/tile_industr(?:y|ial)_[0-9]+[a-z]+(?:_(?:2x|2x2|3x|3x3))?\\.vmf$",
       "decorations": "^decorations/.*\\.vmf$",
       "carparks": "^carparks/tile_carpark_(?:entrance[A-Za-z0-9_-]*|straight_[12]|deadend_(?:east|west))\\.vmf$"
     },
@@ -347,7 +347,8 @@
         "bridge-vertical": 0,
         "bridge-horizontal": 90,
         "bridgeRampByDirection": { "N": 0, "E": 270, "S": 180, "W": 90 },
-        "onrampByDirection": { "N": 0, "E": 270, "S": 180, "W": 90 }
+        "onrampByDirection": { "N": 0, "E": 270, "S": 180, "W": 90 },
+        "onrampRoadByDirection": { "N": 180, "E": 90, "S": 0, "W": 270 }
       }
     },
     "environment": {
@@ -386,6 +387,16 @@
       "preferredProfiles": ["radioactive", "military"],
       "preferredChancePercent": 65,
       "standardChancePercent": 20
+    },
+    "openTerrain": {
+      "maximumOpenTilePercent": 16
+    },
+    "topologyVariants": {
+      "chancePercent": 35,
+      "templates": {
+        "road-straight": ["roads/tile_road_a.vmf", "roads/tile_road_b.vmf"],
+        "motorway-straight": ["roads/tile_motorway_a.vmf", "roads/tile_motorway_b.vmf", "roads/tile_motorway_c.vmf"]
+      }
     },
     "multiTileFeatures": {
       "enabled": true,
@@ -497,6 +508,24 @@
   "vmfBuild": {
     "tileSize": 640,
     "tileZOffset": 0,
+    "skybox3d": {
+      "enabled": true,
+      "scale": 16,
+      "neighbourRadius": 2,
+      "cameraZ": 3328,
+      "roomHeight": 512,
+      "minBrushExtent": 24,
+      "maxPartVertices": 30000,
+      "snowOverlay": true,
+      "snowMinNormalZ": 0.7,
+      "snowLift": 2,
+      "snowTextureWorldSize": 256,
+      "detailProps": true,
+      "roadCarSpacing": 320,
+      "roadCarChance": 0.35,
+      "roofFireMinHeight": 192,
+      "groundMaterial": "CS_HAVANA/SWAMPDIRT01"
+    },
     "border": {
       "enabled": true,
       "transitionGateRoadTemplates": [

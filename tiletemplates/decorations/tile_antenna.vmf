@@ -961,7 +961,7 @@ entity
 	"modelscale" "1.0"
 	"physdamagescale" "0.1"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "304 -64 32.25"
 	editor
 	{
@@ -984,7 +984,7 @@ entity
 	"modelscale" "1.0"
 	"physdamagescale" "0.1"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "263.774 251.065 32.25"
 	editor
 	{
@@ -1007,7 +1007,7 @@ entity
 	"modelscale" "1.0"
 	"physdamagescale" "0.1"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "-246.31 -270.708 32.25"
 	editor
 	{
@@ -1030,7 +1030,7 @@ entity
 	"modelscale" "1.0"
 	"physdamagescale" "0.1"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "-128 -304 32.25"
 	editor
 	{
@@ -1053,7 +1053,7 @@ entity
 	"modelscale" "1.0"
 	"physdamagescale" "0.1"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "124.899 -307.101 32.25"
 	editor
 	{
@@ -1076,7 +1076,7 @@ entity
 	"modelscale" "1.0"
 	"physdamagescale" "0.1"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "236.899 -307.101 32.25"
 	editor
 	{

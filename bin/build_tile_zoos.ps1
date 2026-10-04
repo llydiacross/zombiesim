@@ -49,7 +49,7 @@ function Get-BuildingZooSortKey {
     $filename = (Split-Path -Leaf $Template).ToLowerInvariant()
     $typeOrder = switch -Regex ($filename) {
         '^tile_destroyed' { 0; break }
-        '^tile_(warehouse|industry)' { 1; break }
+        '^tile_(warehouse|industry|industrial)' { 1; break }
         '^tile_(commercial|market|bank)' { 2; break }
         '^tile_(church|hospital|police|fire|petrol|army|laboratory|bunker|airport)' { 3; break }
         '^tile_(building|construction)' { 4; break }

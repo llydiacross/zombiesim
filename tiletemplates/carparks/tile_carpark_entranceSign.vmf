@@ -1364,7 +1364,7 @@ entity
 	"modelscale" "1.0"
 	"physdamagescale" "0.1"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "46.431 119.728 62.0309"
 	editor
 	{
@@ -1387,7 +1387,7 @@ entity
 	"modelscale" "1.0"
 	"physdamagescale" "0.1"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "-104 144 58.9073"
 	editor
 	{

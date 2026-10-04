@@ -1,0 +1,5 @@
+"VertexLitGeneric"
+{
+    "$basetexture" "concrete/concretewall026j"
+    "$translucent" "1"
+}

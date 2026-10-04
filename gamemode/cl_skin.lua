@@ -16,6 +16,38 @@ ZM_DermaSkin.Palette = palette
 
 local comboText = Color(0, 0, 0)
 
+function ZM_DermaSkin.DrawTextSegments(x, y, font, segments, verticalAlign, horizontalAlign)
+    surface.SetFont(font)
+    local totalWidth = 0
+    for _, segment in ipairs(segments) do
+        totalWidth = totalWidth + surface.GetTextSize(segment.text)
+    end
+    if horizontalAlign == TEXT_ALIGN_RIGHT then
+        x = x - totalWidth
+    elseif horizontalAlign == TEXT_ALIGN_CENTER then
+        x = x - totalWidth * 0.5
+    end
+    for _, segment in ipairs(segments) do
+        draw.SimpleText(segment.text, font, x, y, segment.color, TEXT_ALIGN_LEFT, verticalAlign or TEXT_ALIGN_CENTER)
+        x = x + surface.GetTextSize(segment.text)
+    end
+    return x
+end
+
+function ZM_DermaSkin.CurrencyLine(parent, label, amount, font, labelColor)
+    local row = vgui.Create("DPanel", parent)
+    row:Dock(TOP)
+    row:SetTall(22)
+    row:DockMargin(0, 0, 0, 5)
+    row.Paint = function(_, _, height)
+        ZM_DermaSkin.DrawTextSegments(0, height * 0.5, font or "ZM_CraftingBody", {
+            { text = label .. " ", color = labelColor or palette.text },
+            { text = amount, color = currencyGold }
+        })
+    end
+    return row
+end
+
 // DComboBox ignores the skin's text colours in several parents, so every dropdown sets black text explicitly.
 function ZM_DermaSkin.StyleComboBox(combo)
     combo:SetTextColor(comboText)

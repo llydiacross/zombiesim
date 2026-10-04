@@ -141,7 +141,25 @@ end
 
 function Enemies:GetCellContext(cell)
     local environment = ZM_World:GetEnvironment(cell) or {}
-    return { danger = ZM_World:GetDangerIntensity(cell) or 0, tags = environment.tags or {} }
+    return {
+        danger = ZM_World:GetDangerIntensity(cell) or 0,
+        tags = environment.tags or {},
+        radiation = ZM_World:GetRadiationIntensity(cell) or 0
+    }
+end
+
+function Enemies.GetRadiatedChance(context, enemy)
+    if enemy.boss or enemy.entity ~= "zn_walker_zombie" then return 0 end
+    return math.Clamp(context.radiation or 0, 0, 1) * 0.5
+end
+
+function Enemies:ApplyRadiatedVariant(entity, context, enemy, rng)
+    local chance = self.GetRadiatedChance(context, enemy)
+    local radiated = chance > 0 and rng:Next() < chance
+    entity:SetNWBool("ZM_Radiated", radiated)
+    entity:SetNWFloat("ZM_RadiatedIntensity", radiated and math.Clamp(context.radiation, 0, 1) or 0)
+    entity.Radiated = radiated
+    return radiated
 end
 
 // The same ticket always selects the same enemy type.
@@ -274,9 +292,13 @@ local function spawnEnemy(caller, arguments)
     zombie:Activate()
     zombie.WalkerSourceCellId = cell.id
     zombie:ApplyEnemyDefinition(enemy, context.danger)
+    local radiated = Enemies:ApplyRadiatedVariant(zombie, context, enemy, Generation.NewRng())
     reply(caller, string.format("Spawned %s (%s) at danger %.2f with %d HP.", enemy.id, enemy.entity, context.danger, zombie:Health()))
     if ZM_DevConsole and ZM_DevConsole.Report then
-        ZM_DevConsole:Report("enemySpawn", { enemy = enemy.id, danger = context.danger, health = zombie:Health(), walkSpeed = zombie.WalkSpeed })
+        ZM_DevConsole:Report("enemySpawn", {
+            enemy = enemy.id, danger = context.danger, health = zombie:Health(), walkSpeed = zombie.WalkSpeed,
+            radiated = radiated, radiation = context.radiation
+        })
     end
     return true
 end

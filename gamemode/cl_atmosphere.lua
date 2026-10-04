@@ -188,6 +188,13 @@ if boundaryMistMaterial:IsError() then
     ErrorNoHalt("[ZombieSim] Mounted transition-mist material is unavailable.\n")
 end
 local splashRingMaterial = Material("effects/select_ring")
+if splashRingMaterial:IsError() then
+    ErrorNoHalt("[ZombieSim] Mounted splash ring material is unavailable.\n")
+end
+Atmosphere.FootstepSplashMaterial = Material("effects/splash2")
+if Atmosphere.FootstepSplashMaterial:IsError() then
+    ErrorNoHalt("[ZombieSim] Mounted footstep splash material is unavailable.\n")
+end
 local basePuddleSites = 64
 local puddleSiteCapacity = 192
 local maxPuddleLobes = 8
@@ -316,9 +323,40 @@ function Atmosphere:GetActiveProfile()
     return ZM_World:GetAtmosphereProfileByIndex(self.ActiveProfileIndex)
 end
 
+Atmosphere.RetiredWeatherEmitters = Atmosphere.RetiredWeatherEmitters or {}
+
+function Atmosphere:SetMapCaptureHidden(hidden)
+    self.MapCaptureParticlesHidden = hidden
+    if hidden then self.MapCaptureHideCount = (self.MapCaptureHideCount or 0) + 1 end
+    if weatherEmitter then weatherEmitter:SetNoDraw(hidden) end
+    for _, emitter in ipairs(self.RetiredWeatherEmitters) do
+        emitter:SetNoDraw(hidden)
+    end
+end
+
+function Atmosphere:GetMapCaptureState()
+    local amount = self.SnowCoverAmount or 0
+    local rebuilding = amount > 0.002 and
+        (next(snowCover.dirtyChunks or {}) ~= nil or next(snowCover.urgentChunks or {}) ~= nil)
+    return string.format("%s/%d/%s/%s", self.Weather or "clear",
+        amount <= 0.002 and 0 or math.max(1, math.Round(amount * 12)),
+        snowCover.status or "not built", rebuilding and "rebuilding" or "settled")
+end
+
+hook.Add("Think", "ZM.Atmosphere.RetiredWeatherCleanup", function()
+    for index = #Atmosphere.RetiredWeatherEmitters, 1, -1 do
+        local emitter = Atmosphere.RetiredWeatherEmitters[index]
+        if emitter:GetNumActiveParticles() == 0 then
+            emitter:Finish()
+            table.remove(Atmosphere.RetiredWeatherEmitters, index)
+        end
+    end
+end)
+
 function Atmosphere:StopWeatherEffects()
     if weatherEmitter then
-        weatherEmitter:Finish()
+        // Retain draining emitters so map captures can still hide their remaining particles.
+        self.RetiredWeatherEmitters[#self.RetiredWeatherEmitters + 1] = weatherEmitter
         weatherEmitter = nil
     end
     if self.RainSoundPatch then
@@ -542,6 +580,12 @@ function Atmosphere:GetDiagnosticSnapshot()
         rainDensity = math.Clamp(rainDensityConVar:GetFloat(), 0.5, 2),
         puddleDropRings = self.PuddleDropRings or 0,
         puddleDropCrowns = self.PuddleDropCrowns or 0,
+        puddleImpactQuads = self.PuddleImpactQuads or 0,
+        puddleImpactMaxIndices = self.PuddleImpactMaxIndices or 0,
+        splashRingMaterialAvailable = not splashRingMaterial:IsError(),
+        splashRingMaterialShader = splashRingMaterial:GetShader(),
+        footstepSplashMaterialAvailable = not self.FootstepSplashMaterial:IsError(),
+        footstepSplashMaterialShader = self.FootstepSplashMaterial:GetShader(),
         puddleOpacity = math.Clamp(puddleOpacityConVar:GetFloat(), 0.05, 0.45),
         puddleTranslucencyMaterialAvailable = puddleMaterial ~= nil,
         puddleMaterialShader = puddleMaterial and puddleMaterial:GetShader() or nil,
@@ -605,6 +649,12 @@ function Atmosphere:GetDiagnosticSnapshot()
         sheltered = isSheltered,
         boundaryMistActive = self.BoundaryMistActive,
         profileApplications = table.Copy(self.ProfileApplications),
+        skybox = ZM_Skybox and ZM_Skybox:GetDiagnosticSnapshot() or nil,
+        mapCapture = ZM_WorldMap and ZM_WorldMap:GetCaptureDiagnosticSnapshot() or nil,
+        mapCaptureParticlesHidden = self.MapCaptureParticlesHidden == true,
+        mapCaptureHideCount = self.MapCaptureHideCount or 0,
+        retiredWeatherEmitters = #self.RetiredWeatherEmitters,
+        shoulderCamera = ZM_IsShoulderCamera(),
         hookResults = table.Copy(self.HookResults)
     }
 end
@@ -710,11 +760,6 @@ end
 
 // A step into a puddle throws a larger crown and sloshes; a step on merely rain-wet ground only patters.
 local function addFootstepSplash(position, inPuddle)
-    if not weatherEmitter then
-        weatherEmitter = ParticleEmitter(position)
-    end
-    if not weatherEmitter then return end
-
     local now = CurTime()
     splashRings[#splashRings + 1] = {
         position = position + Vector(0, 0, 1),
@@ -727,30 +772,30 @@ local function addFootstepSplash(position, inPuddle)
         table.remove(splashRings, 1)
     end
 
-    // Refractive water sprites keep the crown clear; opaque dots read as milk.
     if inPuddle then
-        for _ = 1, 5 do
-            local particle = weatherEmitter:Add("particle/water/watersplash_001a", position + Vector(math.Rand(-4, 4), math.Rand(-4, 4), 1))
-            if particle then
-                particle:SetDieTime(math.Rand(0.3, 0.45))
-                particle:SetStartAlpha(110)
-                particle:SetEndAlpha(0)
-                particle:SetStartSize(math.Rand(2, 4))
-                particle:SetEndSize(math.Rand(7, 11))
-                particle:SetRoll(math.Rand(0, 360))
-                particle:SetColor(150, 162, 168)
-                particle:SetCollide(false)
-                particle:SetGravity(Vector(0, 0, -380))
-                particle:SetVelocity(Vector(math.Rand(-55, 55), math.Rand(-55, 55), math.Rand(60, 130)))
+        if not weatherEmitter then
+            weatherEmitter = ParticleEmitter(position)
+        end
+        if weatherEmitter and not Atmosphere.FootstepSplashMaterial:IsError() then
+            for _ = 1, 5 do
+                local particle = weatherEmitter:Add("effects/splash2", position + Vector(math.Rand(-4, 4), math.Rand(-4, 4), 1))
+                if particle then
+                    particle:SetDieTime(math.Rand(0.3, 0.45))
+                    particle:SetStartAlpha(110)
+                    particle:SetEndAlpha(0)
+                    particle:SetStartSize(math.Rand(2, 4))
+                    particle:SetEndSize(math.Rand(7, 11))
+                    particle:SetRoll(math.Rand(0, 360))
+                    particle:SetColor(150, 162, 168)
+                    particle:SetCollide(false)
+                    particle:SetGravity(Vector(0, 0, -380))
+                    particle:SetVelocity(Vector(math.Rand(-55, 55), math.Rand(-55, 55), math.Rand(60, 130)))
+                end
             end
         end
+        return playMountedSound(puddleSloshSoundPaths, position, 70, math.Rand(94, 106), 0.55, "PuddleSloshSoundMissing")
     end
-
-    if inPuddle then
-        playMountedSound(puddleSloshSoundPaths, position, 70, math.Rand(94, 106), 0.55, "PuddleSloshSoundMissing")
-    else
-        playMountedSound(puddleSloshSoundPaths, position, 60, math.Rand(108, 118), 0.14, "PuddleSloshSoundMissing")
-    end
+    return playMountedSound(puddleSloshSoundPaths, position, 60, math.Rand(108, 118), 0.14, "PuddleSloshSoundMissing")
 end
 
 local function addSnowStep(position, onSnowPatch)
@@ -852,6 +897,10 @@ local function ensurePuddleMapSites()
         Atmosphere.PuddleBoundsSource = "render bounds"
     else
         Atmosphere.PuddleBoundsSource = "world AABB"
+    end
+    // City recipes carry the 3D skybox room above the playable cell; keep puddle and snow sampling below it.
+    if ZM_Skybox and ZM_Skybox.ClampWorldMaximum then
+        maximum = ZM_Skybox:ClampWorldMaximum(maximum)
     end
     if not minimum or not maximum or maximum.x <= minimum.x or maximum.y <= minimum.y or maximum.z <= minimum.z then
         Atmosphere.PuddleSiteStatus = "invalid world bounds"
@@ -1824,6 +1873,7 @@ local function updateWeatherFootsteps()
         return
     end
     local position = player:GetPos()
+    local weather = Atmosphere.Weather
     if lastStepPosition then
         local dx = position.x - lastStepPosition.x
         local dy = position.y - lastStepPosition.y
@@ -1840,7 +1890,6 @@ local function updateWeatherFootsteps()
     if stepDistance < stride then return end
     stepDistance = 0
 
-    local weather = Atmosphere.Weather
     local puddle = weather == "rain" and findPuddleAt(position) or nil
     local snowPoint = (Atmosphere.SnowCoverAmount or 0) > 0.15 and getSnowCoverPointAt(position) or nil
     if snowPoint and (snowCover.stage or 0) - snowPoint.patch * 0.6 < 0.15 then
@@ -1849,6 +1898,8 @@ local function updateWeatherFootsteps()
     local outdoors = isOutdoorCityCell(player) and not checkShelter(player, CurTime())
     local result
     if puddle then
+        // Multiplayer puddle steps are handled by PlayerFootstep; keep other weather steps here.
+        if not game.SinglePlayer() then return end
         addFootstepSplash(position, true)
         result = "puddle"
     elseif snowPoint then
@@ -2166,10 +2217,28 @@ hook.Add("PreCleanupMap", "ZM.Atmosphere.WeatherCleanup", function()
 end)
 hook.Add("ShutDown", "ZM.Atmosphere.WeatherCleanup", function()
     Atmosphere:StopWeatherEffects()
+    for _, emitter in ipairs(Atmosphere.RetiredWeatherEmitters) do emitter:Finish() end
+    Atmosphere.RetiredWeatherEmitters = {}
     Atmosphere:StopBoundaryEffects()
 end)
 
-hook.Remove("PlayerFootstep", "ZM.Atmosphere.RainFootstepSplash")
+hook.Add("PlayerFootstep", "ZM.Atmosphere.RainFootstepSplash", function(player, position)
+    local localPlayer = LocalPlayer()
+    if game.SinglePlayer() or player ~= localPlayer or not IsValid(localPlayer)
+        or Atmosphere.Weather ~= "rain" or not isOutdoorCityCell(localPlayer)
+        or checkShelter(localPlayer, CurTime()) then
+        return
+    end
+
+    local puddle = findPuddleAt(position)
+    if not puddle then return end
+    if not IsFirstTimePredicted() then return true end
+
+    local soundPlayed = addFootstepSplash(position, true)
+    Atmosphere.StepCount = (Atmosphere.StepCount or 0) + 1
+    Atmosphere.LastStep = { surface = "puddle", time = RealTime() }
+    if soundPlayed then return true end
+end)
 
 // Per-frame puddle render scratch lives in one table to stay under the chunk's local-variable limit.
 local puddleRender = {}
@@ -2411,23 +2480,23 @@ local maxPuddleDropRings = 240
 local maxPuddleDropCrowns = 40
 local puddleDropCrownDistance = 500
 local puddleDropBeamMaterial = Material("particle/particledefault")
+Atmosphere.PuddleImpactMaxIndices = maxPuddleDropRings * 6
 
 local function hashUnit(first, second)
     local value = math.sin(first * 12.9898 + second * 78.233) * 43758.5453
     return value - math.floor(value)
 end
 
-local ringQuadCorners = { { -1, -1, 0, 0 }, { 1, -1, 1, 0 }, { 1, 1, 1, 1 }, { -1, 1, 0, 1 } }
 puddleRender.ringPosition = Vector()
-
-local function emitRingQuad(center, normal, tangent, bitangent, size, red, green, blue, alpha)
+puddleRender.ringQuadCorners = { { -1, -1, 0, 0 }, { 1, -1, 1, 0 }, { 1, 1, 1, 1 }, { -1, 1, 0, 1 } }
+puddleRender.EmitRingQuad = function(center, normal, tangent, bitangent, size, red, green, blue, alpha)
     local half = size * 0.5
     local position = puddleRender.ringPosition
     local cx, cy, cz = center.x, center.y, center.z
     local rx, ry, rz = tangent.x * half, tangent.y * half, tangent.z * half
     local ux, uy, uz = bitangent.x * half, bitangent.y * half, bitangent.z * half
     for index = 1, 4 do
-        local corner = ringQuadCorners[index]
+        local corner = puddleRender.ringQuadCorners[index]
         local sx, sy = corner[1], corner[2]
         position:SetUnpacked(cx + rx * sx + ux * sy, cy + ry * sx + uy * sy, cz + rz * sx + uz * sy)
         mesh.Position(position)
@@ -2451,6 +2520,8 @@ puddleRender.crownColor = Color(200, 215, 225, 0)
 local function drawPuddleRainImpacts(candidates, now)
     if #candidates == 0 then
         Atmosphere.PuddleDropRings = 0
+        Atmosphere.PuddleDropCrowns = 0
+        Atmosphere.PuddleImpactQuads = 0
         return
     end
 
@@ -2499,29 +2570,39 @@ local function drawPuddleRainImpacts(candidates, now)
         if #drops >= maxRings then break end
     end
 
-    // One faint ripple per drop: it expands quickly with an ease-out and fades before it can overlap much.
-    // A zero-count mesh.Begin errors before mesh.End and can leave the renderer in a broken state.
     if #drops == 0 then
         Atmosphere.PuddleDropRings = 0
         Atmosphere.PuddleDropCrowns = 0
+        Atmosphere.PuddleImpactQuads = 0
         return
     end
-    mesh.Begin(MATERIAL_QUADS, #drops)
-    for _, drop in ipairs(drops) do
-        local normal = drop.normal
-        local nx, ny, nz = normal.x, normal.y, normal.z
-        local tangent, bitangent = puddleRender.dropTangent, puddleRender.dropBitangent
-        tangent:SetUnpacked(1 - nx * nx, -ny * nx, -nz * nx)
-        tangent:Normalize()
-        local tx, ty, tz = tangent.x, tangent.y, tangent.z
-        bitangent:SetUnpacked(ny * tz - nz * ty, nz * tx - nx * tz, nx * ty - ny * tx)
-        local inverse = 1 - drop.phase
-        local growth = 1 - inverse * inverse
-        local size = (2 + growth * 9) * drop.weight
-        local alpha = 72 * inverse * math.sqrt(inverse) * drop.fade
-        emitRingQuad(drop.position, normal, tangent, bitangent, size, 168, 188, 198, alpha)
+
+    // One quad per drop: at the 240-drop cap this uses only 1,440 indices.
+    if not splashRingMaterial:IsError() then
+        render.SetMaterial(splashRingMaterial)
+        mesh.Begin(MATERIAL_QUADS, #drops)
+        for _, drop in ipairs(drops) do
+            local normal = drop.normal
+            local nx, ny, nz = normal.x, normal.y, normal.z
+            local tangent, bitangent = puddleRender.dropTangent, puddleRender.dropBitangent
+            tangent:SetUnpacked(1 - nx * nx, -ny * nx, -nz * nx)
+            if tangent:LengthSqr() < 0.01 then
+                tangent:SetUnpacked(-nx * ny, 1 - ny * ny, -nz * ny)
+            end
+            tangent:Normalize()
+            local tx, ty, tz = tangent.x, tangent.y, tangent.z
+            bitangent:SetUnpacked(ny * tz - nz * ty, nz * tx - nx * tz, nx * ty - ny * tx)
+            local inverse = 1 - drop.phase
+            local growth = 1 - inverse * inverse
+            local size = (2 + growth * 9) * drop.weight
+            local alpha = 72 * inverse * math.sqrt(inverse) * drop.fade
+            puddleRender.EmitRingQuad(drop.position, normal, tangent, bitangent, size, 168, 188, 198, alpha)
+        end
+        mesh.End()
+        Atmosphere.PuddleImpactQuads = #drops
+    else
+        Atmosphere.PuddleImpactQuads = 0
     end
-    mesh.End()
 
     // Nearby drops throw a tiny upward fleck at the moment of impact.
     local crowns = 0
@@ -2545,9 +2626,24 @@ local function drawPuddleRainImpacts(candidates, now)
 end
 
 puddleRender.splashColor = Color(170, 205, 218, 0)
+puddleRender.DrawFootstepSplashes = function(now)
+    // Rain crowns bind their beam material; footsteps must rebind their own texture.
+    render.SetMaterial(splashRingMaterial)
+    for index = #splashRings, 1, -1 do
+        local splash = splashRings[index]
+        local life = math.Clamp((splash.expiresAt - now) / 0.45, 0, 1)
+        if life <= 0 then
+            table.remove(splashRings, index)
+        elseif not splashRingMaterial:IsError() and splash.position:ToScreen().visible then
+            local size = (splash.size or 44) * (1 - life) + 8
+            puddleRender.splashColor.a = 90 * life
+            render.DrawQuadEasy(splash.position, puddleUpNormal, size, size, puddleRender.splashColor, splash.rotation)
+        end
+    end
+end
 
 hook.Add("PostDrawTranslucentRenderables", "ZM.Atmosphere.WetSurfaceEffects", function(drawingDepth, drawingSkybox)
-    if drawingDepth or drawingSkybox then return end
+    if drawingDepth or drawingSkybox or ZM_WorldMap and ZM_WorldMap.Capturing then return end
 
     local now = CurTime()
     local puddleOpacity = math.Clamp(puddleOpacityConVar:GetFloat(), 0.05, 0.45)
@@ -2556,22 +2652,14 @@ hook.Add("PostDrawTranslucentRenderables", "ZM.Atmosphere.WetSurfaceEffects", fu
     Atmosphere.PuddleRenderClusters = visiblePuddleClusters
     drawPuddleMesh(visiblePuddles, now, puddleOpacity)
 
-    render.SetMaterial(splashRingMaterial)
     if Atmosphere.Weather == "rain" and not Atmosphere.PuddlesDryAt then
         drawPuddleRainImpacts(visiblePuddles, now)
+    else
+        Atmosphere.PuddleDropRings = 0
+        Atmosphere.PuddleDropCrowns = 0
+        Atmosphere.PuddleImpactQuads = 0
     end
-
-    for index = #splashRings, 1, -1 do
-        local splash = splashRings[index]
-        local life = math.Clamp((splash.expiresAt - now) / 0.45, 0, 1)
-        if life <= 0 then
-            table.remove(splashRings, index)
-        elseif splash.position:ToScreen().visible then
-            local size = (splash.size or 44) * (1 - life) + 8
-            puddleRender.splashColor.a = 90 * life
-            render.DrawQuadEasy(splash.position, puddleUpNormal, size, size, puddleRender.splashColor, splash.rotation)
-        end
-    end
+    puddleRender.DrawFootstepSplashes(now)
 end)
 
 hook.Add("SetupWorldFog", "ZM.Atmosphere.WorldFog", function()
@@ -2595,6 +2683,8 @@ hook.Add("SetupSkyboxFog", "ZM.Atmosphere.SkyboxFog", function(scale)
         return
     end
     local settings = Atmosphere:GetFogSettings()
+    // The runtime 3D skybox grades this fog to opaque at its horizon wall.
+    if settings and ZM_Skybox and ZM_Skybox.GetSkyboxFog then settings = ZM_Skybox:GetSkyboxFog(settings) end
     local applied = settings and applyFog(settings, scale) or false
     local reason
     if not settings then reason = "no active profile" end

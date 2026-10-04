@@ -18,6 +18,7 @@ AddCSLuaFile( "cl_item_icons.lua" )
 AddCSLuaFile( "cl_inventory.lua" )
 AddCSLuaFile( "cl_crafting.lua" )
 AddCSLuaFile( "cl_mastercraft.lua" )
+AddCSLuaFile( "cl_bank.lua" )
 AddCSLuaFile( "cl_trading.lua" )
 AddCSLuaFile( "cl_professions.lua" )
 AddCSLuaFile( "cl_loot_popup.lua" )
@@ -28,8 +29,10 @@ AddCSLuaFile( "cl_player.lua" )
 AddCSLuaFile( "cl_thirdpersoncamera.lua" )
 AddCSLuaFile( "cl_transitions.lua" )
 AddCSLuaFile( "cl_hud.lua" )
+AddCSLuaFile( "cl_damage_feedback.lua" )
 AddCSLuaFile( "cl_crosshair.lua" )
 AddCSLuaFile( "cl_atmosphere.lua" )
+AddCSLuaFile( "cl_skybox.lua" )
 AddCSLuaFile( "cl_foliage.lua" )
 AddCSLuaFile( "cl_gore.lua" )
 AddCSLuaFile( "cl_world_map.lua" )
@@ -79,8 +82,13 @@ include( "tests/sv_weapon_catalog_tests.lua" )
 include( "sv_weapon_physics.lua" )
 include( "tests/sv_weapon_effects_tests.lua" )
 include( "sv_player.lua" )
+include( "sv_damage_feedback.lua" )
+include( "tests/sv_damage_feedback_tests.lua" )
 include( "sv_item_generation.lua" )
 include( "sv_inventory.lua" )
+include( "sv_dropped_items.lua" )
+include( "sv_bank.lua" )
+include( "tests/sv_bank_tests.lua" )
 include( "sv_ammo.lua" )
 include( "sv_crafting.lua" )
 include( "sv_implants.lua" )
@@ -133,9 +141,10 @@ ZM_Foliage.StorageReady = foliageReady
 local professionsReady, professionsError = ZM_CreateProfessionTables()
 local implantsReady, implantsError = ZM_CreateImplantTables()
 local creditsReady, creditsError = ZM_CreateCreditTables()
+local bankReady, bankError = ZM_BankService:Init()
 local tradeReady, tradeError = ZM_TradeService:Init()
 local charactersReady, charactersError = false, "character migration prerequisites are not ready"
-if attributesReady and playerDataReady and playerItemsReady and professionsReady and implantsReady and creditsReady and tradeReady then
+if attributesReady and playerDataReady and playerItemsReady and professionsReady and implantsReady and creditsReady and bankReady and tradeReady then
     local mapProfile = ZM_World.LauncherMapProfiles[game.GetMap()] or GetConVar("zombiesim_world_profile"):GetString()
     local legacyReady, legacyError = ZM_EnsureProfiledPlayerData(mapProfile)
     if legacyReady then
@@ -167,6 +176,9 @@ if not implantsReady then
 end
 if not creditsReady then
     ErrorNoHalt("[ZombieSim] Could not prepare credits: " .. tostring(creditsError) .. "\n")
+end
+if not bankReady then
+    ErrorNoHalt("[ZombieSim] Could not prepare banking: " .. tostring(bankError) .. "\n")
 end
 if not tradeReady then
     ErrorNoHalt("[ZombieSim] Could not prepare den trading: " .. tostring(tradeError) .. "\n")
@@ -629,6 +641,11 @@ function GM:LoadSelectedCharacter(ply, profile)
     end
     ZM_LootSpots:OnPlayerReady(ply)
     logLoading(ply, "Prepared loot spots")
+    local droppedItemsLoaded, droppedItemsLoadError = ZM_DroppedItems:OnPlayerReady(ply)
+    if not droppedItemsLoaded then
+        ErrorNoHalt("[ZombieSim] Dropped-item crates could not be loaded: " .. tostring(droppedItemsLoadError) .. "\n")
+    end
+    logLoading(ply, "Prepared dropped-item crates")
     // Cosmetic/harvest foliage must never block a character load.
     local foliageOk, foliageError = pcall(ZM_Foliage.OnPlayerReady, ZM_Foliage, ply)
     if not foliageOk then

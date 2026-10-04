@@ -13,7 +13,15 @@ ZM_Quality.ConVars = {
     snowDrawDistance = CreateClientConVar("zombiesim_snow_draw_distance", "0", true, false,
         "Maximum lying snow draw distance in units; 0 draws as far as the fog allows."),
     screenEffects = CreateClientConVar("zombiesim_screen_effects", "1", true, false,
-        "Enables atmosphere colour correction and film grain.")
+        "Enables atmosphere colour correction and film grain."),
+    skyDetail = CreateClientConVar("zombiesim_sky_detail", "2", true, false,
+        "3D skybox neighbour rings drawn around the current cell (0 disables the city skyline)."),
+    skyClouds = CreateClientConVar("zombiesim_sky_clouds", "1", true, false,
+        "Draws the drifting 3D skybox cloud deck."),
+    skyProps = CreateClientConVar("zombiesim_sky_props", "1", true, false,
+        "Draws scaled tile props and road wrecks in the 3D skybox (0 off; 0.1 to 1 scales the per-frame prop budget)."),
+    skyFires = CreateClientConVar("zombiesim_sky_fires", "1", true, false,
+        "Draws burning wrecks, rooftop fires, and their smoke plumes in the 3D skybox.")
 }
 
 ZM_Quality.PresetOrder = { "low", "medium", "high" }
@@ -27,7 +35,11 @@ ZM_Quality.Presets = {
         zombiesim_snow_detail = 0.4,
         zombiesim_snow_draw_distance = 2500,
         zombiesim_screen_effects = 0,
-        zombiesim_ambient_debris_amount = 0.5
+        zombiesim_ambient_debris_amount = 0.5,
+        zombiesim_sky_detail = 1,
+        zombiesim_sky_clouds = 0,
+        zombiesim_sky_props = 0.4,
+        zombiesim_sky_fires = 0
     },
     medium = {
         zombiesim_atmosphere_rain_density = 1,
@@ -36,7 +48,11 @@ ZM_Quality.Presets = {
         zombiesim_snow_detail = 0.7,
         zombiesim_snow_draw_distance = 4500,
         zombiesim_screen_effects = 1,
-        zombiesim_ambient_debris_amount = 0.75
+        zombiesim_ambient_debris_amount = 0.75,
+        zombiesim_sky_detail = 2,
+        zombiesim_sky_clouds = 1,
+        zombiesim_sky_props = 0.7,
+        zombiesim_sky_fires = 1
     },
     high = {
         zombiesim_atmosphere_rain_density = 1.5,
@@ -45,7 +61,11 @@ ZM_Quality.Presets = {
         zombiesim_snow_detail = 1,
         zombiesim_snow_draw_distance = 0,
         zombiesim_screen_effects = 1,
-        zombiesim_ambient_debris_amount = 1
+        zombiesim_ambient_debris_amount = 1,
+        zombiesim_sky_detail = 2,
+        zombiesim_sky_clouds = 1,
+        zombiesim_sky_props = 1,
+        zombiesim_sky_fires = 1
     }
 }
 

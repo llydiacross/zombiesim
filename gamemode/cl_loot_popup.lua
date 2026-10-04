@@ -196,6 +196,7 @@ hook.Add("Think", "ZM.LootPopup.Target", function()
 end)
 
 hook.Add("PreDrawHalos", "ZM.LootPopup.Target", function()
+    if ZM_WorldMap and ZM_WorldMap.Capturing then return end
     local target = Popup.Target
     if not target or target.reason or not IsValid(target.entity) then
         return
@@ -207,6 +208,7 @@ end)
 // Loot spots in marker range are gathered four times a second rather than with a sphere query every frame.
 local markerSpotRefreshSeconds = 0.25
 local markerSpots = {}
+local markerStates = {}
 local nextMarkerSpotRefresh = 0
 local markerDeclinedColor = Color(160, 160, 160, 255)
 local markerAvailableColor = Color(255, 220, 90, 255)
@@ -219,12 +221,43 @@ local function refreshMarkerSpots(origin)
         return
     end
     nextMarkerSpotRefresh = now + markerSpotRefreshSeconds
+    local changed = false
+    for entity, state in pairs(markerStates) do
+        if not IsValid(entity) or not entity:GetNWBool("ZM_LootSpot", false) then
+            markerStates[entity] = nil
+            changed = true
+        else
+            local current = entity:GetNWString("ZM_LootSpotState", "")
+            if state ~= current then
+                markerStates[entity] = current
+                changed = true
+            end
+        end
+    end
     table.Empty(markerSpots)
     for _, entity in ipairs(ents.FindInSphere(origin, markerRange)) do
         if entity:GetNWBool("ZM_LootSpot", false) then
             markerSpots[#markerSpots + 1] = entity
+            if markerStates[entity] == nil then
+                markerStates[entity] = entity:GetNWString("ZM_LootSpotState", "")
+                changed = true
+            end
         end
     end
+    if changed then Popup.MapRevision = (Popup.MapRevision or 0) + 1 end
+end
+
+function Popup:GetMarkerSpots(origin)
+    refreshMarkerSpots(origin)
+    return markerSpots
+end
+
+function Popup:DrawMinimapMarker(entity, mapX, mapY, mapWidth, mapHeight, markerX, markerY)
+    if markerX < mapX + 7 or markerX > mapX + mapWidth - 7
+        or markerY < mapY + 7 or markerY > mapY + mapHeight - 7 then return end
+    local color = entity:GetNWString("ZM_LootSpotState", "") == "declined" and markerDeclinedColor or gold
+    draw.SimpleTextOutlined("?", "ZM_MinimapLabel", markerX, markerY, color,
+        TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, markerOutlineColor)
 end
 
 hook.Add("HUDPaint", "ZM.LootPopup.Markers", function()
@@ -254,6 +287,11 @@ hook.Add("HUDPaint", "ZM.LootPopup.Markers", function()
         local entity = target.entity
         local anchor = entity:WorldSpaceCenter() + Vector(0, 0, entity:OBBMaxs().z - entity:OBBCenter().z + 12)
         local screen = anchor:ToScreen()
+        if ZM_IsShoulderCamera() then
+            screen.x, screen.y = ZM_GetPlayerIndicatorScreenPos(ply, "hint")
+            screen.y = screen.y - 22
+            screen.visible = true
+        end
         if screen.visible then
             local hint = targetHints[target.reason] or { text = "[" .. string.upper(input.LookupBinding("+use") or "E") .. "] Search", color = color_white }
             draw.SimpleTextOutlined(hint.text, "ZM_LootLevel", screen.x, screen.y + 22, hint.color, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, hintOutlineColor)
@@ -264,8 +302,8 @@ hook.Add("HUDPaint", "ZM.LootPopup.Markers", function()
     if search and ply:Alive() then
         local progress = math.Clamp((CurTime() - search.startedAt) / search.duration, 0, 1)
         local anchorX, anchorY = ScrW() * 0.5, ScrH() * 0.5
-        if ZM_GetPlayerOverheadScreenPos then
-            anchorX, anchorY = ZM_GetPlayerOverheadScreenPos(ply)
+        if ZM_GetPlayerIndicatorScreenPos then
+            anchorX, anchorY = ZM_GetPlayerIndicatorScreenPos(ply, "search")
         end
         local width, height = 90, 7
         local x, y = math.floor(anchorX - width * 0.5), math.floor(anchorY - 24)

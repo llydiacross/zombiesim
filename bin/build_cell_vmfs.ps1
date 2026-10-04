@@ -33,6 +33,87 @@ $transportTemplates = $generatorSettings.cellPlanning.transportTemplates
 if (-not $PSBoundParameters.ContainsKey('PruneStaleGenerated')) { $PruneStaleGenerated = $true }
 Import-Module (Join-Path $PSScriptRoot 'carpark_endcaps.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'vmf_source_dependencies.psm1') -Force
+
+# Writes the shared 3D skybox room (sealed sky shell, ground plane, sky_camera) above the playable cell volume and
+# returns its repository-relative path. It holds no props: cl_skybox.lua draws each cell's neighbour models at runtime.
+function Write-SkyboxRoomVmf {
+    param([hashtable]$Settings, [string]$ProfileName, [int]$TileGridSize, [int]$TileWidth)
+
+    $scale = if ($Settings.ContainsKey('scale')) { [int]$Settings.scale } else { 16 }
+    $radius = if ($Settings.ContainsKey('neighbourRadius')) { [int]$Settings.neighbourRadius } else { 2 }
+    $cameraZ = if ($Settings.ContainsKey('cameraZ')) { [int]$Settings.cameraZ } else { 3328 }
+    $roomHeight = if ($Settings.ContainsKey('roomHeight')) { [int]$Settings.roomHeight } else { 512 }
+    $groundMaterial = if ($Settings.ContainsKey('groundMaterial')) { [string]$Settings.groundMaterial } else { 'CS_HAVANA/SWAMPDIRT01' }
+    if ($scale -lt 1 -or $radius -lt 1) { throw 'vmfBuild.skybox3d scale and neighbourRadius must be positive.' }
+    $cellSpan = ($TileGridSize + 2) * $TileWidth
+    # Neighbour models sit inside the room so their lighting origins resolve to a lit sky leaf. Every vertical room
+    # plane lies on VBSP's 1024-unit block grid: off-grid planes become splitters that cut the playable cell's leaves
+    # and add portals (measured +36 portals on zz_preview_594c1fb8277a with walls at +/-768 and +/-784).
+    $roomHalf = [int]([math]::Ceiling((($radius + 0.5) * $cellSpan / $scale + 64) / 1024.0) * 1024)
+    $roomBottom = $cameraZ - 64
+    $roomTop = $cameraZ + $roomHeight
+    if ($roomBottom - 16 -le 3152) { throw "vmfBuild.skybox3d.cameraZ $cameraZ places the skybox room inside the playable cell volume." }
+    if ($roomTop + 16 -gt 16384 -or $roomHalf + 1024 -gt 16384) { throw 'The skybox room exceeds the Source coordinate limit.' }
+
+    $script:skyboxVmfId = 1
+    $newBox = {
+        param([double]$X0, [double]$Y0, [double]$Z0, [double]$X1, [double]$Y1, [double]$Z1, [string]$Material)
+        $faces = @(
+            @("($X0 $Y1 $Z1) ($X1 $Y1 $Z1) ($X1 $Y0 $Z1)", '[1 0 0 0] 0.25', '[0 -1 0 0] 0.25'),
+            @("($X0 $Y0 $Z0) ($X1 $Y0 $Z0) ($X1 $Y1 $Z0)", '[1 0 0 0] 0.25', '[0 -1 0 0] 0.25'),
+            @("($X0 $Y1 $Z1) ($X0 $Y0 $Z1) ($X0 $Y0 $Z0)", '[0 1 0 0] 0.25', '[0 0 -1 0] 0.25'),
+            @("($X1 $Y0 $Z1) ($X1 $Y1 $Z1) ($X1 $Y1 $Z0)", '[0 1 0 0] 0.25', '[0 0 -1 0] 0.25'),
+            @("($X1 $Y1 $Z1) ($X0 $Y1 $Z1) ($X0 $Y1 $Z0)", '[1 0 0 0] 0.25', '[0 0 -1 0] 0.25'),
+            @("($X0 $Y0 $Z1) ($X1 $Y0 $Z1) ($X1 $Y0 $Z0)", '[1 0 0 0] 0.25', '[0 0 -1 0] 0.25')
+        )
+        $box = [System.Collections.Generic.List[string]]::new()
+        $box.Add("`tsolid"); $box.Add("`t{"); $box.Add("`t`t`"id`" `"$($script:skyboxVmfId)`""); $script:skyboxVmfId++
+        foreach ($face in $faces) {
+            $box.Add("`t`tside"); $box.Add("`t`t{")
+            $box.Add("`t`t`t`"id`" `"$($script:skyboxVmfId)`""); $script:skyboxVmfId++
+            $box.Add("`t`t`t`"plane`" `"$($face[0])`"")
+            $box.Add("`t`t`t`"material`" `"$Material`"")
+            $box.Add("`t`t`t`"uaxis`" `"$($face[1])`"")
+            $box.Add("`t`t`t`"vaxis`" `"$($face[2])`"")
+            $box.Add("`t`t`t`"rotation`" `"0`""); $box.Add("`t`t`t`"lightmapscale`" `"64`""); $box.Add("`t`t`t`"smoothing_groups`" `"0`"")
+            $box.Add("`t`t}")
+        }
+        $box.Add("`t}")
+        return $box
+    }
+
+    $w = 16
+    $o = $roomHalf + 1024
+    $sky = 'TOOLS/TOOLSSKYBOX'
+    $vmf = [System.Collections.Generic.List[string]]::new()
+    $vmf.Add('versioninfo'); $vmf.Add('{'); $vmf.Add("`t`"editorversion`" `"400`""); $vmf.Add("`t`"formatversion`" `"100`""); $vmf.Add("`t`"prefab`" `"0`""); $vmf.Add('}')
+    $vmf.Add('world'); $vmf.Add('{'); $vmf.Add("`t`"id`" `"$($script:skyboxVmfId)`""); $script:skyboxVmfId++
+    $vmf.Add("`t`"mapversion`" `"1`""); $vmf.Add("`t`"classname`" `"worldspawn`""); $vmf.Add("`t`"skyname`" `"sky_day01_01`"")
+    $vmf.AddRange([string[]](& $newBox (-$o) (-$o) ($roomBottom - $w) $o $o $roomBottom $sky))
+    $vmf.AddRange([string[]](& $newBox (-$o) (-$o) $roomTop $o $o ($roomTop + $w) $sky))
+    $vmf.AddRange([string[]](& $newBox (-$o) (-$o) $roomBottom (-$roomHalf) $o $roomTop $sky))
+    $vmf.AddRange([string[]](& $newBox $roomHalf (-$o) $roomBottom $o $o $roomTop $sky))
+    $vmf.AddRange([string[]](& $newBox (-$roomHalf) (-$o) $roomBottom $roomHalf (-$roomHalf) $roomTop $sky))
+    $vmf.AddRange([string[]](& $newBox (-$roomHalf) $roomHalf $roomBottom $roomHalf $o $roomTop $sky))
+    # Seabed below cl_skybox.lua's coast sea level (-3 sky units). Neighbour models cover every in-grid slot, so this is
+    # only seen through the sea beyond the world edge.
+    $vmf.AddRange([string[]](& $newBox (-$roomHalf) (-$roomHalf) $roomBottom $roomHalf $roomHalf ($cameraZ - 24) $groundMaterial))
+    $vmf.Add('}')
+    # cl_atmosphere.lua replaces this fog every frame through SetupSkyboxFog.
+    $vmf.Add('entity'); $vmf.Add('{'); $vmf.Add("`t`"id`" `"$($script:skyboxVmfId)`""); $script:skyboxVmfId++
+    $vmf.Add("`t`"classname`" `"sky_camera`""); $vmf.Add("`t`"origin`" `"0 0 $cameraZ`""); $vmf.Add("`t`"angles`" `"0 0 0`"")
+    $vmf.Add("`t`"scale`" `"$scale`""); $vmf.Add("`t`"fogenable`" `"1`""); $vmf.Add("`t`"fogblend`" `"0`""); $vmf.Add("`t`"use_angles`" `"0`"")
+    $vmf.Add("`t`"fogcolor`" `"128 128 128`""); $vmf.Add("`t`"fogcolor2`" `"128 128 128`""); $vmf.Add("`t`"fogdir`" `"1 0 0`"")
+    $vmf.Add("`t`"fogstart`" `"200`""); $vmf.Add("`t`"fogend`" `"2000`""); $vmf.Add("`t`"fogmaxdensity`" `"1`"")
+    $vmf.Add('}')
+
+    $relativePath = "generated\skybox_$ProfileName\skybox_room.vmf"
+    $roomPath = Join-Path $projectRoot $relativePath
+    $null = New-Item -ItemType Directory -Force -Path (Split-Path -Parent $roomPath)
+    $null = Write-TextFileIfChanged -Path $roomPath -Content (($vmf -join "`r`n") + "`r`n")
+    return $relativePath
+}
+
 if ($borderEnabled) {
     if (-not $borderSettings.ContainsKey('wallVariationTemplates') -or @($borderSettings.wallVariationTemplates).Count -eq 0) {
         throw 'vmfBuild.border must define at least one wallVariationTemplates entry when borders are enabled.'
@@ -63,6 +144,13 @@ if ([string]::IsNullOrWhiteSpace($PlanData) -or -not (Test-Path $PlanData)) {
 $plan = Get-Content -Raw $PlanData | ConvertFrom-Json
 if ($plan.schemaVersion -lt 2 -or $plan.cellTileGridSize -lt 1) {
     throw 'The template plan must contain a cellTileGridSize and tilePlacements.'
+}
+# Every city recipe carries the same 3D skybox room; cl_skybox.lua draws the current cell's neighbours inside it.
+$skyboxSettings = if ($vmfBuildSettings.ContainsKey('skybox3d')) { $vmfBuildSettings.skybox3d } else { @{} }
+$skyboxEnabled = $skyboxSettings.ContainsKey('enabled') -and [bool]$skyboxSettings.enabled
+$skyboxRoomTemplate = ''
+if ($skyboxEnabled) {
+    $skyboxRoomTemplate = Write-SkyboxRoomVmf $skyboxSettings ([string]$profileSettings.filePrefix) ([int]$plan.cellTileGridSize) $TileSize
 }
 $safeZoneMaps = @($plan.safeZoneMaps)
 $safeZoneTemplateDirectory = [string]$plan.safeZoneTemplateDirectory
@@ -738,7 +826,8 @@ function New-CellVmf {
         [string]$TemplateDirectory,
         [string]$BaseTemplatePath,
         [object[]]$CubemapAnchors,
-        [object[]]$BorderPlacements
+        [object[]]$BorderPlacements,
+        [string]$SkyboxRoomTemplate
     )
 
     $placements = @($Recipe.tilePlacements)
@@ -771,6 +860,22 @@ function New-CellVmf {
             ('    "angles" "0 {0} 0"' -f [int]$placement.rotationYaw),
             ('    "file" "{0}"' -f $instancePath),
             ('    "targetname" "{0}"' -f $targetname),
+            '    "fixup_style" "0"',
+            '}'
+        ))
+        $entityId++
+    }
+    if (-not [string]::IsNullOrWhiteSpace($SkyboxRoomTemplate)) {
+        $instancePath = Get-VmfInstancePath $SourceDirectory $projectRoot $SkyboxRoomTemplate
+        $lines.AddRange([string[]]@(
+            'entity',
+            '{',
+            ('    "id" "{0}"' -f $entityId),
+            '    "classname" "func_instance"',
+            '    "origin" "0 0 0"',
+            '    "angles" "0 0 0"',
+            ('    "file" "{0}"' -f $instancePath),
+            '    "targetname" "zm_skybox_room"',
             '    "fixup_style" "0"',
             '}'
         ))
@@ -984,7 +1089,7 @@ if ($PruneStaleGenerated) {
         $pruned++
     }
 }
-if ($RefreshGenerated -or $Force -or $PruneStaleGenerated) {
+if (($RefreshGenerated -or $Force -or $PruneStaleGenerated)) {
     foreach ($existingDenMap in (Get-ChildItem -Path $CellDirectory -File | Where-Object { $_.Name -like 'zn_den_*' -or $_.Name -like 'zz_den_*' })) {
         if ($safeZoneMapNames.ContainsKey([System.IO.Path]::ChangeExtension($existingDenMap.Name, '.vmf').ToLowerInvariant())) {
             continue
@@ -999,7 +1104,9 @@ foreach ($recipe in $recipes) {
     $outputPath = Join-Path $CellDirectory $recipe.cellTemplateFilename
     Test-RecipeTilePlacements $recipe $plan.cellTileGridSize
     $hasSafeZoneEntrance = $null -ne $recipe.PSObject.Properties['safeZoneEntrance'] -and $null -ne $recipe.safeZoneEntrance
-    $expectedInteriorInstanceCount = (Get-RecipeInteriorInstanceCount $recipe) + $(if ($hasSafeZoneEntrance) { 1 } else { 0 })
+    $expectedInteriorInstanceCount = (Get-RecipeInteriorInstanceCount $recipe) +
+        $(if ($hasSafeZoneEntrance) { 1 } else { 0 }) +
+        $(if ($skyboxEnabled) { 1 } else { 0 })
     $cubemapAnchors = Get-CubemapAnchors $recipe $plan.cellTileGridSize $TileSize $TileZOffset
     $borderPlacements = Get-BorderPlacements $recipe $plan.cellTileGridSize
     $transitionGates = @(Get-TransitionGatePlacements $recipe)
@@ -1009,14 +1116,19 @@ foreach ($recipe in $recipes) {
         $cubemapProbeReport.Add("Cubemap probes: $($recipe.cellTemplateFilename) = $($cubemapAnchors.Count)")
     }
     if ((Test-Path $outputPath) -and -not $Force) {
-        if (-not $RefreshGenerated -or -not (Test-GeneratedCellVmf $outputPath $expectedInteriorInstanceCount $expectedBorderInstanceCount $transitionGates.Count)) {
+        $matchesExpectedStructure = Test-GeneratedCellVmf $outputPath $expectedInteriorInstanceCount $expectedBorderInstanceCount $transitionGates.Count
+        # A recipe written before the skybox room was enabled or disabled differs only by that one instance.
+        $skyboxToggledCount = $expectedInteriorInstanceCount + $(if ($skyboxEnabled) { -1 } else { 1 })
+        $matchesSkyboxToggle = Test-GeneratedCellVmf $outputPath $skyboxToggledCount $expectedBorderInstanceCount $transitionGates.Count
+        if (-not $RefreshGenerated -or (-not $matchesExpectedStructure -and -not $matchesSkyboxToggle)) {
             $skipped++
             continue
         }
         $refreshed++
     }
 
-    $vmf = New-CellVmf $recipe $plan.cellTileGridSize $TileSize $TileZOffset $CellDirectory $TileDirectory $BaseCellTemplate $cubemapAnchors $borderPlacements
+    $vmf = New-CellVmf $recipe $plan.cellTileGridSize $TileSize $TileZOffset $CellDirectory $TileDirectory $BaseCellTemplate $cubemapAnchors $borderPlacements `
+        $skyboxRoomTemplate
     if (-not $WhatIf) {
         # Unchanged recipes keep their timestamps so compilers skip them.
         $vmfChanged = Write-TextFileIfChanged -Path $outputPath -Content $vmf

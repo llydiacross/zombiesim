@@ -4,17 +4,30 @@ ENT.PrintName = "ZombieSim Den Stash"
 ENT.Category = "ZombieSim"
 ENT.Spawnable = true
 ENT.AdminOnly = false
+ENT.DefaultModel = "models/props_junk/wood_crate001a.mdl"
+
+function ENT:KeyValue(key, value)
+    if string.lower(key) == "model" then
+        self.ZM_Model = value
+    end
+end
 
 function ENT:Initialize()
     if SERVER then
-        self:SetModel("models/props_junk/wood_crate001a.mdl")
+        local model = self.ZM_Model
+        if type(model) == "string" and model ~= "" and not util.IsValidModel(model) then
+            ErrorNoHalt("[ZombieSim] zn_den_stash has invalid model '" .. model .. "'; using its default.\n")
+            model = nil
+        end
+        self:SetModel(type(model) == "string" and model ~= "" and model or self.DefaultModel)
         self:PhysicsInit(SOLID_VPHYSICS)
         self:SetMoveType(MOVETYPE_VPHYSICS)
         self:SetSolid(SOLID_VPHYSICS)
         self:SetUseType(SIMPLE_USE)
         local physics = self:GetPhysicsObject()
         if IsValid(physics) then
-            physics:Wake()
+            physics:EnableMotion(false)
+            physics:Sleep()
         else
             // A missing model has no collision, so traces (and +use) pass straight through it.
             ErrorNoHalt("[ZombieSim] " .. self:GetClass() .. " has no physics; model '" .. self:GetModel() .. "' may be missing.\n")

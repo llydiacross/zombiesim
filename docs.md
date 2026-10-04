@@ -193,7 +193,7 @@ Use the visibility-budget check after changing structural tile geometry. With `-
 .\bin\check_vis_budgets.ps1 -WorldProfile preview -RefreshPortalData
 ```
 
-The configured diagnostic budgets are `750` portal clusters and `1,350` portals. These thresholds are not engine limits. They are configured under `compilation.visibilityBudget` in [generator-settings.json](generator-settings.json), can be overridden for one run with `-MaxPortalClusters` and `-MaxPortals`, and write `vis-budget-report.json` beside the preview BSPs. For every over-budget recipe, the report also ranks its instanced tiles by their aggregate non-`func_detail` brush-solid count and shows each tile's detail-solid, entity, and prop counts. This is a diagnostic lead rather than a portal attribution: open sightlines between tiles can also create high VVIS cost. The command exits nonzero for over-budget, missing, or invalid portal files.
+The configured diagnostic budgets are `1,500` portal clusters and `2,700` portals. These thresholds are not engine limits. They are configured under `compilation.visibilityBudget` in [generator-settings.json](generator-settings.json), can be overridden for one run with `-MaxPortalClusters` and `-MaxPortals`, and write `vis-budget-report.json` beside the preview BSPs. For every over-budget recipe, the report also ranks its instanced tiles by their aggregate non-`func_detail` brush-solid count and shows each tile's detail-solid, entity, and prop counts. This is a diagnostic lead rather than a portal attribution: open sightlines between tiles can also create high VVIS cost. The command exits nonzero for over-budget, missing, or invalid portal files.
 
 ## Selecting City Data In Hammer
 
@@ -505,14 +505,18 @@ Every source cell is a special `The Epicenter` landmark, marked with an `EPI` ma
 | `cellMiles` | Lore distance represented by one grid cell. |
 | `loreReferenceFalloutMilesAtOneMegaton` | Lore reference radius representing 1 MT in the yield-equivalence calculation. |
 | `destroyedThreshold` | Radiation intensity from greater than `0` to `1` at which a cell receives the `destroyed` tag and destroyed-city planning. |
-| `damagePerSecondAtPeak` | Health damage per second at full radiation intensity. Damage scales linearly below the peak. |
+| `damagePerSecondAtPeak` | Exported peak-rate metadata. The current player-damage loop instead applies the discrete intervals documented in the readme. |
 | `overlayMaximumAlpha` | Opacity from `0` to `255` used by every discrete radiation grid cell. |
+
+The top-right HUD radiation meter linearly maps normalized in-game cell intensity (`0` to `1`) to a fictional `0`–`10 Sv` game estimate. The compact meter hides when its displayed value rounds to zero; it is not physically calibrated and must not be interpreted as a real-world dose or dose rate. The world-map cell inspector continues to show the normalized intensity as a percentage. Runtime damage continues to use the existing exposure intervals and Strength-based health floor.
+
+The HUD damage indicator is driven by the server's post-damage event and is sent only when damage was actually applied. It points toward a nearby attacker, inflictor, or reliable impact position, and scales briefly with damage; when no reliable horizontal source exists (including ordinary radiation ticks), a subtle screen-edge pulse communicates damage without inventing a direction. Feedback is bounded to six directional entries, merges repeated hits from the same nearby source, and is hidden while menus or safe zones are active. `zn_test_damage_feedback` checks source selection and damage scaling; directional presentation still requires in-game verification.
 
 ### `danger`
 
 Danger is a generated scalar for enemy scaling, stored on every world cell alongside, but independent from, its environment tags and radiation level. It begins at world `(0,0)` and progresses in nested right-facing chevrons using $d=x+|y|$. Safe-zone cells always have danger `0`. The generator exports a transparent `danger` layer that colors each cell outline by its discrete danger tier, leaving the filled building square visible.
 
-The generated value is clamped to $0 \leq D \leq 1$ and classified in the manifest as `safe`, `low`, `moderate`, `high`, or `extreme`. Runtime consumers can read it through `ZM_World:GetDangerIntensity(...)` or `ply:GetDangerIntensity()` and combine it with `ZM_World:GetEnvironment(...)` tags when selecting enemy types, counts, or modifiers. Radiation is visualized separately as discrete grid-cell fills with fixed contamination colors.
+The generated value is clamped to $0 \leq D \leq 1$ and classified in the manifest as `safe`, `low`, `moderate`, `high`, or `extreme`. Runtime consumers can read it through `ZM_World:GetDangerIntensity(...)` or `ply:GetDangerIntensity()` and combine it with `ZM_World:GetEnvironment(...)` tags when selecting enemy types, counts, or modifiers. The HUD panel above the minimap and the world-map inspector show danger on a 0–6 star scale matching the six generated non-safe levels; safe cells have zero filled stars. Radiation is visualized separately in the top-right HUD meter as a fictional Sv estimate, in the inspector as a percentage of normalized game intensity, and in the map as discrete grid-cell fills with fixed contamination colors.
 
 | Setting | What it controls |
 | --- | --- |
@@ -592,7 +596,7 @@ These regular-expression filters decide which VMF files from `templateDirectory`
 | `destroyedBuildings` | Optional destroyed building assets, such as `buildings/tile_destroyed_*.vmf`. They are selected for `destroyed` fallout-core cells when at least one matching template exists. |
 | `warehouses` | Warehouse assets usable by generic building selection. |
 | `commercial` | Commercial assets. They are only allowed in commercial profiles or a Market landmark cell. |
-| `industry` | Industry assets. They are only allowed on dirt terrain or radioactive profiles. |
+| `industry` | Industry assets (`buildings/tile_industry_*` or `buildings/tile_industrial_*`). They are only allowed on dirt terrain or radioactive profiles. Each needs a `zn_tile_direction` frontage marker. |
 | `decorations` | Decoration assets. Dirt and radioactive cells prefer these more often. |
 | `carparks` | Carpark variants. They are only considered next to ordinary straight roads, not landmarks. |
 
@@ -634,6 +638,7 @@ All values are Hammer yaw angles in degrees. The generator rotates the generated
 | `transport.bridge-vertical` and `transport.bridge-horizontal` | Center yaws for motorway bridge crossings. |
 | `transport.bridgeRampByDirection` | Yaw for road ramps that face the bridge direction. |
 | `transport.onrampByDirection` | Yaw for motorway on-ramps whose authored north-edge road connects toward each direction. |
+| `transport.onrampRoadByDirection` | Yaw for the `tile_road_onramp` approach tile (city road on local south, ramp lanes on local north), so its ramp edge faces the motorway on-ramp opening. Always `onrampByDirection` + 180. |
 
 Use only `0`, `90`, `180`, or `270` for the current square tiles. Test any change in a preview VMF in Hammer. A wrong yaw can make an apparently valid road point into a building or a cell border.
 
@@ -681,6 +686,16 @@ Building height is inferred from the letter count after the number in names such
 | `carparks.maximumLaneTiles` | Maximum straight-tile length for each enabled carpark lane. It must be at least the minimum and no greater than the available distance to the cell edge. |
 
 Carparks only replace an eligible building space beside a road. They do not overwrite roads, ramps, bridges, or landmarks. Before recipes are built, the planner makes separate world-wide coverage passes and reserves up to `coverageCarparksPerRegion` eligible cells per `coverageCellSpan` region. It rejects candidates closer than `minimumCellSeparation` under Chebyshev grid distance and prefers full straight-road layouts before compact junction sidecars. Forced straight-road coverage uses a through entrance and two full-length arms so it reads as a long carpark on the satellite. A junction carpark replaces an internal road-arm tile with a T-junction and occupies only adjacent free tiles, leaving the center intersection intact. Its one-sided lane is one tile long so it can terminate at the cell edge without cutting a perpendicular road. Reserved recipes use a stable `-cp.vmf` basename and the plan records each selected coordinate in `carparkCoverage`; planning fails if any reserved cell lacks a carpark entrance. The selected entrance layout and its lane length are deterministic for a recipe: through entrances create two arms, `_deadend_east` and `_deadend_west` create one, and the unsuffixed `_deadend` entrance creates no arms.
+
+### `openTerrain` And `topologyVariants`
+
+| Setting | What it controls |
+| --- | --- |
+| `openTerrain.maximumOpenTilePercent` | Highest share of a cell's 25 tiles that may stay plain `terrain` fill. After all other placement, the planner turns the excess into decoration templates in a seed-hashed order and skips tiles that a 1x1 building's frontage faces. The current `16` keeps every preview recipe at or below 4 open tiles (the Phase E target is a mean of 18% or lower and no recipe above 32%). |
+| `topologyVariants.chancePercent` | Chance from `0` to `100` that an eligible plain straight road or motorway tile becomes an authored visual variant. Eligible tiles have role `road` and exactly the `road-straight` or `motorway-straight` template; ramps, bridges, junctions, gates, carparks and border tiles are never swapped. |
+| `topologyVariants.templates` | Variant pools keyed by `road-straight` or `motorway-straight`. Each variant must keep the base piece's brushes and connections. The selection uses the cell seed and tile coordinates, so a stable seed gives the same plan. |
+
+`bin/test_phase_e_layouts.ps1` checks these limits, the industrial selection, the variant share, orphan `.vmx` files, and, with `-Replan`, that re-planning gives the same plan.
 
 ### `variants`
 
@@ -834,6 +849,7 @@ Generated recipes receive one to three deterministic `env_cubemap` entities. Aft
 | --- | --- | --- |
 | `tileSize` | Distance in Hammer units between the centers of neighbouring tile instances. | Default `640` must match the physical width of normal tiletemplate VMFs. Do not use this to correct a misplaced model inside a source prefab. |
 | `tileZOffset` | Vertical offset, in Hammer units, applied to every generated tile instance. | Default `0`. A non-zero value moves all generated chunks up or down together. |
+| `skybox3d` | Runtime 3D skybox. With `enabled: true`, `build_cell_vmfs.ps1` writes one shared room (`generated/skybox_<profile>/skybox_room.vmf`: a sealed TOOLSSKYBOX shell, a seabed ground brush at `cameraZ - 24`, and a `sky_camera`) and instances it into every city recipe as `zm_skybox_room`. Dens, safe-zone maps, and launchers do not get it. The settings are `enabled`; `scale` (sky_camera scale, `16`); `neighbourRadius` (how many cells out are modelled); `cameraZ` and `roomHeight` (the room above the playable cell box); `minBrushExtent` (brushes smaller than this are culled); `maxPartVertices` and `maxPartMaterials` (limits for splitting a model into parts; at most 60 materials per part); and `groundMaterial`. Snow overlay settings: `snowOverlay` (build per-recipe `<recipe>_s<N>` snow models), `snowMinNormalZ` (minimum face normal z for snow, `0.7`), `snowLift` (world units the snow is raised, `2`; larger lifts show as a slab at the cell edge), and `snowTextureWorldSize` (planar UV tile size, `256`). Set dressing settings: `detailProps` (emit the manifest `detail` table), `detailPropPattern` and `detailVehiclePattern` (model regexes for authored tile props and vehicles), `roadCarMaterial` (lane surface for generated wrecks, `CONCRETE/CONCRETEFLOOR037A`), `roadCarModels`, `roadCarSpacing` (`320`), `roadCarChance` (`0.35`), and `roofFireMinHeight` (lowest rooftop that can burn, `192`). | Build the models with `bin/build_skybox_models.ps1 -WorldProfile <profile>` after the recipe VMFs exist. It converts each unique recipe's brushes and displacements (not tile props) into models under `content/models/zombiesim/skybox/cells`, with wrapper VMTs in `content/materials/models/zombiesim/skybox`. It also writes the runtime manifest `content/data_static/zombiesim_skybox_<profile>.json`. `gamemode/cl_skybox.lua` draws the current cell's neighbours from that manifest in the 3D sky pass. Out-of-grid slots become a client-drawn coast: sea, sea wall, and foam. The snow models fade in with `ZM_Atmosphere.SnowCoverAmount` and draw with a small `render.DepthRange` bias. Skybox models are lit from the playable cell's lighting (`render.ComputeLighting` sampled on a ring near the cell edge) so the seam matches the lightmapped map; client convars `zombiesim_sky_matched_lighting` (default 1) and `zombiesim_sky_light_scale` (default 0.2) control this. Set dressing (authored props, generated road wrecks, and fire candidates) is drawn through one shared scaled model per prop type, within a per-frame draw budget scaled by `zombiesim_sky_props`; `zombiesim_sky_fires` toggles burning wrecks and rooftops with smoke plumes. Both are part of the quality presets. The module also draws a fog-coloured horizon wall and weather-driven clouds, and grades skybox fog so it is opaque at the wall. Every vertical room plane lies on VBSP's 1024-unit block grid so the room does not split the playable cell's leaves. Compilers find the models through the `_compile_game` overlay that `compile_cell_vmfs.ps1` writes; its mount.cfg adds `content`. |
 
 # Zombiesim Loot and loot spots
 

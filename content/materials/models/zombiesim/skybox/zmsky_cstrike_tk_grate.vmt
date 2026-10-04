@@ -1,0 +1,5 @@
+"VertexLitGeneric"
+{
+    "$basetexture" "cstrike/{tk_grate"
+    "$translucent" "1"
+}

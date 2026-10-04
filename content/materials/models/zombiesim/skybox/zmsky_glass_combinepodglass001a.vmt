@@ -1,0 +1,5 @@
+"VertexLitGeneric"
+{
+    "$basetexture" "glass/combinepodglass001a"
+    "$translucent" "1"
+}

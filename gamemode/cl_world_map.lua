@@ -13,7 +13,7 @@ local localMapDenSpanScale = 2
 // Ortho ignores fov for projection; a wide fov only keeps any fov-based culling generous
 // (120 degrees reaches the doubled den span from the camera height).
 local localMapCullFieldOfView = 120
-local localMapCaptureVersion = 7
+local localMapCaptureVersion = 9
 local localMapRefreshInterval = 3
 local mapDebugConVar = CreateClientConVar("zombiesim_map_debug", "0", true, false, "Show world map draw diagnostics.")
 
@@ -418,8 +418,11 @@ end
 // The flat ortho keys are used because the ortho table form is ignored by this Garry's Mod branch.
 local function renderLocalMapView(size, span)
     local halfSpan = span * 0.5
+    // City recipes carry the 3D skybox room above the cell; an ortho camera inside it would capture only the room.
+    local ceiling = ZM_Skybox and ZM_Skybox.GetPlayableCeiling and ZM_Skybox:GetPlayableCeiling()
+    local cameraHeight = ceiling and math.min(localMapCameraHeight, ceiling) or localMapCameraHeight
     render.RenderView({
-        origin = Vector(0, 0, localMapCameraHeight),
+        origin = Vector(0, 0, cameraHeight),
         angles = Angle(90, 90, 0),
         x = 0,
         y = 0,
@@ -433,14 +436,42 @@ local function renderLocalMapView(size, span)
         orthobottom = halfSpan,
         znear = 4,
         zfar = 8192,
-        drawviewer = true,
+        drawviewer = false,
         drawviewmodel = false,
         drawhud = false,
         dopostprocess = false
     })
 end
 
+function WorldMap:HideCapturePlayerEntities()
+    local hidden = {}
+    local function hide(entity)
+        if not IsValid(entity) or hidden[entity] then return end
+        hidden[entity] = {
+            noDraw = entity:GetNoDraw(),
+            noShadow = entity:IsEffectActive(EF_NOSHADOW)
+        }
+        entity:SetNoDraw(true)
+        entity:AddEffects(EF_NOSHADOW)
+    end
+    for _, playerEntity in ipairs(getAllPlayers()) do
+        hide(playerEntity)
+        for _, weapon in ipairs(playerEntity:GetWeapons()) do hide(weapon) end
+    end
+    return hidden
+end
+
+function WorldMap:RestoreCapturePlayerEntities(hidden)
+    for entity, state in pairs(hidden) do
+        if IsValid(entity) then
+            entity:SetNoDraw(state.noDraw)
+            if not state.noShadow then entity:RemoveEffects(EF_NOSHADOW) end
+        end
+    end
+end
+
 function WorldMap:CaptureCurrentMap(resetViewport)
+    if self.Capturing then return false end
     local player = LocalPlayer()
     if not IsValid(player) then
         return false
@@ -463,6 +494,7 @@ function WorldMap:CaptureCurrentMap(resetViewport)
         IMAGE_FORMAT_RGB888 or 2
     )
     if not renderTarget then
+        ErrorNoHalt("[ZombieSim] Local map render target is unavailable.\n")
         return false
     end
     local material = CreateMaterial(renderTargetName .. "_material", "UnlitGeneric", {
@@ -470,17 +502,36 @@ function WorldMap:CaptureCurrentMap(resetViewport)
         ["$vertexcolor"] = "1"
     })
     if not material or material:IsError() then
+        ErrorNoHalt("[ZombieSim] Local map capture material is unavailable.\n")
         return false
     end
 
     local span = getLocalMapCaptureSpan()
+    self.Capturing = true
+    local hiddenPlayerEntities = self:HideCapturePlayerEntities()
+    if ZM_Atmosphere then ZM_Atmosphere:SetMapCaptureHidden(true) end
     render.PushRenderTarget(renderTarget)
     render.Clear(0, 0, 0, 255, true, true)
-    renderLocalMapView(localMapCaptureSize, span)
+    local ok, renderError = xpcall(function()
+        renderLocalMapView(localMapCaptureSize, span)
+    end, debug.traceback)
     render.PopRenderTarget()
+    if ZM_Atmosphere then ZM_Atmosphere:SetMapCaptureHidden(false) end
+    self:RestoreCapturePlayerEntities(hiddenPlayerEntities)
+    self.Capturing = false
+    if not ok then
+        ErrorNoHalt("[ZombieSim] Local map capture failed: " .. tostring(renderError) .. "\n")
+        return false
+    end
 
-    self.LocalMapTiles[mapKey] = { material = material, span = span }
+    self.LocalMapTiles[mapKey] = {
+        material = material,
+        span = span,
+        lootRevision = ZM_LootPopup and ZM_LootPopup.MapRevision or 0,
+        atmosphereState = ZM_Atmosphere and ZM_Atmosphere:GetMapCaptureState() or "clear"
+    }
     self.LocalMapRefreshTimes[mapKey] = CurTime()
+    self.LocalMapCaptureCount = (self.LocalMapCaptureCount or 0) + 1
     if resetViewport ~= false then
         self.LocalViewport = { zoom = localMapDefaultZoom, panX = 0, panY = 0 }
         self:SaveLocalViewportState()
@@ -489,10 +540,35 @@ function WorldMap:CaptureCurrentMap(resetViewport)
 end
 
 function WorldMap:EnsureLocalMapCapture()
-    if getLocalMapCapture() then
+    local capture = getLocalMapCapture()
+    if capture then
+        if ZM_Atmosphere and capture.atmosphereState ~= ZM_Atmosphere:GetMapCaptureState()
+            or capture.lootRevision ~= (ZM_LootPopup and ZM_LootPopup.MapRevision or 0) then
+            self.LocalMapRefreshRequested = true
+        end
         return true
     end
+
     return self:CaptureCurrentMap()
+end
+
+hook.Add("PrePlayerDraw", "ZM.WorldMap.HideCapturePlayers", function()
+    if WorldMap.Capturing then return true end
+end)
+
+function WorldMap:GetCaptureDiagnosticSnapshot()
+    local capture = getLocalMapCapture()
+    return {
+        capturing = self.Capturing == true,
+        count = self.LocalMapCaptureCount or 0,
+        refreshRequested = self.LocalMapRefreshRequested == true,
+        capturedState = capture and capture.atmosphereState or nil,
+        capturedLootRevision = capture and capture.lootRevision or nil,
+        currentLootRevision = ZM_LootPopup and ZM_LootPopup.MapRevision or 0,
+        currentState = ZM_Atmosphere and ZM_Atmosphere:GetMapCaptureState() or "clear",
+        lastCaptureAt = self.LocalMapRefreshTimes[getLocalMapKey()],
+        version = localMapCaptureVersion
+    }
 end
 
 function WorldMap:ProjectLocalMapPosition(x, y, width, height, centerPosition, viewHeight, mapPosition)
@@ -1702,6 +1778,60 @@ local function wrapCellInspectorText(text, maxWidth)
     return #lines > 0 and lines or { "None" }
 end
 
+local function drawCellInspectorDangerStar(centerX, centerY, radius, color)
+    local shape = WorldMap.InspectorDangerStarShape
+    if not shape then
+        shape = {
+            tipUnits = {},
+            innerUnits = {},
+            tipPoints = {},
+            innerPoints = {},
+            triangles = {}
+        }
+        for pointIndex = 1, 5 do
+            local angle = math.rad(-90 + (pointIndex - 1) * 72)
+            local innerAngle = angle - math.rad(36)
+            shape.tipUnits[pointIndex] = { x = math.cos(angle), y = math.sin(angle) }
+            shape.innerUnits[pointIndex] = {
+                x = math.cos(innerAngle) * 0.45,
+                y = math.sin(innerAngle) * 0.45
+            }
+            shape.tipPoints[pointIndex] = {}
+            shape.innerPoints[pointIndex] = {}
+            shape.triangles[pointIndex] = {
+                shape.tipPoints[pointIndex],
+                shape.innerPoints[pointIndex],
+                shape.innerPoints[pointIndex % 5 + 1]
+            }
+        end
+        WorldMap.InspectorDangerStarShape = shape
+    end
+
+    draw.NoTexture()
+    for sizePass = 1, 2 do
+        local scale = sizePass == 1 and radius + 1 or radius
+        for pointIndex = 1, 5 do
+            local tipUnit = shape.tipUnits[pointIndex]
+            local innerUnit = shape.innerUnits[pointIndex]
+            local tipPoint = shape.tipPoints[pointIndex]
+            local innerPoint = shape.innerPoints[pointIndex]
+            tipPoint.x = centerX + tipUnit.x * scale
+            tipPoint.y = centerY + tipUnit.y * scale
+            innerPoint.x = centerX + innerUnit.x * scale
+            innerPoint.y = centerY + innerUnit.y * scale
+        end
+        if sizePass == 1 then
+            surface.SetDrawColor(15, 17, 20, 255)
+        else
+            surface.SetDrawColor(color)
+        end
+        surface.DrawPoly(shape.innerPoints)
+        for pointIndex = 1, 5 do
+            surface.DrawPoly(shape.triangles[pointIndex])
+        end
+    end
+end
+
 local function createCellInspector(parent)
     local inspector = vgui.Create("DScrollPanel", parent)
     local card = vgui.Create("DPanel", inspector)
@@ -1762,8 +1892,8 @@ local function createCellInspector(parent)
 
         for _, row in ipairs(self.Rows) do
             if row.kind then
-                table.insert(rows, { row = row, y = y, height = 27 })
-                y = y + 31
+                table.insert(rows, { row = row, y = y, height = 34 })
+                y = y + 38
             else
                 local valueLines = wrapCellInspectorText(row.value, width - padding * 2)
                 local rowHeight = 15 + #valueLines * 13 + 5
@@ -1830,21 +1960,34 @@ local function createCellInspector(parent)
                 local barY = y + 15
                 local barWidth = width - padding * 2
                 local intensity = math.Clamp(tonumber(row.value) or 0, 0, 1)
-                surface.SetDrawColor(37, 44, 50, 255)
-                surface.DrawRect(padding, barY, barWidth, 8)
+                local percentage = math.floor(intensity * 100 + 0.5)
+                local red = math.floor(112 + intensity * 143)
+                local green = math.floor(214 - intensity * 152)
+                draw.SimpleText(string.format("%d%%", percentage), "DermaDefaultBold",
+                    width - padding, y, MapColors.text, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+                surface.SetDrawColor(25, 31, 35, 255)
+                surface.DrawRect(padding, barY, barWidth, 9)
                 if intensity > 0 then
-                    surface.SetDrawColor(math.floor(112 + intensity * 143), math.floor(214 - intensity * 152), 58, 255)
-                    surface.DrawRect(padding + 1, barY + 1, math.max(1, (barWidth - 2) * intensity), 6)
+                    surface.SetDrawColor(red, green, 58, 255)
+                    surface.DrawRect(padding + 1, barY + 1, math.max(1, math.floor((barWidth - 2) * intensity)), 7)
+                end
+                for tick = 1, 3 do
+                    local tickX = padding + math.floor(barWidth * tick / 4)
+                    surface.SetDrawColor(8, 11, 13, 215)
+                    surface.DrawRect(tickX, barY, 1, 9)
                 end
                 surface.SetDrawColor(90, 102, 111, 255)
-                surface.DrawOutlinedRect(padding, barY, barWidth, 8, 1)
+                surface.DrawOutlinedRect(padding, barY, barWidth, 9, 1)
             elseif row.kind == "danger" then
                 draw.SimpleText("DANGER", "DermaDefaultBold", padding, y, MapColors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-                local starCount = math.Clamp(math.ceil((tonumber(row.value) or 0) * 5), 0, 5)
-                for starIndex = 1, 5 do
+                local intensity = math.Clamp(tonumber(row.value) or 0, 0, 1)
+                local starCount = math.Clamp(math.floor(intensity * 6 + 0.5), 0, 6)
+                for starIndex = 1, 6 do
                     local color = starIndex <= starCount and MapColors.redBright or MapColors.raised
-                    draw.SimpleText("*", "DermaDefaultBold", padding + (starIndex - 1) * 16, y + 13, color, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+                    drawCellInspectorDangerStar(padding + 8 + (starIndex - 1) * 18, y + 25, 7, color)
                 end
+                draw.SimpleText(string.format("%d/6", starCount), "DermaDefaultBold",
+                    width - padding, y, MapColors.text, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
             else
                 draw.SimpleText(string.upper(row.label), "DermaDefaultBold", padding, y, MapColors.redBright, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
                 for lineIndex, line in ipairs(layoutRow.lines) do
@@ -2553,8 +2696,11 @@ hook.Add("Think", "ZM.WorldMap.M", function()
 end)
 
 hook.Add("PostRender", "ZM.WorldMap.LocalMapRefresh", function()
-    if IsValid(WorldMap.Frame) and WorldMap.RenderMode == "map" then
-        WorldMap:RefreshLocalMapIfDue()
+    if WorldMap.LocalMapRefreshRequested or IsValid(WorldMap.Frame) and WorldMap.RenderMode == "map" then
+        local mapKey = getLocalMapKey()
+        if CurTime() - (WorldMap.LocalMapRefreshTimes[mapKey] or 0) >= localMapRefreshInterval then
+            if WorldMap:RefreshLocalMapIfDue() then WorldMap.LocalMapRefreshRequested = false end
+        end
     end
 end)
 

@@ -1,4 +1,4 @@
-// Client inventory: mirrors the server snapshot and draws the backpack/stash window. Every change is a request
+// Client inventory: mirrors the server snapshot. The regular inventory and den storage are separate windows; changes are requests
 // (ZM.InventoryAction) that the server validates; the window only redraws from the snapshots the server sends back.
 ZM_Inventory = ZM_Inventory or {}
 local Inventory = ZM_Inventory
@@ -51,7 +51,7 @@ end)
 net.Receive("ZM.DenEntity.Open", function()
     local class = net.ReadString()
     if class == "zn_den_stash" then
-        Inventory:Open()
+        Inventory:OpenDen()
     elseif class == "zn_crafting_station" and ZM_Crafting and ZM_Crafting.Open then
         ZM_Crafting:Open()
     elseif class == "zn_mastercraft_station" and ZM_MastercraftUI and ZM_MastercraftUI.Open then
@@ -196,7 +196,7 @@ local function primaryAction(instance)
     end
 end
 
-local function openContextMenu(instance, container)
+local function openContextMenu(instance, container, allowStashMoves)
     local definition = ZM_Items:GetDefinition(instance.itemId)
     local menu = DermaMenu()
     if definition and container == "backpack" then
@@ -209,8 +209,32 @@ local function openContextMenu(instance, container)
                 menu:AddOption("Equip", function() Inventory:SendAction({ action = "equip", instanceId = instance.instanceId }) end)
             end
         end
+        menu:AddOption("Drop", function()
+            local function sendDrop(count)
+                if count < 1 or count > instance.count or count ~= math.floor(count) then
+                    Inventory.Status = { text = "Enter a whole number from 1 to " .. instance.count .. ".", ok = false, at = CurTime() }
+                    return
+                end
+                Inventory.DropRequestCounter = (Inventory.DropRequestCounter or 0) + 1
+                local requestId = string.format("%d-%d-%d", os.time(), math.floor(SysTime() * 1000000), Inventory.DropRequestCounter)
+                Inventory:SendAction({ action = "drop", instanceId = instance.instanceId, count = count, requestId = requestId })
+            end
+            if instance.count == 1 then
+                sendDrop(1)
+            else
+                Derma_StringRequest("DROP ITEM", "How many " .. definition.name .. " do you want to drop?",
+                    tostring(instance.count), function(value)
+                        local count = tonumber(value)
+                        if not count then
+                            Inventory.Status = { text = "Enter a whole number from 1 to " .. instance.count .. ".", ok = false, at = CurTime() }
+                            return
+                        end
+                        sendDrop(count)
+                    end)
+            end
+        end)
     end
-    if Inventory.Snapshot.canAccessStash then
+    if allowStashMoves and Inventory.Snapshot.canAccessStash then
         local other = container == "backpack" and "stash" or "backpack"
         menu:AddOption("Move to " .. other, function()
             Inventory:SendAction({ action = "move", instanceId = instance.instanceId, container = other })
@@ -267,7 +291,7 @@ local function decorateTile(tile, instance)
     ZM_ItemIcons:Attach(tile, ZM_Items:GetDefinition(instance.itemId), 6)
 end
 
-local function buildContainer(parent, container, locked)
+local function buildContainer(parent, container, locked, allowStashMoves)
     local layout = parent:Add("DIconLayout")
     layout:Dock(TOP)
     layout:SetSpaceX(slotGap)
@@ -311,7 +335,7 @@ local function buildContainer(parent, container, locked)
                     primaryAction(instance)
                 end
             end
-            tile.DoRightClick = function() openContextMenu(instance, container) end
+            tile.DoRightClick = function() openContextMenu(instance, container, allowStashMoves) end
             if not locked then
                 tile:Droppable(dragName)
             end
@@ -332,8 +356,8 @@ local function heading(parent, text, detail, detailColor)
     end
 end
 
-function Inventory:Rebuild()
-    local frame = self.Frame
+function Inventory:Rebuild(frame)
+    frame = frame or self.Frame
     if not IsValid(frame) or not IsValid(frame.Body) then
         return
     end
@@ -350,16 +374,36 @@ function Inventory:Rebuild()
 
     local snapshot = self.Snapshot
     local columnWidth = 5 * slotSize + 4 * slotGap + 18
-    local backpackColumn = vgui.Create("DPanel", frame.Body)
-    backpackColumn:Dock(FILL)
-    backpackColumn:SetWide(frame.Body:GetWide())
+    local containers = vgui.Create("DPanel", frame.Body)
+    containers:Dock(FILL)
+    containers.Paint = function() end
+
+    local backpackColumn = vgui.Create("DPanel", containers)
+    local showStash = frame.ShowDenStash and snapshot.canAccessStash
+    backpackColumn:Dock(showStash and LEFT or FILL)
+    if showStash then
+        backpackColumn:SetWide(math.floor((frame.Body:GetWide() - 12) * 0.5))
+    end
     backpackColumn.Paint = function() end
     heading(backpackColumn, "BACKPACK", string.format("%d / %d  -  lost on death", #snapshot.backpack, snapshot.capacity.backpack or 0), ZM_DermaSkin.Palette.redBright)
     local backpackScroll = vgui.Create("DScrollPanel", backpackColumn)
     backpackScroll:Dock(FILL)
     backpackScroll:DockMargin(0, 4, 0, 0)
     backpackScroll:SetWide(columnWidth)
-    buildContainer(backpackScroll, "backpack", false)
+    buildContainer(backpackScroll, "backpack", false, showStash)
+
+    if showStash then
+        local stashColumn = vgui.Create("DPanel", containers)
+        stashColumn:Dock(FILL)
+        stashColumn:DockMargin(12, 0, 0, 0)
+        stashColumn.Paint = function() end
+        heading(stashColumn, "SAFE DEN STASH", string.format("%d / %d", #snapshot.stash, snapshot.capacity.stash or 0), equippedColor)
+        local stashScroll = vgui.Create("DScrollPanel", stashColumn)
+        stashScroll:Dock(FILL)
+        stashScroll:DockMargin(0, 4, 0, 0)
+        stashScroll:SetWide(columnWidth)
+        buildContainer(stashScroll, "stash", false, true)
+    end
 
     local loadout = vgui.Create("DPanel", frame.Body)
     loadout:Dock(BOTTOM)
@@ -378,9 +422,20 @@ function Inventory:Rebuild()
     money:DockMargin(6, 28, 0, 0)
     money.Paint = function(_, width)
         draw.SimpleText("Money", "ZM_InventoryHeading", 4, 1, equippedColor, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-        draw.SimpleText("$" .. string.Comma(snapshot.cash or 0), "ZM_InventoryHeading", 4, 19, gold, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-        draw.SimpleText("+($" .. string.Comma(snapshot.bundleCash or 0) .. ") from bundles", "ZM_InventorySmall", 4, 39, ZM_DermaSkin.Palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-        draw.SimpleText("+($" .. string.Comma(snapshot.bankCash or 0) .. ") stored in banks", "ZM_InventorySmall", 4, 51, ZM_DermaSkin.Palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        ZM_DermaSkin.DrawTextSegments(4, 19, "ZM_InventoryHeading", {
+            { text = "Cash: ", color = ZM_DermaSkin.Palette.text },
+            { text = "$" .. string.Comma(snapshot.cash or 0), color = gold }
+        }, TEXT_ALIGN_TOP)
+        ZM_DermaSkin.DrawTextSegments(4, 39, "ZM_InventorySmall", {
+            { text = "+(", color = ZM_DermaSkin.Palette.muted },
+            { text = "$" .. string.Comma(snapshot.bundleCash or 0), color = gold },
+            { text = ") from bundles", color = ZM_DermaSkin.Palette.muted }
+        }, TEXT_ALIGN_TOP)
+        ZM_DermaSkin.DrawTextSegments(4, 51, "ZM_InventorySmall", {
+            { text = "+(", color = ZM_DermaSkin.Palette.muted },
+            { text = "$" .. string.Comma(snapshot.bankCash or 0), color = gold },
+            { text = ") stored in banks", color = ZM_DermaSkin.Palette.muted }
+        }, TEXT_ALIGN_TOP)
     end
     local weaponSlots = snapshot.weaponSlots or {}
     for slot = 1, 3 do
@@ -436,23 +491,25 @@ function Inventory:Rebuild()
     end
 end
 
-function Inventory:Open()
-    if IsValid(self.Frame) then
-        self.Frame:MakePopup()
+function Inventory:OpenWindow(frameKey, title, showDenStash)
+    local existing = self[frameKey]
+    if IsValid(existing) then
+        existing:MakePopup()
         self:RequestSnapshot()
         return
     end
     local frame = vgui.Create("DFrame")
     frame:SetSkin("ZombieSim")
-    frame:SetTitle("INVENTORY")
+    frame:SetTitle(title)
     frame:SetSize(math.min(860, ScrW() - 40), math.min(560, ScrH() - 40))
     frame:Center()
     frame:MakePopup()
+    frame.ShowDenStash = showDenStash
     frame.OnRemove = function()
-        if Inventory.Frame == frame then Inventory.Frame = nil end
+        if Inventory[frameKey] == frame then Inventory[frameKey] = nil end
         if ZM_UI then ZM_UI:UnregisterTransient(frame) end
     end
-    self.Frame = frame
+    self[frameKey] = frame
     if ZM_UI then ZM_UI:OpenExclusive(frame) end
 
     local status = vgui.Create("DPanel", frame)
@@ -476,14 +533,25 @@ function Inventory:Open()
     body.PerformLayout = function(panel)
         if panel.BuiltWidth ~= panel:GetWide() then
             panel.BuiltWidth = panel:GetWide()
-            Inventory:Rebuild()
+            Inventory:Rebuild(frame)
         end
     end
     self:RequestSnapshot()
 end
 
+function Inventory:Open()
+    self:OpenWindow("Frame", "INVENTORY", false)
+end
+
+function Inventory:OpenDen()
+    self:OpenWindow("DenFrame", "DEN + INVENTORY", true)
+end
+
 hook.Add("ZM.InventoryUpdated", "ZM.Inventory.RefreshWindow", function()
     if IsValid(Inventory.Frame) then
-        Inventory:Rebuild()
+        Inventory:Rebuild(Inventory.Frame)
+    end
+    if IsValid(Inventory.DenFrame) then
+        Inventory:Rebuild(Inventory.DenFrame)
     end
 end)

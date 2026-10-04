@@ -4,8 +4,9 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Active Task Tracker
 
-- [todo-alpha-2.9.2.md](todo-alpha-2.9.2.md) is the active tracker: client performance and quality presets, promoted from the "Post-Alpha 2.9" section of the archived [docs/todo-alpha-2.9.md](docs/todo-alpha-2.9.md) (accepted 2026-10-02), which keeps the full research notes. It is Lua-only; no world generation or map builds are in scope.
-- When a milestone runs, keep the Alpha 2.9 working rules: phases run in their stated order, each phase runs its focused static/automated checks as its changes land, and static and live results are recorded separately. A phase is accepted only on the user's confirmation; a successful map compile alone does not establish in-game acceptance.
+- [todo-alpha-3.0.md](todo-alpha-3.0.md) is the active tracker, authorized by the user on 2026-10-04. It includes ordered gameplay, UI, procedural-world, and rendering work. Follow its phase gates and do not skip ahead.
+- [docs/todo-alpha-2.9.2.md](docs/todo-alpha-2.9.2.md) archives the completed client performance and quality-presets milestone (accepted 2026-10-02); its baseline and validation remain useful for Alpha 3.0 comparisons.
+- When a milestone runs, phases proceed in order and each phase gets focused static/automated checks as changes land; fix failures before advancing and record static and live results separately. A phase is accepted only on the user's confirmation; a successful map compile alone does not establish in-game acceptance.
 - [docs/todo-alpha-2.9.1.md](docs/todo-alpha-2.9.1.md) archives the completed compiler-pool, preset, generation-diagnostics, portal-budget, and test-organization milestone.
 - `docs/todo-alpha-2.8.6.md` remains as milestone history and source context for the safe-zone contract and Storm Drain work that landed before the current cycle.
 - `docs/todo-alpha-2.8.5.md` and `docs/todo-alpha-2.8.md` are historical context only unless explicitly promoted back into the active tracker.

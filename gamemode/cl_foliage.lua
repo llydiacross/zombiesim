@@ -44,6 +44,7 @@ Debris.Kinds = {
         shotStrength = 200, shotLift = 160, leash = 1400
     }
 }
+Debris.PlayableHalfExtent = 1600
 Debris.GridSize = 384
 Debris.GridRadius = 2
 Debris.SlotsPerCell = 3
@@ -76,7 +77,16 @@ local function getWorldBounds()
     if not minimum or not maximum or maximum.x <= minimum.x or maximum.y <= minimum.y then
         minimum, maximum = world:GetRenderBounds()
     end
-    if not minimum or not maximum or maximum.z <= minimum.z then
+    if ZM_Skybox and ZM_Skybox.ClampWorldMaximum then
+        maximum = ZM_Skybox:ClampWorldMaximum(maximum)
+    end
+    // Keep debris inside the 5x5 playable tile grid; the 640-unit border ring around it is inaccessible.
+    local half = Debris.PlayableHalfExtent
+    if minimum and maximum and half and half > 0 then
+        minimum = Vector(math.max(minimum.x, -half), math.max(minimum.y, -half), minimum.z)
+        maximum = Vector(math.min(maximum.x, half), math.min(maximum.y, half), maximum.z)
+    end
+    if not minimum or not maximum or maximum.z <= minimum.z or maximum.x <= minimum.x or maximum.y <= minimum.y then
         return nil
     end
     return minimum, maximum

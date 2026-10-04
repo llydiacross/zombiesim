@@ -391,12 +391,17 @@ function Spots:SelectSpot(target)
     if selection.reason then
         return nil, ZM_LootTargeting.ReasonText[selection.reason]
     end
-    return byEntity[selection.entity]
+    return byEntity[selection.entity], selection.aimed
 end
 
 // The searchable spot the player would search with Use; foliage harvesting yields to it.
 function Spots:FindNearestSpot(target)
     return (self:SelectSpot(target))
+end
+
+function Spots:FindAimedSpot(target)
+    local spot, aimed = self:SelectSpot(target)
+    return aimed and spot or nil
 end
 
 local function baseMapName(path)

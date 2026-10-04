@@ -170,6 +170,26 @@ test("targeting_prefers_the_aimed_spot_and_reports_why_it_cannot_be_searched", f
     end)
 end)
 
+test("aimed_spot_lookup_excludes_nearby_fallbacks", function(check)
+    local originalCell = Spots.Cell
+    local corpse = fakeEntity(Vector(40, 0, 0))
+    Spots.Cell = {
+        spotsByEntity = {
+            [corpse] = { key = "enemycorpse_test", state = "available", entity = corpse }
+        }
+    }
+    local ok, errorMessage = pcall(function()
+        withTargeting({ corpse }, {}, function()
+            check(Spots:FindAimedSpot(targetingPlayer(corpse)) == Spots.Cell.spotsByEntity[corpse],
+                "an explicitly aimed enemy corpse is identified for gate input priority")
+            check(Spots:FindAimedSpot(targetingPlayer(nil)) == nil,
+                "a nearby fallback spot does not suppress intentional gate travel")
+        end)
+    end)
+    Spots.Cell = originalCell
+    if not ok then error(errorMessage) end
+end)
+
 test("fallen_body_plans_are_deterministic", function(check)
     local Bodies = ZM_LootBodies
     local pool = {
@@ -189,6 +209,11 @@ test("fallen_body_plans_are_deterministic", function(check)
         local other = second[index]
         same = same and other and other.key == plan.key and other.model == plan.model and other.position == plan.position
         check(string.match(plan.key, "^b%d+_%d+$") ~= nil, "body keys are deterministic spot keys")
+        check(plan.position.x >= bounds.minimum.x + Bodies.MapEdgeMargin
+            and plan.position.x <= bounds.maximum.x - Bodies.MapEdgeMargin
+            and plan.position.y >= bounds.minimum.y + Bodies.MapEdgeMargin
+            and plan.position.y <= bounds.maximum.y - Bodies.MapEdgeMargin,
+            "body placement stays outside the inaccessible map-edge margin")
         for otherIndex = index + 1, #first do
             check(plan.position:Distance(first[otherIndex].position) >= Bodies.MinSpacing, "bodies keep their spacing")
         end

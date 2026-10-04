@@ -76,10 +76,12 @@ if CLIENT then
     end
 
     function SWEP:DrawWorldModel()
+        if ZM_WorldMap and ZM_WorldMap.Capturing and IsValid(self:GetOwner()) and self:GetOwner():IsPlayer() then return end
         if not self:IsSafeZoneHolstered() then self:DrawModel() end
     end
 
     function SWEP:DrawWorldModelTranslucent()
+        if ZM_WorldMap and ZM_WorldMap.Capturing and IsValid(self:GetOwner()) and self:GetOwner():IsPlayer() then return end
         if not self:IsSafeZoneHolstered() then self:DrawModel() end
     end
 end

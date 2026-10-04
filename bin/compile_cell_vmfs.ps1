@@ -161,6 +161,48 @@ if (-not (Test-Path -LiteralPath (Join-Path $GameDirectory 'gameinfo.txt') -Path
     throw "Garry's Mod game directory must contain gameinfo.txt: $GameDirectory"
 }
 
+# Garry's Mod's compilers mount the -game directory plus the paths listed in its
+# cfg/mount.cfg (gameinfo SearchPaths are ignored), so models and materials shipped
+# in this gamemode's content folder, such as the generated 3D skybox cell models,
+# are invisible to VBSP/VRAD. Compile against an overlay game directory whose
+# mount.cfg mounts the real game directory, the user's own mounts, and content.
+$GameDirectory = [System.IO.Path]::GetFullPath($GameDirectory).TrimEnd('\')
+$contentDirectory = Join-Path $projectRoot 'content'
+if (Test-Path -LiteralPath $contentDirectory -PathType Container) {
+    $overlayDirectory = Join-Path ([System.IO.Path]::GetFullPath($BuildDirectory)) '_compile_game'
+    $null = New-Item -ItemType Directory -Force -Path (Join-Path $overlayDirectory 'cfg')
+    $mountEntries = [System.Collections.Generic.List[string]]::new()
+    $mountEntries.Add(('    "{0}"    "{1}"' -f (Split-Path -Leaf $GameDirectory), $GameDirectory))
+    $userMountPath = Join-Path $GameDirectory 'cfg\mount.cfg'
+    if (Test-Path -LiteralPath $userMountPath -PathType Leaf) {
+        $insideBlock = $false
+        foreach ($mountLine in [System.IO.File]::ReadAllLines($userMountPath)) {
+            $trimmedMountLine = $mountLine.Trim()
+            if ($trimmedMountLine.StartsWith('{')) { $insideBlock = $true; continue }
+            if ($trimmedMountLine.StartsWith('}')) { $insideBlock = $false; continue }
+            if ($insideBlock -and $trimmedMountLine -match '^"([^"]+)"\s+"([^"]+)"') {
+                $mountEntries.Add(('    "{0}"    "{1}"' -f $Matches[1], $Matches[2]))
+            }
+        }
+    }
+    $mountEntries.Add(('    "zombiesim_content"    "{0}"' -f $contentDirectory.TrimEnd('\')))
+    $overlayFiles = @{
+        'gameinfo.txt' = [System.IO.File]::ReadAllText((Join-Path $GameDirectory 'gameinfo.txt'))
+        'cfg\mount.cfg' = "`"mountcfg`"`r`n{`r`n" + ($mountEntries -join "`r`n") + "`r`n}`r`n"
+    }
+    $lightsRadPath = Join-Path $GameDirectory 'lights.rad'
+    if (Test-Path -LiteralPath $lightsRadPath -PathType Leaf) {
+        $overlayFiles['lights.rad'] = [System.IO.File]::ReadAllText($lightsRadPath)
+    }
+    foreach ($overlayFile in $overlayFiles.Keys) {
+        $overlayPath = Join-Path $overlayDirectory $overlayFile
+        $existingText = if (Test-Path -LiteralPath $overlayPath -PathType Leaf) { [System.IO.File]::ReadAllText($overlayPath) } else { $null }
+        if ($existingText -ne $overlayFiles[$overlayFile]) {
+            [System.IO.File]::WriteAllText($overlayPath, $overlayFiles[$overlayFile], [System.Text.UTF8Encoding]::new($false))
+        }
+    }
+    $GameDirectory = $overlayDirectory
+}
 $SourceDirectory = (Resolve-Path -LiteralPath $SourceDirectory).Path.TrimEnd('\')
 $sourceMapsDirectory = Split-Path -Parent $SourceDirectory
 $BuildDirectory = [System.IO.Path]::GetFullPath($BuildDirectory).TrimEnd('\')

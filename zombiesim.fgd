@@ -26,7 +26,7 @@
     ]
 ]
 
-@PointClass base(Targetname, Angles) = zn_den_stash : "ZombieSim Den Stash"
+@PointClass base(Targetname, Angles) studio("models/props_junk/wood_crate001a.mdl") = zn_den_stash : "ZombieSim Den Stash"
 [
     model(studio) : "World model" : "models/props_junk/wood_crate001a.mdl"
 ]
@@ -36,7 +36,7 @@
     model(studio) : "World model" : "models/props_c17/FurnitureWorkbench001a.mdl"
 ]
 
-@PointClass base(Targetname, Angles) = zn_bank : "ZombieSim Bank"
+@PointClass base(Targetname, Angles) studio("models/props_c17/cashregister01a.mdl") = zn_bank : "ZombieSim Bank"
 [
     model(studio) : "World model" : "models/props_c17/cashregister01a.mdl"
 ]
@@ -44,6 +44,8 @@
 @PointClass base(Targetname, Angles) studio("models/Humans/Group01/male_07.mdl") = zn_den_npc : "ZombieSim Den NPC"
 [
     npc_name(string) : "Display name" : "" : "The name shown above the NPC and in the Services and trading windows. Empty uses the trader's or profession's name."
+    animation(string) : "Animation sequence" : "" : "Optional sequence to play on this model. If unavailable, the default animation is tried."
+    default_animation(string) : "Default animation sequence" : "idle_subtle" : "Fallback sequence if the selected animation is empty or unavailable. Empty uses the known idle-sequence fallbacks."
     profession(string) : "Profession" : "" : "A profession id from data_static (for example Chef, Doctor, Scientist). Empty for a trader who offers no services."
     service_level(integer) : "Service level" : 1 : "The profession level the NPC works at (1 to the level cap)."
     fees(string) : "Service fees" : "" : "Optional per-service cash fees, for example 'cook=5 treat=10'. Empty uses npcServiceFees from trade_definitions.json."

@@ -428,6 +428,9 @@ function Trade:HandleRequest(target, request)
     end
     target.ZM_NextTradeRequestAt = now + self.RequestCooldown
     if request.action == "open" then
+        if not ZM_DenNpcs:CanInteract(target, npc, true) then
+            return npc, false, "Look at the trader and stand nearby to interact."
+        end
         return npc, true
     elseif request.action == "buy" then
         return npc, self:Buy(target, npc, { key = request.key, units = tonumber(request.units), requestId = request.requestId, price = tonumber(request.price), currency = request.currency, day = request.day })

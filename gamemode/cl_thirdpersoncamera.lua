@@ -234,6 +234,10 @@ local function getShoulderWeight()
     return (1 - zoom) * (1 - lockBlend)
 end
 
+function ZM_IsShoulderCamera()
+    return not cameraLocked and not isInDenCamera(LocalPlayer()) and getShoulderWeight() > 0.5
+end
+
 function ZM_IsInDenCamera()
     return isInDenCamera(LocalPlayer())
 end
@@ -267,6 +271,10 @@ local function GetCameraAngles()
         return free
     end
     return LerpAngle(lockBlend * lockBlend * (3 - 2 * lockBlend), free, locked)
+end
+
+function ZM_GetScreenCameraAngles()
+    return GetCameraAngles()
 end
 
 // Puts the cursor in front of the player on screen so re-locking does not snap their facing.
@@ -584,6 +592,7 @@ hook.Add("CalcView", "ZM.CustomThirdPersonView", function(ply, pos, angles, fov)
 end)
 
 hook.Add("PreDrawHalos", "ZM.CameraOcclusionHalo", function()
+    if ZM_WorldMap and ZM_WorldMap.Capturing then return end
     local ply = LocalPlayer()
     if cameraLocked and lockBlend > 0.95 and lockedCameraObstructed
         and denCameraBlend < 0.5 and IsValid(ply) and ply:Alive() then
@@ -593,5 +602,6 @@ end)
 
 // The camera is always external enough that the local player model should be rendered.
 hook.Add("ShouldDrawLocalPlayer", "ZM.DrawPlayer", function(ply)
+    if ZM_WorldMap and ZM_WorldMap.Capturing then return false end
     return not isInDenCamera(ply) and denCameraBlend < 0.5 and arrivalCameraRise >= 0.25
 end)

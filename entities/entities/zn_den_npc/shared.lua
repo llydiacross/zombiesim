@@ -43,30 +43,58 @@ function ENT:Initialize()
     if SERVER then
         self.ZM_Config = self.ZM_Config or {}
         local model = self.ZM_Config.model
-        self:SetModel((type(model) == "string" and model ~= "") and model or ZM_DenNpcs.DefaultModel)
+        if type(model) == "string" and model ~= "" and not util.IsValidModel(model) then
+            ErrorNoHalt("[ZombieSim] zn_den_npc has invalid model '" .. model .. "'; using its default.\n")
+            model = nil
+        end
+        model = (type(model) == "string" and model ~= "") and model or ZM_DenNpcs.DefaultModel
+        self:SetModel(model)
         self:SetSolid(SOLID_BBOX)
         self:SetMoveType(MOVETYPE_NONE)
         self:SetCollisionBounds(Vector(-14, -14, 0), Vector(14, 14, 72))
         self:SetUseType(SIMPLE_USE)
-        for _, name in ipairs(self.IdleSequences) do
-            local sequence = self:LookupSequence(name)
-            if sequence and sequence >= 0 then
-                self:ResetSequence(sequence)
-                break
+        local function findSequence(name)
+            if type(name) ~= "string" or string.Trim(name) == "" then return nil end
+            local sequence = self:LookupSequence(string.Trim(name))
+            return sequence and sequence >= 0 and sequence or nil
+        end
+        local animation = string.Trim(tostring(self.ZM_Config.animation or ""))
+        local fallback = string.Trim(tostring(self.ZM_Config.default_animation or ""))
+        local sequence = findSequence(animation)
+        if animation ~= "" and not sequence then
+            ErrorNoHalt("[ZombieSim] zn_den_npc model '" .. model .. "' has no animation sequence '" .. animation .. "'.\n")
+        end
+        if not sequence then
+            sequence = findSequence(fallback)
+            if fallback ~= "" and not sequence then
+                ErrorNoHalt("[ZombieSim] zn_den_npc model '" .. model .. "' has no default animation sequence '" .. fallback .. "'.\n")
             end
+        end
+        if not sequence then
+            for _, name in ipairs(self.IdleSequences) do
+                sequence = findSequence(name)
+                if sequence then break end
+            end
+        end
+        if sequence then
+            self:ResetSequence(sequence)
+        else
+            ErrorNoHalt("[ZombieSim] zn_den_npc model '" .. model .. "' has no usable idle animation.\n")
         end
         ZM_DenNpcs:Sync(self)
     end
 end
 
 function ENT:Think()
+    self:FrameAdvance()
     self:NextThink(CurTime())
     return true
 end
 
 function ENT:Use(playerEntity)
-    if not IsValid(playerEntity) or not playerEntity:IsPlayer() or not playerEntity:Alive() then return end
-    if not ZM_InventoryService or not ZM_InventoryService:CanAccessStash(playerEntity) then return end
+    if not ZM_DenNpcs:CanInteract(playerEntity, self, false) then return end
+    if playerEntity.ZM_NextDenNpcInteractAt and CurTime() < playerEntity.ZM_NextDenNpcInteractAt then return end
+    playerEntity.ZM_NextDenNpcInteractAt = CurTime() + 0.25
     local resolved = ZM_DenNpcs:Resolve(self)
     net.Start("ZM.DenNpc.Open")
         net.WriteUInt(self:EntIndex(), 16)

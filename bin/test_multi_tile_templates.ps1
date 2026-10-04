@@ -325,8 +325,10 @@ foreach ($recipe in $recipes) {
     $expectedInstanceCount = 25 - ($footprint.width * $footprint.height) + 1 + 24
     $vmfPath = Join-Path $cellDirectory $recipe.cellTemplateFilename
     $contents = Get-Content -Raw -LiteralPath $vmfPath
-    if ([regex]::Matches($contents, '"classname" "func_instance"').Count -ne $expectedInstanceCount) {
-        throw "$($recipe.cellTemplateFilename) has an incorrect VMF instance count."
+    # Phase D adds one generated sky-room func_instance to every recipe; it is not part of the tile grid.
+    $tileInstanceCount = @([regex]::Matches($contents, '(?ms)^entity\r?\n\{.*?^\}') | Where-Object { $_.Value -match '"classname" "func_instance"' -and $_.Value -notmatch 'skybox_room\.vmf' }).Count
+    if ($tileInstanceCount -ne $expectedInstanceCount) {
+        throw "$($recipe.cellTemplateFilename) has an incorrect VMF instance count ($tileInstanceCount, expected $expectedInstanceCount)."
     }
     $expectedX = [int]((([int]$anchor.tileX - 2) + (($footprint.width - 1) / 2.0)) * 640)
     $expectedY = [int](((2 - [int]$anchor.tileY) - (($footprint.height - 1) / 2.0)) * 640)

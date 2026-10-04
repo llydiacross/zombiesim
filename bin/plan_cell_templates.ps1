@@ -35,6 +35,25 @@ $epicenterPlacement = if ($epicenterSettings.ContainsKey('placement')) { [string
 $epicenterExclusive = -not $epicenterSettings.ContainsKey('exclusive') -or [bool]$epicenterSettings.exclusive
 $commercialSpreadChancePercent = if ($buildingSelectionSettings.ContainsKey('commercialSpreadChancePercent')) { [int]$buildingSelectionSettings.commercialSpreadChancePercent } else { 0 }
 $commercialSpreadProfiles = if ($buildingSelectionSettings.ContainsKey('commercialSpreadProfiles')) { @($buildingSelectionSettings.commercialSpreadProfiles | ForEach-Object { [string]$_ }) } else { @() }
+$openTerrainSettings = if ($plannerSettings.ContainsKey('openTerrain')) { $plannerSettings.openTerrain } else { @{} }
+$maximumOpenTilePercent = if ($openTerrainSettings.ContainsKey('maximumOpenTilePercent')) { [int]$openTerrainSettings.maximumOpenTilePercent } else { 100 }
+$topologyVariantSettings = if ($plannerSettings.ContainsKey('topologyVariants')) { $plannerSettings.topologyVariants } else { @{} }
+$topologyVariantChancePercent = if ($topologyVariantSettings.ContainsKey('chancePercent')) { [int]$topologyVariantSettings.chancePercent } else { 0 }
+$topologyVariantTemplates = @{}
+if ($topologyVariantSettings.ContainsKey('templates')) {
+    foreach ($variantTopology in $topologyVariantSettings.templates.Keys) {
+        if ($variantTopology -notin @('road-straight', 'motorway-straight')) {
+            throw "cellPlanning.topologyVariants.templates.$variantTopology is not supported; only straight road and motorway variants are."
+        }
+        $topologyVariantTemplates[[string]$plannerSettings.topologyTemplates[$variantTopology]] = @($topologyVariantSettings.templates[$variantTopology] | ForEach-Object { [string]$_ })
+    }
+}
+if ($maximumOpenTilePercent -lt 0 -or $maximumOpenTilePercent -gt 100) {
+    throw 'cellPlanning.openTerrain.maximumOpenTilePercent must be from 0 through 100.'
+}
+if ($topologyVariantChancePercent -lt 0 -or $topologyVariantChancePercent -gt 100) {
+    throw 'cellPlanning.topologyVariants.chancePercent must be from 0 through 100.'
+}
 if ($maximumMultiTileFootprint -lt 1 -or $maximumMultiTileFootprint -gt 3) {
     throw 'cellPlanning.multiTileFeatures.maximumFootprint must be from 1 through 3.'
 }
@@ -1711,13 +1730,16 @@ function Get-CellTilePlacements {
             $roadTemplate = Resolve-Template @($plannerSettings.topologyTemplates['road-straight'], $TerrainTemplate) $AvailableTemplates
             foreach ($rampExit in @(Get-HighwayRampExits $Cell)) {
                 $rotationYaw = Get-DirectionalTileRotation $rampExit
+                # tile_road_onramp authors its city road on local south and its ramp lanes on local north; the ramp edge must face the motorway on-ramp opening.
+                $onrampRoadYaw = [int]$plannerSettings.rotations.transport.onrampRoadByDirection[$rampExit]
                 $onrampRoadCoordinate = Get-DirectionalAdjacentCoordinate $rampExit $center
                 foreach ($coordinate in @(Get-DirectionalTileCoordinates $rampExit $center $TileGridSize)) {
+                    $isOnrampRoad = $coordinate.tileX -eq $onrampRoadCoordinate.tileX -and $coordinate.tileY -eq $onrampRoadCoordinate.tileY
                     $placements["$($coordinate.tileX),$($coordinate.tileY)"] = [pscustomobject]@{
                         tileX = $coordinate.tileX
                         tileY = $coordinate.tileY
-                        template = if ($coordinate.tileX -eq $onrampRoadCoordinate.tileX -and $coordinate.tileY -eq $onrampRoadCoordinate.tileY) { $onrampRoadTemplate } else { $roadTemplate }
-                        rotationYaw = $rotationYaw
+                        template = if ($isOnrampRoad) { $onrampRoadTemplate } else { $roadTemplate }
+                        rotationYaw = if ($isOnrampRoad) { $onrampRoadYaw } else { $rotationYaw }
                         role = 'onramp_road'
                     }
                 }
@@ -2245,9 +2267,89 @@ function Get-CellTilePlacements {
         }
     }
 
+    Set-OpenTerrainFill $placements $TileGridSize $PlacementSeed $DecorationTemplates
+    Set-TopologyVariants $placements $PlacementSeed $AvailableTemplates
+
     $plannedPlacements = @($placements.Values | Sort-Object tileY, tileX)
     Set-TilePlacementDefaults $plannedPlacements
     return $plannedPlacements
+}
+
+function Get-PlannerTileHash {
+    param([int64]$Seed, [int]$TileX, [int]$TileY, [int]$Salt)
+
+    $hash = ([int64]$Seed * 2654435761) -bxor ([int64]($TileX + 1) * 73856093) -bxor ([int64]($TileY + 1) * 19349663) -bxor ([int64]$Salt * 83492791)
+    $hash = $hash -bxor ($hash -shr 15)
+    return [int64][Math]::Abs($hash % 2147483647)
+}
+
+function Get-BuildingFrontageKeys {
+    param([hashtable]$Placements)
+
+    $keys = @{}
+    $yawByDirection = @{ N = 0; E = 270; S = 180; W = 90 }
+    $directionByYaw = @{ 0 = 'N'; 270 = 'E'; 180 = 'S'; 90 = 'W' }
+    foreach ($placement in @($Placements.Values | Where-Object { $_.role -eq 'building' })) {
+        $footprint = Get-TemplateFootprint ([string]$placement.template)
+        if ($footprint.width -ne 1 -or $footprint.height -ne 1) { continue }
+        $templateKey = ([string]$placement.template).ToLowerInvariant()
+        $localDirection = if ($templateRoadConnections.ContainsKey($templateKey)) {
+            @{ NORTH = 'N'; EAST = 'E'; SOUTH = 'S'; WEST = 'W'; N = 'N'; E = 'E'; S = 'S'; W = 'W' }[([string]$templateRoadConnections[$templateKey].direction).ToUpperInvariant()]
+        } else { 'N' }
+        $frontageYaw = ((([int]$placement.rotationYaw + $yawByDirection[$localDirection]) % 360) + 360) % 360
+        $frontage = Get-DirectionalAdjacentCoordinate $directionByYaw[$frontageYaw] 0
+        $keys["$([int]$placement.tileX + [int]$frontage.tileX),$([int]$placement.tileY + [int]$frontage.tileY)"] = $true
+    }
+    return $keys
+}
+
+function Set-OpenTerrainFill {
+    param(
+        [hashtable]$Placements,
+        [int]$TileGridSize,
+        [int]$PlacementSeed,
+        [string[]]$DecorationTemplates
+    )
+
+    if ($DecorationTemplates.Count -eq 0 -or $maximumOpenTilePercent -ge 100) { return }
+    $maximumOpenTiles = [int][Math]::Floor($TileGridSize * $TileGridSize * $maximumOpenTilePercent / 100)
+    $openPlacements = @($Placements.Values | Where-Object { $_.role -eq 'terrain' })
+    if ($openPlacements.Count -le $maximumOpenTiles) { return }
+
+    # Building doors that do not face a road keep their facing terrain tile open.
+    $frontageKeys = Get-BuildingFrontageKeys $Placements
+    $candidates = @($openPlacements | Where-Object { -not $frontageKeys.ContainsKey("$($_.tileX),$($_.tileY)") } | Sort-Object @{ Expression = { Get-PlannerTileHash $PlacementSeed ([int]$_.tileX) ([int]$_.tileY) 401 } }, tileY, tileX)
+    $fillCount = [Math]::Min($candidates.Count, $openPlacements.Count - $maximumOpenTiles)
+    for ($index = 0; $index -lt $fillCount; $index++) {
+        $terrainPlacement = $candidates[$index]
+        $decorationHash = Get-PlannerTileHash $PlacementSeed ([int]$terrainPlacement.tileX) ([int]$terrainPlacement.tileY) 409
+        $Placements["$($terrainPlacement.tileX),$($terrainPlacement.tileY)"] = [pscustomobject]@{
+            tileX = $terrainPlacement.tileX
+            tileY = $terrainPlacement.tileY
+            template = $DecorationTemplates[[int]($decorationHash % $DecorationTemplates.Count)]
+            rotationYaw = 0
+            role = 'decoration'
+        }
+    }
+}
+
+function Set-TopologyVariants {
+    param(
+        [hashtable]$Placements,
+        [int]$PlacementSeed,
+        [hashtable]$AvailableTemplates
+    )
+
+    if ($topologyVariantChancePercent -le 0 -or $topologyVariantTemplates.Count -eq 0) { return }
+    foreach ($roadPlacement in @($Placements.Values | Where-Object { $_.role -eq 'road' } | Sort-Object tileY, tileX)) {
+        $baseTemplate = [string]$roadPlacement.template
+        if (-not $topologyVariantTemplates.ContainsKey($baseTemplate)) { continue }
+        $variants = @($topologyVariantTemplates[$baseTemplate] | Where-Object { $AvailableTemplates.ContainsKey($_.ToLowerInvariant()) } | ForEach-Object { $AvailableTemplates[$_.ToLowerInvariant()] })
+        if ($variants.Count -eq 0) { continue }
+        $hash = Get-PlannerTileHash $PlacementSeed ([int]$roadPlacement.tileX) ([int]$roadPlacement.tileY) 503
+        if (($hash % 100) -ge $topologyVariantChancePercent) { continue }
+        $roadPlacement.template = $variants[[int](($hash -shr 8) % $variants.Count)]
+    }
 }
 
 function Get-ProfileFallbackTemplates {

@@ -99,7 +99,7 @@ function UI:Rebuild()
         return
     end
     local body = frame.Body
-    line(body, "CREDITS: " .. tostring(state.credits or 0), gold, "ZM_CraftingHeading")
+    ZM_DermaSkin.CurrencyLine(body, "Credits:", string.Comma(state.credits or 0) .. " CR", "ZM_CraftingHeading")
     if not state.available then
         line(body, state.reason or "The station is unavailable.", bad)
     end

@@ -8,7 +8,10 @@ local Npcs = ZM_DenNpcs
 local StaticData = ZM_StaticData
 
 Npcs.DefaultModel = "models/Humans/Group01/male_07.mdl"
+Npcs.InteractionRange = 160
 Npcs.DevSpawned = Npcs.DevSpawned or {}
+
+util.AddNetworkString("ZM.DenNpc.Interact")
 
 // Resolved settings: { job, level, services, fees, trader, traderName, name, problems }. job and trader are nil when
 // absent or invalid; problems lists every setting that was rejected.
@@ -101,6 +104,32 @@ function Npcs:GetAll()
     return ents.FindByClass(StaticData.DenNpcClass)
 end
 
+function Npcs:CanInteract(target, npc, requireAim)
+    if not IsValid(target) or not target:IsPlayer() or not target:Alive() then
+        return false
+    end
+    if not IsValid(npc) or not npc.ZM_IsDenNpc or not ZM_InventoryService
+        or not ZM_InventoryService:CanAccessStash(target) then
+        return false
+    end
+    if target:GetPos():DistToSqr(npc:GetPos()) > self.InteractionRange * self.InteractionRange then
+        return false
+    end
+    if requireAim then
+        local aimTrace = target:GetEyeTrace()
+        if not aimTrace or aimTrace.Entity ~= npc then
+            return false
+        end
+    end
+    local visibility = util.TraceLine({
+        start = target:EyePos(),
+        endpos = npc:WorldSpaceCenter(),
+        filter = { target, npc },
+        mask = MASK_SOLID
+    })
+    return not visibility.Hit
+end
+
 // Den NPCs within range of the target, nearest first.
 function Npcs:FindNear(target, range)
     local found = {}
@@ -117,6 +146,14 @@ function Npcs:FindNear(target, range)
     for _, entry in ipairs(found) do table.insert(result, entry.npc) end
     return result
 end
+
+net.Receive("ZM.DenNpc.Interact", function(length, target)
+    if length ~= 16 or not IsValid(target) or not target:IsPlayer() then return end
+    local npc = Entity(net.ReadUInt(16))
+    if Npcs:CanInteract(target, npc, true) then
+        npc:Use(target)
+    end
+end)
 
 function Npcs:Describe(npc)
     local resolved = self:Resolve(npc)

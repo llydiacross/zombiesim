@@ -1,3 +1,2 @@
-# request: bridge-20261002-100514-485
-zombiesim_quality_preset low
-zombiesim_weather clear
+# request: bridge-20261004-143154-662
+zn_test_enemies

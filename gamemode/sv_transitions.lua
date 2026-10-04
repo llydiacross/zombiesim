@@ -463,6 +463,10 @@ function Transitions:TryUseGate(playerEntity, entity)
     if not direction then
         return
     end
+    // Only an explicitly aimed searchable spot takes priority; nearby loot must not make a gate unusable.
+    if ZM_LootSpots and ZM_LootSpots.FindAimedSpot and ZM_LootSpots:FindAimedSpot(playerEntity) then
+        return
+    end
     local canTransition, guardError = self:CheckDoorTransition(playerEntity)
     if not canTransition and guardError == "one_human_required" then
         playerEntity:PrintMessage(HUD_PRINTCENTER, "Transitions require one human player.")

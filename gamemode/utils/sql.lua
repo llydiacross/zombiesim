@@ -237,6 +237,38 @@ local function integerValue(value, fallback)
     return math.floor(value)
 end
 
+local function validInteger(value, minimum)
+    value = tonumber(value)
+    return value ~= nil and value == value and value ~= math.huge and value ~= -math.huge
+        and value == math.floor(value) and value >= (minimum or 0)
+end
+
+local function realValue(value)
+    return string.format("%.3f", tonumber(value))
+end
+
+local function serializeDroppedItem(instance)
+    if type(instance) ~= "table" or type(instance.instanceId) ~= "string" or instance.instanceId == ""
+        or type(instance.itemId) ~= "string" or instance.itemId == "" or not validInteger(instance.count, 1) then
+        return nil, "invalid dropped-item instance"
+    end
+    local encoded = util.TableToJSON(instance, false)
+    if type(encoded) ~= "string" then
+        return nil, "could not encode dropped-item instance"
+    end
+    return encoded
+end
+
+local function validateDroppedItemPosition(step)
+    for _, key in ipairs({ "x", "y", "z", "yaw" }) do
+        local value = tonumber(step[key])
+        if not value or value ~= value or value == math.huge or value == -math.huge or math.abs(value) > 131072 then
+            return false, "invalid dropped-item " .. key
+        end
+    end
+    return true
+end
+
 // Returns a safe stored job name, falling back to Civilian.
 function ZM_NormalizeJob(job)
     if type(job) ~= "string" or #job > 32 or not string.match(job, "^%a+$") then
@@ -442,6 +474,24 @@ function ZM_CreateCreditTables()
     return runQuery("CREATE TABLE IF NOT EXISTS mastercraft_attempts (steamid TEXT NOT NULL, profile TEXT NOT NULL, instanceId TEXT NOT NULL, itemId TEXT NOT NULL, level INTEGER NOT NULL, credits INTEGER NOT NULL, ultra INTEGER NOT NULL DEFAULT 0, attributes TEXT, attemptedAt INTEGER NOT NULL, PRIMARY KEY (steamid, profile, instanceId))")
 end
 
+function ZM_CreateBankTables()
+    return runQuery("CREATE TABLE IF NOT EXISTS bank_ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, steamid TEXT NOT NULL, profile TEXT NOT NULL, requestId TEXT NOT NULL, kind TEXT NOT NULL, amount INTEGER NOT NULL, balance INTEGER NOT NULL, createdAt INTEGER NOT NULL, UNIQUE (steamid, profile, requestId))")
+end
+
+function ZM_GetBankLedger(steamid, profile, limit)
+    profile = getPlayerDataProfile(profile)
+    if not profile then return nil, "Invalid bank profile" end
+    local result = sql.Query("SELECT * FROM bank_ledger WHERE steamid = " .. sql.SQLStr(steamid) .. " AND profile = " .. sql.SQLStr(profile) .. " ORDER BY id DESC LIMIT " .. math.Clamp(integerValue(limit, 10), 1, 100))
+    if result == false then return nil, sql.LastError() or "Could not read the bank ledger" end
+    return result or {}
+end
+
+function ZM_DeleteBankLedger(steamid, profile)
+    profile = getPlayerDataProfile(profile)
+    if not profile then return false, "Invalid bank profile" end
+    return runQuery("DELETE FROM bank_ledger WHERE steamid = " .. sql.SQLStr(steamid) .. " AND profile = " .. sql.SQLStr(profile))
+end
+
 // Returns the stored balance (0 when the player has no row yet), or nil and an error.
 function ZM_GetPlayerCredits(steamid, profile)
     profile = getPlayerDataProfile(profile)
@@ -584,6 +634,66 @@ local commitWriters = {
             .. sql.SQLStr(step.traderId or "") .. ", " .. sql.SQLStr(step.day or "") .. ", " .. sql.SQLStr(step.tradeKind) .. ", " .. sql.SQLStr(step.itemId or "") .. ", "
             .. integerValue(step.count) .. ", " .. integerValue(step.cash) .. ", " .. integerValue(step.credits) .. ", " .. os.time() .. ")")
     end,
+    bankLedger = function(profile, step)
+        if type(step.requestId) ~= "string" or step.requestId == "" or #step.requestId > 40
+            or (step.transactionKind ~= "deposit" and step.transactionKind ~= "withdraw")
+            or not validInteger(step.amount, 1) or not validInteger(step.balance) then
+            return false, "invalid bank ledger entry"
+        end
+        return runQuery("INSERT INTO bank_ledger (steamid, profile, requestId, kind, amount, balance, createdAt) VALUES ("
+            .. sql.SQLStr(step.steamid) .. ", " .. sql.SQLStr(profile) .. ", " .. sql.SQLStr(step.requestId) .. ", "
+            .. sql.SQLStr(step.transactionKind) .. ", " .. integerValue(step.amount) .. ", " .. integerValue(step.balance) .. ", " .. os.time() .. ")")
+    end,
+    worldDropInsert = function(profile, step)
+        if type(step.dropId) ~= "string" or step.dropId == "" or #step.dropId > 64
+            or type(step.requestId) ~= "string" or step.requestId == "" or #step.requestId > 64
+            or type(step.sourceInstanceId) ~= "string" or step.sourceInstanceId == ""
+            or type(step.locationId) ~= "string" or step.locationId == "" or #step.locationId > 128
+            or not validInteger(step.cellId) or not validInteger(step.createdAt, 1)
+            or not validInteger(step.expiresAt, 1) or step.expiresAt <= step.createdAt then
+            return false, "invalid dropped-item identity or lifetime"
+        end
+        local positionValid, positionError = validateDroppedItemPosition(step)
+        if not positionValid then return false, positionError end
+        local instanceData, instanceError = serializeDroppedItem(step.instance)
+        if not instanceData then return false, instanceError end
+        local inserted, insertError = runQuery("INSERT INTO world_dropped_items (profile, cellId, locationId, dropId, requestId, itemData, itemCount, x, y, z, yaw, createdAt, expiresAt) VALUES ("
+            .. sql.SQLStr(profile) .. ", " .. integerValue(step.cellId) .. ", " .. sql.SQLStr(step.locationId) .. ", " .. sql.SQLStr(step.dropId) .. ", " .. sql.SQLStr(step.requestId) .. ", " .. sql.SQLStr(instanceData) .. ", "
+            .. integerValue(step.instance.count) .. ", " .. realValue(step.x) .. ", " .. realValue(step.y) .. ", " .. realValue(step.z) .. ", "
+            .. realValue(step.yaw) .. ", " .. integerValue(step.createdAt) .. ", " .. integerValue(step.expiresAt) .. ")")
+        if not inserted then return false, insertError end
+        return runQuery("INSERT INTO world_drop_requests (profile, requestId, cellId, locationId, sourceInstanceId, requestedCount, createdAt, expiresAt) VALUES ("
+            .. sql.SQLStr(profile) .. ", " .. sql.SQLStr(step.requestId) .. ", " .. integerValue(step.cellId) .. ", " .. sql.SQLStr(step.locationId) .. ", "
+            .. sql.SQLStr(step.sourceInstanceId) .. ", " .. integerValue(step.instance.count) .. ", "
+            .. integerValue(step.createdAt) .. ", " .. integerValue(step.expiresAt) .. ")")
+    end,
+    worldDropUpdate = function(profile, step)
+        if type(step.dropId) ~= "string" or step.dropId == "" or not validInteger(step.cellId)
+            or type(step.locationId) ~= "string" or step.locationId == "" or not validInteger(step.expectedCount, 1) then
+            return false, "invalid dropped-item update"
+        end
+        local instanceData, instanceError = serializeDroppedItem(step.instance)
+        if not instanceData then return false, instanceError end
+        local updated, updateError = runQuery("UPDATE world_dropped_items SET itemData = " .. sql.SQLStr(instanceData)
+            .. ", itemCount = " .. integerValue(step.instance.count) .. " WHERE profile = " .. sql.SQLStr(profile)
+            .. " AND locationId = " .. sql.SQLStr(step.locationId) .. " AND dropId = " .. sql.SQLStr(step.dropId)
+            .. " AND itemCount = " .. integerValue(step.expectedCount))
+        if not updated then return false, updateError end
+        if tonumber(sql.QueryValue("SELECT changes()")) ~= 1 then return false, "the dropped crate changed; refresh and try again" end
+        return true
+    end,
+    worldDropDelete = function(profile, step)
+        if type(step.dropId) ~= "string" or step.dropId == "" or not validInteger(step.cellId)
+            or type(step.locationId) ~= "string" or step.locationId == "" or not validInteger(step.expectedCount, 1) then
+            return false, "invalid dropped-item deletion"
+        end
+        local deleted, deleteError = runQuery("DELETE FROM world_dropped_items WHERE profile = " .. sql.SQLStr(profile)
+            .. " AND locationId = " .. sql.SQLStr(step.locationId) .. " AND dropId = " .. sql.SQLStr(step.dropId)
+            .. " AND itemCount = " .. integerValue(step.expectedCount))
+        if not deleted then return false, deleteError end
+        if tonumber(sql.QueryValue("SELECT changes()")) ~= 1 then return false, "the dropped crate changed; refresh and try again" end
+        return true
+    end,
     playerItems = function(profile, step)
         return writePlayerItemRows(step.steamid, profile, step.rows)
     end,
@@ -595,10 +705,17 @@ local commitWriters = {
     cash = function(profile, step)
         local cash = tonumber(step.cash)
         if not cash or cash < 0 or cash ~= math.floor(cash) then return false, "cash must be a whole number of at least 0" end
-        local updated, updateError = runQuery("UPDATE player_data SET Cash = " .. cash .. ", Revision = Revision + 1, UpdatedAt = " .. os.time() .. " WHERE steamid = " .. sql.SQLStr(step.steamid) .. " AND profile = " .. sql.SQLStr(profile))
+        local expected = tonumber(step.expected)
+        if step.expected ~= nil and (not expected or expected < 0 or expected ~= math.floor(expected)) then
+            return false, "expected cash must be a whole number of at least 0"
+        end
+        local expectedClause = step.expected ~= nil and (" AND Cash = " .. math.floor(expected)) or ""
+        local updated, updateError = runQuery("UPDATE player_data SET Cash = " .. cash .. ", Revision = Revision + 1, UpdatedAt = " .. os.time() .. " WHERE steamid = " .. sql.SQLStr(step.steamid) .. " AND profile = " .. sql.SQLStr(profile) .. expectedClause)
         if not updated then return false, updateError end
         local changes = sql.QueryValue("SELECT changes()")
-        if tonumber(changes) ~= 1 then return false, "no player record to update cash for " .. tostring(step.steamid) end
+        if tonumber(changes) ~= 1 then
+            return false, step.expected ~= nil and "the cash balance changed; refresh and try again" or ("no player record to update cash for " .. tostring(step.steamid))
+        end
         return true
     end,
     professionClaim = function(profile, step)
@@ -642,7 +759,7 @@ local commitWriters = {
 }
 
 // Writes a list of persistence steps for one profile in a single transaction: every step lands or none do.
-// Steps: { kind = "playerItems"|"denStash"|"cash"|"professionClaim"|"playerImplants"|"credits"|"mastercraftAttempt"|"job"|"tradeStock"|"tradeLedger", steamid = ..., ... }.
+// Steps: { kind = "playerItems"|"denStash"|"cash"|"professionClaim"|"playerImplants"|"credits"|"mastercraftAttempt"|"job"|"tradeStock"|"tradeLedger"|"bankLedger"|"worldDropInsert"|"worldDropUpdate"|"worldDropDelete", steamid = ..., ... }.
 function ZM_CommitWrites(profile, steps)
     profile = getPlayerDataProfile(profile)
     if not profile then return false, "Invalid commit profile" end
@@ -678,6 +795,89 @@ function ZM_CreateLootSpotTables()
         return false, cellsError
     end
     return runQuery("CREATE TABLE IF NOT EXISTS loot_spots (profile TEXT NOT NULL, cellId INTEGER NOT NULL, spotKey TEXT NOT NULL, state TEXT NOT NULL, item TEXT, PRIMARY KEY (profile, cellId, spotKey))")
+end
+
+function ZM_CreateWorldDroppedItemTables()
+    local created, createError = runQuery("CREATE TABLE IF NOT EXISTS world_dropped_items (profile TEXT NOT NULL, cellId INTEGER NOT NULL, locationId TEXT NOT NULL, dropId TEXT NOT NULL, requestId TEXT NOT NULL, itemData TEXT NOT NULL, itemCount INTEGER NOT NULL, x REAL NOT NULL, y REAL NOT NULL, z REAL NOT NULL, yaw REAL NOT NULL, createdAt INTEGER NOT NULL, expiresAt INTEGER NOT NULL, PRIMARY KEY (profile, cellId, dropId))")
+    if not created then return false, createError end
+    local columns, columnsError = getTableColumns("world_dropped_items")
+    if not columns then return false, columnsError end
+    local locationAdded, locationError = addColumnIfMissing("world_dropped_items", columns, "locationId TEXT NOT NULL DEFAULT ''")
+    if not locationAdded then return false, locationError end
+    local requestIdAdded, requestIdError = addColumnIfMissing("world_dropped_items", columns, "requestId TEXT NOT NULL DEFAULT ''")
+    if not requestIdAdded then return false, requestIdError end
+    local migratedDrops, migrateDropsError = runQuery("UPDATE world_dropped_items SET locationId = 'cell:' || cellId WHERE locationId = ''")
+    if not migratedDrops then return false, migrateDropsError end
+    local requests, requestError = runQuery("CREATE TABLE IF NOT EXISTS world_drop_requests (profile TEXT NOT NULL, requestId TEXT NOT NULL, cellId INTEGER NOT NULL, locationId TEXT NOT NULL, sourceInstanceId TEXT NOT NULL, requestedCount INTEGER NOT NULL, createdAt INTEGER NOT NULL, expiresAt INTEGER NOT NULL, PRIMARY KEY (profile, requestId))")
+    if not requests then return false, requestError end
+    local requestColumns, requestColumnsError = getTableColumns("world_drop_requests")
+    if not requestColumns then return false, requestColumnsError end
+    local requestLocationAdded, requestLocationError = addColumnIfMissing("world_drop_requests", requestColumns, "locationId TEXT NOT NULL DEFAULT ''")
+    if not requestLocationAdded then return false, requestLocationError end
+    local migratedRequests, migrateRequestsError = runQuery("UPDATE world_drop_requests SET locationId = 'cell:' || cellId WHERE locationId = ''")
+    if not migratedRequests then return false, migrateRequestsError end
+    local index, indexError = runQuery("CREATE INDEX IF NOT EXISTS world_dropped_items_expiry ON world_dropped_items (profile, cellId, expiresAt)")
+    if not index then return false, indexError end
+    local locationIndex, locationIndexError = runQuery("CREATE INDEX IF NOT EXISTS world_dropped_items_location_expiry ON world_dropped_items (profile, locationId, expiresAt)")
+    if not locationIndex then return false, locationIndexError end
+    return runQuery("CREATE INDEX IF NOT EXISTS world_drop_requests_expiry ON world_drop_requests (profile, locationId, expiresAt)")
+end
+
+function ZM_GetWorldDroppedItems(profile, locationId)
+    profile = getPlayerDataProfile(profile)
+    if not profile or type(locationId) ~= "string" or locationId == "" then
+        return nil, "Invalid dropped-item location"
+    end
+    local result = sql.Query("SELECT * FROM world_dropped_items WHERE profile = " .. sql.SQLStr(profile) .. " AND locationId = " .. sql.SQLStr(locationId) .. " ORDER BY createdAt, dropId")
+    if result == false then
+        return nil, sql.LastError() or "Could not read dropped items"
+    end
+    return result or {}
+end
+
+function ZM_DeleteExpiredWorldDroppedItems(profile, locationId, now)
+    profile = getPlayerDataProfile(profile)
+    if not profile or type(locationId) ~= "string" or locationId == "" or not validInteger(now, 1) then
+        return false, "Invalid dropped-item expiry query"
+    end
+    local deleted, deleteError = runQuery("DELETE FROM world_dropped_items WHERE profile = " .. sql.SQLStr(profile) .. " AND locationId = " .. sql.SQLStr(locationId) .. " AND expiresAt <= " .. integerValue(now))
+    if not deleted then return false, deleteError end
+    return runQuery("DELETE FROM world_drop_requests WHERE profile = " .. sql.SQLStr(profile) .. " AND locationId = " .. sql.SQLStr(locationId) .. " AND expiresAt <= " .. integerValue(now))
+end
+
+function ZM_DeleteExpiredWorldDropRequests(profile, locationId, now)
+    profile = getPlayerDataProfile(profile)
+    if not profile or type(locationId) ~= "string" or locationId == "" or not validInteger(now, 1) then
+        return false, "Invalid dropped-item request expiry query"
+    end
+    return runQuery("DELETE FROM world_drop_requests WHERE profile = " .. sql.SQLStr(profile)
+        .. " AND locationId = " .. sql.SQLStr(locationId) .. " AND expiresAt <= " .. integerValue(now))
+end
+
+function ZM_GetWorldDropRequest(profile, requestId)
+    profile = getPlayerDataProfile(profile)
+    if not profile or type(requestId) ~= "string" or requestId == "" then
+        return nil, "Invalid dropped-item request"
+    end
+    local result = sql.Query("SELECT * FROM world_drop_requests WHERE profile = " .. sql.SQLStr(profile) .. " AND requestId = " .. sql.SQLStr(requestId))
+    if result == false then
+        return nil, sql.LastError() or "Could not read dropped-item request"
+    end
+    return result and result[1] or nil
+end
+
+function ZM_DeleteWorldDroppedItem(profile, locationId, dropId, expectedCount)
+    profile = getPlayerDataProfile(profile)
+    if not profile or type(locationId) ~= "string" or locationId == "" or type(dropId) ~= "string" or dropId == ""
+        or not validInteger(expectedCount, 1) then
+        return false, "Invalid dropped-item deletion"
+    end
+    local deleted, deleteError = runQuery("DELETE FROM world_dropped_items WHERE profile = " .. sql.SQLStr(profile)
+        .. " AND locationId = " .. sql.SQLStr(locationId) .. " AND dropId = " .. sql.SQLStr(dropId)
+        .. " AND itemCount = " .. integerValue(expectedCount))
+    if not deleted then return false, deleteError end
+    if tonumber(sql.QueryValue("SELECT changes()")) ~= 1 then return false, "dropped item no longer exists" end
+    return true
 end
 
 function ZM_GetLootCell(profile, cellId)

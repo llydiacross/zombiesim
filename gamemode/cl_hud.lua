@@ -113,6 +113,13 @@ surface.CreateFont("ZM_WeaponHudReserve", {
     antialias = true
 })
 
+surface.CreateFont("ZM_RadiationHudValue", {
+    font = "Trebuchet MS",
+    size = 19,
+    weight = 900,
+    antialias = true
+})
+
 surface.CreateFont("ZM_CompassHeading", {
     font = "Trebuchet MS",
     size = 15,
@@ -599,6 +606,11 @@ end
 
 local minimapMargin = 20
 local minimapBarAreaHeight = 76
+local cellStatusPanelHeight = 36
+local cellStatusPanelGap = 6
+local radiationHudPanelWidth = 210
+local radiationHudPanelHeight = 52
+local radiationHudMaximumGameSv = 10
 
 local function getMinimapRect()
     local width = math.floor(math.min(230 * math.Clamp(minimapSizeScale:GetFloat(), 0.7, 1.75),
@@ -607,8 +619,36 @@ local function getMinimapRect()
     return minimapMargin, ScrH() - height - minimapMargin, width, height
 end
 
+local function getCellStatusRect()
+    local x, y, width = getMinimapRect()
+    return x, y - cellStatusPanelHeight - cellStatusPanelGap, width, cellStatusPanelHeight
+end
+
+local function getRadiationHudState(player)
+    if not IsValid(player) or not ZM_World or not ZM_World:IsLoaded() then
+        return false, 0
+    end
+
+    local safeZone = hasCurrentSafeZone(player)
+    local cell = not safeZone and getHudPlayerCell(player) or nil
+    local hasCellData = safeZone or cell ~= nil
+    local intensity = cell and ZM_World:GetRadiationIntensity(cell) or 0
+    return hasCellData, math.Clamp(intensity, 0, 1)
+end
+
+local function getRadiationHudRect()
+    local width = math.min(radiationHudPanelWidth, ScrW() - 40)
+    local x = ScrW() - width - 18
+    local compassX, compassY, compassWidth, compassHeight = getCompassRect()
+    local y = 18
+    if x < compassX + compassWidth + 8 then
+        y = compassY + compassHeight + 5 + 18 + 8
+    end
+    return x, y, width, radiationHudPanelHeight
+end
+
 // Cached per frame: the crosshair clip queries these rects many times while searching for an edge.
-local hudReservedRects = { {}, {}, {} }
+local hudReservedRects = { {}, {}, {}, {}, {}, {} }
 local hudReservedRectsFrame = -1
 
 function ZM_GetHudReservedRects()
@@ -617,10 +657,26 @@ function ZM_GetHudReservedRects()
         return hudReservedRects
     end
     hudReservedRectsFrame = frame
-    local compass, minimap, xpBar = hudReservedRects[1], hudReservedRects[2], hudReservedRects[3]
+    local compass, minimap, cellStatus, radiationHud, xpBar = hudReservedRects[1], hudReservedRects[2],
+        hudReservedRects[3], hudReservedRects[4], hudReservedRects[5]
     compass.x, compass.y, compass.w, compass.h = getCompassRect()
     minimap.x, minimap.y, minimap.w, minimap.h = getMinimapRect()
+    cellStatus.x, cellStatus.y, cellStatus.w, cellStatus.h = getCellStatusRect()
+    radiationHud.x, radiationHud.y, radiationHud.w, radiationHud.h = getRadiationHudRect()
+    local hasCellData, intensity = getRadiationHudState(LocalPlayer())
+    if hasCellData and math.floor(intensity * radiationHudMaximumGameSv * 10 + 0.5) <= 0 then
+        radiationHud.w, radiationHud.h = 0, 0
+    end
     xpBar.x, xpBar.y, xpBar.w, xpBar.h = compass.x, compass.y + compass.h + 5, compass.w, 18
+    local indicators = hudReservedRects[6]
+    if ZM_IsShoulderCamera() then
+        local scale = math.Clamp(ScrH() / 1080, 0.75, 1.5)
+        local anchorX, anchorY = ZM_GetPlayerIndicatorScreenPos(LocalPlayer(), "notification")
+        indicators.x, indicators.y = anchorX - 140 * scale, anchorY - 26 - (maximumPlayerNotifications - 1) * 22 - 13
+        indicators.w, indicators.h = 280 * scale, ScrH() - 100 * scale + 8 - indicators.y
+    else
+        indicators.x, indicators.y, indicators.w, indicators.h = 0, 0, 0, 0
+    end
     return hudReservedRects
 end
 
@@ -1089,6 +1145,23 @@ local function drawPlayerMinimap()
             end
             if gateX and gateY then drawWaypointMinimapMarker(mapX, mapY, mapWidth, mapHeight, gateX, gateY) end
         end
+        if ZM_LootPopup then
+            for _, entity in ipairs(ZM_LootPopup:GetMarkerSpots(position)) do
+                if IsValid(entity) and entity:GetNWBool("ZM_LootSpot", false) and not entity:IsDormant() then
+                    local lootX, lootY
+                    if minimapViewMode == "map" and ZM_WorldMap and ZM_WorldMap.ProjectLocalMapPosition then
+                        lootX, lootY = ZM_WorldMap:ProjectLocalMapPosition(
+                            mapX, mapY, mapWidth, mapHeight, position, localMapViewHeight, entity:WorldSpaceCenter())
+                    elseif cellTextureTransform then
+                        lootX, lootY = projectCellTexturePosition(
+                            mapX, mapY, mapWidth, mapHeight, entity:WorldSpaceCenter(), cellTextureTransform)
+                    end
+                    if lootX and lootY then
+                        ZM_LootPopup:DrawMinimapMarker(entity, mapX, mapY, mapWidth, mapHeight, lootX, lootY)
+                    end
+                end
+            end
+        end
         local playerMarkerX, playerMarkerY = mapX + mapWidth * 0.5, mapY + mapHeight * 0.5
         if cellTextureTransform then
             playerMarkerX, playerMarkerY = projectCellTexturePosition(mapX, mapY, mapWidth, mapHeight, position, cellTextureTransform)
@@ -1153,6 +1226,167 @@ local function drawPlayerMinimap()
 end
 
 hook.Add("HUDPaint", "ZM.PlayerMinimap", drawPlayerMinimap)
+
+local dangerStarFilledColor = Color(239, 57, 72)
+local dangerStarEmptyColor = Color(90, 102, 111)
+local radiationHudLabelColor = Color(166, 214, 174)
+local radiationHudValueColor = Color(95, 220, 125)
+local radiationHudShadowColor = Color(0, 0, 0, 220)
+local dangerStarShape = {
+    tipUnits = {},
+    innerUnits = {},
+    tipPoints = {},
+    innerPoints = {},
+    triangles = {}
+}
+
+for pointIndex = 1, 5 do
+    local angle = math.rad(-90 + (pointIndex - 1) * 72)
+    local innerAngle = angle - math.rad(36)
+    dangerStarShape.tipUnits[pointIndex] = { x = math.cos(angle), y = math.sin(angle) }
+    dangerStarShape.innerUnits[pointIndex] = {
+        x = math.cos(innerAngle) * 0.45,
+        y = math.sin(innerAngle) * 0.45
+    }
+    dangerStarShape.tipPoints[pointIndex] = {}
+    dangerStarShape.innerPoints[pointIndex] = {}
+    dangerStarShape.triangles[pointIndex] = {
+        dangerStarShape.tipPoints[pointIndex],
+        dangerStarShape.innerPoints[pointIndex],
+        dangerStarShape.innerPoints[pointIndex % 5 + 1]
+    }
+end
+
+local function drawDangerStarShape(centerX, centerY, radius)
+    for pointIndex = 1, 5 do
+        local tipUnit = dangerStarShape.tipUnits[pointIndex]
+        local innerUnit = dangerStarShape.innerUnits[pointIndex]
+        local tipPoint = dangerStarShape.tipPoints[pointIndex]
+        local innerPoint = dangerStarShape.innerPoints[pointIndex]
+        tipPoint.x = centerX + tipUnit.x * radius
+        tipPoint.y = centerY + tipUnit.y * radius
+        innerPoint.x = centerX + innerUnit.x * radius
+        innerPoint.y = centerY + innerUnit.y * radius
+    end
+    surface.DrawPoly(dangerStarShape.innerPoints)
+    for pointIndex = 1, 5 do
+        surface.DrawPoly(dangerStarShape.triangles[pointIndex])
+    end
+end
+
+local function drawDangerStar(centerX, centerY, radius, color)
+    draw.NoTexture()
+    surface.SetDrawColor(18, 10, 12, 255)
+    drawDangerStarShape(centerX, centerY, radius + 1)
+    surface.SetDrawColor(color)
+    drawDangerStarShape(centerX, centerY, radius)
+end
+
+local function drawCellStatusPanel()
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    local player = LocalPlayer()
+    if not IsValid(player) or not ZM_World or not ZM_World:IsLoaded() then return end
+
+    local x, y, width, height = getCellStatusRect()
+    surface.SetDrawColor(minimapColors.black.r, minimapColors.black.g, minimapColors.black.b, 238)
+    surface.DrawRect(x, y, width, height)
+    surface.SetDrawColor(239, 57, 72, 255)
+    surface.DrawRect(x + 2, y + 2, 2, height - 4)
+    surface.SetDrawColor(minimapColors.border.r, minimapColors.border.g, minimapColors.border.b, 255)
+    surface.DrawOutlinedRect(x, y, width, height, 2)
+
+    local safeZone = hasCurrentSafeZone(player)
+    local cell = not safeZone and getHudPlayerCell(player) or nil
+    local hasCellData = safeZone or cell ~= nil
+    local danger = 0
+    if cell then
+        danger = ZM_World:GetDangerIntensity(cell)
+    end
+
+    local padding = 8
+    local dangerY = y + math.floor((height - 13) * 0.5)
+    draw.SimpleText("DANGER", "ZM_MinimapLabel", x + padding + 3, dangerY, minimapColors.text,
+        TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+    local starStart = math.min(70, width * 0.42)
+    local starEnd = width - 30
+    local starSpacing = (starEnd - starStart) / 5
+    local starRadius = math.min(8, (starEnd - starStart) / 12)
+    if hasCellData then
+        local starCount = math.Clamp(math.floor(danger * 6 + 0.5), 0, 6)
+        for index = 1, 6 do
+            drawDangerStar(x + starStart + (index - 1) * starSpacing, y + height * 0.5,
+                starRadius, index <= starCount and dangerStarFilledColor or dangerStarEmptyColor)
+        end
+    else
+        draw.SimpleText("--", "ZM_MinimapLabel", x + width - padding, dangerY, dangerStarEmptyColor,
+            TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+    end
+end
+
+local function drawRadiationHudPanel()
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    local player = LocalPlayer()
+    if not IsValid(player) or not ZM_World or not ZM_World:IsLoaded() then return end
+
+    local hasCellData, intensity = getRadiationHudState(player)
+    local estimate = intensity * radiationHudMaximumGameSv
+    local roundedEstimate = math.floor(estimate * 10 + 0.5)
+    if hasCellData and roundedEstimate <= 0 then return end
+
+    local x, y, width, height = getRadiationHudRect()
+    local red = math.floor(95 + intensity * 160)
+    local green = math.floor(220 - intensity * 125)
+    local blue = math.floor(125 - intensity * 55)
+    radiationHudValueColor.r, radiationHudValueColor.g, radiationHudValueColor.b = red, green, blue
+    surface.SetDrawColor(7, 8, 10, 244)
+    surface.DrawRect(x, y, width, height)
+    surface.SetDrawColor(65, 112, 75, 255)
+    surface.DrawOutlinedRect(x, y, width, height, 1)
+    surface.SetDrawColor(red, green, blue, 255)
+    surface.DrawRect(x + 2, y + 2, 2, height - 4)
+    surface.SetDrawColor(126, 180, 133, 210)
+    surface.DrawRect(x + 5, y + 1, width - 10, 1)
+
+    draw.SimpleText("RADIATION", "ZM_MinimapLabel", x + 11, y + 17, radiationHudLabelColor,
+        TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+
+    local valueBadgeX = x + width - 94
+    local valueBadgeY = y + 8
+    local valueBadgeWidth = 82
+    local valueBadgeHeight = 26
+    surface.SetDrawColor(13, 25, 17, 255)
+    surface.DrawRect(valueBadgeX, valueBadgeY, valueBadgeWidth, valueBadgeHeight)
+    surface.SetDrawColor(math.floor(40 + intensity * 170), math.floor(96 + (1 - intensity) * 90),
+        math.floor(54 + (1 - intensity) * 40), 255)
+    surface.DrawOutlinedRect(valueBadgeX, valueBadgeY, valueBadgeWidth, valueBadgeHeight, 1)
+    local valueText = not hasCellData and "--" or
+        (estimate < 0.05 and "<0.1" or string.format("%.1f", estimate))
+    draw.SimpleText(valueText .. " Sv", "ZM_RadiationHudValue", valueBadgeX + valueBadgeWidth * 0.5 + 1,
+        valueBadgeY + valueBadgeHeight * 0.5 + 1, radiationHudShadowColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+    draw.SimpleText(valueText .. " Sv", "ZM_RadiationHudValue", valueBadgeX + valueBadgeWidth * 0.5,
+        valueBadgeY + valueBadgeHeight * 0.5, radiationHudValueColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+
+    local barX = x + 10
+    local barY = y + 38
+    local barWidth = width - 20
+    local barHeight = 8
+    surface.SetDrawColor(20, 31, 24, 255)
+    surface.DrawRect(barX, barY, barWidth, barHeight)
+    if hasCellData and intensity > 0 then
+        surface.SetDrawColor(red, green, blue, 255)
+        surface.DrawRect(barX + 1, barY + 1, math.max(1, math.floor((barWidth - 2) * intensity)), barHeight - 2)
+    end
+    for tick = 1, 4 do
+        local tickX = barX + math.floor(barWidth * tick / 5)
+        surface.SetDrawColor(7, 13, 9, 220)
+        surface.DrawRect(tickX, barY, 1, barHeight)
+    end
+    surface.SetDrawColor(65, 112, 75, 255)
+    surface.DrawOutlinedRect(barX, barY, barWidth, barHeight, 1)
+end
+
+hook.Add("HUDPaint", "ZM.CellStatusPanel", drawCellStatusPanel)
+hook.Add("HUDPaint", "ZM.RadiationHudPanel", drawRadiationHudPanel)
 
 hook.Add("Think", "ZM.PlayerMinimap.Zoom", function()
     local hasKeyboardFocus = IsValid(vgui.GetKeyboardFocus())
@@ -1226,6 +1460,16 @@ function ZM_GetPlayerOverheadScreenPos(ply)
     return screen.x, screen.y
 end
 
+function ZM_GetPlayerIndicatorScreenPos(ply, kind)
+    if not ZM_IsShoulderCamera() then return ZM_GetPlayerOverheadScreenPos(ply) end
+    local scale = math.Clamp(ScrH() / 1080, 0.75, 1.5)
+    local offset = kind == "search" and 32 or (kind == "notification" and 80 or (kind == "hint" and 60 or 0))
+    local minimapX, _, minimapWidth = getMinimapRect()
+    local x = math.min(ScrW() - 140 * scale - 20,
+        math.max(ScrW() * 0.5, minimapX + minimapWidth + 140 * scale + 12))
+    return x, ScrH() - (100 + offset) * scale
+end
+
 local lastPlayerHealth
 
 // Detects local health loss and shows the amount above the player.
@@ -1253,7 +1497,7 @@ hook.Add("HUDPaint", "ZM.PlayerNotifications", function()
     local ply = LocalPlayer()
     if not IsValid(ply) then return end
     local now = CurTime()
-    local anchorX, anchorY = ZM_GetPlayerOverheadScreenPos(ply)
+    local anchorX, anchorY = ZM_GetPlayerIndicatorScreenPos(ply, "notification")
     local y = anchorY - staminaBarHeight - 16
     local index = 1
 
@@ -1366,7 +1610,7 @@ hook.Add("HUDPaint", "ZM.StaminaBar", function()
     local isUsingStamina = ply:KeyDown(IN_SPEED) or staminaPercent < 1
     if not isUsingStamina then return end
 
-    local anchorX, anchorY = ZM_GetPlayerOverheadScreenPos(ply)
+    local anchorX, anchorY = ZM_GetPlayerIndicatorScreenPos(ply, "stamina")
     local barWidth = staminaBarWidth
     local barHeight = staminaBarHeight
     local barX = math.floor(anchorX - barWidth * 0.5)

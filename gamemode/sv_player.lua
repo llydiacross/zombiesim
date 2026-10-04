@@ -199,12 +199,6 @@ function ply:SetCurrentSafeZone(safeZoneId)
         return false, updateError or "Could not persist current safe zone"
     end
     self:SetNetworkPlayerData()
-    if self.CurrentSafeZoneId and ZM_InventoryService and ZM_InventoryService.DepositCashBundles then
-        local deposited, depositError = ZM_InventoryService:DepositCashBundles(self)
-        if not deposited then
-            ErrorNoHalt("[ZombieSim] Could not deposit den cash bundles: " .. tostring(depositError) .. "\n")
-        end
-    end
     if self.SendInventory then
         self:SendInventory()
     end

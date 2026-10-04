@@ -214,6 +214,39 @@ test("definitions_scale_a_spawned_walker", function(check)
     end
 end)
 
+test("radiated_variant_chance_tracks_cell_intensity", function(check)
+    local definition = enemy("walker", 0, 1)
+    check(Enemies.GetRadiatedChance({ radiation = 0 }, definition) == 0, "nonradiated cells have no radiated variants")
+    check(Enemies.GetRadiatedChance({ radiation = 0.5 }, definition) == 0.25, "half intensity yields a 25 percent chance")
+    check(Enemies.GetRadiatedChance({ radiation = 1 }, definition) == 0.5, "full intensity yields a 50 percent chance")
+    check(Enemies.GetRadiatedChance({ radiation = 2 }, definition) == 0.5, "chance is capped at 50 percent")
+    check(Enemies.GetRadiatedChance({ radiation = 1 }, enemy("boss", 0, 1, { boss = true })) == 0,
+        "ordinary walker variant selection does not alter bosses")
+end)
+
+test("radiated_variant_is_repeatable_and_preserves_stats", function(check)
+    local zombie = ents.Create("zn_walker_zombie")
+    zombie:SetPos(Vector(0, 0, -16000))
+    zombie:Spawn()
+    local definition = enemy("variant", 0, 1)
+    zombie:ApplyEnemyDefinition(definition, 0.5)
+    local health, speed = zombie:Health(), zombie.WalkSpeed
+    local first = Enemies:ApplyRadiatedVariant(zombie, { radiation = 1 }, definition, Generation.NewRng(123))
+    for _ = 1, 20 do
+        check(Enemies:ApplyRadiatedVariant(zombie, { radiation = 1 }, definition, Generation.NewRng(123)) == first,
+            "the same seed selects the same variant")
+    end
+    Enemies:ApplyRadiatedVariant(zombie, { radiation = 1 }, definition, { Next = function() return 0.49 end })
+    check(zombie:GetNWBool("ZM_Radiated", false) and zombie:GetNWFloat("ZM_RadiatedIntensity", 0) == 1,
+        "radiated state and strength are published")
+    check(zombie:Health() == health and zombie.WalkSpeed == speed and zombie.EnemyId == definition.id,
+        "variant selection preserves health, speed and reward definition")
+    Enemies:ApplyRadiatedVariant(zombie, { radiation = 0 }, definition, Generation.NewRng(123))
+    check(not zombie:GetNWBool("ZM_Radiated", true) and zombie:GetNWFloat("ZM_RadiatedIntensity", 1) == 0,
+        "an ordinary cell clears variant state")
+    zombie:Remove()
+end)
+
 test("kills_reward_xp_and_place_loot_on_corpse_once", function(check)
     local registry = ZM_StaticData:GetRegistry()
     local original = registry.enemies.testLootEnemy

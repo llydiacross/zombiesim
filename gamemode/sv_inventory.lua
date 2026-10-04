@@ -346,33 +346,6 @@ function Service:LoadDenStash(target)
     return true
 end
 
-function Service:DepositCashBundles(target)
-    if not target.ZM_Inventory then return false, "inventory is not loaded" end
-    local deposited = 0
-    local changed, changeError = self:Mutate(target, function(draft)
-        for container, slots in pairs(draft) do
-            if container ~= "equipped" then
-                for slot, instance in pairs(slots) do
-                    if instance.itemId == "itemCashBundle" then
-                        deposited = deposited + math.max(0, tonumber(instance.count) or 0)
-                        slots[slot] = nil
-                    end
-                end
-            end
-        end
-        return true
-    end)
-    if not changed then return false, changeError end
-    if deposited > 0 then
-        target.Cash = math.max(0, tonumber(target.Cash) or 0) + deposited
-        local saved, saveError = target:UpdatePlayerData("den cash deposit")
-        if not saved then return false, saveError end
-        target:SetNetworkPlayerData()
-    end
-    self:Send(target)
-    return true, deposited
-end
-
 function Service:Send(target)
     if not IsValid(target) or not target:IsPlayer() or not target.ZM_Inventory then
         return
@@ -930,6 +903,15 @@ function Service:HandleAction(target, request)
         return self:EquipWeaponInSlot(target, instanceId, request.slot)
     elseif request.action == "unequip" then
         return self:UnequipWeapon(target, instanceId)
+    elseif request.action == "drop" then
+        if not ZM_DroppedItems then
+            return false, "Dropped items are unavailable."
+        end
+        local count = request.count ~= nil and tonumber(request.count) or nil
+        if not count then
+            return false, "Invalid drop quantity."
+        end
+        return ZM_DroppedItems:DropItem(target, instanceId, count, request.requestId)
     elseif request.action == "move" then
         local container = request.container
         if not Items.Containers[container] then

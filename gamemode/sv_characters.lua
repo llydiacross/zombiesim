@@ -22,7 +22,8 @@ Characters.StorageTables = {
     "player_credits",
     "credit_ledger",
     "mastercraft_attempts",
-    "trade_ledger"
+    "trade_ledger",
+    "bank_ledger"
 }
 
 local characterSchema = "CREATE TABLE IF NOT EXISTS characters (steamid TEXT NOT NULL, profile TEXT NOT NULL, slot INTEGER NOT NULL, characterId TEXT NOT NULL UNIQUE, name TEXT NOT NULL, model TEXT, skin INTEGER, bodygroups TEXT, playerColour TEXT, job TEXT NOT NULL DEFAULT 'Civilian', originCellX INTEGER, originCellY INTEGER, originLatitude REAL, originLongitude REAL, createdAt INTEGER NOT NULL, lastPlayedAt INTEGER NOT NULL DEFAULT 0, appearanceRequired INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (steamid, profile, slot))"

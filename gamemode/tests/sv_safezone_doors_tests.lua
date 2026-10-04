@@ -740,6 +740,28 @@ Suite:Add("gate_travel_requests_reload_for_shared_recipe_map", function(check)
     end)
 end)
 
+Suite:Add("gate_travel_yields_to_searchable_loot", function(check)
+    local originalFindAimedSpot = ZM_LootSpots.FindAimedSpot
+    local selectedSpot = { key = "enemycorpse_test" }
+    ZM_LootSpots.FindAimedSpot = function(_, target)
+        return target and selectedSpot or nil
+    end
+    local ok, errorMessage = pcall(function()
+        withFixture(function(target, ensureCalls)
+            local gate = {
+                GetClass = function() return "trigger_multiple" end,
+                GetName = function() return "zm_transition_gate_E" end,
+                GetKeyValues = function() return {} end
+            }
+            target.CanTravelToNeighbour = function() return cell end
+            Transitions:TryUseGate(target, gate)
+            check(#ensureCalls == 0, "using a searchable enemy corpse beside a gate must not transition")
+        end)
+    end)
+    ZM_LootSpots.FindAimedSpot = originalFindAimedSpot
+    if not ok then error(errorMessage) end
+end)
+
 Suite:Add("same_map_reload_only_when_forced", function(check)
     local realEnsurePlayerWorldMap = GAMEMODE.EnsurePlayerWorldMap
     withFixture(function(target)

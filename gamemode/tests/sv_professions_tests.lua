@@ -195,13 +195,28 @@ test("civilians_out_of_den_and_full_inventories_get_nothing", function(check)
 
     local full = person({ job = "Farmer" })
     give(full, "itemCloth", 1)
+    local now = os.time()
+    local deliveryDay = Pro:Day(now)
     local originalCapacity = Items.ContainerCapacity
     Items.ContainerCapacity = { backpack = 1, stash = 0, equipped = 3 }
-    local claimed, message = Pro:Claim(full, os.time())
+    local claimed, message = Pro:Claim(full, now)
     Items.ContainerCapacity = originalCapacity
     check(not claimed and string.find(tostring(message), "no room", 1, true), "a full inventory refuses the delivery: " .. tostring(message))
-    check(Pro:GetClaim(full) == nil, "a refused delivery leaves the day unclaimed for a retry")
+    check(Pro:GetClaim(full, deliveryDay) == nil, "a refused delivery leaves the day unclaimed for a retry")
     check(totalCount(full, "itemPotato") == 0, "nothing was granted")
+
+    check(Ops.Remove(full.ZM_Inventory, "backpack", "itemCloth", 1), "the blocker can be removed to make room")
+    local plan = Pro:PlanDelivery(full, deliveryDay)
+    local retried, stacks = Pro:Claim(full, now)
+    check(retried, "the same day's delivery succeeds after capacity is available: " .. tostring(stacks))
+    check(Pro:GetClaim(full, deliveryDay) ~= nil, "the successful retry records its exactly-once claim")
+    for _, stack in ipairs(plan or {}) do
+        check(totalCount(full, stack.item) == stack.count, "the retried delivery grants the planned amount of " .. stack.item)
+    end
+    local beforeDuplicate = totalCount(full, "itemPotato")
+    local duplicate, _, duplicateReason = Pro:Claim(full, now)
+    check(not duplicate and duplicateReason == "claimed", "a delivery retry still succeeds at most once per day")
+    check(totalCount(full, "itemPotato") == beforeDuplicate, "a duplicate retry grants no extra items")
 end)
 
 test("cooking_service_keeps_freshness_and_refuses_spoiled_food", function(check)

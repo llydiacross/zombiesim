@@ -180,10 +180,10 @@ if ([string]::IsNullOrWhiteSpace($ReportPath)) {
     $ReportPath = Join-Path $BuildDirectory 'vis-budget-report.json'
 }
 if ($MaxPortalClusters -lt 1) {
-    $MaxPortalClusters = Get-BudgetValue $worldGenerationProfile.Settings 'maxPortalClusters' 750
+    $MaxPortalClusters = Get-BudgetValue $worldGenerationProfile.Settings 'maxPortalClusters' 1500
 }
 if ($MaxPortals -lt 1) {
-    $MaxPortals = Get-BudgetValue $worldGenerationProfile.Settings 'maxPortals' 1350
+    $MaxPortals = Get-BudgetValue $worldGenerationProfile.Settings 'maxPortals' 2700
 }
 if ($MaxPortalClusters -lt 1 -or $MaxPortals -lt 1) {
     throw 'Visibility budgets must be greater than zero.'

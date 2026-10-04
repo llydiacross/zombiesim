@@ -4,7 +4,7 @@
   "buyMultiplier": 1.5,
   "sellMultiplier": 0.4,
   "maximumPurchaseUnits": 20,
-  "dailySaleCashLimit": 2500,
+  "dailySaleCashLimit": 250000,
   "npcServiceFees": { "cook": 5, "treat": 10, "research": 20, "implant": 150, "extract": 75 },
   "essentialAmmo": { "items": [ "ammo9mm", "ammoShells", "ammo556", "ammo762" ], "bundle": 30, "stock": 10 },
   "traders": {

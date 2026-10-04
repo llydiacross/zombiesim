@@ -1,4 +1,4 @@
-// Server-owned, deterministic per-cell harvestable foliage. Visual debris remains client-only.
+// Server-owned, deterministic per-cell foliage. Visual debris remains client-only.
 ZM_Foliage = ZM_Foliage or {}
 local Foliage = ZM_Foliage
 
@@ -6,20 +6,41 @@ if Foliage.Cleanup then
     Foliage:Cleanup()
 end
 
+// Per-node pools of mounted HL2/CS:S models (verified with vpk.exe); each node picks one deterministically.
 Foliage.Models = {
-    tree = "models/props/de_inferno/tree_small.mdl",
-    berry = "models/props/de_inferno/bushgreensmall.mdl"
+    tree = {
+        "models/props/de_inferno/tree_small.mdl",
+        "models/props_foliage/tree_dry01.mdl",
+        "models/props_foliage/tree_dry02.mdl",
+        "models/props_foliage/tree_dead01.mdl",
+        "models/props_foliage/tree_dead03.mdl",
+        "models/props/cs_militia/trees1.mdl"
+    },
+    berry = {
+        "models/props/de_inferno/bushgreensmall.mdl",
+        "models/props/de_inferno/largebush01.mdl",
+        "models/props/de_inferno/largebush03.mdl",
+        "models/props/de_train/bush.mdl",
+        "models/props/de_train/bush2.mdl",
+        "models/props_foliage/bush2.mdl",
+        "models/props/pi_shrub.mdl"
+    }
 }
 Foliage.HarvestRange = 96
 Foliage.TreeCooldownSeconds = 7 * 24 * 60 * 60
 Foliage.BerryCooldownSeconds = 24 * 60 * 60
-Foliage.MaxNodesPerCell = 18
-Foliage.MaxPlacementAttempts = 240
+Foliage.MaxNodesPerCell = 30
+Foliage.HarvestableSlotSpacing = 3
+Foliage.MaxPlacementAttempts = 360
 Foliage.PlacementBatchSize = 6
 Foliage.PlacementInterval = 0.05
-Foliage.MinPlantSpacing = 240
-Foliage.MapEdgeMargin = 256
-Foliage.MeshVersion = 1
+Foliage.MinPlantSpacing = 200
+Foliage.TreeFootprintRadius = 48
+Foliage.MapEdgeMargin = 64
+// Generated cells are a 5x5 grid of 640-unit tiles centred on the origin, wrapped by an inaccessible 640-unit
+// border ring (walls, water, gates). Placement is clamped to the playable grid before the edge margin applies.
+Foliage.PlayableHalfExtent = 1600
+Foliage.MeshVersion = 3
 Foliage.StorageReady = Foliage.StorageReady == true
 Foliage.BuildTimer = "ZM.Foliage.Build"
 Foliage.RegrowthTimer = "ZM.Foliage.Regrowth"
@@ -28,17 +49,38 @@ Foliage.SuitableSurfaceProps = {
     dirt = true,
     mud = true,
     gravel = true,
-    sand = true
+    sand = true,
+    rock = true,
+    boulder = true
+}
+// Rocky ground only supports shrubs; a tree candidate that lands on rock becomes a bush.
+Foliage.ShrubOnlySurfaceProps = {
+    rock = true,
+    boulder = true
 }
 
 local rewardCounts = {
     tree = { minimum = 2, maximum = 4 },
     berry = { minimum = 3, maximum = 5 }
 }
-local blockedMaterialWords = { "asphalt", "road", "street", "concrete", "sidewalk", "brick", "metal", "wood", "nodraw" }
+local blockedMaterialWords = {
+    "asphalt", "road", "street", "parking", "carpark", "concrete", "sidewalk", "brick", "metal", "wood", "nodraw"
+}
+local treeFootprintOffsets = {
+    { x = Foliage.TreeFootprintRadius, y = 0 },
+    { x = -Foliage.TreeFootprintRadius, y = 0 },
+    { x = 0, y = Foliage.TreeFootprintRadius },
+    { x = 0, y = -Foliage.TreeFootprintRadius }
+}
 local excludedClassWords = { "door", "gate", "transition", "spawn", "entrance", "exit" }
 local yellowColor = Color(255, 225, 110)
 local depletedColor = Color(135, 135, 135)
+local decorativeColor = Color(255, 255, 255)
+
+function Foliage.IsHarvestableSlot(slot)
+    return type(slot) == "number" and slot >= 1 and slot % 1 == 0
+        and (slot - 1) % Foliage.HarvestableSlotSpacing == 0
+end
 
 local function mapBasename(path)
     return string.lower(string.match(path or "", "([^/\\]+)$") or path or "")
@@ -131,6 +173,24 @@ function Foliage.IsSuitableGround(trace)
     return true
 end
 
+local function hasSuitableTreeFootprint(x, y, bounds, traceGround)
+    for _, offset in ipairs(treeFootprintOffsets) do
+        local trace = traceGround(x + offset.x, y + offset.y, bounds)
+        if not Foliage.IsSuitableGround(trace) then
+            return false
+        end
+    end
+    return true
+end
+
+function Foliage.PickModel(nodeType, roll)
+    local pool = Foliage.Models[nodeType]
+    if type(pool) ~= "table" or #pool == 0 then
+        return nil
+    end
+    return pool[math.Clamp(math.floor((tonumber(roll) or 0) * #pool) + 1, 1, #pool)]
+end
+
 function Foliage.MakeCandidate(bounds, rng, attempt, traceGround, isOccupied, existingPositions)
     local minimumX = bounds.minimum.x + Foliage.MapEdgeMargin
     local maximumX = bounds.maximum.x - Foliage.MapEdgeMargin
@@ -143,10 +203,18 @@ function Foliage.MakeCandidate(bounds, rng, attempt, traceGround, isOccupied, ex
     local x = minimumX + rng:Next() * (maximumX - minimumX)
     local y = minimumY + rng:Next() * (maximumY - minimumY)
     local nodeType = rng:Chance(0.38) and "tree" or "berry"
+    local modelRoll = rng:Next()
     local trace = traceGround(x, y, bounds)
     local suitable, groundReason = Foliage.IsSuitableGround(trace)
     if not suitable then
         return nil, groundReason
+    end
+    local surfaceName = string.lower(util.GetSurfacePropName(trace.SurfaceProps) or "")
+    if nodeType == "tree" and Foliage.ShrubOnlySurfaceProps[surfaceName] then
+        nodeType = "berry"
+    end
+    if nodeType == "tree" and not hasSuitableTreeFootprint(x, y, bounds, traceGround) then
+        nodeType = "berry"
     end
     local position = trace.HitPos + trace.HitNormal * 2
     if isOccupied(position, nodeType) then
@@ -162,6 +230,7 @@ function Foliage.MakeCandidate(bounds, rng, attempt, traceGround, isOccupied, ex
     return {
         key = string.format("v%d_%03d", Foliage.MeshVersion, attempt),
         type = nodeType,
+        model = Foliage.PickModel(nodeType, modelRoll),
         position = position,
         yaw = rng:Int(0, 359)
     }
@@ -185,6 +254,19 @@ local function getWorldBounds()
         if not isvector(minimum) or not isvector(maximum) then
             minimum, maximum = nil, nil
         end
+    end
+    if not valid(minimum, maximum) then
+        return nil, "world bounds are invalid"
+    end
+    // The 3D skybox room sits above the playable cell; keep placement traces below its floor.
+    local skyCamera = ents.FindByClass("sky_camera")[1]
+    if IsValid(skyCamera) and skyCamera:GetPos().z - 128 < maximum.z then
+        maximum = Vector(maximum.x, maximum.y, skyCamera:GetPos().z - 128)
+    end
+    local half = Foliage.PlayableHalfExtent
+    if half and half > 0 then
+        minimum = Vector(math.max(minimum.x, -half), math.max(minimum.y, -half), minimum.z)
+        maximum = Vector(math.min(maximum.x, half), math.min(maximum.y, half), maximum.z)
     end
     if not minimum or not maximum or maximum.x <= minimum.x or maximum.y <= minimum.y or maximum.z <= minimum.z then
         return nil, "world bounds are invalid"
@@ -226,7 +308,7 @@ end
 
 local function isOccupied(position, nodeType)
     local radius = nodeType == "tree" and 36 or 24
-    local height = nodeType == "tree" and 176 or 88
+    local height = nodeType == "tree" and 256 or 88
     local nearby = ents.FindInSphere(position, 112)
     for _, entity in ipairs(nearby) do
         if IsValid(entity) then
@@ -252,16 +334,20 @@ Foliage.TraceGround = traceGround
 Foliage.IsNamedExclusion = isNamedExclusion
 
 local function setNodeVisual(node, now)
-    local month = os.date("*t", now or os.time()).month
-    local seasonal = isHarvestableSeason(node.type, month)
-    local available = seasonal and (not node.availableAt or node.availableAt <= (now or os.time()))
+    local available = false
+    if node.harvestable then
+        local month = os.date("*t", now or os.time()).month
+        local seasonal = isHarvestableSeason(node.type, month)
+        available = seasonal and (not node.availableAt or node.availableAt <= (now or os.time()))
+    end
     node.available = available
     local entity = node.entity
     if IsValid(entity) then
+        entity:SetNWBool("ZM_FoliageHarvestable", node.harvestable == true)
         entity:SetNWBool("ZM_FoliageAvailable", available)
         entity:SetNWString("ZM_FoliageType", node.type)
         entity:SetNWFloat("ZM_FoliageAvailableAt", tonumber(node.availableAt) or 0)
-        entity:SetColor(available and yellowColor or depletedColor)
+        entity:SetColor(not node.harvestable and decorativeColor or (available and yellowColor or depletedColor))
     end
 end
 
@@ -281,9 +367,9 @@ function Foliage:Cleanup()
 end
 
 local function createNode(candidate, oldStates)
-    local model = Foliage.Models[candidate.type]
-    if not util.IsValidModel(model) then
-        return nil, "mounted model is unavailable: " .. model
+    local model = candidate.model or Foliage.PickModel(candidate.type, 0)
+    if not model or not util.IsValidModel(model) then
+        return nil, "mounted model is unavailable: " .. tostring(model)
     end
     local entity = ents.Create("prop_dynamic")
     if not IsValid(entity) then
@@ -304,6 +390,7 @@ local function createNode(candidate, oldStates)
     local node = {
         key = candidate.key,
         type = candidate.type,
+        harvestable = candidate.harvestable == true,
         position = candidate.position,
         entity = entity,
         availableAt = state and tonumber(state.availableAt) or nil
@@ -320,10 +407,19 @@ function Foliage:BeginCell(profile, cellId)
     if type(util.GetSurfacePropName) ~= "function" then
         return false, "surface-property lookup is unavailable"
     end
-    for _, model in pairs(self.Models) do
-        if not util.IsValidModel(model) then
-            return false, "mounted foliage model is unavailable: " .. model
+    for nodeType, pool in pairs(self.Models) do
+        local available = {}
+        for _, model in ipairs(pool) do
+            if util.IsValidModel(model) then
+                table.insert(available, model)
+            else
+                ErrorNoHalt("[ZombieSim] Foliage model is not mounted and was dropped from the pool: " .. model .. "\n")
+            end
         end
+        if #available == 0 then
+            return false, "no mounted foliage model is available for " .. nodeType
+        end
+        self.Models[nodeType] = available
     end
     local bounds, boundsError = getWorldBounds()
     if not bounds then
@@ -384,6 +480,7 @@ function Foliage:BeginCell(profile, cellId)
                 state.positions
             )
             if candidate then
+                candidate.harvestable = self.IsHarvestableSlot(table.Count(state.nodes) + 1)
                 local node, nodeError = createNode(candidate, state.oldStates)
                 if node then
                     state.nodes[node.key] = node
@@ -475,7 +572,7 @@ function Foliage:FindNearestNode(target)
     end
     local nearest, nearestDistance = nil, self.HarvestRange
     for _, node in pairs(cell.nodes) do
-        if IsValid(node.entity) then
+        if node.harvestable and IsValid(node.entity) then
             local distance = self.GetDistance(target, node)
             if distance <= nearestDistance then
                 nearest, nearestDistance = node, distance
@@ -490,6 +587,9 @@ function Foliage:Harvest(target, node, now, date, rng)
     local cell = self.Cell
     if not cell or cell.nodes[node.key] ~= node then
         return false, "That plant is no longer here."
+    end
+    if not node.harvestable then
+        return false, "That plant is decorative."
     end
     if not target:Alive() then
         return false, "You are dead."
@@ -587,15 +687,16 @@ ZM_Util.RegisterCommands({
         ZM_Util.Reply(caller, "Runtime foliage is inactive.")
         return
     end
-    local trees, berries, available = 0, 0, 0
+    local trees, berries, harvestable, decorative, available = 0, 0, 0, 0, 0
     for _, node in pairs(cell.nodes) do
         if node.type == "tree" then trees = trees + 1 else berries = berries + 1 end
+        if node.harvestable then harvestable = harvestable + 1 else decorative = decorative + 1 end
         if node.available then available = available + 1 end
     end
     ZM_Util.Reply(caller, string.format(
-        "Runtime foliage: profile=%s cell=%d status=%s nodes=%d trees=%d berries=%d available=%d attempts=%d rejected=%d",
-        cell.profile, cell.cellId, cell.status, table.Count(cell.nodes), trees, berries, available,
-        cell.attempts, cell.rejected))
+        "Runtime foliage: profile=%s cell=%d status=%s nodes=%d harvestable=%d decorative=%d trees=%d berries=%d available=%d attempts=%d rejected=%d",
+        cell.profile, cell.cellId, cell.status, table.Count(cell.nodes), harvestable, decorative, trees, berries,
+        available, cell.attempts, cell.rejected))
     local reasons = {}
     for reason, count in SortedPairs(cell.rejections or {}) do
         table.insert(reasons, reason .. "=" .. count)

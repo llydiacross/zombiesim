@@ -657,6 +657,9 @@ function Pro:HandleRequest(target, request)
     elseif request.action == "request" then
         local provider = self:ResolveProvider(target, request.provider, request.kind)
         if not provider then return false, "That professional is no longer available." end
+        if isNpc(provider) and not ZM_DenNpcs:CanInteract(target, provider, true) then
+            return false, "Look at the professional and stand nearby to interact."
+        end
         local fee = tonumber(request.fee)
         if not isNpc(provider) then fee = fee or 0 end
         return self:RequestService(target, provider, request.kind, request.ref, tonumber(request.count), fee)

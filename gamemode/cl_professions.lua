@@ -77,13 +77,36 @@ local function describeStacks(stacks)
     return #parts > 0 and table.concat(parts, ", ") or "nothing"
 end
 
-local function buildProfile(parent, state)
+local function selectedProvider(state)
+    local selection = UI.Selection or {}
+    UI.Selection = selection
+    local provider
+    for _, entry in ipairs(state.professionals or {}) do
+        if (entry.providerId or entry.userId) == selection.provider then
+            provider = entry
+            break
+        end
+    end
+    provider = provider or (state.professionals or {})[1]
+    if not provider then return nil end
+
+    selection.provider = provider.providerId or provider.userId
+    if not table.HasValue(provider.services or {}, selection.kind) then
+        selection.kind = provider.services and provider.services[1] or nil
+        selection.ref = nil
+    end
+    return provider
+end
+
+local function buildProfile(parent, state, provider)
     local panel = vgui.Create("DScrollPanel", parent)
     panel:Dock(LEFT)
     panel:SetWide(280)
     panel:DockMargin(0, 0, 10, 0)
+    line(panel, "YOUR SURVIVOR", ZM_DermaSkin.Palette.muted, "ZM_CraftingSmall")
     line(panel, state.professionName, ZM_DermaSkin.Palette.text, "ZM_CraftingHeading")
-    line(panel, string.format("Level %d  |  Cash %d", state.level or 1, state.cash or 0), ZM_DermaSkin.Palette.muted, "ZM_CraftingSmall")
+    line(panel, string.format("Level %d", state.level or 1), ZM_DermaSkin.Palette.muted, "ZM_CraftingSmall")
+    ZM_DermaSkin.CurrencyLine(panel, "Cash:", "$" .. string.Comma(state.cash or 0), "ZM_CraftingSmall", ZM_DermaSkin.Palette.muted)
     if state.storedJob and state.storedJob ~= state.job then
         line(panel, "Stored job '" .. state.storedJob .. "' is treated as " .. state.job .. ".", ZM_DermaSkin.Palette.muted, "ZM_CraftingSmall")
     end
@@ -97,6 +120,24 @@ local function buildProfile(parent, state)
         local labels = {}
         for _, service in ipairs(state.services) do table.insert(labels, serviceLabels[service] or service) end
         line(panel, "Offers: " .. table.concat(labels, ", "), gold, "ZM_CraftingSmall")
+    end
+
+    if provider then
+        line(panel, "SELECTED PROVIDER", ZM_DermaSkin.Palette.muted, "ZM_CraftingSmall"):DockMargin(0, 10, 0, 2)
+        line(panel, provider.name or "Unknown provider", ZM_DermaSkin.Palette.text, "ZM_CraftingHeading")
+        local role = provider.self and "Yourself" or (provider.npc and "Den NPC" or "Survivor")
+        line(panel, string.format("%s  |  %s  |  Level %d", role, provider.job or "No profession", provider.level or 1), ZM_DermaSkin.Palette.muted, "ZM_CraftingSmall")
+        local offered = {}
+        for _, service in ipairs(provider.services or {}) do
+            table.insert(offered, serviceLabels[service] or service)
+        end
+        line(panel, "Services: " .. (#offered > 0 and table.concat(offered, ", ") or "none"), gold, "ZM_CraftingSmall")
+        if provider.npc and provider.fees then
+            local fee = provider.fees[UI.Selection and UI.Selection.kind or ""]
+            if fee ~= nil then
+                ZM_DermaSkin.CurrencyLine(panel, "Selected service fee:", "$" .. string.Comma(fee), "ZM_CraftingSmall", ZM_DermaSkin.Palette.muted)
+            end
+        end
     end
 
     line(panel, "TODAY'S DELIVERY (" .. tostring(state.day) .. " UTC)", ZM_DermaSkin.Palette.muted, "ZM_CraftingSmall"):DockMargin(0, 10, 0, 2)
@@ -181,15 +222,8 @@ local function buildServices(parent, state)
         return
     end
 
-    local selection = UI.Selection or {}
-    UI.Selection = selection
-    local provider
-    for _, entry in ipairs(state.professionals) do
-        if (entry.providerId or entry.userId) == selection.provider then provider = entry end
-    end
-    provider = provider or state.professionals[1]
-    selection.provider = provider.providerId or provider.userId
-    if not table.HasValue(provider.services, selection.kind) then selection.kind = provider.services[1] end
+    local selection = UI.Selection
+    local provider = selectedProvider(state)
 
     local providerBox = ZM_DermaSkin.StyleComboBox(vgui.Create("DComboBox", panel))
     providerBox:Dock(TOP)
@@ -316,11 +350,15 @@ function UI:Rebuild()
             draw.SimpleText(message.text, "ZM_CraftingSmall", 0, height * 0.5, message.ok and ZM_DermaSkin.Palette.muted or bad, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
         end
     end
-    buildProfile(frame.Body, state)
+    local provider = selectedProvider(state)
+    buildProfile(frame.Body, state, provider)
     buildServices(frame.Body, state)
 end
 
-function UI:Open()
+function UI:Open(providerId, serviceKind)
+    if providerId then
+        self.Selection = { provider = providerId, kind = serviceKind }
+    end
     if IsValid(self.Frame) then
         self.Frame:MakePopup()
         self:SendRequest({ action = "open" })

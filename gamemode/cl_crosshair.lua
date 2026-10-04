@@ -41,17 +41,18 @@ end
 // that stays inside the play area. Returns nil when even the player's own position is outside it.
 local function getClippedAimScreenPos(ply, radius)
     local origin = ply:GetLevelAim()
-    local hitPos = ply:GetLevelAimTrace().HitPos
+    local aimTrace = ply:GetLevelAimTrace()
+    local hitPos = aimTrace.HitPos
     // A degenerate hitbox can return a NaN hit position (NaN ~= NaN); fall back to the shot origin.
     if hitPos.x ~= hitPos.x or hitPos.y ~= hitPos.y or hitPos.z ~= hitPos.z then
         hitPos = origin
     end
     local hitScreen = hitPos:ToScreen()
     if isInsidePlayArea(hitScreen, radius) then
-        return hitScreen.x, hitScreen.y
+        return hitScreen.x, hitScreen.y, aimTrace
     end
     if not isInsidePlayArea(origin:ToScreen(), radius) then
-        return nil
+        return nil, nil, aimTrace
     end
     local inside, outside = 0, 1
     for _ = 1, clipSearchSteps do
@@ -63,10 +64,44 @@ local function getClippedAimScreenPos(ply, radius)
         end
     end
     local clipped = LerpVector(inside, origin, hitPos):ToScreen()
-    return clipped.x, clipped.y
+    return clipped.x, clipped.y, aimTrace
 end
 
-// Draws a health-colored ring. Sprinting animates its radius; low health pulses alpha.
+local crosshairColors = {
+    neutral = Color(196, 202, 208, 225),
+    interactable = Color(255, 207, 82, 245),
+    enemy = Color(255, 72, 63, 250)
+}
+local enemyTickDirections = { { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }
+local enemyClasses = {
+    zn_walker_zombie = true,
+    zn_boss_zombie = true
+}
+local droppedItemUseRange = 160
+
+local function getCrosshairTargetKind(player, aimTrace)
+    local target = aimTrace and aimTrace.Entity
+    if not IsValid(target) then
+        return "neutral"
+    end
+
+    if enemyClasses[target:GetClass()] and target:Health() > 0 then
+        return "enemy"
+    end
+
+    local lootTarget = ZM_LootPopup and ZM_LootPopup.Target
+    if lootTarget and lootTarget.entity == target and lootTarget.aimed and not lootTarget.reason then
+        return "interactable"
+    end
+    if target:GetClass() == "zn_dropped_item" and target:GetNWString("ZM_DropItemName", "") ~= "" and
+        target:GetNWInt("ZM_DropItemCount", 0) > 0 and
+        target:GetPos():DistToSqr(player:GetPos()) <= droppedItemUseRange * droppedItemUseRange then
+        return "interactable"
+    end
+    return "neutral"
+end
+
+// Sprinting animates the ring; target color is independent of player health.
 // In the locked camera a white cross also marks the mouse aim cursor the player turns toward.
 hook.Add("HUDPaint", "ZM.CustomCrosshair", function()
     if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
@@ -92,24 +127,36 @@ hook.Add("HUDPaint", "ZM.CustomCrosshair", function()
         radius = 6 + (math.sin(CurTime() * 10) + 1) * 1.5
     end
 
-    local x, y
+    local x, y, aimTrace
     if ZM_IsInDenCamera and ZM_IsInDenCamera() then
         // First-person den camera: the crosshair is fixed at screen centre and turns with the view.
         x, y = ScrW() * 0.5, ScrH() * 0.5
     else
-        x, y = getClippedAimScreenPos(ply, radius)
+        x, y, aimTrace = getClippedAimScreenPos(ply, radius)
     end
     if not x then return end
 
-    local healthPercent = math.Clamp(ply:Health() / math.max(ply:GetMaxHealth(), 1), 0, 1)
-    local alpha = 255
-    if healthPercent <= 0.25 then
-        alpha = math.floor(80 + (math.sin(CurTime() * 12) + 1) * 87.5)
-    end
-    local red = math.floor((1 - healthPercent) * 255)
-    local green = math.floor(healthPercent * 255)
-
+    local targetKind = getCrosshairTargetKind(ply, aimTrace)
+    local targetColor = crosshairColors[targetKind]
     x, y = math.floor(x), math.floor(y)
-    surface.DrawCircle(x, y, radius + 1, 0, 0, 0, math.floor(alpha * 0.6))
-    surface.DrawCircle(x, y, radius, red, green, 0, alpha)
+    surface.DrawCircle(x, y, radius + 1, 0, 0, 0, 190)
+    surface.DrawCircle(x, y, radius, targetColor.r, targetColor.g, targetColor.b, targetColor.a)
+    if targetKind == "interactable" then
+        surface.SetDrawColor(0, 0, 0, 190)
+        surface.DrawOutlinedRect(x - 2, y - 2, 5, 5, 1)
+        surface.SetDrawColor(targetColor)
+        surface.DrawOutlinedRect(x - 2, y - 2, 5, 5, 1)
+    elseif targetKind == "enemy" then
+        local tickInner, tickOuter = radius + 3, radius + 7
+        surface.SetDrawColor(0, 0, 0, 190)
+        for _, direction in ipairs(enemyTickDirections) do
+            surface.DrawLine(x + direction[1] * tickInner, y + direction[2] * tickInner,
+                x + direction[1] * tickOuter, y + direction[2] * tickOuter)
+        end
+        surface.SetDrawColor(targetColor)
+        for _, direction in ipairs(enemyTickDirections) do
+            surface.DrawLine(x + direction[1] * tickInner, y + direction[2] * tickInner,
+                x + direction[1] * tickOuter, y + direction[2] * tickOuter)
+        end
+    end
 end)

@@ -1302,7 +1302,7 @@ entity
 	"pressuredelay" "0"
 	"shadowcastdist" "0"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "264.822 193.617 32.2813"
 	editor
 	{
@@ -1338,7 +1338,7 @@ entity
 	"pressuredelay" "0"
 	"shadowcastdist" "0"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "201.746 248.786 32.2812"
 	editor
 	{
@@ -1374,7 +1374,7 @@ entity
 	"pressuredelay" "0"
 	"shadowcastdist" "0"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "181.199 221.425 32.2812"
 	editor
 	{
@@ -1410,7 +1410,7 @@ entity
 	"pressuredelay" "0"
 	"shadowcastdist" "0"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "213.318 203.25 32.2812"
 	editor
 	{
@@ -1446,7 +1446,7 @@ entity
 	"pressuredelay" "0"
 	"shadowcastdist" "0"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "232.936 226.781 32.2812"
 	editor
 	{
@@ -1482,7 +1482,7 @@ entity
 	"pressuredelay" "0"
 	"shadowcastdist" "0"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "263.636 151.741 32.2813"
 	editor
 	{
@@ -1518,7 +1518,7 @@ entity
 	"pressuredelay" "0"
 	"shadowcastdist" "0"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "260.174 113.728 32.2813"
 	editor
 	{
@@ -1554,7 +1554,7 @@ entity
 	"pressuredelay" "0"
 	"shadowcastdist" "0"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "159.142 153.413 32.2812"
 	editor
 	{
@@ -1590,7 +1590,7 @@ entity
 	"pressuredelay" "0"
 	"shadowcastdist" "0"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "190.617 166.835 32.2812"
 	editor
 	{
@@ -1626,7 +1626,7 @@ entity
 	"pressuredelay" "0"
 	"shadowcastdist" "0"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "115.053 246.519 32.2813"
 	editor
 	{
@@ -1662,7 +1662,7 @@ entity
 	"pressuredelay" "0"
 	"shadowcastdist" "0"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "244.065 79.156 32.2813"
 	editor
 	{
@@ -1698,7 +1698,7 @@ entity
 	"pressuredelay" "0"
 	"shadowcastdist" "0"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "252.221 21.4467 32.2813"
 	editor
 	{
@@ -1734,7 +1734,7 @@ entity
 	"pressuredelay" "0"
 	"shadowcastdist" "0"
 	"skin" "0"
-	"spawnflags" "256"
+	"spawnflags" "265"
 	"origin" "232.603 -2.08483 32.2813"
 	editor
 	{
