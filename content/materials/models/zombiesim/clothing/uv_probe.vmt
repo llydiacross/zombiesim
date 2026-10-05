@@ -1,0 +1,6 @@
+"VertexLitGeneric"
+{
+    "$basetexture" "models/zombiesim/clothing/uv_probe"
+    "$halflambert" "1"
+    "$model" "1"
+}

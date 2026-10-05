@@ -1,0 +1,7 @@
+"UnlitGeneric"
+{
+    "$basetexture" "models/zombiesim/clothing/catalog_ae4010f2fe1308e0_shirt_female"
+    "$translucent" "1"
+    "$vertexcolor" "1"
+    "$vertexalpha" "1"
+}

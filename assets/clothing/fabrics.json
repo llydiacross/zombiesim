@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "maximumVariants": 216,
+  "expansion": {
+    "colours": ["black", "white", "grey", "charcoal", "red", "blue", "teal", "green", "olive", "navy", "brown", "tan", "purple", "orange"],
+    "shirtTreatments": [
+      { "id": "plain", "pattern": "solid", "spacing": 16, "width": 1 },
+      { "id": "pinstripe", "pattern": "stripes", "spacing": 8, "width": 1 },
+      { "id": "breton", "pattern": "stripes", "spacing": 24, "width": 8 },
+      { "id": "rugby", "pattern": "stripes", "spacing": 64, "width": 28 },
+      { "id": "gingham", "pattern": "checker", "spacing": 8, "width": 1 },
+      { "id": "buffalo", "pattern": "checker", "spacing": 32, "width": 1 },
+      { "id": "spiral", "pattern": "tie_dye", "spacing": 48, "width": 1, "seed": 1337, "style": "spiral" },
+      { "id": "rings", "pattern": "tie_dye", "spacing": 64, "width": 1, "seed": 2201, "style": "rings" },
+      { "id": "cloud", "pattern": "tie_dye", "spacing": 80, "width": 1, "seed": 3100, "style": "cloud" },
+      { "id": "marble", "pattern": "tie_dye", "spacing": 48, "width": 1, "seed": 419, "style": "marble" }
+    ],
+    "pantsTreatments": [
+      { "id": "plain", "pattern": "solid", "spacing": 16, "width": 1 },
+      { "id": "pinstripe", "pattern": "stripes", "spacing": 8, "width": 1 },
+      { "id": "fineweave", "pattern": "checker", "spacing": 2, "width": 1 },
+      { "id": "microcheck", "pattern": "checker", "spacing": 6, "width": 1 }
+    ]
+  },
+  "variants": [
+    { "id": "shirt_teal_stripes", "garment": "shirt", "colour": "teal", "pattern": "stripes", "color": "#397C88", "stripeColor": "#264F58", "stripeSpacing": 24, "stripeWidth": 5 },
+    { "id": "shirt_navy_checks", "garment": "shirt", "colour": "navy", "pattern": "checker", "color": "#354459", "stripeColor": "#687B87", "stripeSpacing": 24, "stripeWidth": 2 },
+    { "id": "shirt_ember_checks", "garment": "shirt", "colour": "red", "pattern": "checker", "color": "#873D40", "stripeColor": "#432C32", "stripeSpacing": 32, "stripeWidth": 2 },
+    { "id": "shirt_ocean_tiedye", "garment": "shirt", "colour": "teal", "pattern": "tie_dye", "color": "#3D7878", "stripeColor": "#354459", "stripeSpacing": 16, "stripeWidth": 2,
+      "tieDye": { "palette": ["#3D7878", "#354459", "#9AB8AF"], "center": [232, 876], "scale": 48, "strength": 0.85, "seed": 1337 } },
+    { "id": "shirt_sunset_tiedye", "garment": "shirt", "colour": "orange", "pattern": "tie_dye", "color": "#AF7148", "stripeColor": "#6E5277", "stripeSpacing": 16, "stripeWidth": 2,
+      "tieDye": { "palette": ["#AF7148", "#6E5277", "#D1B785"], "center": [232, 876], "scale": 56, "strength": 0.85, "seed": 2201 } },
+    { "id": "shirt_forest_tiedye", "garment": "shirt", "colour": "green", "pattern": "tie_dye", "color": "#516B50", "stripeColor": "#626C45", "stripeSpacing": 16, "stripeWidth": 2,
+      "tieDye": { "palette": ["#516B50", "#626C45", "#AAB59A"], "center": [232, 876], "scale": 40, "strength": 0.75, "seed": 3100 } },
+    { "id": "pants_charcoal_solid", "garment": "pants", "colour": "charcoal", "pattern": "solid", "color": "#343A3E", "stripeColor": "#343A3E", "stripeSpacing": 16, "stripeWidth": 1 },
+    { "id": "pants_navy_stripes", "garment": "pants", "colour": "navy", "pattern": "stripes", "color": "#354459", "stripeColor": "#39495F", "stripeSpacing": 12, "stripeWidth": 1 },
+    { "id": "pants_olive_weave", "garment": "pants", "colour": "olive", "pattern": "checker", "color": "#626C45", "stripeColor": "#68724B", "stripeSpacing": 4, "stripeWidth": 1 },
+    { "id": "pants_brown_wash", "garment": "pants", "colour": "brown", "pattern": "tie_dye", "color": "#70584A", "stripeColor": "#70584A", "stripeSpacing": 16, "stripeWidth": 1,
+      "tieDye": { "palette": ["#70584A", "#665348", "#7A6555"], "center": [832, 232], "scale": 224, "strength": 0.15, "seed": 411 } }
+  ]
+}

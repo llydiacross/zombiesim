@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "worldProfiles": ["city", "preview"],
+  "maximumShardBytes": 1073741824,
+  "metadataReserveBytes": 1048576,
+  "releaseCleared": false,
+  "coreWorkshopId": "pending:core",
+  "workshopIds": {
+    "common-01": "pending:common-01",
+    "clothing-01": "pending:clothing-01",
+    "clothing-02": "pending:clothing-02",
+    "clothing-03": "pending:clothing-03",
+    "world-01": "pending:world-01",
+    "world-02": "pending:world-02"
+  },
+  "coreStaticFiles": [
+    "boss_spawns.json", "clothing_catalogue.json", "den_service_definitions.json",
+    "enemy_definitions.json", "enemy_spawns.json", "entity_loot.json",
+    "item_definitions.json", "launcher_scene.json", "loot.json",
+    "music_definitions.json", "profession_definitions.json",
+    "recipe_definitions.json", "trade_definitions.json", "zombiesim_signs_preview.json"
+  ],
+  "commonMaterialDirectories": [
+    "materials\\scoreboard", "materials\\zombiesim", "materials\\models\\zombiesim\\signs"
+  ],
+  "commonMaterialExtensions": [".png", ".vmt", ".vtf"],
+  "externalDependencies": [
+    "Garry's Mod mounted base-game assets used by maps and materials",
+    "Mounted Counter-Strike: Source assets used by authored templates and skyline detail",
+    "Optional Walker native server module: install separately; never distribute through Workshop"
+  ]
+}

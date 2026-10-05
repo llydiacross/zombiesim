@@ -15,8 +15,20 @@ local domeRings = {
     { elevation = 12, alpha = 0.18 },
     { elevation = 18, alpha = 0 }
 }
+local skylineDomeRings = {
+    { elevation = -40, alpha = 1 },
+    { elevation = -2, alpha = 1 },
+    { elevation = 0, alpha = 0.45 },
+    { elevation = 3, alpha = 0.12 },
+    { elevation = 7, alpha = 0.05 },
+    { elevation = 18, alpha = 0 }
+}
 // The fog becomes opaque slightly inside the outermost modelled ring so its far edge is never seen.
 local fogEdgeFraction = 0.9
+// Distant-tower fog: fog colours at or below the dark luminance keep the plain long-range tower ramp; at or above
+// the pale luminance the towers share the nearby sky fog curve so they match the fogged neighbour cells.
+local towerFogDarkLuminance = 0.45
+local towerFogPaleLuminance = 0.7
 local cloudClusterCount = 56
 local cloudSeed = 7331
 // Sky-space units (1 sky unit = manifest.scale world units).
@@ -24,10 +36,36 @@ local cloudBaseHeight = 300
 local cloudHeightRange = 70
 local cloudDriftSpeed = 1.6
 // Coastline (sky units relative to the sky camera): tile street surfaces sit at +32 world units (+2 sky units).
-local coastStreetHeight = 2
-local coastSeaLevel = -3
-local coastFoamWidth = 5
-local coastSeaSubdivisions = 4
+// The shore is a height field over sea slots driven by distance to land, so beaches, rocks, and foam stay seam-free
+// around corners; noise uses world-grid coordinates so the shore keeps its shape as the player changes cells.
+local coast = {
+    streetHeight = 2,
+    seaLevel = -3,
+    beachWidth = 40,
+    duneHeight = 4,
+    shelfSlope = 0.05,
+    bandWidth = 170,
+    terrainDivisions = 42,
+    waterDivisions = 32,
+    chunkQuads = 10000,
+    foamDepth = 5,
+    waveDepthLength = 2.4,
+    wavePeriod = 7,
+    rippleTile = 56,
+    textureSize = 256,
+    texturesReady = false,
+    vertex = Vector(),
+    textureMatrix = Matrix(),
+    textureAngle = Angle(),
+    textureScale = Vector(1, 1, 1),
+    textureOffset = Vector()
+}
+local function coastTarget(name)
+    return GetRenderTargetEx(name, coast.textureSize, coast.textureSize, RT_SIZE_LITERAL or 8,
+        MATERIAL_RT_DEPTH_NONE or 2, 0, 0, IMAGE_FORMAT_RGBA8888 or 0)
+end
+coast.foamTexture = coastTarget("zombiesim_skybox_foam_rt_v1")
+coast.rippleTexture = coastTarget("zombiesim_skybox_ripple_rt_v1")
 // The room's floor shell starts 80 units below the sky camera; world-space work stays below this clearance.
 local skyRoomClearance = 128
 
@@ -47,22 +85,38 @@ local cloudMaterial = CreateMaterial("zombiesim_skybox_cloud_v1", "UnlitGeneric"
     ["$nocull"] = 1,
     ["$nofog"] = 1
 })
-// The coast is fogged with the rest of the sky pass so it fades into the horizon wall.
+// The coast is fogged with the rest of the sky pass so it fades into the horizon wall. Water hue comes from vertex
+// colours (shallow turquoise to deep blue); ripples and breaking foam are additive procedural render targets.
 local seaMaterial = CreateMaterial("zombiesim_skybox_sea_v1", "UnlitGeneric", {
     ["$basetexture"] = "vgui/white",
     ["$vertexcolor"] = 1,
     ["$nocull"] = 1
 })
-local seaWallMaterial = CreateMaterial("zombiesim_skybox_seawall_v1", "UnlitGeneric", {
-    ["$basetexture"] = "concrete/concretewall001a",
+coast.sandMaterial = CreateMaterial("zombiesim_skybox_sand_v1", "UnlitGeneric", {
+    ["$basetexture"] = "nature/sandfloor010a",
     ["$vertexcolor"] = 1,
     ["$nocull"] = 1
 })
-local foamMaterial = CreateMaterial("zombiesim_skybox_foam_v1", "UnlitGeneric", {
-    ["$basetexture"] = "particle/smokesprites0001",
+coast.rockMaterial = CreateMaterial("zombiesim_skybox_rock_v1", "UnlitGeneric", {
+    ["$basetexture"] = "nature/rockfloor005a",
     ["$vertexcolor"] = 1,
-    ["$vertexalpha"] = 1,
-    ["$translucent"] = 1,
+    ["$nocull"] = 1
+})
+coast.embankmentMaterial = CreateMaterial("zombiesim_skybox_embankment_v1", "UnlitGeneric", {
+    ["$basetexture"] = "nature/cliffface002a",
+    ["$vertexcolor"] = 1,
+    ["$nocull"] = 1
+})
+local foamMaterial = CreateMaterial("zombiesim_skybox_foam_v2", "UnlitGeneric", {
+    ["$basetexture"] = coast.foamTexture:GetName(),
+    ["$vertexcolor"] = 1,
+    ["$additive"] = 1,
+    ["$nocull"] = 1
+})
+coast.rippleMaterial = CreateMaterial("zombiesim_skybox_ripple_v1", "UnlitGeneric", {
+    ["$basetexture"] = coast.rippleTexture:GetName(),
+    ["$vertexcolor"] = 1,
+    ["$additive"] = 1,
     ["$nocull"] = 1
 })
 // Burning wrecks and rooftops. Smoke is fogged with the sky pass so distant plumes melt into the horizon.
@@ -87,6 +141,12 @@ local glowMaterial = CreateMaterial("zombiesim_skybox_glow_v1", "UnlitGeneric", 
     ["$additive"] = 1,
     ["$nocull"] = 1
 })
+local tracerMaterial = CreateMaterial("zombiesim_skybox_tracer_v1", "UnlitGeneric", {
+    ["$basetexture"] = "vgui/white",
+    ["$vertexcolor"] = 1,
+    ["$vertexalpha"] = 1,
+    ["$additive"] = 1
+})
 // Set dressing: props are drawn while their projected radius/distance exceeds this, highest priority first, up to a
 // per-frame budget scaled by zombiesim_sky_props. Each prop is a separate model draw, so the budget bounds the cost.
 local detailAngularThreshold = 0.004
@@ -108,11 +168,43 @@ local smokeDriftX, smokeDriftY = 0.944, 0.33
 Skybox.Stats = Skybox.Stats or {}
 Skybox.ViewOrigin = Skybox.ViewOrigin or Vector()
 Skybox.SkyEye = Skybox.SkyEye or Vector()
+Skybox.TowerDirection = Skybox.TowerDirection or Vector()
 Skybox.FogResult = Skybox.FogResult or { color = {} }
+Skybox.TuningSettings = {
+    { label = "Skybox fog amount", name = "zombiesim_sky_fog_amount", default = 0.8, minimum = 0, maximum = 2,
+        tooltip = "Extra skybox fog beyond the playable-city fog. 0 matches the city fog exactly; 1 thickens halfway to opaque; 2 closes the horizon." },
+    { label = "Skybox fog distance", name = "zombiesim_sky_fog_distance", default = 0.9, minimum = 0.5, maximum = 3,
+        tooltip = "Scales how far skybox fog extends. Higher values give clearer nearby scenery; playable-city fog is unchanged." },
+    { label = "Skybox horizon haze", name = "zombiesim_sky_horizon_haze", default = 0.5, minimum = 0, maximum = 1.5,
+        tooltip = "Scales the horizon overlay above eye level. Lower values reveal silhouettes; 0 may expose scenery edges." },
+    { label = "Distant tower fog", name = "zombiesim_sky_tower_fog", default = 0.8, minimum = 0, maximum = 1,
+        tooltip = "Fog density for distant tower silhouettes. Pale atmosphere fog thickens this automatically; dark fog keeps it." },
+    { label = "Skybox model brightness", name = "zombiesim_sky_light_scale", default = 0.25, minimum = 0, maximum = 2,
+        tooltip = "Brightness of matched skybox model lighting. Requires matched lighting enabled." }
+}
+for _, setting in ipairs(Skybox.TuningSettings) do
+    CreateClientConVar(setting.name, tostring(setting.default), true, false, setting.tooltip, setting.minimum, setting.maximum)
+end
+
+function Skybox:GetTuningSnapshot()
+    local values = {}
+    for _, setting in ipairs(self.TuningSettings) do
+        values[setting.name] = math.Clamp(GetConVar(setting.name):GetFloat(), setting.minimum, setting.maximum)
+    end
+    values.zombiesim_sky_matched_lighting = GetConVar("zombiesim_sky_matched_lighting"):GetBool()
+    return values
+end
+
+function Skybox:ResetTuning()
+    for _, setting in ipairs(self.TuningSettings) do
+        GetConVar(setting.name):SetString(tostring(setting.default))
+    end
+    GetConVar("zombiesim_sky_matched_lighting"):SetString("1")
+end
 
 local defaultFogColor = { 128, 128, 128 }
 local snowDepthBias = 0.00005
-CreateClientConVar("zombiesim_sky_matched_lighting", "1", false, false,
+CreateClientConVar("zombiesim_sky_matched_lighting", "1", true, false,
     "Lights skybox models from the playable cell's lighting (0 uses the sky room's own model lighting).", 0, 1)
 // The sky room has none of the playable cell's baked lighting, so the models are lit from samples of the playable
 // map instead: ground points on a ring just inside the cell edge, where the skybox meets the real world.
@@ -148,8 +240,74 @@ local function smoothstep(edge0, edge1, value)
     return t * t * (3 - 2 * t)
 end
 
+local function hashNoise(ix, iy)
+    local value = math.sin(ix * 127.1 + iy * 311.7) * 43758.5453
+    return value - math.floor(value)
+end
+
+// Smooth 0..1 value noise; `period` (cells) wraps the lattice so render-target textures tile.
+local function valueNoise(x, y, period)
+    local ix, iy = math.floor(x), math.floor(y)
+    local fx, fy = x - ix, y - iy
+    fx, fy = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy)
+    local ax, bx, ay, by = ix, ix + 1, iy, iy + 1
+    if period then ax, bx, ay, by = ax % period, bx % period, ay % period, by % period end
+    local top = Lerp(fx, hashNoise(ax, ay), hashNoise(bx, ay))
+    local bottom = Lerp(fx, hashNoise(ax, by), hashNoise(bx, by))
+    return Lerp(fy, top, bottom)
+end
+
+// Greyscale, tiling foam and ripple textures drawn once into render targets. Foam rows hold a broken breaking-wave
+// crest with a sharp shoreward front and a seaward wash; scrolling v moves the crests toward the waterline.
+local function foamTexel(u, v)
+    local tau = math.pi * 2
+    local presence = smoothstep(0.3, 0.58, 0.5 + 0.25 * math.sin(tau * 3 * u + 1.3) + 0.15 * math.sin(tau * 7 * u + 0.4) + 0.1 * math.sin(tau * 13 * u + 2.2))
+    local laterPresence = smoothstep(0.38, 0.62, 0.5 + 0.25 * math.sin(tau * 4 * u + 2.9) + 0.18 * math.sin(tau * 9 * u + 1.1))
+    local crest = 0.08 + 0.03 * math.sin(tau * 2 * u + 0.7) + 0.012 * math.sin(tau * 9 * u)
+    local function band(center, tail)
+        local behind = (v - center) % 1
+        if behind > 0.975 then return smoothstep(0.975, 1, behind) end
+        return behind < tail and math.exp(-behind / (tail * 0.35)) or 0
+    end
+    local breakup = 0.4 + 0.6 * valueNoise(u * 16, v * 16, 16) * (0.6 + 0.4 * valueNoise(u * 64 + 3, v * 64 + 7, 64))
+    return math.Clamp((presence * band(crest, 0.4) + 0.45 * laterPresence * band(crest + 0.5, 0.25)) * breakup * 1.3, 0, 1)
+end
+
+local function rippleTexel(u, v)
+    local tau = math.pi * 2
+    local wave = v * 5 + 0.12 * math.sin(tau * 3 * u + 0.5) + 0.06 * math.sin(tau * 7 * u + 1.7)
+    local line = (0.5 + 0.5 * math.cos(tau * wave)) ^ 10
+    local sparkle = valueNoise(u * 32 + 11, v * 32 + 5, 32) ^ 6
+    return math.Clamp(line * smoothstep(0.35, 0.75, valueNoise(u * 8, v * 8, 8)) + 0.6 * sparkle, 0, 1)
+end
+
+hook.Add("PreRender", "ZM.Skybox.BuildWaterTextures", function()
+    hook.Remove("PreRender", "ZM.Skybox.BuildWaterTextures")
+    if not coast.foamTexture or not coast.rippleTexture then return end
+    local size = coast.textureSize
+    for _, target in ipairs({ { coast.foamTexture, foamTexel }, { coast.rippleTexture, rippleTexel } }) do
+        render.PushRenderTarget(target[1])
+        render.OverrideAlphaWriteEnable(true, true)
+        render.Clear(0, 0, 0, 255)
+        cam.Start2D()
+        for y = 0, size - 1 do
+            for x = 0, size - 1 do
+                local value = math.floor(target[2]((x + 0.5) / size, (y + 0.5) / size) * 255 + 0.5)
+                if value > 0 then
+                    surface.SetDrawColor(value, value, value, 255)
+                    surface.DrawRect(x, y, 1, 1)
+                end
+            end
+        end
+        cam.End2D()
+        render.OverrideAlphaWriteEnable(false)
+        render.PopRenderTarget()
+    end
+    coast.texturesReady = true
+end)
+
 function Skybox:RemoveModels()
-    for _, list in ipairs({ self.Placements or {}, self.SnowPlacements or {} }) do
+    for _, list in ipairs({ self.Placements or {}, self.SnowPlacements or {}, self.TowerPlacements or {} }) do
         for _, placement in ipairs(list) do
             if IsValid(placement.entity) then placement.entity:Remove() end
         end
@@ -159,9 +317,14 @@ function Skybox:RemoveModels()
     end
     self.Placements = {}
     self.SnowPlacements = {}
+    self.TowerPlacements = {}
     self.DetailModels = {}
     self.DetailProps = {}
     self.Fires = {}
+    self.FacadeFires = {}
+    self.FacadeAnchors = {}
+    self.ActivitySites = {}
+    self.ActivityVisible = {}
 end
 
 local function createSkyModel(modelPath, origin)
@@ -215,7 +378,16 @@ end
 function Skybox:ClampWorldMaximum(maximum)
     local ceiling = maximum and self:GetPlayableCeiling()
     if not ceiling or maximum.z <= ceiling then return maximum end
-    return Vector(maximum.x, maximum.y, ceiling)
+    local half = self.Manifest.cellSpan * 0.5
+    return Vector(math.min(maximum.x, half), math.min(maximum.y, half), ceiling)
+end
+
+function Skybox:ClampWorldBounds(minimum, maximum)
+    local ceiling = self:GetPlayableCeiling()
+    if not ceiling or not minimum or not maximum then return minimum, maximum end
+    local half = self.Manifest.cellSpan * 0.5
+    return Vector(math.max(minimum.x, -half), math.max(minimum.y, -half), minimum.z),
+        Vector(math.min(maximum.x, half), math.min(maximum.y, half), math.min(maximum.z, ceiling))
 end
 
 // Neighbour radius chosen by the quality setting, capped at what the manifest was built for.
@@ -263,7 +435,7 @@ function Skybox:Refresh()
         return nil
     end
     local radius = self:GetRadius(manifest)
-    local key = table.concat({ tostring(self.ManifestProfile), gridX, gridY, radius }, ":")
+    local key = table.concat({ tostring(self.ManifestProfile), gridX, gridY, radius, "activity-v3" }, ":")
     stats.state = "ready"
     if key == self.PlacementKey then return manifest end
 
@@ -297,7 +469,7 @@ function Skybox:Refresh()
                             stats.firstModelCheck = string.format("%s exists=%s entity=%s", modelPath, tostring(onDisk), tostring(IsValid(entity)))
                         end
                         if entity then
-                            table.insert(self.Placements, { entity = entity, dx = dx, dy = dy })
+                            table.insert(self.Placements, { entity = entity, origin = origin, dx = dx, dy = dy })
                         else
                             stats.missingModels = stats.missingModels + 1
                         end
@@ -319,192 +491,810 @@ function Skybox:Refresh()
         end
     end
     stats.placements = #self.Placements
+    stats.missingTowerModels = 0
+    local skylineRadius = math.max(radius, tonumber(manifest.skylineRadius) or radius)
+    local towerCandidates = {}
+    if type(manifest.towers) == "table" then
+        for y = gridY - skylineRadius, gridY + skylineRadius do
+            for x = gridX - skylineRadius, gridX + skylineRadius do
+                local dx, dy = x - gridX, y - gridY
+                if math.max(math.abs(dx), math.abs(dy)) > radius then
+                    local distant = ZM_World:GetCell(x, y)
+                    local paths = distant and manifest.towers[mapBasename(distant.map)]
+                    if type(paths) == "table" then
+                        local origin = manifest.cameraVector + Vector(dx * manifest.cellSpan, -dy * manifest.cellSpan, 0) / scale
+                        for _, path in ipairs(paths) do
+                            towerCandidates[#towerCandidates + 1] = { path = path, origin = origin, distance = dx * dx + dy * dy, x = x, y = y }
+                        end
+                    end
+                end
+            end
+        end
+    end
+    table.sort(towerCandidates, function(a, b)
+        if a.distance ~= b.distance then return a.distance < b.distance end
+        if a.y ~= b.y then return a.y < b.y end
+        if a.x ~= b.x then return a.x < b.x end
+        return a.path < b.path
+    end)
+    local towerBudget = math.max(1, math.floor(tonumber(manifest.maxTowerModels) or 128))
+    for index = 1, math.min(#towerCandidates, towerBudget) do
+        local candidate = towerCandidates[index]
+        local entity = createSkyModel(candidate.path, candidate.origin)
+        if entity then
+            table.insert(self.TowerPlacements, { entity = entity, origin = candidate.origin })
+        else
+            stats.missingTowerModels = stats.missingTowerModels + 1
+        end
+    end
+    stats.towerCandidates = #towerCandidates
+    stats.towerBudget = towerBudget
+    stats.omittedTowerModels = math.max(0, #towerCandidates - towerBudget)
+    stats.towerPlacements = #self.TowerPlacements
     stats.snowPlacements = #self.SnowPlacements
     // The sky eye stays near the sky camera, so priority from the camera is a stable per-cell draw order.
     table.sort(self.DetailProps, function(a, b) return a.priority > b.priority end)
     stats.detailProps = #self.DetailProps
     stats.fires = #self.Fires
+    self:BuildActivitySites(manifest, gridX, gridY, radius)
     self:BuildCoast(manifest, gridX, gridY, radius)
+    self.CurrentGridX, self.CurrentGridY = gridX, gridY
+    self:BuildEdgeTerrain(manifest)
     return manifest
 end
 
+local coastMeshKinds = { "underlay", "water", "sand", "rock", "embankment", "foam" }
+local quadOffsets = { { 0, 0 }, { 1, 0 }, { 1, 1 }, { 0, 1 } }
+
 function Skybox:DestroyCoast()
-    for _, key in ipairs({ "CoastSeaMesh", "CoastWallMesh", "CoastFoamMesh" }) do
-        if self[key] then self[key]:Destroy() end
-        self[key] = nil
+    for _, list in pairs(self.CoastMeshes or {}) do
+        for _, imesh in ipairs(list) do imesh:Destroy() end
     end
+    self.CoastMeshes = nil
 end
 
-local function emitQuad(a, b, c, d, red, green, blue, alphaA, alphaB, uA, uB, vA, vB)
-    mesh.Position(a) mesh.Color(red, green, blue, alphaA) mesh.TexCoord(0, uA, vA) mesh.AdvanceVertex()
-    mesh.Position(b) mesh.Color(red, green, blue, alphaA) mesh.TexCoord(0, uB, vA) mesh.AdvanceVertex()
-    mesh.Position(c) mesh.Color(red, green, blue, alphaB) mesh.TexCoord(0, uB, vB) mesh.AdvanceVertex()
-    mesh.Position(d) mesh.Color(red, green, blue, alphaB) mesh.TexCoord(0, uA, vB) mesh.AdvanceVertex()
+local function pushCoastVertex(buffer, x, y, z, red, green, blue, alpha, u, v)
+    local count = buffer.count
+    buffer[count + 1], buffer[count + 2], buffer[count + 3] = x, y, z
+    buffer[count + 4] = math.Clamp(math.floor(red + 0.5), 0, 255)
+    buffer[count + 5] = math.Clamp(math.floor(green + 0.5), 0, 255)
+    buffer[count + 6] = math.Clamp(math.floor(blue + 0.5), 0, 255)
+    buffer[count + 7] = math.Clamp(math.floor(alpha + 0.5), 0, 255)
+    buffer[count + 8], buffer[count + 9] = u, v
+    buffer.count = count + 9
 end
 
-// Slots beyond the world grid become sea: a concrete sea wall on every city edge that faces it, a foam line at its
-// foot, and open water out past the horizon wall. Built in absolute sky coordinates whenever the placement changes.
+// Splits a quad buffer into static meshes well below the per-mesh vertex limit. Everything inside Begin/End is
+// plain number access so nothing can error mid-build.
+local function buildCoastMeshes(buffer)
+    local meshes = {}
+    local quadCount = math.floor(buffer.count / 36)
+    local vertex = coast.vertex
+    local first = 0
+    while first < quadCount do
+        local quads = math.min(coast.chunkQuads, quadCount - first)
+        local imesh = Mesh()
+        mesh.Begin(imesh, MATERIAL_QUADS, quads)
+        for index = first * 36 + 1, (first + quads) * 36, 9 do
+            vertex:SetUnpacked(buffer[index], buffer[index + 1], buffer[index + 2])
+            mesh.Position(vertex)
+            mesh.Color(buffer[index + 3], buffer[index + 4], buffer[index + 5], buffer[index + 6])
+            mesh.TexCoord(0, buffer[index + 7], buffer[index + 8])
+            mesh.AdvanceVertex()
+        end
+        mesh.End()
+        table.insert(meshes, imesh)
+        first = first + quads
+    end
+    return meshes, quadCount
+end
+
+local function waterShade(depth)
+    local t = smoothstep(0, 5.5, depth)
+    return Lerp(t, 96, 30), Lerp(t, 156, 68), Lerp(t, 150, 88)
+end
+
+// Slots beyond the world grid become sea. A low rock embankment caps every city edge that faces it; below it a
+// noise-jittered sand beach with rocky outcrops descends into shallow water, and breaking foam follows the depth
+// contours toward the waterline. Built in absolute sky coordinates whenever the placement changes.
 function Skybox:BuildCoast(manifest, gridX, gridY, radius)
     self:DestroyCoast()
     local stats = self.Stats
     stats.coastSeaQuads, stats.coastWallQuads, stats.coastFoamQuads = 0, 0, 0
+    stats.coastSandQuads, stats.coastRockQuads, stats.coastMeshes = 0, 0, 0
     if radius < 1 then return end
+    local started = SysTime()
 
     local span = manifest.cellSpan / manifest.scale
     local half = span * 0.5
     local camera = manifest.cameraVector
     local reach = radius + 1
-    local land = {}
-    local function isLand(dx, dy)
+    // Only the west edge is ocean; the other edges are landforms drawn by the edge terrain, so they count as land here
+    // (beaches form against them) but only city cells get the rock embankment.
+    local data = ZM_World:GetData()
+    local grid = data and data.world and data.world.grid
+    local width, height = tonumber(grid and grid[1]) or 0, tonumber(grid and grid[2]) or 0
+    local land, city = {}, {}
+    local function classify(dx, dy)
         local key = dx .. ":" .. dy
         if land[key] == nil then
-            land[key] = (dx == 0 and dy == 0) or ZM_World:GetCell(gridX + dx, gridY + dy) ~= nil
+            local kind = Skybox.ClassifyEdge(gridX + dx, gridY + dy, width, height)
+            city[key] = (dx == 0 and dy == 0) or (kind == "city" and ZM_World:GetCell(gridX + dx, gridY + dy) ~= nil)
+            land[key] = city[key] or (kind ~= "ocean" and kind ~= "city")
         end
-        return land[key]
+        return key
     end
-    local seaSlots, landSlots, edges = {}, {}, {}
+    local function isLand(dx, dy) return land[classify(dx, dy)] end
+    local function isCity(dx, dy) return city[classify(dx, dy)] end
+    local seaSlots, edges = {}, {}
     // Grid east (dx + 1) is +X; grid north (dy - 1) is +Y in Hammer space.
     local sides = { { 1, 0, 1, 0 }, { -1, 0, -1, 0 }, { 0, -1, 0, 1 }, { 0, 1, 0, -1 } }
-    for dy = -reach - 1, reach + 1 do
-        for dx = -reach - 1, reach + 1 do
+    for dy = -reach, reach do
+        for dx = -reach, reach do
             local cx, cy = camera.x + dx * span, camera.y - dy * span
             if isLand(dx, dy) then
-                table.insert(landSlots, { cx, cy })
-                if math.abs(dx) <= reach and math.abs(dy) <= reach then
-                    for _, side in ipairs(sides) do
-                        if not isLand(dx + side[1], dy + side[2]) then
-                            table.insert(edges, { x = cx + side[3] * half, y = cy + side[4] * half, nx = side[3], ny = side[4] })
+                if not isCity(dx, dy) then continue end
+                for _, side in ipairs(sides) do
+                    if not isLand(dx + side[1], dy + side[2]) then
+                        table.insert(edges, { x = cx + side[3] * half, y = cy + side[4] * half, nx = side[3], ny = side[4] })
+                    end
+                end
+            else
+                local lands = {}
+                for ny = -1, 1 do
+                    for nx = -1, 1 do
+                        if (nx ~= 0 or ny ~= 0) and isLand(dx + nx, dy + ny) then
+                            table.insert(lands, { cx + nx * span, cy - ny * span })
                         end
                     end
                 end
-            elseif math.abs(dx) <= reach and math.abs(dy) <= reach then
-                table.insert(seaSlots, { cx, cy })
+                table.insert(seaSlots, { x = cx, y = cy, lands = lands })
             end
         end
     end
     if #seaSlots == 0 then return end
 
-    // Shallow water is lighter near the shore; vertex shade is tinted by the material colour each frame.
-    local function shoreShade(px, py)
-        local nearest = span
-        for _, slot in ipairs(landSlots) do
+    local seaZ = camera.z + coast.seaLevel
+    local offsetX, offsetY = gridX * span - camera.x, -gridY * span - camera.y
+    local far = coast.bandWidth + 40
+    // Returns terrain height, rockiness, and the unjittered distance to the nearest land slot.
+    local function sample(px, py, lands)
+        local nearest = far
+        for index = 1, #lands do
+            local slot = lands[index]
             local ox = math.max(math.abs(px - slot[1]) - half, 0)
             local oy = math.max(math.abs(py - slot[2]) - half, 0)
-            nearest = math.min(nearest, math.sqrt(ox * ox + oy * oy))
+            local squared = ox * ox + oy * oy
+            if squared < nearest * nearest then nearest = math.sqrt(squared) end
         end
-        return Lerp(smoothstep(0, span * 0.6, nearest), 255, 150)
+        if nearest >= far then return seaZ - 8, 0, nearest end
+        local wx, wy = px + offsetX, py + offsetY
+        local jitter = ((valueNoise(wx / 90, wy / 90) - 0.5) * 26 + (valueNoise(wx / 23 + 7.1, wy / 23 + 3.7) - 0.5) * 7) * smoothstep(0, 14, nearest)
+        local distance = math.max(nearest + jitter, 0)
+        local height
+        if distance < coast.beachWidth then
+            height = seaZ + coast.duneHeight * (1 - distance / coast.beachWidth) ^ 1.4
+        else
+            height = seaZ - (distance - coast.beachWidth) * coast.shelfSlope
+        end
+        local rock = smoothstep(0.56, 0.72, valueNoise(wx / 150 + 31.7, wy / 150 + 17.3))
+        if rock > 0 then
+            local ridge = 1 - math.abs(valueNoise(wx / 16 + 5.3, wy / 16 + 9.1) * 2 - 1)
+            height = height + rock * (1 - smoothstep(25, 95, nearest)) * (ridge * ridge * 6.5 - 1.2)
+        end
+        return height, rock, nearest
     end
-    local seaZ = camera.z + coastSeaLevel
-    local step = span / coastSeaSubdivisions
-    local shades = {}
-    for slotIndex, slot in ipairs(seaSlots) do
-        local grid = {}
-        for row = 0, coastSeaSubdivisions do
-            grid[row] = {}
-            for column = 0, coastSeaSubdivisions do
-                grid[row][column] = shoreShade(slot[1] - half + column * step, slot[2] - half + row * step)
+    // Samples a slot grid with a one-sample border so terrain normals are continuous across slot edges.
+    local function sampleGrid(slot, divisions)
+        local step = span / divisions
+        local stride = divisions + 3
+        local grid = { step = step, stride = stride, x0 = slot.x - half, y0 = slot.y - half, heights = {}, rocks = {}, nearest = {} }
+        for row = -1, divisions + 1 do
+            for column = -1, divisions + 1 do
+                local index = (row + 1) * stride + column + 2
+                grid.heights[index], grid.rocks[index], grid.nearest[index] = sample(grid.x0 + column * step, grid.y0 + row * step, slot.lands)
             end
         end
-        shades[slotIndex] = grid
+        return grid
     end
 
-    local a, b, c, d = Vector(), Vector(), Vector(), Vector()
-    local seaQuads = #seaSlots * coastSeaSubdivisions * coastSeaSubdivisions
-    local seaMesh = Mesh()
-    mesh.Begin(seaMesh, MATERIAL_QUADS, seaQuads)
-    for slotIndex, slot in ipairs(seaSlots) do
-        local grid = shades[slotIndex]
-        for row = 0, coastSeaSubdivisions - 1 do
-            for column = 0, coastSeaSubdivisions - 1 do
-                local x0, y0 = slot[1] - half + column * step, slot[2] - half + row * step
-                a:SetUnpacked(x0, y0, seaZ)
-                b:SetUnpacked(x0 + step, y0, seaZ)
-                c:SetUnpacked(x0 + step, y0 + step, seaZ)
-                d:SetUnpacked(x0, y0 + step, seaZ)
-                local s1, s2, s3, s4 = grid[row][column], grid[row][column + 1], grid[row + 1][column + 1], grid[row + 1][column]
-                mesh.Position(a) mesh.Color(s1, s1, s1, 255) mesh.TexCoord(0, 0, 0) mesh.AdvanceVertex()
-                mesh.Position(b) mesh.Color(s2, s2, s2, 255) mesh.TexCoord(0, 1, 0) mesh.AdvanceVertex()
-                mesh.Position(c) mesh.Color(s3, s3, s3, 255) mesh.TexCoord(0, 1, 1) mesh.AdvanceVertex()
-                mesh.Position(d) mesh.Color(s4, s4, s4, 255) mesh.TexCoord(0, 0, 1) mesh.AdvanceVertex()
+    local buffers = {}
+    for _, kind in ipairs(coastMeshKinds) do buffers[kind] = { count = 0 } end
+    local tile = coast.rippleTile
+    local lightX, lightY, lightZ = 0.45, 0.35, 0.82
+    for _, slot in ipairs(seaSlots) do
+        local x0, y0, x1, y1 = slot.x - half, slot.y - half, slot.x + half, slot.y + half
+        local deepRed, deepGreen, deepBlue = waterShade(99)
+        local underlayZ = seaZ - 0.4
+        local underlay = buffers.underlay
+        pushCoastVertex(underlay, x0, y0, underlayZ, deepRed, deepGreen, deepBlue, 255, (x0 + offsetX) / tile, (y0 + offsetY) / tile)
+        pushCoastVertex(underlay, x1, y0, underlayZ, deepRed, deepGreen, deepBlue, 255, (x1 + offsetX) / tile, (y0 + offsetY) / tile)
+        pushCoastVertex(underlay, x1, y1, underlayZ, deepRed, deepGreen, deepBlue, 255, (x1 + offsetX) / tile, (y1 + offsetY) / tile)
+        pushCoastVertex(underlay, x0, y1, underlayZ, deepRed, deepGreen, deepBlue, 255, (x0 + offsetX) / tile, (y1 + offsetY) / tile)
+        if #slot.lands > 0 then
+            // Beach and rock terrain: only quads that reach the surface are kept; the rest is hidden by water.
+            local grid = sampleGrid(slot, coast.terrainDivisions)
+            local step, stride, heights, rocks, nearest = grid.step, grid.stride, grid.heights, grid.rocks, grid.nearest
+            local function terrainVertex(buffer, row, column, rocky)
+                local index = (row + 1) * stride + column + 2
+                local height = heights[index]
+                local slopeX = (heights[index + 1] - heights[index - 1]) / (2 * step)
+                local slopeY = (heights[index + stride] - heights[index - stride]) / (2 * step)
+                local light = (-slopeX * lightX - slopeY * lightY + lightZ) / math.sqrt(slopeX * slopeX + slopeY * slopeY + 1)
+                local shade = 0.5 + 0.5 * math.max(light, 0)
+                local wet = 1 - smoothstep(seaZ + 0.1, seaZ + 0.9, height)
+                local red, green, blue
+                if rocky then
+                    shade = shade * (1 - 0.3 * wet)
+                    red, green, blue = 192 * shade, 188 * shade, 182 * shade
+                else
+                    shade = shade * (1 - 0.38 * wet)
+                    red, green, blue = 255 * shade, 226 * shade, 172 * shade
+                end
+                local x, y = grid.x0 + column * step, grid.y0 + row * step
+                pushCoastVertex(buffer, x, y, height, red, green, blue, 255, (x + offsetX) / 24, (y + offsetY) / 24)
+            end
+            for row = 0, coast.terrainDivisions - 1 do
+                for column = 0, coast.terrainDivisions - 1 do
+                    local a = (row + 1) * stride + column + 2
+                    local b, c, d = a + 1, a + stride + 1, a + stride
+                    local highest = math.max(heights[a], heights[b], heights[c], heights[d])
+                    if highest > seaZ - 0.4 and math.min(nearest[a], nearest[b], nearest[c], nearest[d]) < coast.bandWidth then
+                        local lowest = math.min(heights[a], heights[b], heights[c], heights[d])
+                        local rocky = (rocks[a] + rocks[b] + rocks[c] + rocks[d]) * 0.25 > 0.42 or highest - lowest > step * 0.75
+                        local buffer = rocky and buffers.rock or buffers.sand
+                        terrainVertex(buffer, row, column, rocky)
+                        terrainVertex(buffer, row, column + 1, rocky)
+                        terrainVertex(buffer, row + 1, column + 1, rocky)
+                        terrainVertex(buffer, row + 1, column, rocky)
+                    end
+                end
+            end
+
+            // Shallow water shades with depth and carries the breaking-foam layer.
+            grid = sampleGrid(slot, coast.waterDivisions)
+            step, stride, heights, nearest = grid.step, grid.stride, grid.heights, grid.nearest
+            local foamZ = seaZ + 0.2
+            local corners = {}
+            for row = 0, coast.waterDivisions - 1 do
+                for column = 0, coast.waterDivisions - 1 do
+                    local a = (row + 1) * stride + column + 2
+                    corners[1], corners[2], corners[3], corners[4] = a, a + 1, a + stride + 1, a + stride
+                    if math.min(nearest[a], nearest[a + 1], nearest[a + stride + 1], nearest[a + stride]) < coast.bandWidth then
+                        local shallowest, deepest = math.huge, -math.huge
+                        for corner = 1, 4 do
+                            local index = corners[corner]
+                            local depth = seaZ - heights[index]
+                            shallowest, deepest = math.min(shallowest, depth), math.max(deepest, depth)
+                            local x, y = grid.x0 + (column + quadOffsets[corner][1]) * step, grid.y0 + (row + quadOffsets[corner][2]) * step
+                            local red, green, blue = waterShade(depth)
+                            pushCoastVertex(buffers.water, x, y, seaZ, red, green, blue, 255, (x + offsetX) / tile, (y + offsetY) / tile)
+                        end
+                        if shallowest < coast.foamDepth and deepest > -0.4 then
+                            for corner = 1, 4 do
+                                local depth = seaZ - heights[corners[corner]]
+                                local x, y = grid.x0 + (column + quadOffsets[corner][1]) * step, grid.y0 + (row + quadOffsets[corner][2]) * step
+                                local foam = 255 * (1 - smoothstep(2.6, coast.foamDepth, depth)) * smoothstep(-0.4, 0.2, depth)
+                                pushCoastVertex(buffers.foam, x, y, foamZ, foam, foam, foam, 255, (x + y + offsetX + offsetY) / 70, depth / coast.waveDepthLength)
+                            end
+                        end
+                    end
+                end
             end
         end
     end
-    mesh.End()
-    self.CoastSeaMesh = seaMesh
-    stats.coastSeaQuads = seaQuads
-    if #edges == 0 then return end
 
-    local topZ, footZ = camera.z + coastStreetHeight, seaZ - 0.5
-    local foamZ = seaZ + 0.15
-    local wallMesh = Mesh()
-    mesh.Begin(wallMesh, MATERIAL_QUADS, #edges)
+    // A low, slightly sloped rock lip covers the step between each city edge and the beach below it.
+    local topZ, footZ = camera.z + coast.streetHeight, seaZ - 1
     for _, edge in ipairs(edges) do
         // The edge runs perpendicular to its outward normal.
         local tx, ty = -edge.ny * half, edge.nx * half
-        a:SetUnpacked(edge.x - tx, edge.y - ty, topZ)
-        b:SetUnpacked(edge.x + tx, edge.y + ty, topZ)
-        c:SetUnpacked(edge.x + tx, edge.y + ty, footZ)
-        d:SetUnpacked(edge.x - tx, edge.y - ty, footZ)
-        emitQuad(a, b, c, d, 255, 255, 255, 255, 255, 0, span / 8, 0, (topZ - footZ) / 8)
+        local ox, oy = edge.nx * 1.5, edge.ny * 1.5
+        local buffer = buffers.embankment
+        local height = (topZ - footZ) / 8
+        pushCoastVertex(buffer, edge.x - tx, edge.y - ty, topZ, 205, 200, 194, 255, 0, 0)
+        pushCoastVertex(buffer, edge.x + tx, edge.y + ty, topZ, 205, 200, 194, 255, span / 8, 0)
+        pushCoastVertex(buffer, edge.x + tx + ox, edge.y + ty + oy, footZ, 150, 146, 140, 255, span / 8, height)
+        pushCoastVertex(buffer, edge.x - tx + ox, edge.y - ty + oy, footZ, 150, 146, 140, 255, 0, height)
     end
-    mesh.End()
-    self.CoastWallMesh = wallMesh
 
-    local foamMesh = Mesh()
-    mesh.Begin(foamMesh, MATERIAL_QUADS, #edges)
-    for _, edge in ipairs(edges) do
-        local tx, ty = -edge.ny * half, edge.nx * half
-        local ox, oy = edge.nx * coastFoamWidth, edge.ny * coastFoamWidth
-        a:SetUnpacked(edge.x - tx, edge.y - ty, foamZ)
-        b:SetUnpacked(edge.x + tx, edge.y + ty, foamZ)
-        c:SetUnpacked(edge.x + tx + ox, edge.y + ty + oy, foamZ)
-        d:SetUnpacked(edge.x - tx + ox, edge.y - ty + oy, foamZ)
-        emitQuad(a, b, c, d, 255, 255, 255, 255, 0, 0, span / 12, 0, 1)
+    local meshes, counts, meshCount = {}, {}, 0
+    for _, kind in ipairs(coastMeshKinds) do
+        meshes[kind], counts[kind] = buildCoastMeshes(buffers[kind])
+        meshCount = meshCount + #meshes[kind]
     end
-    mesh.End()
-    self.CoastFoamMesh = foamMesh
-    stats.coastWallQuads = #edges
-    stats.coastFoamQuads = #edges
+    self.CoastMeshes = meshes
+    stats.coastSeaQuads = counts.underlay + counts.water
+    stats.coastWallQuads = counts.embankment
+    stats.coastFoamQuads = counts.foam
+    stats.coastSandQuads = counts.sand
+    stats.coastRockQuads = counts.rock
+    stats.coastMeshes = meshCount
+    stats.coastBuildMs = math.Round((SysTime() - started) * 1000, 1)
 end
 
-// Sea, sea wall, and foam colours follow the atmosphere so the coast sits in the same light as the fog.
+local function drawCoastMeshes(list)
+    for _, imesh in ipairs(list) do imesh:Draw() end
+end
+
+local function setCoastTextureTransform(material, scale, yaw, offsetU, offsetV)
+    local matrix = coast.textureMatrix
+    matrix:Identity()
+    coast.textureAngle:SetUnpacked(0, yaw, 0)
+    matrix:Rotate(coast.textureAngle)
+    coast.textureScale:SetUnpacked(scale, scale, 1)
+    matrix:Scale(coast.textureScale)
+    coast.textureOffset:SetUnpacked(offsetU % 1, offsetV % 1, 0)
+    matrix:SetTranslation(coast.textureOffset)
+    material:SetMatrix("$basetexturetransform", matrix)
+end
+
+// The playable cell's baked lighting, measured through the light cube, tints the shared fog colour (see
+// Atmosphere:GetFogSettings) so dark districts get dark fog in both the city and the sky, and the coast, edge terrain,
+// dome and clouds that derive from the fog colour darken with it. Bright daylight cells (cube top luminance about
+// 0.85) keep the profile colour; the square root keeps dim cells readable rather than black.
+Skybox.SceneryLight = { level = 1, 1, 1, 1, fullBright = 0.8, minimum = 0.3, chroma = 0.4 }
+function Skybox:UpdateSceneryLight(cube)
+    local light = self.SceneryLight
+    local top = cube and cube[5]
+    if not top then
+        light.level, light[1], light[2], light[3] = 1, 1, 1, 1
+    else
+        local luminance = math.max(top.x * 0.3 + top.y * 0.59 + top.z * 0.11, 0.0001)
+        local level = math.Clamp(math.sqrt(luminance / light.fullBright), light.minimum, 1)
+        // Hue follows the light only as it darkens, so daylight cells keep the profile colour exactly.
+        local chroma = light.chroma * (1 - level) / (1 - light.minimum)
+        light.level = level
+        light[1] = math.min(level * Lerp(chroma, 1, math.Clamp(top.x / luminance, 0.5, 1.5)), 1)
+        light[2] = math.min(level * Lerp(chroma, 1, math.Clamp(top.y / luminance, 0.5, 1.5)), 1)
+        light[3] = math.min(level * Lerp(chroma, 1, math.Clamp(top.z / luminance, 0.5, 1.5)), 1)
+    end
+    self.Stats.sceneryLight = math.Round(light.level, 3)
+    return light
+end
+
+// Coast colours follow the atmosphere's brightness; the sky-pass fog supplies distance haze, so the water keeps its
+// own hue instead of being pre-mixed toward the fog colour.
 function Skybox:DrawCoast(fogColor)
-    if not self.CoastSeaMesh then return end
+    local meshes = self.CoastMeshes
+    if not meshes then return end
     local red, green, blue = (fogColor[1] or 128) / 255, (fogColor[2] or 128) / 255, (fogColor[3] or 128) / 255
     local brightness = math.Clamp((red * 0.3 + green * 0.59 + blue * 0.11) * 1.6, 0.25, 1)
+    local snow = self.Stats.snowAlpha or 0
+    local now = CurTime()
     cam.PushModelMatrix(identityMatrix)
-    coastColor:SetUnpacked(Lerp(0.45, red, 0.13 * brightness), Lerp(0.45, green, 0.23 * brightness), Lerp(0.45, blue, 0.27 * brightness))
+    coastColor:SetUnpacked(Lerp(0.12, brightness, red), Lerp(0.12, brightness, green), Lerp(0.12, brightness, blue))
     seaMaterial:SetVector("$color", coastColor)
     render.SetMaterial(seaMaterial)
-    self.CoastSeaMesh:Draw()
-    if self.CoastWallMesh then
-        coastColor:SetUnpacked(Lerp(0.3, red, 0.62) * brightness, Lerp(0.3, green, 0.6) * brightness, Lerp(0.3, blue, 0.57) * brightness)
-        seaWallMaterial:SetVector("$color", coastColor)
-        render.SetMaterial(seaWallMaterial)
-        self.CoastWallMesh:Draw()
+    drawCoastMeshes(meshes.underlay)
+    drawCoastMeshes(meshes.water)
+    local ground = brightness * Lerp(snow, 1, 1.15)
+    coastColor:SetUnpacked(math.min(Lerp(snow * 0.7, ground, 1), 1), math.min(Lerp(snow * 0.7, ground, 1), 1), math.min(Lerp(snow * 0.7, ground, 1), 1))
+    for _, entry in ipairs({ { coast.sandMaterial, meshes.sand }, { coast.rockMaterial, meshes.rock }, { coast.embankmentMaterial, meshes.embankment } }) do
+        if #entry[2] > 0 then
+            entry[1]:SetVector("$color", coastColor)
+            render.SetMaterial(entry[1])
+            drawCoastMeshes(entry[2])
+        end
     end
-    if self.CoastFoamMesh then
-        coastColor:SetUnpacked(0.92 * brightness, 0.94 * brightness, 0.96 * brightness)
-        foamMaterial:SetVector("$color", coastColor)
-        foamMaterial:SetFloat("$alpha", 0.4 + 0.15 * math.sin(CurTime() * 0.8))
-        render.SetMaterial(foamMaterial)
-        self.CoastFoamMesh:Draw()
+    if coast.texturesReady then
+        // Two ripple layers at different scales and headings interfere into a moving glitter.
+        local ripple = coast.rippleMaterial
+        coastColor:SetUnpacked(0.7 * brightness, 0.75 * brightness, 0.8 * brightness)
+        ripple:SetVector("$color", coastColor)
+        setCoastTextureTransform(ripple, 1, 0, now * 0.011, now * 0.019)
+        render.SetMaterial(ripple)
+        drawCoastMeshes(meshes.underlay)
+        drawCoastMeshes(meshes.water)
+        setCoastTextureTransform(ripple, 1.7, 37, -now * 0.014, now * 0.008)
+        render.SetMaterial(ripple)
+        drawCoastMeshes(meshes.underlay)
+        drawCoastMeshes(meshes.water)
+        if #meshes.foam > 0 then
+            coastColor:SetUnpacked(0.95 * brightness, 0.97 * brightness, brightness)
+            foamMaterial:SetVector("$color", coastColor)
+            setCoastTextureTransform(foamMaterial, 1, 0, now * 0.006, now / coast.wavePeriod)
+            render.SetMaterial(foamMaterial)
+            drawCoastMeshes(meshes.foam)
+        end
     end
     cam.PopModelMatrix()
     self.Stats.coastDraws = (self.Stats.coastDraws or 0) + 1
 end
 
+// Cardinal world edges: north hills, east mountains, south flatlands, west open ocean (the coast above). The ring is
+// one static height field in grid-local sky units, u east from the grid's west boundary and v south from its north
+// boundary, built once per profile and translated to the current cell when drawn. City boundaries sit at street
+// height; corners blend the two adjacent landforms and the north/south land falls to beach height at the west shore.
+local edgeTerrain = {
+    cellsPerQuad = 7,
+    northDepth = 40,
+    southDepth = 40,
+    eastDepth = 60,
+    snowLine = 380,
+    light = Vector(-0.45, -0.3, 0.84):GetNormalized(),
+    matrix = Matrix(),
+    translation = Vector(),
+    color = Vector(),
+    layerDepthBias = 0.00003
+}
+edgeTerrain.grassMaterial = CreateMaterial("zombiesim_skybox_edge_grass_v1", "UnlitGeneric", {
+    ["$basetexture"] = "nature/grassfloor002a",
+    ["$vertexcolor"] = 1,
+    ["$nocull"] = 1
+})
+// Rock and snow are translucent overlays on the same surface; per-vertex alpha blends them smoothly over the grass.
+edgeTerrain.rockMaterial = CreateMaterial("zombiesim_skybox_edge_rock_v2", "UnlitGeneric", {
+    ["$basetexture"] = "nature/rockfloor005a",
+    ["$vertexcolor"] = 1,
+    ["$vertexalpha"] = 1,
+    ["$translucent"] = 1,
+    ["$nocull"] = 1
+})
+edgeTerrain.snowMaterial = CreateMaterial("zombiesim_skybox_edge_snow_v2", "UnlitGeneric", {
+    ["$basetexture"] = "nature/snowfloor002a",
+    ["$vertexcolor"] = 1,
+    ["$vertexalpha"] = 1,
+    ["$translucent"] = 1,
+    ["$nocull"] = 1
+})
+// Weather snow is drawn over grass and rock as a translucent pass whose alpha follows the settled snow cover.
+edgeTerrain.coverMaterial = CreateMaterial("zombiesim_skybox_edge_cover_v1", "UnlitGeneric", {
+    ["$basetexture"] = "nature/snowfloor002a",
+    ["$vertexcolor"] = 1,
+    ["$translucent"] = 1,
+    ["$nocull"] = 1
+})
+edgeTerrain.kinds = { "grass", "rock", "snow" }
+edgeTerrain.materials = { grass = edgeTerrain.grassMaterial, rock = edgeTerrain.rockMaterial, snow = edgeTerrain.snowMaterial }
+edgeTerrain.tiles = { grass = 48, rock = 96, snow = 72 }
+
+// Classifies a grid slot (cells, may lie outside the grid). Ocean owns every slot west of the grid, including the
+// north-west and south-west corner columns, so the shoreline runs straight along the west boundary.
+function Skybox.ClassifyEdge(gx, gy, width, height)
+    if gx >= 0 and gx < width and gy >= 0 and gy < height then return "city" end
+    if gx < 0 then return "ocean" end
+    if gx >= width then
+        if gy < 0 then return "hills-mountains" end
+        if gy >= height then return "mountains-flatlands" end
+        return "mountains"
+    end
+    if gy < 0 then return "hills" end
+    return "flatlands"
+end
+
+local function terrainFbm(x, y)
+    return valueNoise(x, y) * 0.5 + valueNoise(x * 2.03 + 17.1, y * 2.03 + 4.9) * 0.3 + valueNoise(x * 4.1 + 9.7, y * 4.1 + 23.3) * 0.2
+end
+
+local function terrainRidge(x, y)
+    local total, amplitude, weight = 0, 0.6, 0
+    for octave = 1, 3 do
+        local ridge = 1 - math.abs(valueNoise(x, y) * 2 - 1)
+        total, weight = total + ridge * ridge * amplitude, weight + amplitude
+        x, y, amplitude = x * 2.1 + 13.7, y * 2.1 + 5.3, amplitude * 0.5
+    end
+    return total / weight
+end
+
+local function hillsHeight(u, v, d)
+    return 2 + smoothstep(0, 350, d) * (14 + 62 * terrainFbm(u / 260 + 3.1, v / 260 + 8.7))
+end
+
+local function flatlandsHeight(u, v, d)
+    return 2 + smoothstep(0, 250, d) * (1 + 5 * terrainFbm(u / 420 + 11.3, v / 420 + 2.9))
+end
+
+local function mountainHeight(u, v, d)
+    local foothills = smoothstep(0, 300, d) * (12 + 40 * terrainFbm(u / 220 + 5.5, v / 220 + 1.7))
+    // Large-scale massifs vary the range height; a domain warp breaks up the noise lattice so peaks do not repeat.
+    local massif = terrainFbm(u / 1500 + 7.7, v / 1500 + 3.3)
+    local warpU = u + (valueNoise(u / 700 + 1.9, v / 700 + 4.2) - 0.5) * 420
+    local warpV = v + (valueNoise(u / 700 + 8.3, v / 700 + 6.6) - 0.5) * 420
+    local ridge = terrainRidge(warpU / 430 + 2.2, warpV / 430 + 9.4)
+    return 2 + foothills + smoothstep(250, 1300, d) * (140 + 1000 * massif * massif * (0.35 + 0.65 * ridge))
+end
+
+// Height above the sky camera (sky units) at grid-local (u, v) outside the city rectangle `width` x `height`.
+function Skybox.EdgeHeight(u, v, width, height, span)
+    local e, n, s = math.max(u - width, 0), math.max(-v, 0), math.max(v - height, 0)
+    local quad = span / edgeTerrain.cellsPerQuad
+    local h
+    if e > 0 and n > 0 then
+        local d = math.sqrt(e * e + n * n)
+        h = Lerp(smoothstep(0.25, 0.75, e / (e + n)), hillsHeight(u, v, d), mountainHeight(u, v, d))
+    elseif e > 0 and s > 0 then
+        local d = math.sqrt(e * e + s * s)
+        h = Lerp(smoothstep(0.25, 0.75, e / (e + s)), flatlandsHeight(u, v, d), mountainHeight(u, v, d))
+    elseif e > 0 then
+        h = mountainHeight(u, v, e)
+    elseif n > 0 then
+        h = hillsHeight(u, v, n)
+    elseif s > 0 then
+        h = flatlandsHeight(u, v, s)
+    else
+        return 2
+    end
+    // North/south land falls to the coast's dune height at the west shore.
+    if e <= 0 then
+        local depth = math.max(n, s)
+        h = Lerp(smoothstep(0, 360, u), Lerp(smoothstep(0, 40, depth), 2, coast.seaLevel + coast.duneHeight), h)
+    end
+    // The ring's outer limits taper so no cut face shows on the horizon.
+    local taper = (1 - smoothstep(edgeTerrain.northDepth * quad * 0.55, edgeTerrain.northDepth * quad, n)) *
+        (1 - smoothstep(edgeTerrain.southDepth * quad * 0.55, edgeTerrain.southDepth * quad, s)) *
+        (1 - smoothstep(edgeTerrain.eastDepth * quad * 0.8, edgeTerrain.eastDepth * quad, e))
+    return 2 + (h - 2) * taper
+end
+
+function Skybox:DestroyEdgeTerrain()
+    for _, list in pairs(self.EdgeMeshes or {}) do
+        for _, imesh in ipairs(list) do imesh:Destroy() end
+    end
+    self.EdgeMeshes = nil
+    self.EdgeKey = nil
+end
+
+// Regions share their boundary sample lines exactly (all extents are whole quads), so no T-junction cracks appear.
+function Skybox:BuildEdgeTerrain(manifest)
+    local data = ZM_World and ZM_World:GetData()
+    local grid = data and data.world and data.world.grid
+    local width, height = tonumber(grid and grid[1]), tonumber(grid and grid[2])
+    if not width or not height then return end
+    local span = manifest.cellSpan / manifest.scale
+    local key = table.concat({ tostring(self.ManifestProfile), width, height, span, manifest.cameraVector.z, "edges-v2" }, ":")
+    if key == self.EdgeKey and self.EdgeMeshes then return end
+    self:DestroyEdgeTerrain()
+    local started = SysTime()
+    local quad = span / edgeTerrain.cellsPerQuad
+    local W, H = width * span, height * span
+    local northDepth, southDepth, eastDepth = edgeTerrain.northDepth * quad, edgeTerrain.southDepth * quad, edgeTerrain.eastDepth * quad
+    local regions = {
+        { u0 = 0, v0 = -northDepth, columns = width * edgeTerrain.cellsPerQuad, rows = edgeTerrain.northDepth },
+        { u0 = 0, v0 = H, columns = width * edgeTerrain.cellsPerQuad, rows = edgeTerrain.southDepth },
+        { u0 = W, v0 = -northDepth, columns = edgeTerrain.eastDepth, rows = edgeTerrain.northDepth + height * edgeTerrain.cellsPerQuad + edgeTerrain.southDepth }
+    }
+    local baseZ = manifest.cameraVector.z
+    local light = edgeTerrain.light
+    local buffers = { grass = { count = 0 }, rock = { count = 0 }, snow = { count = 0 } }
+    local tiles = edgeTerrain.tiles
+    for _, region in ipairs(regions) do
+        local stride = region.columns + 3
+        local heights = {}
+        for row = -1, region.rows + 1 do
+            for column = -1, region.columns + 1 do
+                heights[(row + 1) * stride + column + 2] = Skybox.EdgeHeight(region.u0 + column * quad, region.v0 + row * quad, W, H, span)
+            end
+        end
+        local shades, rocks, snows = {}, {}, {}
+        for row = 0, region.rows do
+            for column = 0, region.columns do
+                local index = (row + 1) * stride + column + 2
+                // Grid-local v grows south while sky Y grows north, hence the sign on the Y gradient.
+                local gx = (heights[index + 1] - heights[index - 1]) / (2 * quad)
+                local gy = -(heights[index + stride] - heights[index - stride]) / (2 * quad)
+                local length = math.sqrt(gx * gx + gy * gy + 1)
+                local lambert = math.max((-gx * light.x - gy * light.y + light.z) / length, 0)
+                shades[index] = 0.42 + 0.58 * lambert
+                local slope = math.sqrt(gx * gx + gy * gy)
+                local u, v = region.u0 + column * quad, region.v0 + row * quad
+                local h = heights[index]
+                rocks[index] = math.max(smoothstep(0.55, 1, slope), smoothstep(120, 230, h + (valueNoise(u / 90 + 1.3, v / 90 + 6.1) - 0.5) * 90))
+                snows[index] = smoothstep(edgeTerrain.snowLine - 50, edgeTerrain.snowLine + 50,
+                    h + (valueNoise(u / 140 + 4.4, v / 140 + 7.7) - 0.5) * 160) * (1 - 0.7 * smoothstep(1.1, 1.8, slope))
+            end
+        end
+        local corners = {}
+        for row = 0, region.rows - 1 do
+            for column = 0, region.columns - 1 do
+                local a = (row + 1) * stride + column + 2
+                corners[1], corners[2], corners[3], corners[4] = a, a + 1, a + stride + 1, a + stride
+                local rock, snow = 0, 0
+                for corner = 1, 4 do
+                    rock, snow = math.max(rock, rocks[corners[corner]]), math.max(snow, snows[corners[corner]])
+                end
+                for corner = 1, 4 do
+                    local index = corners[corner]
+                    local x = region.u0 + (column + quadOffsets[corner][1]) * quad
+                    local y = -(region.v0 + (row + quadOffsets[corner][2]) * quad)
+                    local z = baseZ + heights[index]
+                    local shade = shades[index] * 255
+                    // Lower, drier grass warms; lush patches cool slightly.
+                    local dry = valueNoise(x / 300 + 2.5, y / 300 + 8.5)
+                    pushCoastVertex(buffers.grass, x, y, z, shade * Lerp(dry, 0.82, 1), shade * Lerp(dry, 0.9, 0.86), shade * Lerp(dry, 0.7, 0.62), 255, x / tiles.grass, y / tiles.grass)
+                    if rock > 0.01 then
+                        pushCoastVertex(buffers.rock, x, y, z, shade, shade * 0.98, shade * 0.95, rocks[index] * 255, x / tiles.rock, y / tiles.rock)
+                    end
+                    if snow > 0.01 then
+                        pushCoastVertex(buffers.snow, x, y, z, shade * 0.96, shade * 0.98, shade, snows[index] * 255, x / tiles.snow, y / tiles.snow)
+                    end
+                end
+            end
+        end
+    end
+    local meshes, total, meshCount = {}, 0, 0
+    for _, kind in ipairs(edgeTerrain.kinds) do
+        local quads
+        meshes[kind], quads = buildCoastMeshes(buffers[kind])
+        total, meshCount = total + quads, meshCount + #meshes[kind]
+        self.Stats["edge" .. kind .. "Quads"] = quads
+    end
+    self.EdgeMeshes = meshes
+    self.EdgeKey = key
+    self.EdgeGrid = { width = width, height = height, span = span }
+    local stats = self.Stats
+    stats.edgeTerrainQuads = total
+    stats.edgeTerrainMeshes = meshCount
+    stats.edgeBuildMs = math.Round((SysTime() - started) * 1000, 1)
+end
+
+// Sky-space translation that places the grid-local terrain around the current cell.
+function Skybox:GetEdgeTranslation(manifest, gridX, gridY)
+    local span = manifest.cellSpan / manifest.scale
+    local camera = manifest.cameraVector
+    return camera.x - (gridX + 0.5) * span, camera.y + (gridY + 0.5) * span
+end
+
+function Skybox:DrawEdgeTerrain(manifest, fogColor)
+    local meshes = self.EdgeMeshes
+    if not meshes or not self.CurrentGridX then return end
+    local red, green, blue = (fogColor[1] or 128) / 255, (fogColor[2] or 128) / 255, (fogColor[3] or 128) / 255
+    local brightness = math.Clamp((red * 0.3 + green * 0.59 + blue * 0.11) * 1.6, 0.25, 1)
+    local x, y = self:GetEdgeTranslation(manifest, self.CurrentGridX, self.CurrentGridY)
+    edgeTerrain.translation:SetUnpacked(x, y, 0)
+    edgeTerrain.matrix:SetTranslation(edgeTerrain.translation)
+    cam.PushModelMatrix(edgeTerrain.matrix)
+    local color = edgeTerrain.color
+    color:SetUnpacked(Lerp(0.1, brightness, red), Lerp(0.1, brightness, green), Lerp(0.1, brightness, blue))
+    // Overlays sit on identical geometry; a growing window-space depth bias keeps each layer in front of the last.
+    for layer, kind in ipairs(edgeTerrain.kinds) do
+        local list = meshes[kind]
+        if #list > 0 then
+            local material = edgeTerrain.materials[kind]
+            material:SetVector("$color", color)
+            render.SetMaterial(material)
+            render.DepthRange(0, 1 - (layer - 1) * edgeTerrain.layerDepthBias)
+            drawCoastMeshes(list)
+        end
+    end
+    local snow = self.Stats.snowAlpha or 0
+    if snow > 0.002 then
+        local cover = edgeTerrain.coverMaterial
+        cover:SetVector("$color", color)
+        cover:SetFloat("$alpha", snow * 0.9)
+        render.SetMaterial(cover)
+        render.DepthRange(0, 1 - (#edgeTerrain.kinds) * edgeTerrain.layerDepthBias)
+        drawCoastMeshes(meshes.grass)
+    end
+    render.DepthRange(0, 1)
+    cam.PopModelMatrix()
+    self.Stats.edgeDraws = (self.Stats.edgeDraws or 0) + 1
+end
+
+// Pure-function regression for the cardinal contract: classification of all four edges and corners, landform
+// character, seam continuity, the west shore height, east-range visibility from the far west, and sky-space direction.
+function Skybox:RunEdgeRegression()
+    local manifest = self.Manifest
+    local data = ZM_World and ZM_World:GetData()
+    local grid = data and data.world and data.world.grid
+    local width, height = tonumber(grid and grid[1]), tonumber(grid and grid[2])
+    local results, failures = {}, 0
+    local function check(name, passed, detail)
+        table.insert(results, { name = name, passed = passed and true or false, detail = detail })
+        if not passed then failures = failures + 1 end
+    end
+    if not manifest or not width or not height then
+        check("prerequisites", false, "skybox manifest or world grid missing")
+        return results, failures
+    end
+    local span = manifest.cellSpan / manifest.scale
+    local W, H = width * span, height * span
+    local midX, midY = math.floor(width / 2), math.floor(height / 2)
+    local expected = {
+        { "north", midX, -1, "hills" }, { "east", width, midY, "mountains" }, { "south", midX, height, "flatlands" },
+        { "west", -1, midY, "ocean" }, { "northeast", width, -1, "hills-mountains" },
+        { "southeast", width, height, "mountains-flatlands" }, { "northwest", -1, -1, "ocean" },
+        { "southwest", -1, height, "ocean" }, { "center", midX, midY, "city" }
+    }
+    for _, case in ipairs(expected) do
+        local actual = Skybox.ClassifyEdge(case[2], case[3], width, height)
+        check("classify " .. case[1], actual == case[4], string.format("(%d,%d) -> %s, expected %s", case[2], case[3], actual, case[4]))
+    end
+    local function heightAt(u, v) return Skybox.EdgeHeight(u, v, W, H, span) end
+    local function meanHeight(side)
+        local total, samples = 0, 0
+        for step = 1, 24 do
+            local along = (step - 0.5) / 24
+            local u, v
+            if side == "north" then u, v = W * along, -600 elseif side == "south" then u, v = W * along, H + 600 else u, v = W + 1500, H * along end
+            total, samples = total + heightAt(u, v), samples + 1
+        end
+        return total / samples
+    end
+    local north, east, south = meanHeight("north"), meanHeight("east"), meanHeight("south")
+    check("landform east mountains", east > 250, string.format("mean %.1f", east))
+    check("landform north hills", north > 12 and north < 110, string.format("mean %.1f", north))
+    check("landform south flatlands", south > 1.5 and south < 9, string.format("mean %.1f", south))
+    check("landform ordering", east > north and north > south, string.format("east %.1f north %.1f south %.1f", east, north, south))
+    local worst = 0
+    for step = 0, 40 do
+        local t = step / 40
+        worst = math.max(worst, math.abs(heightAt(W * t, 0) - 2), math.abs(heightAt(W * t, H) - 2),
+            math.abs(heightAt(W, H * t) - 2))
+    end
+    check("city boundaries at street height", worst < 0.01, string.format("max deviation %.4f", worst))
+    local seam = 0
+    for step = 1, 40 do
+        local depth = step * 40
+        seam = math.max(seam, math.abs(heightAt(W - 0.001, -depth) - heightAt(W + 0.001, -depth)),
+            math.abs(heightAt(W - 0.001, H + depth) - heightAt(W + 0.001, H + depth)),
+            math.abs(heightAt(W + depth, -0.001) - heightAt(W + depth, 0.001)),
+            math.abs(heightAt(W + depth, H - 0.001) - heightAt(W + depth, H + 0.001)))
+    end
+    check("corner seams continuous", seam < 0.5, string.format("max step %.3f", seam))
+    local shoreTarget = coast.seaLevel + coast.duneHeight
+    local shore = math.max(math.abs(heightAt(0, -400) - shoreTarget), math.abs(heightAt(0, H + 400) - shoreTarget))
+    check("west shore meets beach height", shore < 0.01, string.format("max deviation %.4f", shore))
+    // The far-west cell (eye about 4 sky units up) must see the east range above the opaque horizon (-2 degrees).
+    local best = -90
+    for step = 0, 60 do
+        for depth = 200, 2400, 100 do
+            local u, v = W + depth, H * step / 60
+            local distance = math.sqrt((u - span * 0.5) ^ 2 + (v - H * 0.5) ^ 2)
+            best = math.max(best, math.deg(math.atan2(heightAt(u, v) - 4, distance)))
+        end
+    end
+    check("east range visible from far west", best > 2, string.format("peak elevation %.2f deg", best))
+    local camera = manifest.cameraVector
+    local x, y = self:GetEdgeTranslation(manifest, midX, midY)
+    local eastX = x + W + 100
+    local northY = y + 100
+    check("sky direction east is +X", eastX > camera.x + span, string.format("east sky x %.1f vs camera %.1f", eastX, camera.x))
+    check("sky direction north is +Y", northY > camera.y + span, string.format("north sky y %.1f vs camera %.1f", northY, camera.y))
+    // Sky fog must continue the city fog: never clearer at the cell boundary, and at least the city maximum beyond.
+    if self.Manifest and self.Stats.state == "ready" then
+        local boundary = self.Manifest.cellSpan * 0.5
+        local function density(fog, distance)
+            return fog.maxDensity * math.Clamp((distance - fog.start) / math.max(fog.finish - fog.start, 1), 0, 1)
+        end
+        local worst = math.huge
+        for _, world in ipairs({ { start = 800, finish = 3000, maxDensity = 0.65 }, { start = 600, finish = 2200, maxDensity = 0.72 },
+            { start = 350, finish = 1450, maxDensity = 0.82 }, { start = 200, finish = 950, maxDensity = 0.9 },
+            { start = 900, finish = 3000, maxDensity = 0.5 }, { start = 0, finish = 900, maxDensity = 1 } }) do
+            local sky = self:GetSkyboxFog(world)
+            for _, distance in ipairs({ boundary, boundary * 2, boundary * 3 }) do
+                worst = math.min(worst, density(sky, distance) - density(world, distance))
+            end
+        end
+        check("sky fog never clearer than city fog", worst > -0.01, string.format("worst sky-minus-city density %.4f", worst))
+    end
+    local saved = { level = self.SceneryLight.level, self.SceneryLight[1], self.SceneryLight[2], self.SceneryLight[3] }
+    local bright = self:UpdateSceneryLight({ [5] = Vector(0.79, 0.87, 0.97) })
+    local brightTint = math.min(bright[1], bright[2], bright[3])
+    local dark = self:UpdateSceneryLight({ [5] = Vector(0.226, 0.277, 0.132) })
+    local darkLevel = dark.level
+    self.SceneryLight.level, self.SceneryLight[1], self.SceneryLight[2], self.SceneryLight[3] = saved.level, saved[1], saved[2], saved[3]
+    self.Stats.sceneryLight = math.Round(saved.level, 3)
+    check("daylight cells keep profile fog colour", brightTint > 0.999, string.format("min tint %.3f", brightTint))
+    check("dark cells darken fog", darkLevel < 0.7, string.format("level %.3f", darkLevel))
+    return results, failures
+end
+
 // Builds the horizon wall around the origin, in sky units; it is translated to the sky eye when drawn.
-function Skybox:BuildDome(radius)
-    if self.DomeMesh and self.DomeRadius == radius then return end
+function Skybox:BuildDome(radius, skyline)
+    local haze = math.Clamp(getConVarNumber("zombiesim_sky_horizon_haze", 0.5), 0, 1.5)
+    if self.DomeMesh and self.DomeRadius == radius and self.DomeSkyline == skyline and self.DomeHaze == haze then return end
     if self.DomeMesh then self.DomeMesh:Destroy() end
     self.DomeMesh = nil
     self.DomeRadius = radius
+    self.DomeSkyline = skyline
+    self.DomeHaze = haze
+    local rings = skyline and skylineDomeRings or domeRings
 
-    local quads = domeSegments * (#domeRings - 1)
+    local quads = domeSegments * (#rings - 1)
     if quads <= 0 then return end
     local ringZ = {}
-    for index, ring in ipairs(domeRings) do
+    for index, ring in ipairs(rings) do
         ringZ[index] = radius * math.tan(math.rad(ring.elevation))
     end
     local corners = {}
@@ -515,10 +1305,10 @@ function Skybox:BuildDome(radius)
     local position = Vector()
     local domeMesh = Mesh()
     mesh.Begin(domeMesh, MATERIAL_QUADS, quads)
-    for ringIndex = 1, #domeRings - 1 do
+    for ringIndex = 1, #rings - 1 do
         local lowZ, highZ = ringZ[ringIndex], ringZ[ringIndex + 1]
-        local lowAlpha = domeRings[ringIndex].alpha * 255
-        local highAlpha = domeRings[ringIndex + 1].alpha * 255
+        local lowAlpha = math.min(1, rings[ringIndex].alpha * (rings[ringIndex].elevation >= 0 and haze or 1)) * 255
+        local highAlpha = math.min(1, rings[ringIndex + 1].alpha * (rings[ringIndex + 1].elevation >= 0 and haze or 1)) * 255
         for segment = 0, domeSegments - 1 do
             local a, b = corners[segment], corners[segment + 1]
             position:SetUnpacked(a[1], a[2], lowZ)
@@ -670,27 +1460,41 @@ function Skybox:DrawClouds(manifest, skyEye, fogColor, fogStart, fogEnd)
     mesh.End()
 end
 
-// Called from cl_atmosphere's SetupSkyboxFog with the world fog; returns linear sky fog (world units) that matches the
-// world fog at the cell edge and reaches full density at the horizon wall.
+// Called from cl_atmosphere's SetupSkyboxFog with the world fog; returns linear sky fog (world units) that continues the
+// world fog past the cell edge. The sky is never clearer than the playable cell: it starts at the world density at the
+// boundary and rises to at least the world's maximum. Fog amount 0 holds the world maximum, 1 rises halfway to opaque,
+// and 2 closes to opaque at the horizon.
 function Skybox:GetSkyboxFog(settings)
     local manifest = self.Manifest
     if not settings or not manifest or self.Stats.state ~= "ready" then return settings end
     local boundary = manifest.cellSpan * 0.5
-    local edge = self:GetFogEdge(manifest)
+    local edge = math.max(boundary + 1, self:GetFogEdge(manifest) *
+        math.Clamp(getConVarNumber("zombiesim_sky_fog_distance", 0.9), 0.5, 3))
     local range = math.max(settings.finish - settings.start, 1)
-    local boundaryDensity = settings.maxDensity * math.Clamp((boundary - settings.start) / range, 0, 1)
+    local worldMaximum = math.Clamp(settings.maxDensity, 0, 1)
+    local boundaryDensity = worldMaximum * math.Clamp((boundary - settings.start) / range, 0, 1)
+    local amount = math.Clamp(getConVarNumber("zombiesim_sky_fog_amount", 0.8), 0, 2)
     local result = self.FogResult
     result.color = settings.color
-    result.maxDensity = 1
+    result.maxDensity = Lerp(amount * 0.5, worldMaximum, 1)
     result.finish = edge
     if boundaryDensity >= 0.98 then
         result.start = 0
         result.finish = boundary
+        result.maxDensity = 1
+    elseif result.maxDensity - boundaryDensity < 0.002 then
+        // Flat continuation of an already saturated world fog.
+        result.start = -40 * edge
     else
-        result.start = math.max(boundary - boundaryDensity * (edge - boundary) / (1 - boundaryDensity), -4 * edge)
+        // Never ramp slower than the city fog, so the sky is not clearer just past the boundary.
+        local slope = math.max(worldMaximum / range, (result.maxDensity - boundaryDensity) / (edge - boundary))
+        result.finish = boundary + (result.maxDensity - boundaryDensity) / slope
+        result.start = math.max(boundary - boundaryDensity / slope, -40 * edge)
     end
     self.Stats.fogStart = result.start
     self.Stats.fogEnd = result.finish
+    self.Stats.fogMaxDensity = result.maxDensity
+    self.Stats.fogBoundaryDensity = boundaryDensity
     return result
 end
 
@@ -701,7 +1505,7 @@ function Skybox:CollectLightSamples()
     local world = game.GetWorld()
     if not world or world == NULL or not world:IsWorld() then return nil end
     local minimum, maximum = world:GetRenderBounds()
-    maximum = self:ClampWorldMaximum(maximum)
+    minimum, maximum = self:ClampWorldBounds(minimum, maximum)
     if not minimum or not maximum then return nil end
     self.LightSampleMap = mapName
     self.LightSamples = {}
@@ -779,10 +1583,8 @@ function Skybox:UpdateLighting()
     return cube
 end
 
-CreateClientConVar("zombiesim_sky_light_scale", "0.2", false, false,
-    "Brightness multiplier for matched skybox model lighting.", 0, 2)
 local function applyLightCube(cube)
-    local scale = getConVarNumber("zombiesim_sky_light_scale", 0.2)
+    local scale = getConVarNumber("zombiesim_sky_light_scale", 0.25)
     render.SuppressEngineLighting(true)
     for index, direction in ipairs(lightDirections) do
         local colour = cube[index]
@@ -820,6 +1622,88 @@ end
 local function fireHash(x, y, index, salt)
     local value = math.sin(x * 12.9898 + y * 78.233 + index * 37.719 + salt * 4.581) * 43758.5453
     return value - math.floor(value)
+end
+
+function Skybox:BuildActivitySites(manifest, gridX, gridY, radius)
+    local candidates = {}
+    local facadeCandidates = {}
+    local reach = math.min(8, manifest.skylineRadius or radius)
+    for dy = -reach, reach do
+        for dx = -reach, reach do
+            if math.max(math.abs(dx), math.abs(dy)) >= 1 then
+                local cell = ZM_World:GetCell(gridX + dx, gridY + dy)
+                local detail = cell and manifest.detail and manifest.detail.recipes and manifest.detail.recipes[mapBasename(cell.map)]
+                local rows = detail and detail.fires
+                if math.max(math.abs(dx), math.abs(dy)) >= 2 and type(rows) == "table" and #rows > 0 then
+                    local seed = fireHash(gridX + dx, gridY + dy, 1, 41)
+                    local row = rows[math.min(#rows, math.floor(seed * #rows) + 1)]
+                    local position = manifest.cameraVector + Vector(dx * manifest.cellSpan + row[1],
+                        -dy * manifest.cellSpan + row[2], row[3]) / manifest.scale
+                    candidates[#candidates + 1] = { position = position, seed = seed, distance = dx * dx + dy * dy, x = dx, y = dy }
+                end
+                local paths = cell and manifest.towers and manifest.towers[mapBasename(cell.map)]
+                for _, path in ipairs(type(paths) == "table" and paths or {}) do
+                    facadeCandidates[#facadeCandidates + 1] = { path = path, x = dx, y = dy, distance = dx * dx + dy * dy }
+                end
+            end
+        end
+    end
+    local function compareSites(a, b)
+        if a.distance ~= b.distance then return a.distance < b.distance end
+        if a.y ~= b.y then return a.y < b.y end
+        if a.x ~= b.x then return a.x < b.x end
+        return (a.path or "") < (b.path or "")
+    end
+    table.sort(candidates, compareSites)
+    table.sort(facadeCandidates, compareSites)
+    for _, candidate in ipairs(facadeCandidates) do
+        if #self.FacadeFires >= 8 then break end
+        local anchors = self:GetFacadeAnchors(candidate.path)
+        if #anchors > 0 then
+            local seed = fireHash(gridX + candidate.x, gridY + candidate.y, 1, 53)
+            local anchor = anchors[math.min(#anchors, math.floor(seed * #anchors) + 1)]
+            local origin = manifest.cameraVector + Vector(candidate.x * manifest.cellSpan, -candidate.y * manifest.cellSpan, 0) / manifest.scale
+            self.FacadeFires[#self.FacadeFires + 1] = {
+                position = origin + anchor, style = fireStyles[2], phase = seed
+            }
+        end
+    end
+    for index = 1, math.min(24, #candidates) do
+        self.ActivitySites[index] = candidates[index]
+    end
+    self.Stats.activitySites = #self.ActivitySites
+    self.Stats.facadeFires = #self.FacadeFires
+end
+
+// Exported tower models have an identity root and already contain recipe transforms and sky scaling.
+// Use real wall triangles, not bounding boxes, which float outside stepped upper storeys.
+function Skybox:GetFacadeAnchors(path)
+    if self.FacadeAnchors[path] then return self.FacadeAnchors[path] end
+    local anchors = {}
+    self.FacadeAnchors[path] = anchors
+    local meshes = util.GetModelMeshes(path, 0)
+    if type(meshes) ~= "table" then
+        ErrorNoHalt("[ZombieSim] Cannot read tower facade mesh: " .. path .. "\n")
+        return anchors
+    end
+    for _, part in ipairs(meshes) do
+        local triangles = part.triangles or {}
+        for index = 1, #triangles - 2, 3 do
+            local a, b, c = triangles[index], triangles[index + 1], triangles[index + 2]
+            local low = math.min(a.pos.z, b.pos.z, c.pos.z)
+            local high = math.max(a.pos.z, b.pos.z, c.pos.z)
+            if math.abs(a.normal.z) < 0.2 and high - low >= 24 then
+                local centre = (a.pos + b.pos + c.pos) / 3
+                if centre.z > 32 then
+                    anchors[#anchors + 1] = centre + a.normal * 1.5
+                end
+            end
+        end
+    end
+    if #anchors == 0 then
+        ErrorNoHalt("[ZombieSim] No tall vertical facade triangles in tower: " .. path .. "\n")
+    end
+    return anchors
 end
 
 function Skybox:AddNeighbourDetail(manifest, detail, origin, cellX, cellY)
@@ -898,6 +1782,8 @@ end
 
 local smokeOrder = {}
 local billboardVertex = Vector()
+local tracerStart, tracerEnd = Vector(), Vector()
+local tracerColor = Color(255, 187, 94)
 
 local function compareSmokeDistance(a, b)
     return a.distance > b.distance
@@ -917,13 +1803,115 @@ local function emitBillboard(x, y, z, size, cosine, sine, right, up, red, green,
     mesh.Position(billboardVertex) mesh.Color(red, green, blue, alpha) mesh.TexCoord(0, 0, 1) mesh.AdvanceVertex()
 end
 
-// Burning wrecks and rooftops: rising, spreading smoke plumes drifting with the clouds, flickering flames at the base.
-function Skybox:DrawFires(skyEye)
+function Skybox:DrawActivity(manifest, skyEye, skyFog, fogColor)
     local stats = self.Stats
-    stats.frameFires = 0
-    stats.smokeQuads = 0
-    stats.fireQuads = 0
-    local fires = self.Fires
+    stats.activityExplosions, stats.activityBursts, stats.activityBeams = 0, 0, 0
+    stats.activityPreview = false
+    if getConVarNumber("zombiesim_sky_fires", 1) <= 0 or not self.ViewForward or not self.ViewRight or not self.ViewUp or
+        (ZM_WorldMap and ZM_WorldMap.Capturing) or (skyFog and skyFog.finish <= manifest.cellSpan * 0.5) then return end
+    local now = CurTime()
+    local preview = (self.ActivityPreviewUntil or 0) > now
+    local visible = self.ActivityVisible
+    local count, explosions, bursts = 0, 0, 0
+    for _, site in ipairs(self.ActivitySites) do
+        local position = site.position
+        local dx, dy, dz = position.x - skyEye.x, position.y - skyEye.y, position.z - skyEye.z
+        if dx * self.ViewForward.x + dy * self.ViewForward.y + dz * self.ViewForward.z > 0 then
+            local cycleTime = now + site.seed * 24
+            local cycle = math.floor(cycleTime / 24)
+            local age = cycleTime % 24
+            local burst = fireHash(site.x, site.y, cycle, 47) > 0.55
+            local scheduled = fireHash(site.x, site.y, cycle, 43) < 0.4
+            if preview then
+                age = (now - self.ActivityPreviewStart) % 4
+                burst = count % 2 == 1
+                scheduled = true
+            end
+            if scheduled and age < (burst and 1.65 or 4) and (burst and bursts < 2 or not burst and explosions < 2) then
+                count = count + 1
+                local entry = visible[count] or {}
+                visible[count] = entry
+                entry.position, entry.age, entry.burst, entry.seed = position, age, burst, site.seed
+                if burst then bursts = bursts + 1 else explosions = explosions + 1 end
+                if count >= (preview and 2 or 4) then break end
+            end
+        end
+    end
+    for index = count + 1, #visible do visible[index] = nil end
+    stats.activityPreview = preview
+    stats.activityExplosions, stats.activityBursts = explosions, bursts
+    render.FogMode(MATERIAL_FOG_LINEAR)
+    render.FogStart(self:GetFogEdge(manifest) / manifest.scale)
+    render.FogEnd(9 * manifest.cellSpan * math.sqrt(2) / manifest.scale)
+    render.FogMaxDensity(math.Clamp(getConVarNumber("zombiesim_sky_tower_fog", 0.8), 0, 1))
+    render.FogColor(fogColor[1], fogColor[2], fogColor[3])
+    self:DrawFires(skyEye, true)
+    local right, up = self.ViewRight, self.ViewUp
+    if count > 0 then
+        render.SetMaterial(glowMaterial)
+        mesh.Begin(MATERIAL_QUADS, count)
+        for _, entry in ipairs(visible) do
+            local p, age = entry.position, entry.age
+            local pulse = entry.burst and math.max(0, 1 - (age % 0.24) / 0.1) or math.max(0, 1 - age / 0.8)
+            emitBillboard(p.x, p.y, p.z + 2, entry.burst and 4 or 12 + age * 10, 1, 0, right, up, 255, 165, 65, pulse * 220)
+        end
+        mesh.End()
+    end
+    if explosions > 0 then
+        render.SetMaterial(smokeMaterial)
+        mesh.Begin(MATERIAL_QUADS, explosions * 3)
+        for _, entry in ipairs(visible) do
+            if not entry.burst then
+                local p, age = entry.position, entry.age
+                local alpha = smoothstep(0, 0.35, age) * (1 - age / 4) * 160
+                for puff = 1, 3 do
+                    emitBillboard(p.x + smokeDriftX * age * 6, p.y + smokeDriftY * age * 6,
+                        p.z + age * 15 + puff * 4, 5 + age * 5 + puff, 1, 0, right, up, 45, 40, 35, alpha)
+                end
+            end
+        end
+        mesh.End()
+    end
+    if bursts > 0 then
+        render.SetMaterial(tracerMaterial)
+        for _, entry in ipairs(visible) do
+            if entry.burst then
+                for shot = 0, 3 do
+                    local age = entry.age - shot * 0.24
+                    if age >= 0 and age < 0.9 then
+                        local p = entry.position
+                        local drift = (entry.seed - 0.5) * age * 90
+                        // Art ceiling below the existing 512-sky-unit room roof, including rooftop launch sites.
+                        local velocity = math.max(0, math.min(420, (manifest.cameraVector.z + 460 - p.z - 2) / 0.9))
+                        local height = age * velocity
+                        tracerStart:SetUnpacked(p.x + drift, p.y + drift * 0.4, p.z + math.max(2, height - 32))
+                        tracerEnd:SetUnpacked(p.x + drift + 2, p.y + drift * 0.4, p.z + height + 2)
+                        tracerColor.a = (1 - age / 0.9) * 220
+                        render.DrawBeam(tracerStart, tracerEnd, 0.8, 0, 1, tracerColor)
+                        stats.activityBeams = stats.activityBeams + 1
+                    end
+                end
+            end
+        end
+    end
+    if skyFog then
+        render.FogStart(skyFog.start / manifest.scale)
+        render.FogEnd(skyFog.finish / manifest.scale)
+        render.FogMaxDensity(skyFog.maxDensity)
+    else
+        render.FogMode(MATERIAL_FOG_NONE)
+    end
+end
+
+// Burning wrecks and rooftops: rising, spreading smoke plumes drifting with the clouds, flickering flames at the base.
+function Skybox:DrawFires(skyEye, facade)
+    local stats = self.Stats
+    if not facade then
+        stats.frameFires = 0
+        stats.smokeQuads = 0
+        stats.fireQuads = 0
+    end
+    local fires = facade and self.FacadeFires or self.Fires
     local right, up = self.ViewRight, self.ViewUp
     if getConVarNumber("zombiesim_sky_fires", 1) <= 0 or not fires or #fires == 0 or not right or not up then return end
     local now = CurTime()
@@ -955,8 +1943,8 @@ function Skybox:DrawFires(skyEye)
         end
     end
     for index = count + 1, #smokeOrder do smokeOrder[index] = nil end
-    stats.frameFires = #fires
-    stats.smokeQuads = count
+    stats.frameFires = stats.frameFires + #fires
+    stats.smokeQuads = stats.smokeQuads + count
 
     // Flames first, so the base of the plume drifts over them.
     local flames = #fires * 3
@@ -982,7 +1970,7 @@ function Skybox:DrawFires(skyEye)
         end
     end
     mesh.End()
-    stats.fireQuads = flames + #fires
+    stats.fireQuads = stats.fireQuads + flames + #fires
     if count <= 0 then return end
     table.sort(smokeOrder, compareSmokeDistance)
     render.SetMaterial(smokeMaterial)
@@ -998,6 +1986,8 @@ end
 function Skybox:Draw()
     local stats = self.Stats
     stats.frameModels = 0
+    stats.frameTowers = 0
+    stats.activityExplosions, stats.activityBursts, stats.activityBeams = 0, 0, 0
     if getConVarNumber("zombiesim_sky_detail", 2) <= 0 then
         stats.state = "disabled by zombiesim_sky_detail"
         return
@@ -1011,7 +2001,10 @@ function Skybox:Draw()
     skyEye:Div(scale)
     skyEye:Add(manifest.cameraVector)
     local edge = self:GetFogEdge(manifest) / scale
-    local lightCube = getConVarNumber("zombiesim_sky_matched_lighting", 1) > 0 and self:UpdateLighting() or nil
+    // The cell's baked light always drives scenery and fog brightness; the convar only gates model relighting.
+    local sampledCube = self:UpdateLighting()
+    self:UpdateSceneryLight(sampledCube)
+    local lightCube = getConVarNumber("zombiesim_sky_matched_lighting", 1) > 0 and sampledCube or nil
     stats.matchedLighting = lightCube ~= nil
     if lightCube then applyLightCube(lightCube) end
     for _, placement in ipairs(self.Placements) do
@@ -1046,20 +2039,28 @@ function Skybox:Draw()
 
     local settings = ZM_Atmosphere and ZM_Atmosphere:GetFogSettings()
     local fogColor = settings and settings.color or defaultFogColor
-    self:DrawCoast(fogColor)
     local skyFog = self:GetSkyboxFog(settings)
-    self:BuildDome(edge)
+    // Opaque distant towers must precede the translucent horizon's graduated haze.
+    self:DrawTowers(manifest, skyEye, skyFog, fogColor, lightCube)
+    self:DrawCoast(fogColor)
+    local edgeTerrainPresent = self.EdgeMeshes ~= nil
+    self:BuildDome(edge, #self.TowerPlacements > 0 or edgeTerrainPresent)
     if self.DomeMesh then
         domeColor:SetUnpacked((fogColor[1] or 128) / 255, (fogColor[2] or 128) / 255, (fogColor[3] or 128) / 255)
         domeMaterial:SetVector("$color", domeColor)
         domeMatrix:SetTranslation(skyEye)
         cam.PushModelMatrix(domeMatrix)
         render.SetMaterial(domeMaterial)
+        // Edge terrain extends far past the dome radius; the dome then acts as a backdrop rather than an occluder.
+        if edgeTerrainPresent then render.OverrideDepthEnable(true, false) end
         self.DomeMesh:Draw()
+        if edgeTerrainPresent then render.OverrideDepthEnable(false, false) end
         cam.PopModelMatrix()
         stats.domeDraws = (stats.domeDraws or 0) + 1
     end
+    self:DrawEdgeTerrain(manifest, fogColor)
     self:DrawFires(skyEye)
+    self:DrawActivity(manifest, skyEye, skyFog, fogColor)
     if getConVarNumber("zombiesim_sky_clouds", 1) > 0 then
         local fogStart = (skyFog and skyFog.start or 0) / scale
         local fogEnd = (skyFog and skyFog.finish or edge * scale) / scale
@@ -1067,8 +2068,60 @@ function Skybox:Draw()
     else
         stats.cloudQuads = 0
     end
+
     stats.lastDraw = RealTime()
     stats.draws = (stats.draws or 0) + 1
+end
+
+// A separate long-range fog pass keeps the nearby dome/fog contract intact.
+function Skybox:DrawTowers(manifest, skyEye, skyFog, fogColor, lightCube)
+    self.Stats.frameTowers = 0
+    if not self.TowerPlacements or #self.TowerPlacements == 0 then return end
+    local scale = manifest.scale
+    local finish = ((manifest.skylineRadius or manifest.neighbourRadius) + 1) * manifest.cellSpan * math.sqrt(2) / scale
+    // If weather already hides the playable edge, distant towers must remain hidden too.
+    if skyFog and skyFog.finish <= manifest.cellSpan * 0.5 then return end
+    local towerFog = math.Clamp(getConVarNumber("zombiesim_sky_tower_fog", 0.8), 0, 1)
+    // Pale fog makes dark tower silhouettes stand out against the fogged neighbour cells, so lighter fog colours
+    // (already darkened on dark-lit cells) blend the towers onto the same fog curve as that scenery; dark fog keeps
+    // the separate long-range ramp and its plain silhouettes.
+    local luminance = (0.2126 * (fogColor[1] or 128) + 0.7152 * (fogColor[2] or 128) + 0.0722 * (fogColor[3] or 128)) / 255
+    local paleness = math.Clamp((luminance - towerFogDarkLuminance) / (towerFogPaleLuminance - towerFogDarkLuminance), 0, 1)
+    paleness = paleness * paleness * (3 - 2 * paleness)
+    local fogStart, fogEnd, fogMaximum = self:GetFogEdge(manifest) / scale, finish, towerFog
+    if skyFog and paleness > 0 then
+        fogStart = Lerp(paleness, fogStart, skyFog.start / scale)
+        fogEnd = Lerp(paleness, fogEnd, skyFog.finish / scale)
+        fogMaximum = Lerp(paleness, towerFog, math.max(towerFog, skyFog.maxDensity))
+    end
+    self.Stats.towerFogPaleness = math.Round(paleness, 3)
+    self.Stats.towerFogStart = fogStart * scale
+    self.Stats.towerFogEnd = fogEnd * scale
+    self.Stats.towerFogMaxDensity = fogMaximum
+    render.FogMode(MATERIAL_FOG_LINEAR)
+    render.FogStart(fogStart)
+    render.FogEnd(fogEnd)
+    render.FogMaxDensity(fogMaximum)
+    render.FogColor(fogColor[1], fogColor[2], fogColor[3])
+    if lightCube then applyLightCube(lightCube) end
+    local direction = self.TowerDirection
+    for _, placement in ipairs(self.TowerPlacements) do
+        direction:Set(placement.origin)
+        direction:Sub(skyEye)
+        local distance = direction:Length()
+        if IsValid(placement.entity) and self.ViewForward and direction:Dot(self.ViewForward) > -placement.entity:BoundingRadius() and distance < finish then
+            placement.entity:DrawModel()
+            self.Stats.frameTowers = self.Stats.frameTowers + 1
+        end
+    end
+    if lightCube then render.SuppressEngineLighting(false) end
+    if skyFog then
+        render.FogStart(skyFog.start / scale)
+        render.FogEnd(skyFog.finish / scale)
+        render.FogMaxDensity(skyFog.maxDensity)
+    else
+        render.FogMode(MATERIAL_FOG_NONE)
+    end
 end
 
 function Skybox:GetDiagnosticSnapshot()
@@ -1088,6 +2141,26 @@ function Skybox:GetDiagnosticSnapshot()
         missingModels = stats.missingModels,
         firstModelCheck = stats.firstModelCheck,
         frameModels = stats.frameModels,
+        towerPlacements = stats.towerPlacements,
+        missingTowerModels = stats.missingTowerModels,
+        frameTowers = stats.frameTowers,
+        skylineHorizon = self.DomeSkyline,
+        towerFogMaxDensity = math.Clamp(getConVarNumber("zombiesim_sky_tower_fog", 0.8), 0, 1),
+        towerFogPaleness = self.Stats.towerFogPaleness,
+        towerFogStart = self.Stats.towerFogStart,
+        towerFogEnd = self.Stats.towerFogEnd,
+        towerFogAppliedMaxDensity = self.Stats.towerFogMaxDensity,
+        tuning = self:GetTuningSnapshot(),
+        activitySites = stats.activitySites,
+        activityExplosions = stats.activityExplosions,
+        activityBursts = stats.activityBursts,
+        activityBeams = stats.activityBeams,
+        activityPreview = stats.activityPreview,
+        facadeFires = stats.facadeFires,
+        tracerMaterialError = tracerMaterial:IsError(),
+        towerCandidates = stats.towerCandidates,
+        towerBudget = stats.towerBudget,
+        omittedTowerModels = stats.omittedTowerModels,
         snowPlacements = stats.snowPlacements,
         missingSnowModels = stats.missingSnowModels,
         frameSnowModels = stats.frameSnowModels,
@@ -1105,6 +2178,9 @@ function Skybox:GetDiagnosticSnapshot()
         cloudCover = stats.cloudCover,
         fogStart = stats.fogStart,
         fogEnd = stats.fogEnd,
+        fogMaxDensity = stats.fogMaxDensity,
+        fogBoundaryDensity = stats.fogBoundaryDensity,
+        sceneryLight = stats.sceneryLight,
         lastDrawAge = stats.lastDraw and (RealTime() - stats.lastDraw) or nil,
         domeMaterialError = domeMaterial:IsError(),
         cloudMaterialError = cloudMaterial:IsError(),
@@ -1112,10 +2188,27 @@ function Skybox:GetDiagnosticSnapshot()
         coastSeaQuads = stats.coastSeaQuads,
         coastWallQuads = stats.coastWallQuads,
         coastFoamQuads = stats.coastFoamQuads,
+        coastSandQuads = stats.coastSandQuads,
+        coastRockQuads = stats.coastRockQuads,
+        coastMeshes = stats.coastMeshes,
+        coastBuildMs = stats.coastBuildMs,
+        edgeTerrainQuads = stats.edgeTerrainQuads,
+        edgeTerrainMeshes = stats.edgeTerrainMeshes,
+        edgeBuildMs = stats.edgeBuildMs,
+        edgeDraws = stats.edgeDraws,
+        edgeMaterialErrors = (edgeTerrain.grassMaterial:IsError() and 1 or 0) + (edgeTerrain.rockMaterial:IsError() and 1 or 0) +
+            (edgeTerrain.snowMaterial:IsError() and 1 or 0),
+        coastTexturesReady = coast.texturesReady,
         coastDraws = stats.coastDraws,
         seaMaterialError = seaMaterial:IsError(),
-        seaWallMaterialError = seaWallMaterial:IsError(),
-        seaWallTextureWidth = seaWallMaterial:GetTexture("$basetexture") and seaWallMaterial:GetTexture("$basetexture"):Width() or 0,
+        sandMaterialError = coast.sandMaterial:IsError(),
+        sandTextureWidth = coast.sandMaterial:GetTexture("$basetexture") and coast.sandMaterial:GetTexture("$basetexture"):Width() or 0,
+        rockMaterialError = coast.rockMaterial:IsError(),
+        rockTextureWidth = coast.rockMaterial:GetTexture("$basetexture") and coast.rockMaterial:GetTexture("$basetexture"):Width() or 0,
+        embankmentMaterialError = coast.embankmentMaterial:IsError(),
+        embankmentTextureWidth = coast.embankmentMaterial:GetTexture("$basetexture") and coast.embankmentMaterial:GetTexture("$basetexture"):Width() or 0,
+        rippleMaterialError = coast.rippleMaterial:IsError(),
+        foamTextureWidth = coast.foamTexture and coast.foamTexture:Width() or 0,
         foamMaterialError = foamMaterial:IsError(),
         detailProps = stats.detailProps,
         missingDetailModels = stats.missingDetailModels,
@@ -1153,6 +2246,7 @@ end)
 hook.Add("ShutDown", "ZM.Skybox.Cleanup", function()
     Skybox:RemoveModels()
     Skybox:DestroyCoast()
+    Skybox:DestroyEdgeTerrain()
 end)
 
 concommand.Add("zombiesim_skybox_status", function()
@@ -1164,9 +2258,40 @@ concommand.Add("zombiesim_skybox_status", function()
     end
 end)
 
+concommand.Add("zombiesim_dev_skybox_activity", function()
+    local player = LocalPlayer()
+    if not IsValid(player) or not player:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        ErrorNoHalt("[ZombieSim] Activity preview requires a preview admin.\n")
+        return
+    end
+    Skybox.ActivityPreviewStart = CurTime()
+    Skybox.ActivityPreviewUntil = CurTime() + 12
+    print("[ZombieSim] Cosmetic skyline activity preview enabled for 12 seconds.")
+end)
+
+// Writes data/zombiesim/skybox_edges.json with the cardinal edge regression results.
+concommand.Add("zombiesim_dev_skybox_edges", function()
+    local player = LocalPlayer()
+    if not IsValid(player) or not player:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        ErrorNoHalt("[ZombieSim] Edge regression requires a preview admin.\n")
+        return
+    end
+    local results, failures = Skybox:RunEdgeRegression()
+    file.CreateDir("zombiesim")
+    file.Write("zombiesim/skybox_edges.json", util.TableToJSON({
+        passed = failures == 0, failures = failures, cases = results, generated = os.time(),
+        edgeTerrainQuads = Skybox.Stats.edgeTerrainQuads, edgeBuildMs = Skybox.Stats.edgeBuildMs
+    }, true))
+    for _, result in ipairs(results) do
+        print(string.format("[ZombieSim] %s %s: %s", result.passed and "PASS" or "FAIL", result.name, result.detail or ""))
+    end
+    print(string.format("[ZombieSim] Skybox edge regression: %d/%d passed.", #results - failures, #results))
+end)
+
 // A hot reload must not leave the previous load's hidden models behind.
 Skybox:RemoveModels()
 Skybox:DestroyCoast()
+Skybox:DestroyEdgeTerrain()
 Skybox.PlacementKey = nil
 Skybox.ManifestProfile = nil
 if Skybox.DomeMesh then Skybox.DomeMesh:Destroy() end

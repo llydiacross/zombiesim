@@ -1,0 +1,8 @@
+"Patch"
+{
+    "include" "materials/models/humans/male/group01/players_sheet.vmt"
+    "replace"
+    {
+        "$basetexture" "zombiesim_clothing_male_pants_v2"
+    }
+}

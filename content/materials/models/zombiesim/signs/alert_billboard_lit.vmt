@@ -1,0 +1,7 @@
+"VertexLitGeneric"
+{
+    "$basetexture" "models/zombiesim/signs/alert_billboard"
+    "$surfaceprop" "metal"
+    "$selfillum" "0"
+    "$selfillumtint" "[0.85 0.85 0.85]"
+}

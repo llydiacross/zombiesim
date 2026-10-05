@@ -1,6 +1,24 @@
 {
   "schemaVersion": 1,
   "items": {
+    "itemPrototypeShirt": {
+      "name": "Teal Check Shirt",
+      "entityClass": "clothing",
+      "clothing": { "garment": "shirt", "finish": "prototype" },
+      "thumbnail": "itemPrototypeShirt",
+      "value": 25,
+      "maxStack": 1,
+      "lootCategory": "other"
+    },
+    "itemPrototypePants": {
+      "name": "Olive Stripe Pants",
+      "entityClass": "clothing",
+      "clothing": { "garment": "pants", "finish": "prototype" },
+      "thumbnail": "itemPrototypePants",
+      "value": 25,
+      "maxStack": 1,
+      "lootCategory": "other"
+    },
     "itemRadiationSuit": {
       "name": "Radiation Protection Suit",
       "entityClass": "armour",

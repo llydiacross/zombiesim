@@ -1,0 +1,28 @@
+{
+  "width": 1024,
+  "height": 512,
+  "background": "#173438",
+  "foreground": "#F2E8CC",
+  "accent": "#E6A04A",
+  "title": "STAY ALERT",
+  "subtitle": "LOOK OUT FOR EACH OTHER",
+  "footer": "ZOMBIESIM / SURVIVOR NETWORK",
+  "imagePath": "",
+  "backgroundImagePath": "",
+  "selfLit": true,
+  "selfIllumBrightness": 0.85,
+  "materials": {
+    "legs": {
+      "baseTexture": "metal/metalwall021a",
+      "normalMap": "metal/metalwall018a_normal"
+    },
+    "rim": {
+      "baseTexture": "metal/metalwall017a",
+      "normalMap": ""
+    },
+    "back": {
+      "baseTexture": "metal/metalwall025a",
+      "normalMap": ""
+    }
+  }
+}

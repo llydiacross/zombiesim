@@ -37,10 +37,12 @@ Import-Module (Join-Path $PSScriptRoot 'vmf_source_dependencies.psm1') -Force
 # Writes the shared 3D skybox room (sealed sky shell, ground plane, sky_camera) above the playable cell volume and
 # returns its repository-relative path. It holds no props: cl_skybox.lua draws each cell's neighbour models at runtime.
 function Write-SkyboxRoomVmf {
-    param([hashtable]$Settings, [string]$ProfileName, [int]$TileGridSize, [int]$TileWidth)
+    param([hashtable]$Settings, [string]$ProfileName, [int]$TileGridSize, [int]$TileWidth, [double]$PlayableShellTop)
 
     $scale = if ($Settings.ContainsKey('scale')) { [int]$Settings.scale } else { 16 }
     $radius = if ($Settings.ContainsKey('neighbourRadius')) { [int]$Settings.neighbourRadius } else { 2 }
+    $skylineRadius = if ($Settings.ContainsKey('skylineRadius')) { [int]$Settings.skylineRadius } else { $radius }
+    if ($skylineRadius -lt $radius) { throw 'skybox3d skylineRadius must be at least neighbourRadius.' }
     $cameraZ = if ($Settings.ContainsKey('cameraZ')) { [int]$Settings.cameraZ } else { 3328 }
     $roomHeight = if ($Settings.ContainsKey('roomHeight')) { [int]$Settings.roomHeight } else { 512 }
     $groundMaterial = if ($Settings.ContainsKey('groundMaterial')) { [string]$Settings.groundMaterial } else { 'CS_HAVANA/SWAMPDIRT01' }
@@ -49,10 +51,10 @@ function Write-SkyboxRoomVmf {
     # Neighbour models sit inside the room so their lighting origins resolve to a lit sky leaf. Every vertical room
     # plane lies on VBSP's 1024-unit block grid: off-grid planes become splitters that cut the playable cell's leaves
     # and add portals (measured +36 portals on zz_preview_594c1fb8277a with walls at +/-768 and +/-784).
-    $roomHalf = [int]([math]::Ceiling((($radius + 0.5) * $cellSpan / $scale + 64) / 1024.0) * 1024)
+    $roomHalf = [int]([math]::Ceiling((($skylineRadius + 0.5) * $cellSpan / $scale + 64) / 1024.0) * 1024)
     $roomBottom = $cameraZ - 64
     $roomTop = $cameraZ + $roomHeight
-    if ($roomBottom - 16 -le 3152) { throw "vmfBuild.skybox3d.cameraZ $cameraZ places the skybox room inside the playable cell volume." }
+    if ($roomBottom - 16 -le $PlayableShellTop) { throw "vmfBuild.skybox3d.cameraZ $cameraZ places the skybox room inside the playable cell volume (shell top $PlayableShellTop)." }
     if ($roomTop + 16 -gt 16384 -or $roomHalf + 1024 -gt 16384) { throw 'The skybox room exceeds the Source coordinate limit.' }
 
     $script:skyboxVmfId = 1
@@ -149,9 +151,6 @@ if ($plan.schemaVersion -lt 2 -or $plan.cellTileGridSize -lt 1) {
 $skyboxSettings = if ($vmfBuildSettings.ContainsKey('skybox3d')) { $vmfBuildSettings.skybox3d } else { @{} }
 $skyboxEnabled = $skyboxSettings.ContainsKey('enabled') -and [bool]$skyboxSettings.enabled
 $skyboxRoomTemplate = ''
-if ($skyboxEnabled) {
-    $skyboxRoomTemplate = Write-SkyboxRoomVmf $skyboxSettings ([string]$profileSettings.filePrefix) ([int]$plan.cellTileGridSize) $TileSize
-}
 $safeZoneMaps = @($plan.safeZoneMaps)
 $safeZoneTemplateDirectory = [string]$plan.safeZoneTemplateDirectory
 if ($safeZoneMaps.Count -gt 0 -and ([string]::IsNullOrWhiteSpace($safeZoneTemplateDirectory) -or -not (Test-Path -LiteralPath $safeZoneTemplateDirectory -PathType Container))) {
@@ -200,6 +199,19 @@ if (-not (Test-Path $TileDirectory)) {
 }
 if (-not (Test-Path $BaseCellTemplate)) {
     throw "Base cell template was not found: $BaseCellTemplate"
+}
+if ($skyboxEnabled) {
+    $baseContents = Get-Content -Raw -LiteralPath $BaseCellTemplate
+    $basePlaneHeights = @(
+        foreach ($plane in [regex]::Matches($baseContents, '"plane"\s+"([^"]+)"')) {
+            foreach ($point in [regex]::Matches($plane.Groups[1].Value, '\(([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\)')) {
+                [double]::Parse($point.Groups[3].Value, [System.Globalization.CultureInfo]::InvariantCulture)
+            }
+        }
+    )
+    if ($basePlaneHeights.Count -eq 0) { throw "Base cell template has no brush planes: $BaseCellTemplate" }
+    $playableShellTop = ($basePlaneHeights | Measure-Object -Maximum).Maximum
+    $skyboxRoomTemplate = Write-SkyboxRoomVmf $skyboxSettings ([string]$profileSettings.filePrefix) ([int]$plan.cellTileGridSize) $TileSize $playableShellTop
 }
 if (-not (Test-Path $CellDirectory)) {
     [System.IO.Directory]::CreateDirectory($CellDirectory) | Out-Null

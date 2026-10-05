@@ -499,6 +499,17 @@ function Atmosphere:GetFogSettings()
         fogWinterColor[3] = Lerp(winter * 0.75, getColorComponent(color, 3), 234)
         color = fogWinterColor
     end
+    // Dark-lit cells tint the profile fog by the light measured from the cell's baked lighting, so fogged city and
+    // sky scenery darken together instead of washing toward a pale daytime colour.
+    local sceneryLight = ZM_Skybox and ZM_Skybox.SceneryLight
+    if sceneryLight and (sceneryLight[1] < 0.999 or sceneryLight[2] < 0.999 or sceneryLight[3] < 0.999) then
+        local litColor = self.FogLitColor or {}
+        self.FogLitColor = litColor
+        litColor[1] = getColorComponent(color, 1) * sceneryLight[1]
+        litColor[2] = getColorComponent(color, 2) * sceneryLight[2]
+        litColor[3] = getColorComponent(color, 3) * sceneryLight[3]
+        color = litColor
+    end
     local settings = fogSettingsCache
     settings.color = color
     settings.start = math.max(0, getNumber(fog.start, 0) * visibilityMultiplier)
@@ -902,8 +913,8 @@ local function ensurePuddleMapSites()
         Atmosphere.PuddleBoundsSource = "world AABB"
     end
     // City recipes carry the 3D skybox room above the playable cell; keep puddle and snow sampling below it.
-    if ZM_Skybox and ZM_Skybox.ClampWorldMaximum then
-        maximum = ZM_Skybox:ClampWorldMaximum(maximum)
+    if ZM_Skybox and ZM_Skybox.ClampWorldBounds then
+        minimum, maximum = ZM_Skybox:ClampWorldBounds(minimum, maximum)
     end
     if not minimum or not maximum or maximum.x <= minimum.x or maximum.y <= minimum.y or maximum.z <= minimum.z then
         Atmosphere.PuddleSiteStatus = "invalid world bounds"

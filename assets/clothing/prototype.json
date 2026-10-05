@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "size": 1024,
+  "scope": "Original UV-aligned prototype artwork; verify male_03 and female_01 before any equipment integration.",
+  "shirt": {
+    "regions": [[0, 584, 840, 440]],
+    "color": "#397C88",
+    "stripeColor": "#326E79",
+    "stripeSpacing": 16,
+    "stripeWidth": 2,
+    "pattern": "checker",
+    "image": "",
+    "innerShirt": {
+      "mode": "native",
+      "color": "#E5D4B0",
+      "image": "",
+      "polygons": {
+        "male": [[[23.06, 654.74], [47.85, 643.26], [58.54, 635.26], [75.27, 623.16], [85.66, 630.93], [89.45, 665.58], [80.59, 675.08], [61.76, 666.62], [49.66, 660.96]]],
+        "female": [[[231.17, 683.08], [250.85, 672.51], [270.53, 683.08], [262.1, 691.01], [250.85, 730.58], [239.6, 691.01]]]
+      }
+    },
+    "logo": { "text": "ZM", "image": "", "x": 184, "y": 752, "width": 56, "height": 28, "color": "#E7E3CC" }
+  },
+  "pants": {
+    "regions": [[496, 0, 528, 464]],
+    "color": "#756D54",
+    "stripeColor": "#686149",
+    "stripeSpacing": 12,
+    "stripeWidth": 1,
+    "pattern": "stripes",
+    "image": "",
+    "logo": { "text": "", "image": "", "x": 0, "y": 0, "width": 1, "height": 1, "color": "#FFFFFF" }
+  }
+}

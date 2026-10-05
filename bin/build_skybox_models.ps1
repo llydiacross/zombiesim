@@ -1,5 +1,6 @@
 param(
     [string]$PlanData = '',
+    [string]$OutputContentDirectory = '',
     [switch]$Force,
     [string]$WorldProfile = '',
     [switch]$Preview,
@@ -20,6 +21,7 @@ Import-Module (Join-Path $PSScriptRoot 'skybox_models.psm1') -Force
 $builderVersion = 'skybox-cell-v2'
 # Snow overlays carry their own stamps so changing them never recompiles the base cell models.
 $snowBuilderVersion = 'skybox-snow-v1'
+$towerBuilderVersion = 'skybox-towers-v1'
 $manifestSchemaVersion = 1
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
@@ -35,6 +37,8 @@ function Get-SkySetting([string]$Name, $Fallback) {
 if (-not [bool](Get-SkySetting 'enabled' $false)) { throw 'vmfBuild.skybox3d.enabled is false; enable it before building skybox models.' }
 $skyScale = [int](Get-SkySetting 'scale' 16)
 $neighbourRadius = [int](Get-SkySetting 'neighbourRadius' 2)
+$skylineRadius = [int](Get-SkySetting 'skylineRadius' $neighbourRadius)
+$maxTowerModels = [int](Get-SkySetting 'maxTowerModels' 128)
 $cameraZ = [int](Get-SkySetting 'cameraZ' 3328)
 $minBrushExtent = [double](Get-SkySetting 'minBrushExtent' 24)
 $maxPartVertices = [int](Get-SkySetting 'maxPartVertices' 30000)
@@ -56,6 +60,8 @@ $roadCarChance = [double](Get-SkySetting 'roadCarChance' 0.35)
 $roofFireMinHeight = [double](Get-SkySetting 'roofFireMinHeight' 192)
 $tileSize = [int]$worldGenerationProfile.Settings.vmfBuild.tileSize
 if ($skyScale -lt 1 -or $neighbourRadius -lt 1) { throw 'skybox3d scale and neighbourRadius must be positive.' }
+if ($skylineRadius -lt $neighbourRadius) { throw 'skybox3d skylineRadius must be at least neighbourRadius.' }
+if ($maxTowerModels -lt 1) { throw 'skybox3d maxTowerModels must be positive.' }
 
 $cellDirectory = [string]$profileSettings.cellDirectory
 if (-not [System.IO.Path]::IsPathRooted($cellDirectory)) { $cellDirectory = Join-Path $projectRoot $cellDirectory }
@@ -125,6 +131,13 @@ function Get-VtfSize([string]$TexturePath) {
 }
 
 $outputRoot = Join-Path $projectRoot "generated\skybox_$profileName"
+if (-not [string]::IsNullOrWhiteSpace($OutputContentDirectory)) {
+    $contentDirectory = if ([System.IO.Path]::IsPathRooted($OutputContentDirectory)) {
+        $OutputContentDirectory
+    } else {
+        Join-Path $projectRoot $OutputContentDirectory
+    }
+}
 $modelSourceDirectory = Join-Path $outputRoot 'modelsrc'
 $compileGameDirectory = Join-Path $outputRoot 'game'
 $null = New-Item -ItemType Directory -Force -Path $modelSourceDirectory, $compileGameDirectory
@@ -328,6 +341,40 @@ if ($snowEnabled) {
     }
 }
 
+$towerModels = @{}
+foreach ($recipePath in $uniqueRecipes) {
+    $recipeName = [System.IO.Path]::GetFileNameWithoutExtension($recipePath)
+    $towerHash = Get-TextHash (@($towerBuilderVersion, $cellModels[$recipePath].sourceHash) -join "`n")
+    $towerStampPath = Join-Path $modelSourceDirectory "${recipeName}_towers.json"
+    if (-not $Force -and (Test-Path -LiteralPath $towerStampPath)) {
+        $towerStamp = Get-Content -Raw -LiteralPath $towerStampPath | ConvertFrom-Json
+        $towerPresent = $towerStamp.sourceHash -eq $towerHash -and @($towerStamp.parts | Where-Object {
+            -not (Test-Path -LiteralPath (Join-Path $contentDirectory "models\$($_.model.Replace('/', '\'))"))
+        }).Count -eq 0
+        if ($towerPresent) { $towerModels[$recipePath] = $towerStamp; continue }
+    }
+    $towerParts = $builder.BuildTowerParts($recipePath, 1.0 / $skyScale, $materialMap, $maxPartVertices, $maxPartMaterials)
+    $towerRecords = [System.Collections.Generic.List[object]]::new()
+    for ($index = 0; $index -lt $towerParts.Count; $index++) {
+        $part = $towerParts[$index]
+        $partName = "${recipeName}_t$index"
+        Invoke-SkyboxModelCompile $partName $part.Smd
+        $towerRecords.Add([pscustomobject]@{
+            model = "$modelRelativeDirectory/$partName.mdl"
+            triangles = $part.Triangles
+            vertices = $part.Vertices
+            min = @($part.Min.X, $part.Min.Y, $part.Min.Z)
+            max = @($part.Max.X, $part.Max.Y, $part.Max.Z)
+        })
+    }
+    Get-ChildItem -LiteralPath $contentModelDirectory -File | Where-Object {
+        $_.Name -match ('^' + [regex]::Escape($recipeName) + '_t(\d+)\.') -and [int]$Matches[1] -ge $towerParts.Count
+    } | Remove-Item -Force
+    $towerStamp = [pscustomobject]@{ recipe = $recipeName; sourceHash = $towerHash; parts = $towerRecords.ToArray() }
+    [System.IO.File]::WriteAllText($towerStampPath, ($towerStamp | ConvertTo-Json -Depth 5), [System.Text.UTF8Encoding]::new($false))
+    $towerModels[$recipePath] = $towerStamp
+}
+
 # Drop models for recipes the current plan no longer uses.
 $currentRecipeNames = @{}
 foreach ($recipePath in $recipePaths) { $currentRecipeNames[[System.IO.Path]::GetFileNameWithoutExtension($recipePath).ToLowerInvariant()] = $true }
@@ -336,7 +383,7 @@ $recipePrefixes = @{}
 foreach ($name in $currentRecipeNames.Keys) { if ($name -match '^(.*_)[0-9a-f]+$') { $recipePrefixes[$Matches[1]] = $true } }
 $prunedModels = 0
 foreach ($stale in @(Get-ChildItem -LiteralPath $contentModelDirectory -File | Where-Object {
-        $_.Name -match '^((.*_)[0-9a-f]+)_[ps]\d+\.' -and $recipePrefixes.ContainsKey($Matches[2].ToLowerInvariant()) -and -not $currentRecipeNames.ContainsKey($Matches[1].ToLowerInvariant()) })) {
+        $_.Name -match '^((.*_)[0-9a-f]+)_[pst]\d+\.' -and $recipePrefixes.ContainsKey($Matches[2].ToLowerInvariant()) -and -not $currentRecipeNames.ContainsKey($Matches[1].ToLowerInvariant()) })) {
     Remove-Item -LiteralPath $stale.FullName -Force
     $prunedModels++
 }
@@ -365,6 +412,17 @@ foreach ($recipePath in $recipePaths) {
     $totalSnowParts += @($snowStamp.parts).Count
 }
 $detailModels = [System.Collections.Generic.List[string]]::new()
+$recipeTowerModels = [ordered]@{}
+$totalTowerParts = 0
+$totalTowerTriangles = 0
+foreach ($recipePath in $recipePaths) {
+    $towerStamp = $towerModels[$recipePath]
+    $recipeTowerModels[[System.IO.Path]::GetFileNameWithoutExtension($recipePath).ToLowerInvariant()] = @(@($towerStamp.parts) | ForEach-Object {
+        $totalTowerTriangles += [int]$_.triangles
+        "models/$($_.model)"
+    })
+    $totalTowerParts += @($towerStamp.parts).Count
+}
 $detailModelIndex = @{}
 $detailRecipes = [ordered]@{}
 $missingDetailModels = @{}
@@ -407,14 +465,19 @@ $manifest = [ordered]@{
     scale = $skyScale
     cellSpan = $cellSpan
     neighbourRadius = $neighbourRadius
+    skylineRadius = $skylineRadius
+    maxTowerModels = $maxTowerModels
     cameraOrigin = @(0, 0, $cameraZ)
     recipes = $recipeModels
     # Optional snow overlays per recipe; older runtimes ignore this table.
     snow = $recipeSnowModels
+    # Tower-only geometry retains instance positions without roads, scenery props or fire candidates.
+    towers = $recipeTowerModels
     # Optional set dressing (props, road wrecks, fire candidates); older runtimes ignore this table.
     detail = [ordered]@{ models = $detailModels.ToArray(); recipes = $detailRecipes }
 }
 $manifestPath = Join-Path $contentDirectory "data_static\zombiesim_skybox_$profileName.json"
+$null = New-Item -ItemType Directory -Force -Path (Split-Path -Parent $manifestPath)
 $manifestText = $manifest | ConvertTo-Json -Depth 8 -Compress
 if (-not (Test-Path -LiteralPath $manifestPath) -or (Get-Content -Raw -LiteralPath $manifestPath) -ne $manifestText) {
     [System.IO.File]::WriteAllText($manifestPath, $manifestText, [System.Text.UTF8Encoding]::new($false))
@@ -430,13 +493,17 @@ $report = [ordered]@{
     triangles = $totalTriangles
     snowParts = $totalSnowParts
     snowTriangles = $totalSnowTriangles
+    towerParts = $totalTowerParts
+    towerTriangles = $totalTowerTriangles
     detailModels = $detailModels.Count
     detailProps = $totalDetailProps
     generatedRoadCars = $totalGeneratedCars
     fireCandidates = $totalFireCandidates
     missingDetailModels = @($missingDetailModels.Keys | Sort-Object)
     prunedModelFiles = $prunedModels
-    manifest = $manifestPath.Substring($projectRoot.Length).TrimStart('\')
+    manifest = if ($manifestPath.StartsWith($projectRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $manifestPath.Substring($projectRoot.Length).TrimStart('\')
+    } else { $manifestPath }
     materials = $materialReport.ToArray()
 }
 [System.IO.File]::WriteAllText($reportPath, ($report | ConvertTo-Json -Depth 5), [System.Text.UTF8Encoding]::new($false))

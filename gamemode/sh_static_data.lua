@@ -25,8 +25,8 @@ StaticData.PlayerAttributes = {
     WeaponCrafting = true, ArmorCrafting = true, Medicine = true, Farming = true,
     WeaponRepairing = true, ArmorRepairing = true, Mechanics = true
 }
-StaticData.ItemEntityClasses = { generic = true, entity = true, weapon = true, armour = true }
-StaticData.ReservedItemEntityClasses = { clothing = true }
+StaticData.ItemEntityClasses = { generic = true, entity = true, weapon = true, armour = true, clothing = true }
+StaticData.ReservedItemEntityClasses = {}
 StaticData.AttributeTypes = {
     bullet_weapon = { "Damage", "Range", "FiringSpeed", "ReloadSpeed", "ClipSize" },
     melee_weapon = { "Damage", "Range", "Swiftness", "Crushing" }
@@ -245,7 +245,7 @@ local itemFields = {
     name = true, entityClass = true, type = true, thumbnail = true, value = true, maxStack = true,
     unit = true, minLevel = true, maxLevel = true, statRequirements = true, minAttributes = true, maxAttributes = true,
     weaponClass = true, cssFamily = true, viewModel = true, worldModel = true, ammoId = true, firingMode = true, rarity = true,
-    iconModel = true, food = true, medical = true, implant = true, lootCategory = true, radiationProtection = true
+    iconModel = true, food = true, medical = true, implant = true, lootCategory = true, radiationProtection = true, clothing = true
 }
 
 // Loot categories are derived from each definition (see deriveLootCategory) unless an item sets lootCategory.
@@ -406,7 +406,24 @@ local function validateItem(context, itemId, raw)
     if StaticData.ReservedItemEntityClasses[item.entityClass] then
         context:Error(joinPath(path, "entityClass"), "'" .. item.entityClass .. "' items are not implemented yet (Alpha 2.7 Phase J)")
     elseif item.entityClass and not StaticData.ItemEntityClasses[item.entityClass] then
-        context:Error(joinPath(path, "entityClass"), "must be generic, entity, weapon, or armour")
+        context:Error(joinPath(path, "entityClass"), "must be generic, entity, weapon, armour, or clothing")
+    end
+    if item.entityClass == "clothing" then
+        local clothingPath = joinPath(path, "clothing")
+        if not isObject(raw.clothing) then
+            context:Error(clothingPath, "requires a garment and registered finish")
+        else
+            checkFields(context, raw.clothing, { garment = true, finish = true }, {}, clothingPath)
+            item.clothing = {
+                garment = readString(context, raw.clothing, "garment", clothingPath, { required = true }),
+                finish = readString(context, raw.clothing, "finish", clothingPath, { required = true })
+            }
+            if not ZM_Clothing.Slots[item.clothing.garment or ""] then context:Error(clothingPath, "garment must be shirt or pants") end
+            if not ZM_Clothing.Finishes[item.clothing.finish or ""] then context:Error(clothingPath, "finish must be registered") end
+            if raw.maxStack ~= 1 then context:Error(clothingPath, "cosmetic garments require maxStack 1") end
+        end
+    elseif raw.clothing ~= nil then
+        context:Error(joinPath(path, "clothing"), "only clothing items can select a garment finish")
     end
     if raw.radiationProtection ~= nil then
         if item.entityClass ~= "armour" then
@@ -573,6 +590,15 @@ local function validateItems(report, registry)
         return
     end
     checkFields(context, data, { schemaVersion = true, items = true }, nil, "")
+    if activeFiles == StaticData.Files then
+        if ZM_Clothing.CatalogueError then context:Error("items", ZM_Clothing.CatalogueError) end
+        if isObject(data.items) then
+            for id, item in pairs(ZM_Clothing.CatalogueItems) do
+                if data.items[id] then context:Error("items." .. id, "collides with generated clothing catalogue")
+                else data.items[id] = item end
+            end
+        end
+    end
     if not isObject(data.items) then
         context:Error("items", "must be an object keyed by item id")
         return
@@ -1822,6 +1848,7 @@ end
 // `files` optionally replaces StaticData.Files (used by fixture tests).
 // Returns the registry (nil when any error was found) and the report.
 function StaticData:Build(files)
+    if not files then ZM_Clothing:LoadCatalogue() end
     activeFiles = files or self.Files
     local report = newReport()
     local registry = {

@@ -1,5 +1,251 @@
 # Z-Nation
 
+## Workshop distribution planning
+
+The working `content` tree is **not a release package**. A read-only audit on
+2026-10-05, during the clothing rebuild, measured **4,749,338,238 bytes
+(4.75 decimal GB / 4.42 GiB)**:
+
+| Surface | Working-tree size |
+| --- | ---: |
+| Materials | 3.016 GiB |
+| Maps/navmeshes | 1.149 GiB |
+| Models | 0.218 GiB |
+| Audio | 0.033 GiB |
+| Static data | 0.007 GiB |
+
+Clothing alone occupied **3073.65 MiB**: **1423.12 MiB** belonged to the last
+published 561-finish manifest, **1612.51 MiB** was hash-named clothing outside
+that manifest, and **39.35 MiB** was prototype/other clothing. The unowned
+category includes the rebuild's not-yet-published outputs as well as possible
+interrupted-build leftovers; it is not an approved deletion list. Successful
+catalogue publication prunes files owned by the previous manifest, but cannot
+recover ownership of every interrupted-build orphan.
+
+These textures already use **DXT5** (VTF format 15), not uncompressed RGBA.
+A typical 1024-square layer with eleven mip levels is **1,398,360 bytes**.
+Hundreds of finishes multiply full sheets: separate male/female shirts,
+model-specific thigh prints and flat back-print icons, even where much of the
+sheet is transparent. The current 866-finish plan needs up to **1725 layers /
+2300.4 MiB** before deduplication, plus small VMT/metadata files. The sixteen
+runtime render targets limit live composites, not shipped source texture size.
+Do not reduce texture quality or remove mipmaps without a separate visual gate.
+
+Maps include both production and preview assets (**239.92 MiB** city/generated,
+**921.68 MiB** preview, **0.76 MiB** other/launchers). **Both city and preview
+ship: preview is a player-accessible sandbox, as confirmed by the user.**
+Do not include every historical recipe by recursively copying this tree. The current
+preview required-recipe list contains 179 entries; standalone maps and
+navmeshes need their own dependency coverage. Model size is mostly generated
+skyline cells (**223.44 MiB**).
+
+### Proposed addon boundaries
+
+1. **ZombieSim Core:** gamemode/entity Lua, **both launcher BSPs** (so missing
+   content can be diagnosed before city/sandbox deployment), bootstrap and canonical gameplay
+   definitions, release/package compatibility manifest, and minimal essential
+   UI. The current gameplay/entity code is approximately **2.33 MiB**.
+2. **ZombieSim Common Content:** shared original models/materials, signage,
+   UI/fonts/audio and required supporting assets.
+3. **ZombieSim Clothing Content 01, 02, ...:** deterministic shards containing
+   the exact clothing-manifest-owned VTF/VMT files. One virtual path has one
+   owner; never duplicate differing files across packs.
+4. **ZombieSim World Content 01, 02, ...:** both shipped profiles' selected
+   required BSP/nav/model/map-material dependency closure, sharded by bytes
+   without separating model companions or losing cross-cell skyline assets.
+
+The implemented packaging tool keeps current source/build locations intact
+and creates isolated, allowlisted staging directories. It inventories raw and
+actual GMA bytes, rejects virtual-path collisions/missing dependencies, and
+emits reproducible ownership/hash reports. The default **1 GiB raw per content
+shard** is a conservative target, not a claimed platform limit. One MiB is
+reserved for generated metadata; actual staged and packed sizes are checked
+again. Uploaded/compressed bytes remain unknown until a deliberate publish.
+
+The user reports an approximately **4 GB maximum per Workshop addon**; treat
+that as a ceiling to avoid, not a safe target. The official
+[creation guide](https://wiki.facepunch.com/gmod/Workshop_Addon_Creation)
+describes a separate compression/upload step and oversized-addon failures,
+but does not state a numeric limit. Reports distinguish compressed upload
+limits from extracted/GMA sizes; verify the actual installed tool/Steam limits
+and measure produced packages before publishing. No upload-limit probe or
+Workshop publication was performed for this audit.
+
+Required content must be declared explicitly in a Workshop collection/server
+configuration and requested for clients; a collection on the server alone is
+not proof that every clothing pack reached each client. See
+[dedicated-server mounting](https://wiki.facepunch.com/gmod/Workshop_for_Dedicated_Servers)
+and [resource.AddWorkshop](https://wiki.facepunch.com/gmod/resource.AddWorkshop):
+the latter requests client downloads, **not server installation**.
+Core/package versions must agree; missing mandatory packs should produce a
+clear startup/deployment error rather than silently discarding clothing items.
+Split addons improve update granularity, not total required download size.
+
+Exclude development zoos/UV probes, source art/editor files (including
+the existing packaged `.pdn`), bridge command files, logs and unowned hashes.
+Stage audio at the addon-root `sound` path, not the current developer
+`sounds` folder. Supplied artwork is not release-cleared; rights/provenance
+remain an independent blocker. The Walker native DLL remains a separately
+installed server component; Workshop cannot distribute it (see Walker below).
+
+### Packaging commands
+
+`workshop-settings.json` owns the static/common allowlists, profile selection,
+one-GiB budget, provenance sign-off and final Workshop IDs. Defaults include
+**city and preview**. Source and installed assets are never pruned or moved
+by these commands:
+
+```powershell
+# Audit only: payload ownership, exclusions, dependencies and release blockers.
+.\bin\build_workshop_packages.ps1
+
+# Create isolated development packages and hash-verify every staged file.
+.\bin\build_workshop_packages.ps1 -Stage
+
+# Also build GMAs with bundled gmad and extract/hash-check every payload.
+.\bin\build_workshop_packages.ps1 -Pack
+
+# Fixtures: exact byte thresholds, companions, collisions, missing assets,
+# deterministic identity, source preservation and real gmad round trips.
+.\bin\test_workshop_packages.ps1
+
+# Independently recheck a completed output, using stageRoot from the report.
+.\bin\test_workshop_packages.ps1 -StagedDirectory '.\generated\workshop\<release-prefix>'
+
+# Strict release gate; currently expected to fail until blockers are resolved.
+.\bin\build_workshop_packages.ps1 -Release -Pack
+```
+
+Reports live at `generated/workshop/inventory-report.json` and, after a
+successful build, `<release-prefix>/package-report.json`. Staging uses a
+short prefix of the full SHA256 release identity to stay within native Windows
+path limits; the full identity is retained in manifests/markers/reports.
+Existing staging is refused, not overwritten. Interrupted staging remains
+for inspection; cleanup is a separate, explicitly scoped action. Temporary
+extraction-verification directories and test fixtures are cleaned automatically.
+For a narrower **developer-only** inventory, pass `-WorldProfiles preview`;
+this does not change the default two-world shipping contract.
+
+Core owns the canonical static registries. Clothing shards use the current
+catalogue ownership manifest, not a directory-wide copy; current fixed
+Wardrobe/diagnostic finishes remain because the shipped sandbox uses them.
+Maps come from each runtime world's cells/safe zones and launcher, keeping
+nav companions together. Skyline recipes/snow/towers/detail retain custom
+model companions; mounted engine assets are reported as external requirements,
+not copied. Local-map images are limited to referenced recipes. Root audio
+and its staged registry are transformed together; developer source paths remain
+unchanged. Staging also replaces the old hardcoded core Workshop ID with the
+configured ID (blank until assigned), without editing the source descriptor.
+
+Every staged pack has a content-revision marker; core additionally binds the
+complete release identity. Unchanged content revisions remain compatible across
+core-only updates: do not republish every content addon just to update core.
+Packaged core enables strict
+startup file-size/ownership and marker/version validation in both realms,
+requests all required packs (including core's static content) for clients on the server, and blocks character
+deployment if server/client validation fails or the active profile is not
+included. A packaged core with its manifest removed fails explicitly; loose
+development with no distribution manifest retains existing behavior.
+Offline SHA256 validation covers all files and generated metadata; runtime
+size/marker checks are compatibility diagnostics, not cryptographic proof.
+Run `zn_test_distribution` and `zn_test_music` for the focused runtime suites.
+
+### Launcher subscriptions and first publication
+
+The launcher checks required Workshop entries when it opens. **Content Addons**
+shows per-pack subscription and mounted/downloaded state, with **Open Workshop**
+buttons for real IDs and **Recheck Content** to rerun compatibility checks.
+Deployment rechecks mounted files/revisions before sending the select request.
+Subscription is advisory: server-downloaded or local packages can be usable
+without a personal subscription; being subscribed does not prove files are
+downloaded, enabled, current or mounted. Compatibility remains the deployment
+gate. Subscriptions are never changed automatically. After subscribing/enabling,
+finish Steam downloads and restart/rejoin if the addon has not mounted.
+The content page uses the launcher's existing keyboard/back/exit lifecycle,
+not another popup competing with optional-component briefings.
+
+Temporary IDs in `workshop-settings.json` are symbolic **`pending:<package-id>`**
+values. The builder places them in a separate `workshopIdPlaceholder` field
+and leaves the actionable `workshopId` empty. They are never passed to
+`resource.AddWorkshop`, `steamworks.IsSubscribed` or `steamworks.ViewFile`;
+there is no invented numeric ID that could refer to somebody else's addon.
+Strict release builds reject pending IDs. New shards automatically receive
+pending labels until their own actual IDs are assigned.
+
+**Adding content:** keep authoring under the existing content/source pipeline.
+Already-owned catalogue/world assets and supported common material directories
+are picked up automatically on the next build. A new content domain or shared
+asset dependency must be added to the relevant allowlist/dependency owner;
+check the exclusion report so unrelated developer files never ship silently.
+The builder **packages, hashes and verifies; it does not upload**. Uploading is
+a deliberate authenticated operation after provenance and release checks.
+
+**Bootstrapping IDs without a circular dependency:**
+
+1. Create one Workshop item per stable package identity using only an original,
+   minimal reservation payload and a compliant512-square JPEG icon. Keep the
+   item **Private**, verify visibility on its Workshop page, and do not upload
+   uncleared artwork just to obtain an ID. No reservation/upload has been made
+   by this implementation.
+2. Steam assigns a `PublishedFileId` when creating the item. Record the
+   returned ID (also the `id=` number in its Workshop URL). Put core's real
+   string ID in `coreWorkshopId`, and the other IDs under their matching
+   `workshopIds` keys, replacing `pending:` values. IDs cannot be chosen locally.
+3. Build the cleared release with those IDs. The core descriptor and dependency
+   manifest now contain the actual IDs. **Update the existing private items**
+   using `gmpublish update -addon "<package.gma>" -id "<assigned-id>"`, rather
+   than creating new items on each build; updates retain their item IDs.
+4. Test private content with accounts that actually have access. Private items
+   are not a generally accessible public dependency; public-server collections/
+   downloads must not depend on inaccessible private items. When ready, make
+   required packs available to the intended audience, verify collection/client
+   downloads, then publish the core entry. Links/requirements are useful but
+   do not replace actual mounted-file/version checks.
+
+Sources:
+[Facepunch creation workflow](https://wiki.facepunch.com/gmod/Workshop_Addon_Creation),
+[updating the same item](https://wiki.facepunch.com/gmod/Workshop_Addon_Updating),
+[Steam item creation/returned ID](https://partner.steamgames.com/doc/features/workshop/implementation#Creating_a_Workshop_Item),
+[IsSubscribed](https://wiki.facepunch.com/gmod/steamworks.IsSubscribed),
+[GetAddons](https://wiki.facepunch.com/gmod/engine.GetAddons) and
+[ViewFile](https://wiki.facepunch.com/gmod/steamworks.ViewFile).
+
+Launcher follow-up validation: **46 packaging fixture checks** passed, including
+placeholder-to-real-ID strict-release staging and preservation of the assigned
+core ID. GLua **175/0**, live distribution **9/9**, music **10/10**, static data
+**18/18** pass. The user approved the **Content Addons / Recheck / Back** page
+in the loose preview installation. Actual published-ID subscription/download/
+mount behavior awaits the real Workshop items and clean installation tests;
+temporary labels are not claimed as live Workshop verification.
+
+**Current release gates:** rights sign-off, final non-duplicate Workshop IDs,
+all required navmeshes, a current explicitly profiled city runtime export and
+city skyline manifest, verified external game mounts, and a clean client/server
+mount/download/deployment test. No production regeneration, Workshop publication
+or live installation migration is implied by a development package build.
+
+**Earlier verified development build (2026-10-05, before launcher/subscription
+follow-up):** `generated/workshop/b89bee899d6e`
+contains seven extracted-and-SHA256-verified GMAs. Total staged payload/
+metadata is **3,737,841,516 bytes**; total GMA size is **3,738,385,682 bytes**.
+These are not compressed upload measurements.
+
+| Addon | Actual GMA MiB |
+| --- | ---: |
+| Core | 12.30 |
+| Common Content 01 | 36.85 |
+| Clothing Content 01 / 02 / 03 | 1023.14 / 1021.80 / 89.38 |
+| World Content 01 / 02 | 1021.54 / 360.20 |
+
+Focused fixtures passed **37/37**, independent actual-output checks
+**6414/6414**, GLua **175 files / 0 failures**. After a clean same-map preview
+reload, loose-development live suites passed **distribution 8/8, music 10/10,
+static data 18/18, inventory 51/51**. The exclusion audit reports **1505 files /
+480,176,180 bytes**, including **612 unowned clothing files / 408.13 MiB** after
+publication; none was deleted. Clean isolated mounted-package/download testing
+is still pending. The obsolete offline package build created during this task
+was removed after validation; no source or installed asset was pruned.
+
 ## Launcher characters
 
 On `zn_preview_start` or `zn_city_start`, the optional Volt/Walker briefings precede the character menu. The launcher is not yet deployed gameplay: load an existing slot or create one of three profile-specific survivors, complete any required appearance, and deploy the character. Only after the server accepts deployment does play continue into the character's saved city cell or safe zone; for a gameplay test, then enter the intended den or cell. Choose a name, citizen model/appearance, profession, and spend exactly ten starting attribute points when creating a survivor. A migrated slot-1 survivor requires an appearance before deployment. Deleting a slot requires typing its name. Options in the launcher use the same settings controls as the in-game radial menu; Exit disconnects. Keyboard navigation supports Up/Down, Enter and Escape.
@@ -17,6 +263,21 @@ Please read the [GDD](docs/gdd.md) for an overview of the game's design and mech
 Work in progress
 
 ## Camera aiming and HUD size
+
+Skybox background activity adds orange explosion flashes, rising blast smoke, muzzle flashes and moving tracer bursts. Persistent skyscraper fires are anchored to actual vertical wall triangles, including stepped upper floors, rather than model bounds. Activity is cosmetic and silent: it causes no damage, spawns no gameplay entities, and changes no city lighting. The **Skybox fires, smoke and distant combat** toggle controls all of these effects. Limits are 24 activity sites, at most 2 simultaneous explosions and 2 gunfire bursts, and 8 additional facade fires within 8 cells. Heavy fog and map captures suppress combat activity. Preview admins can use `zombiesim_dev_skybox_activity` for a 12-second accelerated visual check; `zombiesim_skybox_status` reports sites, active effects, facade fires and tracer counts. No BSP rebuild is needed.
+
+Beyond the world grid, the skybox coast renders a rock embankment at each city edge. Below it, a noise-shaped sand beach with rocky outcrops descends into shallow turquoise water that deepens with distance. Additive ripple layers drift across the water, and foam crests roll toward the shore along depth contours. Ripple and foam textures are procedural 256² render targets generated once at startup. The geometry is built only when the sky placement changes, in chunked static meshes (about 40 ms at a shore cell), and is drawn in the fogged sky pass, so it does not touch collision, puddles, snowfall or map captures. Snow cover lightens the beach and rocks. `zombiesim_skybox_status` reports coast quad, mesh, build-time and texture readiness. For preview self-review, `zombiesim_dev_capture <label> [pitch yaw [x y z]]` saves a PNG plus skybox/clothing diagnostics under `data/zombiesim/screenshots/`. With pitch and yaw, it renders an eye-height view in that direction; optional coordinates move only the capture camera, never the survivor. At most eight requests queue for successive rendered frames, so a bridge dispatch acknowledgement is not proof the PNG has been written.
+
+Each skybox edge has its own terrain:
+
+- **North:** rolling grass hills.
+- **East:** a snow-capped mountain range, high enough to be visible from every city cell, including the far west.
+- **South:** low flatlands.
+- **West:** the ocean coast described above.
+
+The north-east and south-east corners blend the neighbouring landforms. The ocean takes both western corners, and north and south land lowers to beach height as it meets the west shore. The terrain uses grass with height- and slope-weighted rock and snow overlays, takes on fog brightness, and receives weather snow cover. It is built once per map load in static meshes (about 150 ms, around 42,000 quads) and is purely cosmetic. Preview admins can run `zombiesim_dev_skybox_edges` for the cardinal, corner, seam, and visibility regression; it writes `data/zombiesim/skybox_edges.json`. No BSP rebuild is needed.
+
+Options in both the launcher and radial menu now include **Skybox - live tuning**. Adjust **Skybox fog amount** (0-2, default 0.8), **fog distance** (0.5-3, default 0.9), **horizon haze** (0-1.5, default 0.5), **distant tower fog** (0-1, default 0.8), and **model brightness** (0-2, default 0.25). Values save locally and update immediately without a map rebuild or reload. Matched lighting must be enabled for model brightness to apply. Fog amount thickens the sky beyond the city fog: 0 continues the city fog exactly, 1 is halfway to opaque, and 2 is opaque. The sky is never clearer than the city fog. On dark-lit cells, the measured cell lighting darkens the shared city and sky fog colour, so distant mountains and buildings don't glow; daylight cells keep the profile colour. Distant tower silhouettes follow the fog brightness. Under pale fog (outskirts, suburbs, and safe zones such as the Storm Drain) they share the neighbour scenery's fog curve, so they fade into the haze instead of standing out black. Under dark fog, and on dark-lit cells, they keep the plain **distant tower fog** value. Nearby detail rings, clouds, props/wrecks, and fires/smoke are also exposed there. Lowering fog/haze may expose the scenery boundary; playable-city fog density is unchanged. Quality presets still control detail/clouds/props/fires but leave the five presentation sliders and matched-lighting preference untouched. **Reset skybox fog / lighting tuning** resets only those presentation settings, not quality or other preferences. **Copy skybox tuning values** copies the current values for sharing. `zombiesim_skybox_status` and fresh atmosphere diagnostics include the tuning snapshot.
 
 Middle-click toggles the overhead and orbit camera. Scroll into shoulder view for mouse-look with full horizontal and vertical weapon aiming. **Hold Z** in shoulder view to fix the camera direction and aim with a visible, freely moving cursor; release Z to ease back to normal shoulder aiming. Middle-click returns to overhead view; scrolling out returns to orbit mouse-look. Point-and-click aiming never enables the Derma mouse cursor, so normal firing remains available and menus retain their own mouse focus. The pistol uses the normal player aiming animation driven by the same aim angles as the shot.
 
@@ -59,6 +320,70 @@ Generated recipe BSPs use compact `zz_<profile>_<hash>` basenames, for example `
 # Powershell Commands
 
 Run these from the project root. The preview profile is isolated from production and stages its playable maps flat under `content/maps`.
+
+## Clothing model discovery
+
+Clothing-workflow discovery is read-only: `.\bin\inspect_clothing_models.ps1` inspects the fifteen installed citizen player models through mounted VPKs, reporting materials, bodygroups, UV bounds/hashes and texture dimensions under `generated\clothing_preview` without extracting models/textures. `.\bin\test_clothing_model_inspection.ps1` regenerates and validates those findings. This is not yet a clothing asset builder or an equip/appearance implementation; the active tracker records the shared-body-sheet and equipment-contract limits.
+
+Build the original garment UV calibration atlas with `.\bin\build_clothing_uv_probe.ps1`, then run `.\bin\test_clothing_uv_probe.ps1`. Only one diagnostic texture/material is compiled and staged into content and the development game root; no mounted artwork/models are copied. After reloading a confirmed preview map, `zombiesim_dev_clothing_uv on [current|male|female]` through the bridge creates two temporary non-solid fixtures: a stock citizen and the same mesh with the coloured A1-H8 grid on its combined body sheet. Use front/back/side views to establish garment regions and orientation; `off` removes both and they expire after five minutes. It does not change player appearance, equipment or saved inventory. The atlas PNG is at `generated\clothing_preview\uv_probe\source\uv_probe.png`; it is a diagnostic, not an accepted shirt/pants finish or a universal UV guide.
+
+Build the original masked finish prototype with `.\bin\build_clothing_prototype.ps1`, then run `.\bin\test_clothing_prototype.ps1`. Editable colours, UV-aligned image/logo inputs and independently preserved/coloured inner-shirt regions live in `assets\clothing\prototype.json`. `assets\clothing\prints.json` provides chest-left/right, sleeve-left/right, small-back, centre-front and full-back presets using the supplied deer PNG; aspect ratio/transparency are retained and split-back UV islands share one image. See [the clothing artist workflow](docs/clothing_artist_workflow.md). Reload the confirmed preview map and use `zombiesim_dev_clothing_uv on male|female shirt|pants|both [style]` to compare native clothing with artwork on `male_03` or `female_01`. `zombiesim_dev_clothing_capture <label> front|back|left|right|neckline` automatically captures the second fixture without moving your survivor. Placement searches nine nearby clear areas and rejects blocking collision before capture; inspect the PNG for non-solid visual occluders too. This is a fixture-only prototype, not clothing items/equipment or an accepted universal mask. User-supplied deer artwork has not been cleared for release.
+
+The `repeat` style tiles the supplied image across both axes, not just coloured checker squares. `prints.json` has separate shirt/pants motif sizes, spacing and offsets. Build only these layers with `.\bin\build_clothing_prototype.ps1 -PrintStyles repeat`; select `zombiesim_dev_clothing_uv on male|female shirt|pants|both repeat`. Both-axis coverage, exact repeat pixels, exclusions, spacing and staged VTF alpha are covered by the prototype test. Automatic filename discovery and bloody/zombie variants remain pending.
+
+The `pants_leg` diagnostic style adds a single-image canvas down the front of one pant leg, selected by the user instead of a thigh/pocket badge. `prints.json` has separate verified male/female UV placements; use `.\bin\build_clothing_prototype.ps1 -PrintStyles pants_leg`, then `zombiesim_dev_clothing_uv on male|female pants|both pants_leg` after preview reload. The other leg keeps the base pants fabric; the native shirt, skin and footwear are unchanged in pants-only mode. The user selected uncropped, aspect-preserving fitting: tall artwork fills the leg, while wider artwork stays shorter and centered. This is not yet an automatic filename-derived wearable item.
+
+Fixed-finish equipment now adds `itemPrototypeShirt` and `itemPrototypePants`, using original base artwork from `prototype.json`. SHIRT/PANTS occupy slots 5/6 independently of weapons 1-3 and armour 4, with Inventory equip/unequip/drag-drop and existing character/profile persistence. Use `zn_give_item <itemId>` and `zn_equip_item <itemId|instanceId>` in an admin preview; `zn_inventory` includes model compatibility and clothing selections. Only male_03/female_01 render these finishes; unsupported models retain native clothing. Six separate equipment material patches/targets prevent diagnostic fixtures changing survivors. Live male/female restoration, Inventory/scoreboard pixels and immutable real-corpse rendering are verified; representative performance and catalogue acceptance remain separate.
+
+For preview-admin clothing inspection, the bridge supports `zombiesim_dev_ui inventory|scoreboard|close` through the existing window owners. A `zombiesim_dev_capture <label>` without camera angles captures these open windows after VGUI; explicit camera captures retain the world-only path. Requests still capture at most once per frame; JSON records `afterVGUI`, `frameNumber` and UI receipt/window state. `zombiesim_dev_clothing_model male|female|unsupported|restore` temporarily selects male_03, female_01 or unsupported male_01 on a deployed living survivor without saving character appearance. It retains the original model/skin/bodygroups for `restore`, rejects a changed character scope and updates native hands. Restore before unrelated testing; a same-map reload also reapplies persisted appearance. These commands do not grant/remove items.
+
+Generate mesh-aligned wireframe guides with `.\bin\inspect_clothing_models.ps1 -UvGuideModels @('models/player/group01/male_03.mdl', 'models/player/group01/female_01.mdl')`. The inspection test also generates/validates these two guides. The tool reads matching MDL/VVD/VTX root-LOD topology in memory and draws UV edges over the same A1-H8 grid at `generated\clothing_preview\uv_male_03.png` and `uv_female_01.png`; no mounted model or base texture is written out. These two layouts are visibly different. Wireframe guides are inspection products, not approved garment masks or proof that arbitrary artwork fits every citizen.
+
+For filename-driven clothing, run `.\bin\build_clothing_catalogue.ps1 [-PlanOnly]`
+and `.\bin\test_clothing_catalogue.ps1`. Optional artwork suffixes `_dark`/`_light`
+select contrasting lighter/darker fabric palettes; `_notblack` and other
+`not<colour>` tags exclude named backgrounds. They combine with explicit colours
+and placement tags and apply to single-image and X/Y repeating variants.
+Use `_chest` for a centred upper-chest logo or `_front`/`_front_full` for the
+larger torso print. Untagged shirts include both.
+Untagged artwork defaults to colourful yellow/blue/orange/red/teal/green/pink
+shirt backgrounds; explicit `_light`/`_dark` rules are unchanged. Single pants
+graphics now have separate left/right thigh choices (`pants_leg` and
+`pants_leg_right`); both are raised above the former knee-centred placement.
+Combined front-and-back shirts were removed at the user's request.
+Contradictions or exhausted palettes fail explicitly. See the
+[clothing artist workflow](docs/clothing_artist_workflow.md#filename-driven-catalogue)
+for examples and contrast limits. Generated wearable/cache live acceptance remains pending.
+
+Preview admins can open **WARDROBE** from the Tab radial menu or with
+`zombiesim_dev_wardrobe` (`zombiesim_dev_ui wardrobe` through the bridge).
+It lists available clothes as actual print/fabric swatches beside a rotatable
+male/female model. Selection dresses only that window model; no inventory or
+appearance is saved. Search, shirt/pants filters and native-garment reset buttons
+are included. See [Wardrobe controls](docs/clothing_artist_workflow.md#preview-wardrobe).
+
+`assets\clothing\fabrics.json` defines the bounded original stripe/check/tie-dye
+shirt library and restrained pants finishes, generated alongside image families.
+It now expands to 206 fabrics across fourteen colourways and distinct shirt/
+pants treatments. Dye is rendered per texel at 1024 square (not 8x8 colour
+blocks), with spiral, rings, cloud and marble styles. Stable original IDs and
+the sixteen-slot runtime outfit pool are retained.
+Run `.\bin\test_clothing_fabrics.ps1 -ValidateBuilt` after the catalogue build.
+`.\bin\test_clothing_catalogue.ps1 -ValidateBuilt` checks every image finish,
+flat back-print icons and owned staging hashes. The model inspector also writes
+torso topology for continuous back-print/fabric/motif projection; run
+`.\bin\test_clothing_back_projection.ps1` after inspection. Inspect the corrected
+backs and smooth dyes in a freshly reloaded preview before visual acceptance.
+Preview-only `zombiesim_dev_test_clothing_pool` exercises actual client texture
+capacity/recovery and immutable gore-reference pinning; inspect its asynchronous
+`data/zombiesim/clothing_pool_tests.json` result, not just bridge dispatch.
+See [fabric controls and pool validation](docs/clothing_artist_workflow.md#original-fabric-library).
+
+## Original billboard artwork
+
+For local Hammer/GMod development, run `.\bin\stage_sign_assets.ps1` to copy and hash-verify the current sign models/materials into the installed `garrysmod` root, or add `-StageToGame` when building sign assets. Generate a six-variant Hammer showroom with `.\bin\build_sign_zoo.ps1`; add `-Compile` to compile and stage **one standalone development BSP**, `zn_dev_sign_zoo`. Open `generated\signs_preview\zoo\zn_dev_sign_zoo.vmf` in Hammer, or use `map zn_dev_sign_zoo` in a sandbox development session. This does not rebuild city recipes, change production staging, or package the zoo for release.
+
+Build the six original sign variants with `.\bin\build_sign_assets.ps1 -WorldProfile preview`: detailed freestanding and lamp-lit billboards, legless panel, small wall sign, thin framed print and borderless poster. Use `-ArtworkPath` for a finished opaque 1024 x 512 panel, or `-ImagePath` / `-BackgroundImagePath` for aspect-preserving foreground/background layers. The sign JSON controls image paths, self-lighting and independent leg/rim/back textures; mounted Source textures are referenced, not copied. Run `.\bin\test_sign_assets.ps1` after building. This compiles six small models and two original textures, not city BSPs. The [artist workflow](docs/sign_artist_workflow.md) documents geometry budgets, settings, placement prefabs, light baking, skybox limits and packaging. Preview admins can use `zombiesim_dev_sign on [freestanding|panel|illuminated|wall|print|poster]` through the bridge, and `off` to remove it; it expires after three minutes. The print and poster mount to the aimed wall, and the two-triangle poster has no collision or physical border. The illuminated preview casts a temporary real projected light, while its Hammer prefab uses a baked spotlight. Live appearance of the detailed billboard and both thin variants was approved by the user; compiled-tile collision, baked lighting and an actual skybox view remain integrated checks.
 
 Generate the deterministic preview world image, manifest, and map layers:
 
@@ -669,7 +994,7 @@ For controlled preview profiling, `zn_gore_quality_probe 0|1|2` temporarily sele
 
 Playback is environment-driven, not combat-triggered. It starts after a random 8-12-minute silent interval and schedules another interval after a track ends; it never cuts a song off on an idle timer. One BASS channel is owned at a time, with stale asynchronous callbacks stopped. Departure fades follow the transition fade. Cell-to-cell travel within the same track set resumes the saved position; travel into a different set fades in a destination track immediately after loading. Den entry starts a destination track if music was playing. Leaving a safe zone while its track is playing ends that track and starts a fresh 8-12-minute silent interval, even if the entrance cell uses the same set. Travel during an existing silent interval preserves its deadline. Local presentation state, track routing context and the pending idle deadline persist under `DATA/zombiesim/music_<profile>.json`; loading/launcher holds, disabled music and zero music volume pause playback. A failed playback reports its decoder/duration error and tries a different available default variation once, then schedules silence rather than retrying forever.
 
-Music directly follows Garry's Mod **Music volume** (`snd_musicvolume`), with `zombiesim_music_enabled` as the optional ZombieSim enable switch. Both Options panels expose the same engine **Master volume** (`volume`), **Sound effects volume** (`volume_sfx`) and **Music volume** values, not independent duplicates. The BASS channel applies the music slider once; the engine retains master scaling. Geiger, weather, footsteps, weapons and UI cues use Source sound APIs and retain native master/SFX scaling without a second Lua multiplier. Music ducks by at most 45% during active Geiger exposure to preserve warning audibility.
+Music directly follows Garry's Mod **Music volume** (`snd_musicvolume`), with `zombiesim_music_enabled` as the optional ZombieSim enable switch. Both Options panels display the current engine **Master volume** (`volume`), **Sound effects volume** (`volume_sfx`) and **Music volume** values read-only. Garry's Mod [blocks Lua from changing these convars](https://wiki.facepunch.com/gmod/Blocked_ConCommands), so adjust them in Garry's Mod's own Options > Audio. The BASS channel applies the music slider once; the engine retains master scaling. Geiger, weather, footsteps, weapons and UI cues use Source sound APIs and retain native master/SFX scaling without a second Lua multiplier. Music ducks by at most 45% during active Geiger exposure to preserve warning audibility.
 
 Reference: the GMod wiki documents [BASS playback](https://wiki.facepunch.com/gmod/sound.PlayFile) and [seeking](https://wiki.facepunch.com/gmod/IGModAudioChannel:SetTime); [Facepunch/garrysmod-issues#5532](https://github.com/Facepunch/garrysmod-issues/issues/5532) explains why Source music path modifiers cannot classify BASS channels. Installed-build `help volume_sfx`, `help snd_musicvolume` and `help volume` confirmed the current category controls. These values are never reset by ZombieSim.
 

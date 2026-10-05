@@ -1,2 +1,2 @@
-# request: bridge-20261004-234209-016
-zombiesim_dev_atmosphere_status
+# request: bridge-20261005-131224-442
+zombiesim_dev_capture alpha310_rear_cleaned

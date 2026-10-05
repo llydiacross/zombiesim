@@ -372,6 +372,7 @@ function Scoreboard:Open()
     profileAvatar:SetPos(26, 22)
 
     local modelPreview = vgui.Create("DModelPanel", dossier)
+    frame.ModelPreview = modelPreview
     modelPreview:SetSize(96, 110)
     modelPreview:SetFOV(28)
     modelPreview:SetCamPos(Vector(80, 0, 52))
@@ -582,3 +583,14 @@ function Scoreboard:Open()
     end
     rebuildRoster()
 end
+
+// Compose before VGUI clipping is active, not from DModelPanel's paint-time LayoutEntity.
+hook.Add("PreRender", "ZM.Scoreboard.Clothing", function()
+    local frame = Scoreboard.Frame
+    if not IsValid(frame) or not IsValid(frame.SelectedPlayer) or not IsValid(frame.ModelPreview) then return end
+    local entity = frame.ModelPreview.Entity
+    if IsValid(entity) then
+        ZM_Clothing:Apply(entity, frame.SelectedPlayer:GetNWString("ZM_Clothing_shirt", ""),
+            frame.SelectedPlayer:GetNWString("ZM_Clothing_pants", ""))
+    end
+end)

@@ -643,6 +643,76 @@ test("radiation_suit_requires_its_own_equipped_slot_and_persists", function(chec
     check(not Items:HasRadiationProtection(target.ZM_Inventory), "unequipping removes protection")
 end)
 
+test("cosmetic_clothing_slots_replace_persist_and_restore_independently", function(check)
+    local target = stubPlayer()
+    target.GetWeapons = function() return {} end
+    target.GetLevel = function() return 1 end
+    target.GetStat = function() return 0 end
+    local shirt, replacement, pants, suit = instance("itemPrototypeShirt"), instance("itemPrototypeShirt"),
+        instance("itemPrototypePants"), instance("itemRadiationSuit")
+    for _, item in ipairs({ shirt, replacement, pants, suit }) do check(Ops.Add(target.ZM_Inventory, "backpack", item), "add test garment") end
+    check(not Items:IsEquipmentSlot(shirt, Items.ArmourSlot), "shirt cannot displace armour")
+    check(not Items:IsEquipmentSlot(pants, ZM_Clothing.Slots.shirt), "pants cannot enter shirt slot")
+    check(not Service:MoveItem(target, shirt.instanceId, "equipped", 1), "network-style wrong-slot move is rejected")
+    check(Service:EquipItem(target, shirt.instanceId), "shirt equips through the public router")
+    check(Service:EquipItem(target, pants.instanceId), "pants equip independently")
+    check(Service:EquipItem(target, suit.instanceId), "armour remains independent")
+    check(ZM_Clothing:GetEquipped(target.ZM_Inventory, "shirt") == "prototype", "shirt appearance comes from the equipped definition")
+    check(ZM_Clothing:GetEquipped(target.ZM_Inventory, "pants") == "prototype", "pants appearance comes from the equipped definition")
+    check(Items:HasRadiationProtection(target.ZM_Inventory), "cosmetics do not remove armour protection")
+    check(Service:EquipItem(target, replacement.instanceId), "replacement swaps in atomically")
+    local container = Ops.FindInstance(target.ZM_Inventory, shirt.instanceId)
+    check(container == "backpack", "old shirt returns to the source backpack slot")
+    local restored = Service.FromRows(ZM_GetPlayerItems(testSteamId, testProfile))
+    check(restored.equipped[5].instanceId == replacement.instanceId and restored.equipped[6].instanceId == pants.instanceId,
+        "both garments survive the SQLite round trip")
+    check(ZM_Clothing:GetEquipped(Service.FromRows(ZM_GetPlayerItems(testSteamId, otherProfile)), "shirt") == "",
+        "garments remain profile scoped")
+    check(Service:LoseBackpack(target), "death policy mutation succeeds")
+    check(ZM_Clothing:GetEquipped(target.ZM_Inventory, "shirt") == "prototype", "equipped clothes survive backpack death loss")
+    check(Service:MoveItem(target, replacement.instanceId, "backpack"), "shirt unequips")
+    check(ZM_Clothing:GetEquipped(target.ZM_Inventory, "shirt") == "", "unequip restores native shirt selection")
+    check(ZM_Clothing:GetEquipped(target.ZM_Inventory, "pants") == "prototype", "unequip leaves pants unchanged")
+end)
+
+test("player_corpse_snapshots_clothing_at_death_before_later_re_equips", function(check)
+    local target = stubPlayer()
+    target.GetWeapons = function() return {} end
+    local corpse = { IsValid = function() return true end }
+    corpse.SetNWString = function(self, key, value) self[key] = value end
+    target.GetRagdollEntity = function() return corpse end
+    check(Ops.Add(target.ZM_Inventory, "equipped", instance("itemPrototypeShirt")), "equip snapshot shirt")
+    check(Ops.Add(target.ZM_Inventory, "equipped", instance("itemPrototypePants")), "equip snapshot pants")
+    hook.GetTable().PlayerDeath["ZM.Inventory.LoseBackpackOnDeath"](target)
+    local snapshot = util.JSONToTable(corpse.ZM_ClothingCorpse or "")
+    check(snapshot and snapshot.shirt == "prototype" and snapshot.pants == "prototype", "corpse stores one immutable clothing packet")
+    target.ZM_Inventory.equipped[ZM_Clothing.Slots.shirt] = nil
+    check(util.JSONToTable(corpse.ZM_ClothingCorpse).shirt == "prototype", "later unequipping cannot alter the corpse packet")
+end)
+
+test("failed_clothing_save_never_publishes_or_replaces_equipped_state", function(check)
+    local target = stubPlayer()
+    target.GetLevel = function() return 1 end
+    target.GetStat = function() return 0 end
+    local shirt = instance("itemPrototypeShirt")
+    check(Ops.Add(target.ZM_Inventory, "backpack", shirt), "add shirt")
+    local before = table.Copy(target.ZM_Inventory)
+    local sent = false
+    local originalSend = Service.Send
+    Service.Send = function() sent = true end
+    local ok, failure = pcall(function()
+        withCommitOverride(function() return false, "clothing save failure" end, function()
+            local equipped, reason = Service:EquipItem(target, shirt.instanceId)
+            check(not equipped and string.find(reason, "clothing save failure", 1, true), "save failure is explicit")
+        end)
+    end)
+    Service.Send = originalSend
+    if not ok then error(failure) end
+    check(not sent, "no snapshot/appearance publish on failure")
+    check(deepEqual(target.ZM_Inventory, before), "previous inventory stays intact")
+    check(ZM_Clothing:GetEquipped(target.ZM_Inventory, "shirt") == "", "no live clothing selection on failure")
+end)
+
 test("armour_cannot_swap_generic_items_into_equipment", function(check)
     local inventory = Service.NewInventory()
     local suit, bandage = instance("itemRadiationSuit"), instance("itemBandage")

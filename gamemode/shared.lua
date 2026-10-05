@@ -1,11 +1,13 @@
 // Shared gamemode metadata and startup work executed in both server and client realms.
 include("sh_player.lua")
 include("sh_loading.lua")
+include("sh_distribution.lua")
 include("sh_compass.lua")
 include("utils/world.lua")
 include("utils/safezone.lua")
 include("sh_preview.lua")
 include("sh_music.lua")
+include("sh_clothing.lua")
 include("sh_static_data.lua")
 include("sh_items.lua")
 include("sh_weapon_effects.lua")

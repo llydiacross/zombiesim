@@ -283,7 +283,7 @@
   "cellPlanning": {
     "cellTileGridSize": 5,
     "templatePatterns": {
-      "genericBuildings": "^buildings/tile_(building|construction)_[0-9]+[a-z]+(?:_(?:2x|2x2|3x|3x3))?\\.vmf$",
+      "genericBuildings": "^buildings/tile_(building|construction|skyscraper)_[0-9]+[a-z]+(?:_(?:2x|2x2|3x|3x3))?\\.vmf$",
       "destroyedBuildings": "^buildings/tile_destroyed.*\\.vmf$",
       "warehouses": "^buildings/tile_warehouse_.*\\.vmf$",
       "commercial": "^buildings/tile_commercial_.*\\.vmf$",
@@ -373,6 +373,8 @@
     },
     "buildingSelection": {
       "maximumHeightTier": 3,
+      "skyscraperCenterPercent": 40,
+      "skyscraperEdgePercent": 5,
       "minimumWeight": 1,
       "baseWeight": 7,
       "heightDistanceWeight": 3,
@@ -512,7 +514,9 @@
       "enabled": true,
       "scale": 16,
       "neighbourRadius": 2,
-      "cameraZ": 3328,
+      "skylineRadius": 24,
+      "maxTowerModels": 128,
+      "cameraZ": 5120,
       "roomHeight": 512,
       "minBrushExtent": 24,
       "maxPartVertices": 30000,

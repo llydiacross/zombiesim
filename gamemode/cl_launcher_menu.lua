@@ -192,6 +192,15 @@ end
 
 function Menu:Request(action, slot, details)
     if self.Waiting then return end
+    if action == "select" and ZM_Distribution then
+        local ready, message = ZM_Distribution:RefreshClient()
+        if not ready then
+            self.Error = "Content packages unavailable: " .. tostring(message)
+            self.Page = "content"
+            self:Render()
+            return
+        end
+    end
     self.Waiting = action
     self.Deadline = RealTime() + 10
     self:Render()
@@ -219,6 +228,7 @@ function Menu:Back()
 end
 
 function Menu:Open()
+    if ZM_Distribution then ZM_Distribution:RefreshWorkshop() end
     if self.Credits then self:EndCredits() end
     self.Active = true
     self.Page = "menu"
@@ -312,6 +322,9 @@ function Menu:Render()
         return
     end
     if self.Page == "menu" then
+        if ZM_Distribution and not ZM_Distribution.Ready then
+            addLabel(content, "CONTENT CHECK FAILED - open Content Addons before deploying.", 42):SetTextColor(palette.redBright)
+        end
         local anchor = ZM_LauncherScene:GetAnchor(self.Profile)
         if anchor then
             for slot, row in pairs(self.Slots or {}) do
@@ -330,11 +343,37 @@ function Menu:Render()
         end)
         button("EDIT CHARACTERS", function() self.Page = "load" self:Render() end)
         button("OPTIONS", function() self.Page = "options" self:Render() end)
+        button("CONTENT ADDONS", function()
+            ZM_Distribution:RefreshWorkshop()
+            self.Page = "content"
+            self:Render()
+        end)
         button("CREDITS", function() self:Request("credits_start", 0) end)
         button("EXIT TO GMOD", function()
             Derma_Query("Disconnect from this session?", "EXIT TO GMOD", "DISCONNECT",
                 function() RunConsoleCommand("disconnect") end, "CANCEL", function() end)
         end)
+    elseif self.Page == "content" then
+        addLabel(content, "WORKSHOP CONTENT", 36)
+        if not ZM_Distribution.Manifest and not ZM_Distribution.Packaged then
+            addLabel(content, "Loose development installation. No Workshop subscriptions required.", 54)
+        else
+            addLabel(content, ZM_Distribution.Ready and "Mounted package files and revisions verified."
+                or "Content check failed: " .. tostring(ZM_Distribution.Error), 72)
+            addLabel(content, "Subscription is not installation. Finish downloads, enable addons and restart if content is not mounted.", 64)
+            for _, row in ipairs(ZM_Distribution.WorkshopRows or {}) do
+                addLabel(content, string.upper(row.id) .. "\n" .. row.message, 60)
+                if row.workshopId ~= "" then
+                    local workshopId = row.workshopId
+                    button("OPEN WORKSHOP: " .. row.id, function() steamworks.ViewFile(workshopId) end)
+                end
+            end
+        end
+        button("RECHECK CONTENT", function()
+            ZM_Distribution:RefreshClient()
+            self:Render()
+        end)
+        button("BACK", function() self:Back() end)
     elseif self.Page == "options" then
         button("BACK", function() self:Back() end)
         local panel = vgui.Create("DPanel", content)

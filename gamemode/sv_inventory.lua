@@ -371,6 +371,9 @@ function Service:Send(target)
     end
     self:NormalizeWeaponSlots(target)
     target:SetNWBool("ZM_RadiationProtected", target:HasRadiationProtection())
+    for garment in pairs(ZM_Clothing.Slots) do
+        target:SetNWString("ZM_Clothing_" .. garment, ZM_Clothing:GetEquipped(target.ZM_Inventory, garment))
+    end
     local bundleCash = 0
     for _, slots in pairs(target.ZM_Inventory) do
         for _, instance in pairs(slots) do
@@ -705,43 +708,48 @@ function Service:UseItem(target, reference, targetPly)
     return false, "The item could not be used."
 end
 
-// Gives the SWEP for a backpack weapon instance with its rolled attributes applied.
+// Wearables replace only their dedicated slot, after committing the complete draft.
+function Service:EquipWearable(target, reference, slot)
+    if not target.ZM_Inventory then return false, "Inventory is not loaded." end
+    local found = self:FindBackpackInstance(target, reference)
+    local container, sourceSlot, instance = Ops.FindInstance(target.ZM_Inventory, found and found.instanceId or reference)
+    if not instance or (container ~= "backpack" and container ~= "equipped") then
+        return false, "That wearable is not in your backpack or equipped."
+    end
+    if not Items:IsEquipmentSlot(instance, slot) or slot < Items.ArmourSlot then return false, "That item does not belong in that wearable slot." end
+    local canUse, reason = Items:CanUse(target, instance.itemId, instance)
+    if not canUse then return false, reason end
+    if container == "equipped" then return true, "Already equipped." end
+    return self:Mutate(target, function(draft)
+        local moving = draft.backpack[sourceSlot]
+        if not moving or moving.instanceId ~= instance.instanceId then return false, "That wearable moved." end
+        draft.backpack[sourceSlot] = draft.equipped[slot]
+        draft.equipped[slot] = moving
+        return true, "Equipped."
+    end)
+end
+
+function Service:EquipArmour(target, reference)
+    return self:EquipWearable(target, reference, Items.ArmourSlot)
+end
+
+function Service:EquipItem(target, reference)
+    if not target.ZM_Inventory then return false, "Inventory is not loaded." end
+    local found = self:FindBackpackInstance(target, reference)
+    local _, _, instance = Ops.FindInstance(target.ZM_Inventory, found and found.instanceId or reference)
+    local definition = instance and Items:GetDefinition(instance.itemId)
+    if definition and definition.entityClass == "armour" then return self:EquipArmour(target, reference) end
+    if definition and definition.clothing then
+        return self:EquipWearable(target, reference, ZM_Clothing.Slots[definition.clothing.garment])
+    end
+    local ok, result = self:EquipWeapon(target, reference)
+    return ok, ok and "Weapon equipped." or result
+end
+
 function Service:EquipWeapon(target, reference, preferredSlot)
     target.ZM_Inventory.equipped = target.ZM_Inventory.equipped or {}
     local backpackInstance = self:FindBackpackInstance(target, reference)
-    if backpackInstance then
-        reference = backpackInstance.instanceId
-    end
-
-    function Service:EquipArmour(target, reference)
-        if not target.ZM_Inventory then return false, "Inventory is not loaded." end
-        local found = self:FindBackpackInstance(target, reference)
-        local container, sourceSlot, instance = Ops.FindInstance(target.ZM_Inventory, found and found.instanceId or reference)
-        if not instance or (container ~= "backpack" and container ~= "equipped") then
-            return false, "That armour is not in your backpack or equipped."
-        end
-        if not Items:IsEquipmentSlot(instance, Items.ArmourSlot) then return false, "That item is not wearable armour." end
-        local canUse, reason = Items:CanUse(target, instance.itemId, instance)
-        if not canUse then return false, reason end
-        if container == "equipped" then return true, "Armour is already equipped." end
-        return self:Mutate(target, function(draft)
-            local moving = draft.backpack[sourceSlot]
-            if not moving or moving.instanceId ~= instance.instanceId then return false, "That armour moved." end
-            draft.backpack[sourceSlot] = draft.equipped[Items.ArmourSlot]
-            draft.equipped[Items.ArmourSlot] = moving
-            return true, "Armour equipped."
-        end)
-    end
-
-    function Service:EquipItem(target, reference)
-        if not target.ZM_Inventory then return false, "Inventory is not loaded." end
-        local found = self:FindBackpackInstance(target, reference)
-        local _, _, instance = Ops.FindInstance(target.ZM_Inventory, found and found.instanceId or reference)
-        local definition = instance and Items:GetDefinition(instance.itemId)
-        if definition and definition.entityClass == "armour" then return self:EquipArmour(target, reference) end
-        local ok, result = self:EquipWeapon(target, reference)
-        return ok, ok and "Weapon equipped." or result
-    end
+    if backpackInstance then reference = backpackInstance.instanceId end
     local container, sourceSlot, instance = Ops.FindInstance(target.ZM_Inventory, reference)
     if not instance then
         return false, "That item is not in your backpack."
@@ -952,7 +960,7 @@ function Service:HandleAction(target, request)
         return self:EquipWeaponInSlot(target, instanceId, request.slot)
     elseif request.action == "unequip" then
         local container, slot = Ops.FindInstance(target.ZM_Inventory, instanceId)
-        if container == "equipped" and slot == Items.ArmourSlot then
+        if container == "equipped" and slot >= Items.ArmourSlot then
             return self:MoveItem(target, instanceId, "backpack")
         end
         return self:UnequipWeapon(target, instanceId)
@@ -1030,6 +1038,13 @@ function Service:MoveItem(target, instanceId, toContainer, toSlot, count)
     end
     if toContainer == "equipped" then
         local _, _, instance = Ops.FindInstance(inventory, instanceId)
+        local definition = Items:GetDefinition(instance.itemId)
+        if definition and definition.clothing then
+            local slot = ZM_Clothing.Slots[definition.clothing.garment]
+            if toSlot ~= nil and toSlot ~= slot then return false, "That garment requires its own clothing slot." end
+            if count ~= nil and count ~= 1 then return false, "Equipped garments cannot be split." end
+            return self:EquipWearable(target, instanceId, slot)
+        end
         if Items:IsEquipmentSlot(instance, Items.ArmourSlot) then
             if toSlot ~= nil and toSlot ~= Items.ArmourSlot then return false, "Armour requires the armour slot." end
             return self:EquipArmour(target, instanceId)
@@ -1037,6 +1052,12 @@ function Service:MoveItem(target, instanceId, toContainer, toSlot, count)
         return self:EquipWeaponInSlot(target, instanceId, toSlot or 1)
     end
     if fromContainer == "equipped" and toContainer == "backpack" then
+        local _, slot = Ops.FindInstance(inventory, instanceId)
+        if slot >= Items.ArmourSlot then
+            return self:Mutate(target, function(draft)
+                return Ops.Move(draft, instanceId, toContainer, toSlot, count, Service.NewInstanceId)
+            end)
+        end
         if toSlot ~= nil and not isWholeNumber(toSlot, 1, Items.ContainerCapacity.backpack) then
             return false, "Invalid backpack slot."
         end
@@ -1163,6 +1184,13 @@ hook.Add("PlayerDeath", "ZM.Inventory.LoseBackpackOnDeath", function(victim)
     if not IsValid(victim) or not victim.ZM_Inventory then
         return
     end
+    local corpse = victim:GetRagdollEntity()
+    if IsValid(corpse) then
+        corpse:SetNWString("ZM_ClothingCorpse", util.TableToJSON({
+            shirt = ZM_Clothing:GetEquipped(victim.ZM_Inventory, "shirt"),
+            pants = ZM_Clothing:GetEquipped(victim.ZM_Inventory, "pants")
+        }))
+    end
     if ZM_AmmoService then
         local synced, syncError = ZM_AmmoService:SyncAll(victim)
         if not synced then
@@ -1216,8 +1244,19 @@ local function describeInventory(target)
 end
 
 local function inventoryReport(target)
+    local corpse = target:GetRagdollEntity()
     return {
         steamId = target:SteamID(),
+        characterKey = ZM_Util.CharacterKeyFor(target),
+        alive = target:Alive(),
+        corpse = IsValid(corpse) and { model = corpse:GetModel(),
+            clothing = util.JSONToTable(corpse:GetNWString("ZM_ClothingCorpse", "")) } or nil,
+        model = target:GetModel(),
+        clothingModelSupported = ZM_Clothing.Models[string.lower(target:GetModel() or "")] ~= nil,
+        clothing = {
+            shirt = ZM_Clothing:GetEquipped(target.ZM_Inventory, "shirt"),
+            pants = ZM_Clothing:GetEquipped(target.ZM_Inventory, "pants")
+        },
         profile = profileFor(target),
         canAccessStash = Service:CanAccessStash(target),
         rows = target.ZM_Inventory and Service.ToRows(target.ZM_Inventory) or nil
@@ -1271,7 +1310,7 @@ ZM_Util.RegisterCommands({
     zn_inventory = "Prints the target player's backpack and stash.",
     zn_give_item = "zn_give_item <itemId> [count] [level] [mastercraft 0/1]: adds items to the backpack (weapons roll level and attributes when level is omitted).",
     zn_use_item = "zn_use_item <instanceId|itemId>: uses one unit of a backpack item.",
-    zn_equip_item = "zn_equip_item <instanceId|itemId>: equips a backpack weapon or wearable armour.",
+    zn_equip_item = "zn_equip_item <instanceId|itemId>: equips a backpack weapon, armour, shirt or pants.",
     zn_remove_item = "zn_remove_item <itemId> [count] [container]: removes items (backpack by default).",
     zn_move_item = "zn_move_item <instanceId> <backpack|stash> [slot] [count]: moves or splits a stack."
 }, runInventoryCommand)

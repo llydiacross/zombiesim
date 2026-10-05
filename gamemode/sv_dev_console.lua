@@ -135,6 +135,94 @@ DevConsole.DirectCommands.zombiesim_dev_profile_client = function(argumentString
     return true
 end
 
+// Bridge-only: requests a PostRender capture; optional angles and origin do not move the player.
+DevConsole.DirectCommands.zombiesim_dev_wardrobe = function(argumentString)
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        return false, "Wardrobe requires a connected preview admin"
+    end
+
+    DevConsole.DirectCommands.zombiesim_dev_test_clothing_pool = function()
+        local target = ZM_Util.FirstHuman()
+        if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+            return false, "Clothing pool tests require a connected preview admin"
+        end
+        target:ConCommand("zombiesim_dev_test_clothing_pool")
+        return true
+    end
+    local argument = string.Trim(argumentString or "")
+    local itemId = string.match(argument, "^select (item[%w]+)$")
+    local definition = itemId and ZM_Items:GetDefinition(itemId)
+    if argument ~= "" and argument ~= "close" and argument ~= "model male" and argument ~= "model female" and
+        not (definition and definition.clothing) then
+        return false, "usage: zombiesim_dev_wardrobe [close|model male|female|select itemId]"
+    end
+    target:ConCommand("zombiesim_dev_wardrobe " .. argument)
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_ui = function(argumentString)
+    local target = ZM_Util.FirstHuman()
+    local mode = string.Trim(argumentString or "")
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        return false, "UI inspection requires a connected preview admin"
+    end
+    if mode ~= "inventory" and mode ~= "scoreboard" and mode ~= "wardrobe" and mode ~= "close" then
+        return false, "usage: zombiesim_dev_ui inventory|scoreboard|wardrobe|close"
+    end
+    target:ConCommand("zombiesim_dev_ui " .. mode)
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_capture = function(argumentString)
+    local target = ZM_Util.FirstHuman()
+    local arguments = string.Explode(" ", string.Trim(argumentString or ""), false)
+    local label = arguments[1]
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        return false, "screenshot capture requires a connected preview admin"
+    end
+
+    local usage = "usage: zombiesim_dev_capture <label: letters, numbers, underscore or hyphen; max 48> [pitch yaw [x y z]]"
+    if (#arguments ~= 1 and #arguments ~= 3 and #arguments ~= 6) or
+        not label or #label > 48 or not string.match(label, "^[%w_-]+$") then
+        return false, usage
+    end
+    local view = ""
+    if #arguments > 1 then
+        local numbers = {}
+        for index = 2, #arguments do
+            local value = tonumber(arguments[index])
+            if not value or value ~= value or math.abs(value) > 32768 then return false, usage end
+            numbers[index] = value
+        end
+        local pitch, yaw = numbers[2], numbers[3]
+        view = string.format(" %.2f %.2f", math.Clamp(pitch, -89, 89), yaw)
+        if #arguments == 6 then view = view .. string.format(" %.3f %.3f %.3f", numbers[4], numbers[5], numbers[6]) end
+    end
+    target:ConCommand("zombiesim_dev_capture " .. label .. view)
+    print("[ZombieSim] Requested client screenshot " .. label .. ".")
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_skybox_activity = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        return false, "skyline activity preview requires a connected preview admin"
+    end
+    target:ConCommand("zombiesim_dev_skybox_activity")
+    return true
+end
+
+// Bridge-only: the client runs the cardinal edge regression and writes data/zombiesim/skybox_edges.json.
+DevConsole.DirectCommands.zombiesim_dev_skybox_edges = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        return false, "skybox edge regression requires a connected preview admin"
+    end
+    target:ConCommand("zombiesim_dev_skybox_edges")
+    return true
+end
+
 // Bridge-only: moves the first player to a raw grid cell through the normal world-map transition.
 DevConsole.DirectCommands.zombiesim_dev_teleport_cell = function(argumentString)
     local gridX, gridY = string.match(argumentString or "", "^(%-?%d+)%s+(%-?%d+)$")
@@ -163,6 +251,329 @@ local function previewAdmin()
         return nil, "restricted to the preview profile"
     end
     return target
+end
+
+DevConsole.DirectCommands.zombiesim_dev_sign = function(argumentString)
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    local arguments = string.Explode(" ", string.Trim(argumentString or ""), false)
+    local action, variant = arguments[1], arguments[2] or "freestanding"
+    if (action ~= "on" and action ~= "off") or #arguments > 2 then
+        return false, "usage: zombiesim_dev_sign on [freestanding|panel|illuminated|wall|print|poster] or off"
+    end
+    if action == "off" then
+        if IsValid(target.ZM_DevSign) then target.ZM_DevSign:Remove() end
+        target.ZM_DevSign = nil
+        return true, "billboard preview removed"
+    end
+    if not target:Alive() or target.ZM_PersistentStateLoaded ~= true or ZM_World.LauncherMapProfiles[game.GetMap()] then
+        return false, "deploy a living survivor before previewing the billboard"
+    end
+    local catalog = util.JSONToTable(file.Read("data_static/zombiesim_signs_preview.json", "GAME") or "")
+    local entry = catalog and catalog.schemaVersion == 1 and catalog.variants and catalog.variants[variant]
+    if not entry or type(entry.model) ~= "string" then
+        return false, "unknown variant or missing sign catalog; build sign assets first"
+    end
+    local model = entry.model
+    local wallMounted = entry.wallMounted == true
+    if not util.IsValidModel(model) then
+        return false, "billboard model is unavailable; run bin/build_sign_assets.ps1 first"
+    end
+    local origin, direction = target:GetLevelAim()
+    local ahead = util.TraceLine({
+        start = origin, endpos = origin + direction * 320,
+        filter = { target, target.ZM_DevSign }, mask = MASK_NPCSOLID_BRUSHONLY
+    })
+    local ground = util.TraceLine({
+        start = ahead.HitPos - direction * 32,
+        endpos = ahead.HitPos - direction * 32 - Vector(0, 0, 512),
+        filter = target, mask = MASK_NPCSOLID_BRUSHONLY
+    })
+    if not wallMounted and (not ground.Hit or ground.HitNormal.z < 0.7) then
+        return false, "no level ground for the billboard; face an open floor and retry"
+    end
+    if wallMounted and (not ahead.Hit or math.abs(ahead.HitNormal.z) > 0.2) then
+        return false, "face a vertical wall within 320 units to preview the wall-mounted sign"
+    end
+    local entity = ents.Create("prop_dynamic")
+    if not IsValid(entity) then return false, "could not create billboard preview" end
+    entity:SetModel(model)
+    if wallMounted then
+        entity:SetPos(ahead.HitPos + ahead.HitNormal * 0.5)
+        entity:SetAngles(Angle(0, ahead.HitNormal:Angle().y + 90, 0))
+    else
+        entity:SetPos(ground.HitPos + Vector(0, 0, variant == "panel" and 96 or 2))
+        entity:SetAngles(Angle(0, (target:GetPos() - entity:GetPos()):Angle().y + 90, 0))
+    end
+    entity:Spawn()
+    entity:Activate()
+    entity:SetSolid(SOLID_NONE)
+    entity:SetNotSolid(true)
+    local lamp
+    if entry.light then
+        local light = entry.light
+        if type(light.origin) ~= "table" or type(light.angles) ~= "table" or
+            #light.origin ~= 3 or #light.angles ~= 3 or type(light.color) ~= "string" or
+            type(light.fov) ~= "number" or light.fov <= 0 or light.fov > 170 or
+            type(light.farZ) ~= "number" or light.farZ <= 1 or light.farZ > 512 then
+            entity:Remove()
+            return false, "invalid generated lamp placement"
+        end
+        for index = 1, 3 do
+            if type(light.origin[index]) ~= "number" or type(light.angles[index]) ~= "number" or
+                light.origin[index] ~= light.origin[index] or light.angles[index] ~= light.angles[index] or
+                math.abs(light.origin[index]) > 512 or math.abs(light.angles[index]) > 360 then
+                entity:Remove()
+                return false, "invalid generated lamp transform"
+            end
+        end
+        lamp = ents.Create("env_projectedtexture")
+        if not IsValid(lamp) then
+            entity:Remove()
+            return false, "could not create the billboard preview light"
+        end
+        local position, angles = LocalToWorld(Vector(unpack(light.origin)), Angle(unpack(light.angles)),
+            entity:GetPos(), entity:GetAngles())
+        lamp:SetPos(position)
+        lamp:SetAngles(angles)
+        lamp:SetKeyValue("lightcolor", light.color)
+        lamp:SetKeyValue("lightfov", tostring(light.fov))
+        lamp:SetKeyValue("nearz", "1")
+        lamp:SetKeyValue("farz", tostring(light.farZ))
+        lamp:SetKeyValue("enableshadows", "0")
+        lamp:SetKeyValue("lightworld", "1")
+        lamp:SetKeyValue("spawnflags", "1")
+        lamp:Spawn()
+        lamp:Activate()
+        entity:DeleteOnRemove(lamp)
+    end
+    if IsValid(target.ZM_DevSign) then target.ZM_DevSign:Remove() end
+    target.ZM_DevSign = entity
+    timer.Simple(180, function() if IsValid(entity) then entity:Remove() end end)
+    DevConsole:Report("signPreview", {
+        model = entity:GetModel(), materials = entity:GetMaterials(), variant = variant,
+        projectedLight = IsValid(lamp),
+        lightModel = IsValid(lamp) and lamp:GetModel() or nil,
+        lightAngles = IsValid(lamp) and { lamp:GetAngles().p, lamp:GetAngles().y, lamp:GetAngles().r } or nil,
+        origin = { x = entity:GetPos().x, y = entity:GetPos().y, z = entity:GetPos().z },
+        yaw = entity:GetAngles().y, expiresIn = 180
+    })
+    return true, "original billboard preview created; non-solid and removed after 180 seconds"
+end
+
+local function removeClothingProbe(entities)
+    for _, entity in ipairs(entities or {}) do
+        if IsValid(entity) then entity:Remove() end
+    end
+end
+
+DevConsole.DirectCommands.zombiesim_dev_clothing_model = function(argumentString)
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    if not target:Alive() or not target.ZM_PersistentStateLoaded then return false, "deploy a living survivor first" end
+    local mode = string.Trim(argumentString or "")
+    local models = { male = "models/player/group01/male_03.mdl", female = "models/player/group01/female_01.mdl",
+        unsupported = "models/player/group01/male_01.mdl" }
+    if mode ~= "restore" and not models[mode] then
+        return false, "usage: zombiesim_dev_clothing_model male|female|unsupported|restore"
+    end
+    local characterKey = ZM_Util.CharacterKeyFor(target)
+    if target.ZM_DevClothingModel and target.ZM_DevClothingModel.characterKey ~= characterKey then
+        target.ZM_DevClothingModel = nil
+        return false, "character changed; discarded the previous temporary model record"
+    end
+    if mode == "restore" then
+        local saved = target.ZM_DevClothingModel
+        if not saved then return false, "no temporary clothing-model change to restore" end
+        target:SetModel(saved.model)
+        target:SetSkin(saved.skin)
+        for group, value in pairs(saved.bodygroups) do target:SetBodygroup(group, value) end
+        target.ZM_DevClothingModel = nil
+    else
+        if not target.ZM_DevClothingModel then
+            local saved = { model = target:GetModel(), skin = target:GetSkin(), bodygroups = {}, characterKey = characterKey }
+            for group = 0, target:GetNumBodyGroups() - 1 do saved.bodygroups[group] = target:GetBodygroup(group) end
+            target.ZM_DevClothingModel = saved
+        end
+        target:SetModel(models[mode])
+        target:SetSkin(0)
+        for group = 0, target:GetNumBodyGroups() - 1 do target:SetBodygroup(group, 0) end
+    end
+    local hands = target:GetHands()
+    if IsValid(hands) then GAMEMODE:PlayerSetHandsModel(target, hands) end
+    DevConsole:Report("clothingModel", { model = target:GetModel(), temporary = target.ZM_DevClothingModel ~= nil,
+        persistedAppearanceChanged = false })
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_clothing_uv = function(argumentString)
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    local arguments = string.Explode(" ", string.Trim(argumentString or ""), false)
+    local action, variant = arguments[1], arguments[2] or "current"
+    local finish = arguments[3] or "uv"
+    local style = arguments[4] or "base"
+    local styles = { base = true, chest = true, chest_left = true, chest_right = true, arm_left = true, arm_right = true,
+        back_small = true, front_full = true, back_full = true, ["repeat"] = true, pants_leg = true, pants_leg_right = true,
+        pants_cuff = true, pants_cuff_right = true, pants_back_left = true, pants_back_right = true,
+        arm_back_left = true, arm_back_right = true }
+    local legStyle = string.match(style, "^pants_") ~= nil
+    if (action ~= "on" and action ~= "off") or #arguments > 4 or not styles[style] or
+        (style ~= "base" and style ~= "repeat" and not legStyle and finish ~= "shirt" and finish ~= "both") or
+        (legStyle and finish ~= "pants" and finish ~= "both") or
+        (style == "repeat" and finish == "uv") or
+        (finish ~= "uv" and finish ~= "shirt" and finish ~= "pants" and finish ~= "both") or
+        (variant ~= "current" and variant ~= "male" and variant ~= "female") then
+        return false, "usage: zombiesim_dev_clothing_uv on [current|male|female] [uv|shirt|pants|both] [base|chest|chest_left|chest_right|arm_left|arm_right|back_small|front_full|back_full|repeat|pants_leg|pants_leg_right|pants_cuff|pants_cuff_right|pants_back_left|pants_back_right|arm_back_left|arm_back_right] or off"
+    end
+    if action == "off" then
+        removeClothingProbe(target.ZM_DevClothingProbe)
+        target.ZM_DevClothingProbe = nil
+        return true, "clothing UV fixtures removed"
+    end
+    if not target:Alive() or target.ZM_PersistentStateLoaded ~= true or ZM_World.LauncherMapProfiles[game.GetMap()] then
+        return false, "deploy a living survivor before previewing clothing UVs"
+    end
+    local model = variant == "current" and target:GetModel() or "models/player/group01/" .. variant .. "_01.mdl"
+    if finish ~= "uv" then
+        model = variant == "male" and "models/player/group01/male_03.mdl" or model
+        if model ~= "models/player/group01/male_03.mdl" and model ~= "models/player/group01/female_01.mdl" then
+            return false, "finish prototype supports male_03 and female_01 only; use male or female explicitly"
+        end
+        local sex = model == "models/player/group01/male_03.mdl" and "male" or "female"
+        local shirt = "shirt_" .. sex .. (style ~= "base" and not legStyle and "_" .. style or "")
+        local pants = legStyle and "pants_" .. sex .. "_" .. style or "pants" .. (style == "repeat" and "_repeat" or "")
+        local required = finish == "shirt" and { shirt } or finish == "pants" and { pants } or { shirt, pants }
+        for _, garment in ipairs(required) do
+            if not file.Exists("materials/models/zombiesim/clothing/prototype_" .. garment .. ".vtf", "GAME") then
+                return false, "prototype artwork is missing; run bin/build_clothing_prototype.ps1"
+            end
+        end
+    end
+    if not table.HasValue(ZM_CharacterRules.Models, model) or not util.IsValidModel(model) then
+        return false, "clothing UV preview requires an available allowlisted citizen model"
+    end
+    local material = "models/zombiesim/clothing/uv_probe"
+    if not file.Exists("materials/" .. material .. ".vmt", "GAME") or not file.Exists("materials/" .. material .. ".vtf", "GAME") then
+        return false, "UV probe material is missing; run bin/build_clothing_uv_probe.ps1"
+    end
+    local _, aim = target:GetLevelAim()
+    local forward = Vector(aim.x, aim.y, 0)
+    if forward:LengthSqr() < 0.01 then return false, "aim toward open level ground, not straight up or down" end
+    forward:Normalize()
+    local right = forward:Angle():Right()
+    local filter = { target }
+    table.Add(filter, target.ZM_DevClothingProbe or {})
+    local function findPosition(position)
+        local floor = util.TraceLine({
+            start = position + Vector(0, 0, 48), endpos = position - Vector(0, 0, 128),
+            filter = filter, mask = MASK_NPCSOLID
+        })
+        if not floor.Hit or floor.StartSolid or floor.HitNormal.z < 0.7 then
+            return nil
+        end
+        position = floor.HitPos + Vector(0, 0, 2)
+        local clearance = util.TraceHull({
+            start = position, endpos = position, mins = Vector(-20, -20, 1), maxs = Vector(20, 20, 76),
+            filter = filter, mask = MASK_NPCSOLID
+        })
+        if clearance.Hit or clearance.StartSolid then return nil end
+        return position
+    end
+    local positions
+    for _, distance in ipairs({ 144, 256, 368 }) do
+        for _, offset in ipairs({ 0, -160, 160 }) do
+            local center = target:GetPos() + forward * distance + right * offset
+            local pair = { findPosition(center - right * 64), findPosition(center + right * 64) }
+            local clear = pair[1] ~= nil and pair[2] ~= nil
+            if clear then
+                local yaw = (target:GetPos() - pair[2]):Angle().y
+                for _, camera in ipairs({ Vector(112, 0, 46), Vector(-112, 0, 46), Vector(0, 112, 46), Vector(0, -112, 46) }) do
+                    local origin = LocalToWorld(camera, Angle(), pair[2], Angle(0, yaw, 0))
+                    local trace = util.TraceLine({
+                        start = pair[2] + Vector(0, 0, 38), endpos = origin, filter = filter, mask = MASK_NPCSOLID
+                    })
+                    if trace.Hit or trace.StartSolid then clear = false break end
+                end
+            end
+            if clear then positions = pair break end
+        end
+        if positions then break end
+    end
+    if not positions then return false, "no clear fixture/camera area nearby; face open level ground and retry" end
+    local fixtures, records = {}, {}
+    for index = 1, 2 do
+        local entity = ents.Create("prop_dynamic")
+        if not IsValid(entity) then
+            removeClothingProbe(fixtures)
+            return false, "could not create clothing UV fixture"
+        end
+        fixtures[index] = entity
+        entity:SetModel(model)
+        entity:SetPos(positions[index])
+        entity:SetAngles(Angle(0, (target:GetPos() - positions[index]):Angle().y, 0))
+        entity:Spawn()
+        entity:Activate()
+        entity:SetSolid(SOLID_NONE)
+        entity:SetNotSolid(true)
+        local bodySlot
+        for slot, path in ipairs(entity:GetMaterials()) do
+            if string.lower(path):match("^models/humans/[a-z]+/group01/players_sheet$") then
+                if bodySlot ~= nil then
+                    removeClothingProbe(fixtures)
+                    return false, "ambiguous clothing body material on preview model"
+                end
+                bodySlot = slot - 1
+            end
+        end
+        if bodySlot == nil then
+            removeClothingProbe(fixtures)
+            return false, "preview model has no verified group01 clothing body material"
+        end
+        if index == 2 then
+            if finish == "uv" then entity:SetSubMaterial(bodySlot, material)
+            else
+                entity:SetNWString("ZM_DevClothingFinish", finish)
+                entity:SetNWString("ZM_DevClothingStyle", style)
+            end
+        end
+        target:DeleteOnRemove(entity)
+        records[index] = {
+            entityIndex = entity:EntIndex(), model = model, bodySlot = bodySlot,
+            checker = index == 2 and finish == "uv", finish = index == 2 and finish or "stock",
+            style = index == 2 and style or "stock", override = entity:GetSubMaterial(bodySlot),
+            position = { x = positions[index].x, y = positions[index].y, z = positions[index].z }
+        }
+    end
+    removeClothingProbe(target.ZM_DevClothingProbe)
+    target.ZM_DevClothingProbe = fixtures
+    timer.Simple(300, function() removeClothingProbe(fixtures) end)
+    DevConsole:Report("clothingUvPreview", { fixtures = records, expiresIn = 300 })
+    return true, "two non-solid clothing fixtures created: stock and " .. finish .. " preview; expire after 300 seconds"
+end
+
+DevConsole.DirectCommands.zombiesim_dev_clothing_capture = function(argumentString)
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    local arguments = string.Explode(" ", string.Trim(argumentString or ""), false)
+    local label, view = arguments[1], arguments[2]
+    local offsets = {
+        front = Vector(112, 0, 46), back = Vector(-112, 0, 46),
+        left = Vector(0, 112, 46), right = Vector(0, -112, 46), neckline = Vector(48, 0, 57)
+    }
+    if #arguments ~= 2 or not offsets[view] or not label or #label > 48 or not label:match("^[%w_-]+$") then
+        return false, "usage: zombiesim_dev_clothing_capture <label> <front|back|left|right|neckline>"
+    end
+    local fixtures = target.ZM_DevClothingProbe
+    local entity = fixtures and fixtures[2]
+    if not IsValid(entity) then return false, "create clothing UV fixtures before capturing them" end
+    local origin = entity:LocalToWorld(offsets[view])
+    local focus = entity:GetPos() + Vector(0, 0, view == "neckline" and 55 or 38)
+    local trace = util.TraceLine({ start = focus, endpos = origin, filter = { target, entity }, mask = MASK_NPCSOLID })
+    if trace.Hit or trace.StartSolid then return false, "an obstacle blocks this clothing camera angle; reposition the fixtures" end
+    local angles = (focus - origin):Angle()
+    return DevConsole.DirectCommands.zombiesim_dev_capture(string.format("%s %.3f %.3f %.3f %.3f %.3f",
+        label, angles.p, angles.y, origin.x, origin.y, origin.z))
 end
 
 // Bridge-only: uses a cell transition gate through the normal gate service, as if the player pressed Use.

@@ -1,4 +1,5 @@
-// Server-only test harness shared by the zn_test_* suites. A suite collects named cases; each case body receives
+// Shared suite runner; recording, stash stubs and command registration are server-only.
+// A suite collects named cases; each case body receives
 // check(condition, message). Running a suite records PASS/FAIL lines, writes data/zombiesim/<file>, and reports
 // the summary through the dev bridge.
 ZM_TestHarness = ZM_TestHarness or {}

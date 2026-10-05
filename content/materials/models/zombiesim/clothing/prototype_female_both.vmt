@@ -1,0 +1,8 @@
+"Patch"
+{
+    "include" "materials/models/humans/female/group01/players_sheet.vmt"
+    "replace"
+    {
+        "$basetexture" "zombiesim_clothing_female_both_v2"
+    }
+}

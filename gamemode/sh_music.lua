@@ -46,7 +46,7 @@ function Music.Validate(data, exists, knownTags, knownZones)
                 if tracks[track.id] then fail(path .. ".id", "duplicate track id") end
                 if type(track.name) ~= "string" or track.name == "" then fail(path .. ".name", "is required") end
                 if not finite(track.duration) or track.duration <= 0 then fail(path .. ".duration", "must be a positive duration") end
-                if type(track.file) ~= "string" or not string.match(track.file, "^sounds/music/[%w _%-]+%.mp3$") then
+                if type(track.file) ~= "string" or not string.match(track.file, "^sounds?/music/[%w _%-]+%.mp3$") then
                     fail(path .. ".file", "must be a packaged ASCII music MP3 path")
                 elseif not exists(track.file) then
                     fail(path .. ".file", "music file is missing: " .. track.file)

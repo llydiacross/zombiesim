@@ -10,6 +10,142 @@ local profiledEvents = {
     "DrawOverlay", "HUDShouldDraw"
 }
 local outputPath = "zombiesim/hook_profile.json"
+local captureRequests = {}
+
+concommand.Add("zombiesim_dev_ui", function(_, _, arguments)
+    local survivor = LocalPlayer()
+    if not IsValid(survivor) or not survivor:IsAdmin() or not ZM_World or ZM_World.ActiveProfile ~= "preview" then
+        ErrorNoHalt("[ZombieSim] UI inspection requires a preview admin.\n")
+        return
+    end
+    local mode = arguments[1]
+    if #arguments ~= 1 or (mode ~= "inventory" and mode ~= "scoreboard" and mode ~= "wardrobe" and mode ~= "close") then
+        ErrorNoHalt("[ZombieSim] Usage: zombiesim_dev_ui inventory|scoreboard|wardrobe|close\n")
+        return
+    end
+    Profiler.LastUIRequest = { mode = mode, receivedAt = RealTime() }
+    if mode == "inventory" then
+        ZM_Inventory:Open()
+    elseif mode == "scoreboard" then
+        ZM_Scoreboard:Open()
+    elseif mode == "wardrobe" then
+        ZM_Wardrobe:Open()
+    else
+        if IsValid(ZM_Inventory.Frame) then ZM_Inventory.Frame:Close() end
+        if IsValid(ZM_Scoreboard.Frame) then ZM_Scoreboard.Frame:Remove() end
+        if ZM_Wardrobe and IsValid(ZM_Wardrobe.Frame) then ZM_Wardrobe.Frame:Close() end
+    end
+end)
+
+concommand.Add("zombiesim_dev_capture", function(_, _, arguments)
+    local player = LocalPlayer()
+    local label = arguments[1] or ""
+    if not IsValid(player) or not player:IsAdmin() or not ZM_World or ZM_World.ActiveProfile ~= "preview" then
+        ErrorNoHalt("[ZombieSim] Screenshot capture requires a preview admin.\n")
+        return
+    end
+    if (#arguments ~= 1 and #arguments ~= 3 and #arguments ~= 6) or
+        #label < 1 or #label > 48 or not string.match(label, "^[%w_-]+$") then
+        ErrorNoHalt("[ZombieSim] Invalid screenshot label.\n")
+        return
+    end
+    local numbers = {}
+    for index = 2, #arguments do
+        local value = tonumber(arguments[index])
+        if not value or value ~= value or math.abs(value) > 32768 then
+            ErrorNoHalt("[ZombieSim] Screenshot angles/origin must be finite numbers within engine bounds.\n")
+            return
+        end
+        numbers[index] = value
+    end
+    if #captureRequests >= 8 then
+        ErrorNoHalt("[ZombieSim] Screenshot queue is full; wait for pending captures.\n")
+        return
+    end
+    captureRequests[#captureRequests + 1] = {
+        label = label, requestedAt = RealTime(),
+        angles = #arguments > 1 and Angle(math.Clamp(numbers[2], -89, 89), numbers[3], 0) or nil,
+        origin = #arguments == 6 and Vector(numbers[4], numbers[5], numbers[6]) or nil
+    }
+end)
+
+// Renders a development view over the frame; RenderScene does not run for render.RenderView, so the skybox view
+// basis is set here and restored afterwards.
+local function renderCaptureView(angles, requestedOrigin)
+    local player = LocalPlayer()
+    local skybox = ZM_Skybox
+    local saved = skybox and skybox.ViewOrigin and { Vector(skybox.ViewOrigin), skybox.ViewForward, skybox.ViewRight, skybox.ViewUp }
+    local origin = requestedOrigin or player:EyePos()
+    if saved then
+        skybox.ViewOrigin:Set(origin)
+        skybox.ViewForward, skybox.ViewRight, skybox.ViewUp = angles:Forward(), angles:Right(), angles:Up()
+    end
+    local ok, renderError = xpcall(function()
+        render.RenderView({ origin = origin, angles = angles, x = 0, y = 0, w = ScrW(), h = ScrH(), fov = 75, drawhud = false, drawviewmodel = false })
+    end, debug.traceback)
+    if saved then
+        skybox.ViewOrigin:Set(saved[1])
+        skybox.ViewForward, skybox.ViewRight, skybox.ViewUp = saved[2], saved[3], saved[4]
+    end
+    if not ok then
+        ErrorNoHalt("[ZombieSim] Development capture view failed: " .. tostring(renderError) .. "\n")
+        return nil
+    end
+    return origin
+end
+
+local function captureFrame(afterVGUI)
+    local request = captureRequests[1]
+    if not request or Profiler.LastCaptureFrame == FrameNumber() then return end
+    local visibleUI = (ZM_Inventory and IsValid(ZM_Inventory.Frame)) or
+        (ZM_Scoreboard and IsValid(ZM_Scoreboard.Frame)) or (ZM_Wardrobe and IsValid(ZM_Wardrobe.Frame))
+    local needsVGUI = not request.angles and visibleUI == true
+    if needsVGUI ~= afterVGUI then return end
+    if ZM_LoadingScreen and ZM_LoadingScreen:IsHidingHud() then
+        if RealTime() - request.requestedAt < 30 then return end
+        table.remove(captureRequests, 1)
+        ErrorNoHalt("[ZombieSim] Screenshot timed out behind the loading screen.\n")
+        return
+    end
+    table.remove(captureRequests, 1)
+    Profiler.LastCaptureFrame = FrameNumber()
+    local captureOrigin = request.angles and renderCaptureView(request.angles, request.origin)
+    if request.angles and not captureOrigin then return end
+    local data = render.Capture({ format = "png", x = 0, y = 0, w = ScrW(), h = ScrH(), alpha = false })
+    if not data then
+        ErrorNoHalt("[ZombieSim] Screenshot capture failed; close the Escape menu and retry.\n")
+        return
+    end
+    file.CreateDir("zombiesim/screenshots")
+    local path = "zombiesim/screenshots/" .. request.label
+    file.Write(path .. ".png", data)
+    file.Write(path .. ".json", util.TableToJSON({
+        map = game.GetMap(), capturedAt = os.time(), requestedAt = request.requestedAt,
+        afterVGUI = afterVGUI, frameNumber = FrameNumber(),
+        viewOrigin = captureOrigin or ZM_Skybox and ZM_Skybox.ViewOrigin,
+        viewForward = request.angles and request.angles:Forward() or ZM_Skybox and ZM_Skybox.ViewForward,
+        skybox = ZM_Skybox and ZM_Skybox:GetDiagnosticSnapshot(),
+        clothing = ZM_ClothingPreview and ZM_ClothingPreview:GetDiagnosticSnapshot(),
+        equippedClothing = ZM_Clothing and ZM_Clothing.GetDiagnosticSnapshot and ZM_Clothing:GetDiagnosticSnapshot(),
+        wardrobe = ZM_Wardrobe and ZM_Wardrobe:GetDiagnosticSnapshot(),
+        ui = { request = Profiler.LastUIRequest,
+            inventory = ZM_Inventory and IsValid(ZM_Inventory.Frame),
+            scoreboard = ZM_Scoreboard and IsValid(ZM_Scoreboard.Frame) },
+        fog = ZM_Atmosphere and ZM_Atmosphere:GetFogSettings(),
+        lightScale = GetConVar("zombiesim_sky_light_scale"):GetFloat(),
+        detail = GetConVar("zombiesim_sky_detail"):GetInt(),
+        props = GetConVar("zombiesim_sky_props"):GetFloat(),
+        fires = GetConVar("zombiesim_sky_fires"):GetBool()
+    }, true))
+    print("[ZombieSim] Screenshot saved to data/" .. path .. ".png")
+end
+
+hook.Add("PostRender", "ZM.DevProfiler.Capture", function()
+    captureFrame(false)
+end)
+hook.Add("PostRenderVGUI", "ZM.DevProfiler.CaptureUI", function()
+    captureFrame(true)
+end)
 
 local function restoreHooks()
     for _, entry in ipairs(Profiler.Wrapped or {}) do

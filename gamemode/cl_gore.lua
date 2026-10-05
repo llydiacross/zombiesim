@@ -277,7 +277,8 @@ local function buildStumps(entity)
             if capture then
                 local materials = {}
                 for index in ipairs(entity:GetMaterials()) do
-                    materials[index - 1] = entity:GetSubMaterial(index - 1)
+                    materials[index - 1] = ZM_Clothing and ZM_Clothing:GetEntitySubMaterial(entity, index - 1) or
+                        entity:GetSubMaterial(index - 1)
                 end
                 Effects.PushBounded(GoreClient.LimbSpawns, {
                     model = entity:GetModel(), skin = entity:GetSkin(), region = region, capture = capture, event = event,
@@ -393,6 +394,7 @@ local function spawnLimb(spawn)
     local spin = spawn.region == "legs" and 120 or 400
     addLimb({
         entity = limb,
+        materials = table.Copy(spawn.materials or {}),
         rigid = true,
         velocity = event.direction * event.force * (spawn.region == "legs" and 0.3 or 0.6) + Vector(0, 0, spawn.region == "head" and 200 or 140),
         angularVelocity = Angle(math.Rand(-spin, spin), math.Rand(-spin, spin), math.Rand(-spin, spin)),

@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "image": "deer.png",
+  "provenance": "User-supplied development artwork; redistribution rights must be confirmed before release.",
+  "repeat": {
+    "shirt": { "motifSize": [48, 60], "spacing": [12, 12], "offset": [0, 0] },
+    "pants": { "motifSize": [32, 40], "spacing": [24, 24], "offset": [0, 0] }
+  },
+  "pantsLeg": {
+    "id": "pants_leg",
+    "size": [88, 144],
+    "male": [{ "uv": [784, 40, 88, 144], "source": [0, 0, 88, 144] }],
+    "female": [{ "uv": [812, 20, 88, 144], "source": [0, 0, 88, 144] }]
+  },
+  "pantsLegRight": {
+    "id": "pants_leg_right",
+    "size": [88, 144],
+    "male": [{ "uv": [640, 40, 88, 144], "source": [0, 0, 88, 144] }],
+    "female": [{ "uv": [644, 20, 88, 144], "source": [0, 0, 88, 144] }]
+  },
+  "styles": [
+    {
+      "id": "chest",
+      "size": [120, 90],
+      "male": [{ "uv": [172, 772, 120, 90], "source": [0, 0, 120, 90] }],
+      "female": [{ "uv": [191, 772, 120, 90], "source": [0, 0, 120, 90] }]
+    },
+    {
+      "id": "chest_left",
+      "size": [44, 54],
+      "male": [{ "uv": [260, 752, 44, 54], "source": [0, 0, 44, 54] }],
+      "female": [{ "uv": [284, 736, 44, 54], "source": [0, 0, 44, 54] }]
+    },
+    {
+      "id": "chest_right",
+      "size": [44, 54],
+      "male": [{ "uv": [162, 752, 44, 54], "source": [0, 0, 44, 54] }],
+      "female": [{ "uv": [174, 736, 44, 54], "source": [0, 0, 44, 54] }]
+    },
+    {
+      "id": "arm_left",
+      "size": [36, 48],
+      "male": [{ "uv": [704, 818, 36, 48], "source": [0, 0, 36, 48] }],
+      "female": [{ "uv": [740, 816, 36, 48], "source": [0, 0, 36, 48] }]
+    },
+    {
+      "id": "arm_right",
+      "size": [36, 48],
+      "male": [{ "uv": [576, 818, 36, 48], "source": [0, 0, 36, 48] }],
+      "female": [{ "uv": [562, 816, 36, 48], "source": [0, 0, 36, 48] }]
+    },
+    {
+      "id": "back_small",
+      "size": [60, 74],
+      "male": [
+        { "uv": [384, 716, 60, 74], "source": [0, 0, 60, 74] }
+      ],
+      "female": [
+        { "uv": [408, 716, 60, 74], "source": [0, 0, 60, 74] }
+      ]
+    },
+    {
+      "id": "front_full",
+      "size": [176, 224],
+      "male": [{ "uv": [144, 764, 176, 224], "source": [0, 0, 176, 224] }],
+      "female": [{ "uv": [163, 764, 176, 224], "source": [0, 0, 176, 224] }]
+    },
+    {
+      "id": "back_full",
+      "size": [176, 224],
+      "male": [
+        { "uv": [370, 764, 88, 224], "source": [0, 0, 88, 224] },
+        { "uv": [8, 764, 88, 224], "source": [88, 0, 88, 224] }
+      ],
+      "female": [
+        { "uv": [392, 764, 88, 224], "source": [0, 0, 88, 224] },
+        { "uv": [8, 764, 88, 224], "source": [88, 0, 88, 224] }
+      ]
+    }
+  ]
+}

@@ -20,6 +20,9 @@ local function activeEntries()
     elseif not ZM_Preview or not ZM_Preview:IsActive() then
         table.insert(active, { id = "map", label = "MAP" })
     end
+    if ZM_Wardrobe and ZM_Wardrobe:IsAvailable() then
+        table.insert(active, { id = "wardrobe", label = "WARDROBE" })
+    end
 
     local sliceAngle = 360 / #active
     for index, entry in ipairs(active) do
@@ -221,9 +224,6 @@ function ZM_Options:BuildPanel(panel)
         },
         { label = "Geiger volume (0 off)", convar = "zombiesim_geiger_volume", minimum = 0, maximum = 1, decimals = 2 },
         { label = "Environment music (0 off)", convar = "zombiesim_music_enabled", minimum = 0, maximum = 1, decimals = 0 },
-        { label = "Game master volume", convar = "volume", minimum = 0, maximum = 1, decimals = 2 },
-        { label = "Game sound effects volume", convar = "volume_sfx", minimum = 0, maximum = 1, decimals = 2 },
-        { label = "Game music volume (0 pauses)", convar = "snd_musicvolume", minimum = 0, maximum = 1, decimals = 2 },
         { label = "Geiger meter pulse (0 static)", convar = "zombiesim_geiger_visual", minimum = 0, maximum = 1, decimals = 2 },
         { label = "Radiation corners (0 off)", convar = "zombiesim_radiation_corners", minimum = 0, maximum = 1, decimals = 2 },
         { label = "Radiation warning symbol (0 off)", convar = "zombiesim_radiation_symbol", minimum = 0, maximum = 1, decimals = 0 },
@@ -250,6 +250,27 @@ function ZM_Options:BuildPanel(panel)
         slider:SetConVar(setting.convar)
     end
 
+    // Lua cannot write these engine audio convars (https://wiki.facepunch.com/gmod/Blocked_ConCommands), so a bound
+    // slider errors whenever it writes back; show the values and point players to the engine's own Audio options.
+    local engineAudio = vgui.Create("DLabel", panel)
+    engineAudio:Dock(TOP)
+    engineAudio:DockMargin(4, 0, 4, 8)
+    engineAudio:SetTall(34)
+    engineAudio:SetWrap(true)
+    engineAudio:SetTextColor(ZM_DermaSkin.Palette.text)
+    engineAudio:SetTooltip("Garry's Mod blocks gamemodes from changing these values. Music follows the engine Music volume.")
+    local function audioValue(name)
+        local convar = GetConVar(name)
+        return convar and string.format("%.2f", convar:GetFloat()) or "?"
+    end
+    engineAudio.NextRefresh = 0
+    engineAudio.Think = function(self)
+        if RealTime() < self.NextRefresh then return end
+        self.NextRefresh = RealTime() + 0.5
+        self:SetText(string.format("Game volume - master %s, effects %s, music %s (0 pauses). Change these in Garry's Mod Options > Audio.",
+            audioValue("volume"), audioValue("volume_sfx"), audioValue("snd_musicvolume")))
+    end
+
     local filmGrain = vgui.Create("DCheckBoxLabel", panel)
     filmGrain:Dock(TOP)
     filmGrain:DockMargin(4, 4, 4, 8)
@@ -265,6 +286,72 @@ function ZM_Options:BuildPanel(panel)
         screenEffects:SetTextColor(ZM_DermaSkin.Palette.text)
         screenEffects:SetTooltip("Full-screen colour correction for weather and time of day. Turning it off also hides film grain.")
         screenEffects:SetConVar("zombiesim_screen_effects")
+    end
+
+    if ZM_Skybox then
+        local skyLabel = vgui.Create("DLabel", panel)
+        skyLabel:Dock(TOP)
+        skyLabel:DockMargin(4, 10, 4, 4)
+        skyLabel:SetTall(18)
+        skyLabel:SetText("Skybox - live tuning")
+        skyLabel:SetTextColor(ZM_DermaSkin.Palette.text)
+        local skyHint = vgui.Create("DLabel", panel)
+        skyHint:Dock(TOP)
+        skyHint:DockMargin(4, 0, 4, 6)
+        skyHint:SetTall(38)
+        skyHint:SetWrap(true)
+        skyHint:SetText("Saved locally; changes apply immediately. Fog and lighting tuning are not overwritten by quality presets.")
+        skyHint:SetTextColor(ZM_DermaSkin.Palette.text)
+        local skySliders = {
+            { label = "Skybox detail (0 off, 1-2 rings)", name = "zombiesim_sky_detail", minimum = 0, maximum = 2, decimals = 0,
+                tooltip = "Detailed neighbouring cells. 0 disables the city skybox, including distant towers." },
+            { label = "Skybox props / wrecks", name = "zombiesim_sky_props", minimum = 0, maximum = 1,
+                tooltip = "Scales the per-frame prop budget; higher values cost more frame time." }
+        }
+        for _, setting in ipairs(ZM_Skybox.TuningSettings) do skySliders[#skySliders + 1] = setting end
+        for _, setting in ipairs(skySliders) do
+            local slider = vgui.Create("DNumSlider", panel)
+            slider:Dock(TOP)
+            slider:DockMargin(4, 0, 4, 4)
+            setSliderLabel(slider, setting.label)
+            slider:SetMin(setting.minimum)
+            slider:SetMax(setting.maximum)
+            slider:SetDecimals(setting.decimals or 2)
+            slider:SetTooltip(setting.tooltip)
+            slider:SetConVar(setting.name)
+        end
+        for _, setting in ipairs({
+            { label = "Skybox clouds", name = "zombiesim_sky_clouds" },
+            { label = "Skybox fires, smoke and distant combat", name = "zombiesim_sky_fires" },
+            { label = "Matched skybox lighting", name = "zombiesim_sky_matched_lighting" }
+        }) do
+            local checkbox = vgui.Create("DCheckBoxLabel", panel)
+            checkbox:Dock(TOP)
+            checkbox:DockMargin(4, 0, 4, 8)
+            checkbox:SetText(setting.label)
+            checkbox:SetTextColor(ZM_DermaSkin.Palette.text)
+            checkbox:SetConVar(setting.name)
+        end
+        local resetSky = vgui.Create("DButton", panel)
+        resetSky:Dock(TOP)
+        resetSky:DockMargin(4, 0, 4, 8)
+        resetSky:SetTall(28)
+        resetSky:SetText("Reset skybox fog / lighting tuning")
+        resetSky:SetTooltip("Restores the five tuning sliders and matched lighting only; does not change quality, props, clouds, fires or city fog.")
+        resetSky.DoClick = function() ZM_Skybox:ResetTuning() end
+        local copySky = vgui.Create("DButton", panel)
+        copySky:Dock(TOP)
+        copySky:DockMargin(4, 0, 4, 8)
+        copySky:SetTall(28)
+        copySky:SetText("Copy skybox tuning values")
+        copySky:SetTooltip("Copies the five tuning values and matched-lighting toggle so you can share your preferred settings.")
+        copySky.DoClick = function()
+            SetClipboardText(util.TableToJSON(ZM_Skybox:GetTuningSnapshot(), true))
+            copySky:SetText("Skybox tuning values copied")
+            timer.Simple(2, function()
+                if IsValid(copySky) then copySky:SetText("Copy skybox tuning values") end
+            end)
+        end
     end
 
     if ZM_GetMouseSensitivity then
@@ -525,6 +612,8 @@ function QuickMenu:OpenDestination(entryId)
         ZM_Options:Open()
     elseif entryId == "cheats" then
         ZM_PreviewCheats:Open()
+    elseif entryId == "wardrobe" and ZM_Wardrobe then
+        ZM_Wardrobe:Open()
     elseif entryId == "map" and ZM_WorldMap then
         ZM_WorldMap:Open()
     end

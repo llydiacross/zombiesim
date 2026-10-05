@@ -38,6 +38,13 @@ test("music_rejects_duplicate_ids_missing_defaults_files_and_bad_durations", fun
     end
 end)
 
+test("workshop_sound_root_and_loose_development_music_both_validate", function(check)
+    local data = source()
+    for _, track in ipairs(data.tracks) do track.file = string.gsub(track.file, "^sounds/", "sound/") end
+    local result, issues = validate(data, function(path) return string.match(path, "^sound/music/") ~= nil end)
+    check(result ~= nil and #issues == 0, "canonical Workshop sound paths validate without breaking developer sounds paths")
+end)
+
 test("music_rejects_unknown_tags_zones_and_malformed_mapping_shapes", function(check)
     for _, mutate in ipairs({
         function(data) data.environmentTags.misspelled_environment = "city" end,

@@ -38,10 +38,12 @@ foreach ($profile in @('preview', 'city')) {
     if ($selector.Count -ne 1 -or $selector[0].Groups[1].Value -ne $profile) {
         throw "$profile launcher has an incorrect world selector"
     }
+    $text = $text -replace '(?m)^\s*"mapversion" "\d+"', ''
+    $text = $text -replace '(?ms)^cameras\n\{.*?^\}\n', ''
     $texts[$profile] = $text
 }
 
 $normalized = $texts.city.Replace('"world_profile" "city"', '"world_profile" "PROFILE"')
 $preview = $texts.preview.Replace('"world_profile" "preview"', '"world_profile" "PROFILE"')
 if ($normalized -cne $preview) { throw 'Launcher VMFs differ beyond world_profile; check scene and dance-rig parity.' }
-Write-Output 'Launcher parity passed: four named scene entities, Start Off cameras, right-side globe, identical VMFs except world_profile.'
+Write-Output 'Launcher parity passed: four named scene entities, Start Off cameras, right-side globe, identical runtime VMFs except world_profile (Hammer mapversion/cameras ignored).'

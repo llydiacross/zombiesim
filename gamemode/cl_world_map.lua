@@ -13,7 +13,7 @@ local localMapDenSpanScale = 2
 // Ortho ignores fov for projection; a wide fov only keeps any fov-based culling generous
 // (120 degrees reaches the doubled den span from the camera height).
 local localMapCullFieldOfView = 120
-local localMapCaptureVersion = 9
+local localMapCaptureVersion = 10
 local localMapRefreshInterval = 3
 local mapDebugConVar = CreateClientConVar("zombiesim_map_debug", "0", true, false, "Show world map draw diagnostics.")
 
@@ -420,7 +420,7 @@ local function renderLocalMapView(size, span)
     local halfSpan = span * 0.5
     // City recipes carry the 3D skybox room above the cell; an ortho camera inside it would capture only the room.
     local ceiling = ZM_Skybox and ZM_Skybox.GetPlayableCeiling and ZM_Skybox:GetPlayableCeiling()
-    local cameraHeight = ceiling and math.min(localMapCameraHeight, ceiling) or localMapCameraHeight
+    local cameraHeight = ceiling or localMapCameraHeight
     render.RenderView({
         origin = Vector(0, 0, cameraHeight),
         angles = Angle(90, 90, 0),

@@ -129,6 +129,8 @@ concommand.Add("zombiesim_launcher_flexes", function(caller)
 end)
 
 function Launcher:Select(target, slot)
+    local contentReady, contentError = ZM_Distribution:CanDeploy(target)
+    if not contentReady then return false, contentError end
     local characters = ZM_CharacterService
     local existing, readError = characters:GetOwnedCharacter(target, slot)
     if readError then return false, readError end

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "presets": [
+    {
+      "id": "pants_cuff",
+      "alignment": "bottom",
+      "size": [88, 344],
+      "male": [{ "uv": [784, 40, 88, 344], "source": [0, 0, 88, 344] }],
+      "female": [{ "uv": [812, 40, 88, 344], "source": [0, 0, 88, 344] }]
+    },
+    {
+      "id": "pants_cuff_right",
+      "alignment": "bottom",
+      "size": [88, 344],
+      "male": [{ "uv": [640, 40, 88, 344], "source": [0, 0, 88, 344] }],
+      "female": [{ "uv": [644, 40, 88, 344], "source": [0, 0, 88, 344] }]
+    }
+  ]
+}

@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace ZombieSim.Skybox {
     public sealed class VmfNode {
@@ -365,9 +366,18 @@ namespace ZombieSim.Skybox {
         static string F(double v) { return v.ToString("0.######", CultureInfo.InvariantCulture); }
 
         public List<CellModelPart> BuildParts(string recipePath, double scale, Dictionary<string, MaterialInfo> materials, int maxPartVertices, int maxPartMaterials) {
+            return BuildParts(recipePath, scale, materials, maxPartVertices, maxPartMaterials, false);
+        }
+
+        public List<CellModelPart> BuildTowerParts(string recipePath, double scale, Dictionary<string, MaterialInfo> materials, int maxPartVertices, int maxPartMaterials) {
+            return BuildParts(recipePath, scale, materials, maxPartVertices, maxPartMaterials, true);
+        }
+
+        List<CellModelPart> BuildParts(string recipePath, double scale, Dictionary<string, MaterialInfo> materials, int maxPartVertices, int maxPartMaterials, bool towersOnly) {
             var parts = new List<CellModelPart>();
             StringBuilder sb = null; HashSet<string> vertexKeys = null; HashSet<string> partMaterials = null; CellModelPart part = null;
             foreach (var placement in ReadInstances(recipePath)) {
+                if (towersOnly && !Regex.IsMatch(Path.GetFileName(placement.File), @"^tile_skyscraper_[0-9]+[a-z]+_2x\.vmf$", RegexOptions.IgnoreCase)) continue;
                 if (!File.Exists(placement.File)) continue;
                 var mesh = GetTile(placement.File);
                 var lines = new List<string>();

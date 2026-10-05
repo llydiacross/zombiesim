@@ -22,7 +22,8 @@ local menuOwners = {
 	function() return ZM_Inventory end,
 	function() return ZM_Scoreboard end,
 	function() return ZM_Options end,
-	function() return ZM_PreviewCheats end
+	function() return ZM_PreviewCheats end,
+	function() return ZM_Wardrobe end
 }
 
 function AFK:Request(action, menu)

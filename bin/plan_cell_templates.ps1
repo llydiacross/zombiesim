@@ -24,6 +24,11 @@ $profileSettings = $worldGenerationProfile.Config
 $plannerSettings = $generatorSettings.cellPlanning
 $multiTileSettings = if ($plannerSettings.ContainsKey('multiTileFeatures')) { $plannerSettings.multiTileFeatures } else { @{} }
 $buildingSelectionSettings = $plannerSettings.buildingSelection
+$skyscraperCenterPercent = if ($buildingSelectionSettings.ContainsKey('skyscraperCenterPercent')) { [int]$buildingSelectionSettings.skyscraperCenterPercent } else { 0 }
+$skyscraperEdgePercent = if ($buildingSelectionSettings.ContainsKey('skyscraperEdgePercent')) { [int]$buildingSelectionSettings.skyscraperEdgePercent } else { 0 }
+if ($skyscraperCenterPercent -lt 0 -or $skyscraperCenterPercent -gt 100 -or $skyscraperEdgePercent -lt 0 -or $skyscraperEdgePercent -gt $skyscraperCenterPercent) {
+    throw 'Skyscraper selection percentages must satisfy 0 <= edge <= center <= 100.'
+}
 $multiTileEnabled = $multiTileSettings.ContainsKey('enabled') -and [bool]$multiTileSettings.enabled
 $maximumMultiTileFootprint = if ($multiTileSettings.ContainsKey('maximumFootprint')) { [int]$multiTileSettings.maximumFootprint } else { 3 }
 $multiTileBuildingChancePercent = if ($multiTileSettings.ContainsKey('buildingChancePercent')) { [int]$multiTileSettings.buildingChancePercent } else { 0 }
@@ -647,10 +652,29 @@ function Get-BuildingHeightTier {
     param([string]$Template)
 
     $templateName = Split-Path -Leaf $Template
-    if ($templateName -match '_[0-9]+([a-z]+)\.vmf$') {
+    if ($templateName -match '_[0-9]+([a-z]+)(?:_(?:2x|2x2|3x|3x3))?\.vmf$') {
         return $Matches[1].Length
     }
     return 1
+}
+
+function Get-SkyscraperChancePercent {
+    param([object]$Cell, [int]$GridCells)
+
+    if ($GridCells -lt 1) { throw 'Skyscraper centrality requires a positive world grid size.' }
+    $halfSpan = ($GridCells - 1) / 2.0
+    $distance = if ($halfSpan -eq 0) { 0.0 } else {
+        [Math]::Min(1.0, [Math]::Max([Math]::Abs([double]$Cell.x - $halfSpan), [Math]::Abs([double]$Cell.y - $halfSpan)) / $halfSpan)
+    }
+    $smoothDistance = $distance * $distance * (3.0 - 2.0 * $distance)
+    return [int][Math]::Round($skyscraperCenterPercent + ($skyscraperEdgePercent - $skyscraperCenterPercent) * $smoothDistance)
+}
+
+function Test-SkyscraperPreference {
+    param([object]$Cell)
+
+    $roll = Get-PlannerTileHash ([int64]$map.map.seed) ([int]$Cell.x) ([int]$Cell.y) 601
+    return ($roll % 100) -lt (Get-SkyscraperChancePercent $Cell $mapGridCells)
 }
 
 function Get-BuildingTemplatesForDensity {
@@ -2181,8 +2205,20 @@ function Get-CellTilePlacements {
                 $footprint.width -le $maximumMultiTileFootprint -and
                 $footprint.height -le $maximumMultiTileFootprint
             } | Sort-Object)
+            $towerCandidates = @($multiTileCandidates | Where-Object { $_ -match '^buildings/tile_skyscraper_' })
+            $ordinaryCandidates = @($multiTileCandidates | Where-Object { $_ -notmatch '^buildings/tile_skyscraper_' })
+            $selectTower = $towerCandidates.Count -gt 0 -and (Test-SkyscraperPreference $Cell)
+            if ($towerCandidates.Count -gt 0) {
+                $multiTileCandidates = @($ordinaryCandidates)
+                if ($selectTower) {
+                    $weightedTowers = @(Get-BuildingTemplatesForDensity $towerCandidates $BuildingDensityTier)
+                    $towerIndex = [int]((Get-PlannerTileHash $PlacementSeed 0 0 607) % $weightedTowers.Count)
+                    $firstTower = $weightedTowers[$towerIndex]
+                    $multiTileCandidates = @($firstTower) + @($towerCandidates | Where-Object { $_ -ne $firstTower }) + @($ordinaryCandidates)
+                }
+            }
             if ($multiTileCandidates.Count -gt 0) {
-                $candidateStartIndex = [int]([Math]::Abs([int64]$PlacementSeed) % $multiTileCandidates.Count)
+                $candidateStartIndex = if ($selectTower) { 0 } else { [int]([Math]::Abs([int64]$PlacementSeed) % $multiTileCandidates.Count) }
                 for ($candidateOffset = 0; $candidateOffset -lt $multiTileCandidates.Count; $candidateOffset++) {
                     $candidateIndex = ($candidateStartIndex + $candidateOffset) % $multiTileCandidates.Count
                     $candidateTemplate = [string]$multiTileCandidates[$candidateIndex]
@@ -2871,6 +2907,12 @@ foreach ($recipeGroup in @($planCells | Group-Object baseCellTemplateFilename | 
         if ($null -eq $mapCell) { throw "Map cell was not found for variant at $($variantCell.x),$($variantCell.y)" }
         $variantTerrainTemplate = Get-TerrainTemplate $mapCell.environment.terrain
         $variantCell.tilePlacements = @(Get-CellTilePlacements $mapCell $variantTerrainTemplate $variantCell.buildingTemplates $variantCell.landmarkTemplate $variantCell.landmarks $variantCell.environmentProfile $carparkTemplates $decorationTemplates $variantCell.placementSeed $variantCell.buildingDensityTier $variantCell.transportFeature $variantCell.topology $variantCell.orientation $CellTileSize $templateFiles ([bool]$variantCell.forceCarpark) $variantCell.safeZoneEntrance)
+        $variantCell.filenameCodes = Get-RecipeFilenameCodes $variantCell.environmentProfile $variantCell.topology $variantCell.orientation $variantCell.transportFeature $variantCell.buildingDensityTier $variantCell.landmarks $variantCell.tilePlacements $variantCell.safeZoneEntrance
+        $variantBaseFilename = Get-CarparkCoverageFilename (Get-WaterBorderFilename (Get-CellFilename $variantCell.filenameCodes) @(Get-WaterBorderPlan $mapCell)) ([bool]$variantCell.forceCarpark)
+        $variantCell.baseCellTemplateFilename = $variantBaseFilename
+        $variantCell.cellTemplateFilename = Get-CellVariantFilename $variantBaseFilename $variantCell.cellVariant
+        $variantCell.cellTemplatePath = Join-Path $CellDirectory $variantCell.cellTemplateFilename
+        $variantCell.cellTemplateExists = Test-Path $variantCell.cellTemplatePath
     }
 }
 

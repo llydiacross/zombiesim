@@ -4,7 +4,7 @@ ZM_Items = ZM_Items or {}
 local Items = ZM_Items
 
 Items.Containers = { backpack = true, stash = true, equipped = true }
-Items.ContainerCapacity = { backpack = 20, stash = 60, equipped = 4 }
+Items.ContainerCapacity = { backpack = 20, stash = 60, equipped = 6 }
 Items.ArmourSlot = 4
 Items.DefaultJob = "Civilian"
 Items.MaximumWeaponClip = 64
@@ -48,6 +48,7 @@ function Items:IsEquipmentSlot(instance, slot)
     local definition = instance and self:GetDefinition(instance.itemId)
     if not definition then return false end
     if definition.entityClass == "armour" then return slot == self.ArmourSlot end
+    if definition.entityClass == "clothing" then return slot == ZM_Clothing.Slots[definition.clothing.garment] end
     return definition.entityClass == "weapon" and slot >= 1 and slot <= 3
 end
 

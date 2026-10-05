@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "maximumImages": 32,
+  "maximumVariants": 896,
+  "excludeFiles": ["uv_probe.png"],
+  "shirtColours": ["yellow", "blue", "orange", "red", "teal", "green", "pink"],
+  "pantsColours": ["charcoal", "olive", "navy"],
+  "minimumToneContrast": 4.5,
+  "tonePalettes": {
+    "dark": { "shirt": ["white", "grey", "tan"], "pants": ["grey", "tan"] },
+    "light": { "shirt": ["black", "charcoal", "navy", "teal"], "pants": ["charcoal", "olive", "navy"] }
+  },
+  "defaultShirtPlacements": ["chest_left", "chest", "front_full", "back_full"],
+  "colours": {
+    "black": "#181A1C",
+    "white": "#DAD7CF",
+    "grey": "#70767A",
+    "charcoal": "#343A3E",
+    "red": "#873D40",
+    "blue": "#416782",
+    "teal": "#3D7878",
+    "green": "#516B50",
+    "olive": "#626C45",
+    "navy": "#354459",
+    "brown": "#70584A",
+    "tan": "#A68E6A",
+    "purple": "#6E5277",
+    "orange": "#AF7148",
+    "yellow": "#AF9D59",
+    "pink": "#B87594"
+  }
+}

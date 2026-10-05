@@ -1,0 +1,66 @@
+{
+    "schemaVersion":  1,
+    "selfLit":  true,
+    "selfIllumBrightness":  0.85,
+    "materials":  {
+                      "legs":  {
+                                   "baseTexture":  "metal/metalwall021a",
+                                   "normalMap":  "metal/metalwall018a_normal"
+                               },
+                      "rim":  {
+                                  "baseTexture":  "metal/metalwall017a",
+                                  "normalMap":  ""
+                              },
+                      "back":  {
+                                   "baseTexture":  "metal/metalwall025a",
+                                   "normalMap":  ""
+                               }
+                  },
+    "variants":  {
+                     "freestanding":  {
+                                          "model":  "models/zombiesim/signs/alert_billboard.mdl",
+                                          "wallMounted":  false,
+                                          "collision":  true
+                                      },
+                     "panel":  {
+                                   "model":  "models/zombiesim/signs/alert_billboard_panel.mdl",
+                                   "wallMounted":  false,
+                                   "collision":  true
+                               },
+                     "illuminated":  {
+                                         "model":  "models/zombiesim/signs/alert_billboard_illuminated.mdl",
+                                         "wallMounted":  false,
+                                         "collision":  true,
+                                         "light":  {
+                                                       "origin":  [
+                                                                      0,
+                                                                      -56,
+                                                                      298
+                                                                  ],
+                                                       "angles":  [
+                                                                      60,
+                                                                      90,
+                                                                      0
+                                                                  ],
+                                                       "color":  "255 238 208 255",
+                                                       "fov":  120,
+                                                       "farZ":  256
+                                                   }
+                                     },
+                     "wall":  {
+                                  "model":  "models/zombiesim/signs/alert_billboard_wall.mdl",
+                                  "wallMounted":  true,
+                                  "collision":  true
+                              },
+                     "print":  {
+                                   "model":  "models/zombiesim/signs/alert_billboard_print.mdl",
+                                   "wallMounted":  true,
+                                   "collision":  true
+                               },
+                     "poster":  {
+                                    "model":  "models/zombiesim/signs/alert_billboard_poster.mdl",
+                                    "wallMounted":  true,
+                                    "collision":  false
+                                }
+                 }
+}
