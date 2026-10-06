@@ -705,6 +705,124 @@ concommand.Add("zombiesim_dev_test_sky_browser", function()
             for _, failure in ipairs(test.failures) do check(false, failure) end
         end
     end)
+    suite:Add("launcher_fog_available_before_first_flight", function(check)
+        check(isfunction(ZM_SkyInspection.GetLauncherFogSettings), "fog accessor registered before flight validation")
+        check(isfunction(ZM_SkyInspection.UpdateLauncherSlot) and isfunction(ZM_SkyInspection.RenderFlight),
+            "tour and renderer registered on cold load")
+        if not isfunction(ZM_SkyInspection.GetLauncherFogSettings) then return end
+        local inactive = { Rendering = false }
+        check(ZM_SkyInspection.GetLauncherFogSettings(inactive) == nil, "inactive launcher fog lookup is safe")
+    end)
+    suite:Add("launcher_sequence_ends_fully_black", function(check)
+        for _, duration in ipairs({ 10, 20 }) do
+            local state = { authoredCamera = {}, duration = duration }
+            check(ZM_SkyInspection:GetEndFade(state, duration - 1.2) < 0.001, "fade starts during final 1.2 seconds")
+            check(math.abs(ZM_SkyInspection:GetEndFade(state, duration - 0.6) - 0.5) < 0.001, "smooth fade midpoint")
+            check(ZM_SkyInspection:GetEndFade(state, duration) == 1 and
+                ZM_SkyInspection:GetEndFade(state, duration + 0.15) == 1, "black at end and during return hold")
+        end
+        check(ZM_SkyInspection:GetEndFade({ duration = 10 }, 10) == 0, "city/den ending unchanged")
+    end)
+    suite:Add("launcher_automatic_tour_covers_saved_profile_without_changing_it", function(check)
+        local sequence, failure = Palettes:GetLauncherPreviewSequence()
+        check(sequence ~= nil, "preview sequence resolves: " .. tostring(failure))
+        if not sequence then return end
+        local profile = not Palettes.Preview and Palettes:GetProfile(selectedConVar:GetString())
+        check(#sequence == (profile and #Palettes.ContextOrder or 1), "automatic profiles cycle; individuals stay single")
+        if profile then
+            for index, context in ipairs(Palettes.ContextOrder) do
+                check(sequence[index].context == context and sequence[index].id == profile.contexts[context],
+                    "tour shows assigned " .. context .. " slot, including native slots")
+            end
+        end
+        local savedState = ZM_SkyInspection.State
+        local fixture = ZM_TestHarness.NewSuite()
+        fixture:Add("slot_boundaries", function(assert)
+            local state = { sequence = {
+                { id = "natural_day", context = "day" }, { id = "natural_overcast", context = "overcast" },
+                { id = "natural_dusk", context = "dusk" }, { id = "natural_night", context = "night" } } }
+            ZM_SkyInspection.State = state
+            for _, sample in ipairs({ { 0, 1 }, { 4.99, 1 }, { 5, 2 }, { 10, 3 }, { 15, 4 }, { 20, 4 } }) do
+                local ok, err = ZM_SkyInspection:UpdateLauncherSlot(state, sample[1])
+                assert(ok and state.slot == sample[2], "slot at " .. sample[1] .. ": " .. tostring(err))
+                assert(Palettes.ActiveEntry == state.sequence[sample[2]].id, "renderer displays exact tour sky")
+            end
+        end)
+        local result = fixture:Run()
+        ZM_SkyInspection.State = savedState
+        Palettes:Update()
+        for _, test in ipairs(result.cases) do
+            for _, failure in ipairs(test.failures) do check(false, failure) end
+        end
+        check(selectedConVar:GetString() == savedChoice, "tour never writes saved selection")
+    end)
+    suite:Add("launcher_flight_is_smooth_bounded_and_obstruction_checked", function(check)
+        local scene = ZM_LauncherScene
+        local camera = { origin = Vector(-3096, 1016, 8), angles = Angle(0.5, 121.5, -0.85), fov = 90 }
+        local first, firstAngles = scene:GetSkyFlightPose(camera, 0)
+        check(first:DistToSqr(camera.origin) == 0 and firstAngles == camera.angles, "exact authored takeoff pose")
+        local step = scene.SkyFlightDuration / 1200
+        local previous, previousAngles = first, firstAngles
+        local maximumDistance, maximumBank = 0, 0
+        for index = 1, 1200 do
+            local origin, angles = scene:GetSkyFlightPose(camera, index * step)
+            local distance = origin:Distance(previous)
+            check(distance / step < 620, "flight speed bounded at sample " .. index)
+            check(math.abs(math.AngleDifference(angles.y, previousAngles.y)) / step < 70,
+                "turn rate bounded at sample " .. index)
+            check(origin.z >= camera.origin.z and origin.z <= camera.origin.z + scene.SkyFlightHeight + 18,
+                "flight height bounded at sample " .. index)
+            maximumDistance = math.max(maximumDistance, Vector(origin.x - first.x, origin.y - first.y, 0):Length())
+            maximumBank = math.max(maximumBank, math.abs(angles.r))
+            previous, previousAngles = origin, angles
+        end
+        check(maximumDistance > 900 and maximumDistance <= scene.SkyFlightRadius * 2 + 0.001,
+            "flight glides around the island instead of spinning in place")
+        check(maximumBank > 5 and maximumBank < 9, "gentle banking without sharp roll")
+        local nearStart = scene:GetSkyFlightPose(camera, step)
+        local nearEnd = scene:GetSkyFlightPose(camera, scene.SkyFlightDuration - step)
+        check(nearStart:Distance(first) / step < 1 and nearEnd:Distance(previous) / step < 1,
+            "takeoff and finish ease smoothly to rest")
+        local state = { authoredCamera = camera, startOrigin = camera.origin, duration = scene.SkyFlightDuration }
+        local count = 0
+        local clear = ZM_SkyInspection:ValidateLauncherFlight(state, function(trace)
+            count = count + 1
+            check(trace.start ~= nil and trace.endpos ~= nil and trace.mask == MASK_SOLID, "flight corridor hull trace")
+            return { Hit = false, StartSolid = false, AllSolid = false }
+        end)
+        check(clear and count == 121, "entire flight corridor checked before hiding UI")
+        local blocked, failure = ZM_SkyInspection:ValidateLauncherFlight(state, function() return { Hit = true } end)
+        check(not blocked and isstring(failure), "obstruction explicitly refuses the preview")
+    end)
+    suite:Add("launcher_preview_fog_tracks_sky_and_is_render_scoped", function(check)
+        local inspection = ZM_SkyInspection
+        local savedState, savedRendering, savedPreview = inspection.State, inspection.Rendering, Palettes.Preview
+        local savedCapture = ZM_WorldMap and ZM_WorldMap.Capturing
+        for _, context in ipairs(Palettes.ContextOrder) do
+            Palettes.Preview = { id = "natural_" .. context, expiresAt = RealTime() + 60 }
+            local fog, failure = Palettes:GetLauncherPreviewFog()
+            check(fog and fog.context == context and fog.sky == "natural_" .. context, "fog follows sky: " .. tostring(failure))
+            if not fog then continue end
+            check(fog.start > 0 and fog.finish > fog.start and fog.maxDensity > 0 and fog.maxDensity < 1,
+                "bounded non-opaque preview haze")
+            inspection.State = { authoredCamera = {}, launcherFog = fog }
+            inspection.Rendering = false
+            check(inspection:GetLauncherFogSettings() == nil, "main menu and credits do not inherit preview fog")
+            inspection.Rendering = true
+            if ZM_WorldMap then ZM_WorldMap.Capturing = false end
+            check(inspection:GetLauncherFogSettings() == fog, "secondary preview view receives fog")
+            if ZM_WorldMap then
+                ZM_WorldMap.Capturing = true
+                check(inspection:GetLauncherFogSettings() == nil, "map captures excluded from cosmetic fog")
+                ZM_WorldMap.Capturing = false
+            end
+            inspection.State.authoredCamera = nil
+            check(inspection:GetLauncherFogSettings() == nil, "city/den previews do not receive launcher haze")
+        end
+        inspection.State, inspection.Rendering, Palettes.Preview = savedState, savedRendering, savedPreview
+        if ZM_WorldMap then ZM_WorldMap.Capturing = savedCapture end
+        check(selectedConVar:GetString() == savedChoice, "fog fixture leaves saved sky unchanged")
+    end)
     suite:Add("sky_inspection_is_camera_only_and_restores_ui", function(check)
         local Inspection = ZM_SkyInspection
         local position = Vector(LocalPlayer():GetPos())
@@ -713,11 +831,25 @@ concommand.Add("zombiesim_dev_test_sky_browser", function()
         local state = Inspection.State
         if not state then return end
         check(not Browser.Frame:IsVisible() and IsValid(state.frame), "browser hidden behind full-screen HUD-free view")
-        for index = 0, 4 do
-            local elapsed = 0.8 + index / 4 * (Inspection.Duration - 1.6)
-            local view = Inspection:GetView(state, elapsed)
-            check(math.abs(view.angles.y - state.yaw - index * 90) < 0.001, "turn visits sky corner " .. index)
-            check(view.drawhud == false and view.drawviewmodel == false, "inspection view hides HUD and weapon")
+        if not state.authoredCamera then
+            for index = 0, 4 do
+                local elapsed = 0.8 + index / 4 * (Inspection.Duration - 1.6)
+                local view = Inspection:GetView(state, elapsed)
+                check(math.abs(view.angles.y - state.yaw - index * 90) < 0.001, "turn visits sky corner " .. index)
+            end
+        end
+        local view = Inspection:GetView(state, Inspection.Duration * 0.5)
+        check(view.drawhud == false and view.drawviewmodel == false, "inspection view hides HUD and weapon")
+        if state.authoredCamera then
+            local first = Inspection:GetView(state, 0)
+            local last = Inspection:GetView(state, state.duration)
+            check(first.origin:DistToSqr(state.authoredCamera.origin) == 0 and
+                first.angles.p == state.authoredCamera.angles.p and first.angles.y == state.authoredCamera.angles.y and
+                first.angles.r == state.authoredCamera.angles.r and
+                first.fov == state.authoredCamera.fov,
+                "preview launcher starts at its authored camera pose")
+            check(last.origin:DistToSqr(state.origin) < 0.001 and math.abs(last.angles.p + 6) < 0.001 and
+                last.angles.y == state.yaw - 360, "launcher glide completes its circuit above the authored camera")
         end
         local clearedButtons, clearedMovement, retainedAngles = false, false, false
         Inspection:BlockInput({
@@ -728,10 +860,11 @@ concommand.Add("zombiesim_dev_test_sky_browser", function()
         check(clearedButtons and clearedMovement and retainedAngles, "camera preview blocks gameplay input without aim rotation")
         state.frame:OnKeyCodePressed(KEY_SPACE)
         check(not Inspection:IsActive() and Browser.Frame:IsVisible(), "early return restores the same browser")
+        check(not ZM_Music.SkyPreview, "early return releases launcher soundtrack and pending callback ownership")
         check(LocalPlayer():GetPos():DistToSqr(position) == 0, "survivor not teleported")
         check(Inspection:Start(Browser.Frame), "preview reopens")
         if Inspection.State then
-            Inspection.State.startedAt = RealTime() - Inspection.Duration - 1
+            Inspection.State.startedAt = RealTime() - Inspection.State.duration - 1
             Inspection.State.frame:Think()
             check(not Inspection:IsActive() and Browser.Frame:IsVisible(), "timeout restores UI")
         end

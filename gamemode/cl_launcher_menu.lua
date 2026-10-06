@@ -721,6 +721,9 @@ net.Receive("ZM.LauncherStatus", function()
     else
         Menu.Camera = nil
     end
+    local hasPreviewSkyCamera = net.ReadBool()
+    Menu.PreviewSkyCamera = hasPreviewSkyCamera and
+        { origin = net.ReadVector(), angles = net.ReadAngle(), fov = net.ReadFloat() } or nil
     local hasCreditsCamera = net.ReadBool()
     Menu.CreditsCamera = hasCreditsCamera and
         { origin = net.ReadVector(), angles = net.ReadAngle(), fov = net.ReadFloat() } or nil

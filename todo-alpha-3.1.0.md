@@ -684,6 +684,146 @@ Status: **ACTIVE — expanded licensed catalogue and custom palettes implemented
   Default selection or original gameplay location has already been restored.
   Restore/verify Default and existing slot2 Jim to logical22,0 (raw22,12),
   safe-zone none when the user is ready. Do not use refill/origin-reset helpers.
+- **Authored launcher sky camera continuation (2026-10-06).** User supplied the
+  new launcher-level camera and confirmed the city/preview launcher rooms are
+  intentionally distinct. Both authored launchers contain matching Start Off
+  `preview_skybox` point-camera poses. `sv_launcher.lua` transmits that pose and
+  adds its origin to the launcher PVS; the sky inspection uses the fixed authored
+  pose only while a launcher menu is open. Deployed city/den previews retain the
+  existing camera-only upward sweep. The parity script now validates each
+  authored scene's required menu entities/profile independently and checks that
+  the launcher sky cameras match, without claiming full-room VMF parity.
+  Static: GLua 183/0; launcher checks pass. Preview launcher VBSP/VVIS/VRAD all
+  pass and staged hashes match (`DB4A60DDA8D0DC1EEB39238685D209FF803CD8EB3D5A2BACAB3F2361B6C70794`).
+  City launcher and city-cell maps were not built or staged. Garry's Mod was
+  closed during this continuation, so live PVS/render, return-flow and human
+  visual checks remain unverified; Phase H is not accepted.
+- **Launcher camera motion and skybox alignment follow-up (2026-10-06).**
+  User selected a 10-second rise and full turn beginning at the authored camera.
+  The launcher preview now eases from the exact authored origin/angles, retains
+  its FOV, rises 512 units, rotates 360 degrees, and finishes looking upward;
+  deployed city/den behavior is unchanged. User clarified the alignment defect
+  concerns Source's `sky_camera`, not the animated point camera. The installed
+  `garrysmod/bin/base.fgd` documents that the sky-camera origin is the miniature
+  point corresponding to map origin; at scale 16, `mini = sky_camera + map/16`.
+  Reference: [Valve Developer Community 3D Skybox](https://developer.valvesoftware.com/wiki/3D_Skybox);
+  its direct fetch was blocked by the site's anti-bot page, so the installed
+  FGD is the locally inspected evidence for this transform.
+  For this launcher, the full-size island/water center is `(-3072, 1024, -152)`
+  and the miniature ocean center/waterline is `(-7168, 2048, -152)`, so the
+  preview `sky_camera` is now `(-6976, 1984, -142.5)`. This places the authored
+  preview camera above the mini water by the same scaled amount as its full-size
+  height above the island waterline. G-Man entities were not moved. The
+  temporary HDR-fog color experiment was reverted; it was not the alignment
+  fix. Static: GLua 183/0, launcher alignment contract passes, and editor
+  diagnostics report no errors. The preview launcher rebuilt successfully
+  through VBSP/VVIS/VRAD; staged BSP hashes match
+  (`BF76B9B3A75F27E6B1FC02CAED804DF5FE647EE9D1F2DE72317880FCBAB5ABE4`).
+  Live reload and visual verification remain outstanding because the bridge
+  heartbeat stayed stale after the user confirmed readiness. Phase H remains
+  unaccepted.
+- **Launcher alignment accepted; bird-like preview and haze (2026-10-06).**
+  User confirmed the skybox now aligns perfectly, added an invisible G-Man
+  support brush, and saved further authored edits in both launcher VMFs. Those
+  edits and the accepted sky-camera transform are preserved; no maps were
+  rebuilt or staged for this Lua-only follow-up. User chose takeoff from the
+  authored island preview camera, not the main-menu camera. Launcher preview
+  now uses a frame-rate-independent eased circuit (480-unit radius, about
+  512-unit climb, 10 seconds), gentle takeoff pulses, forward-looking glide and
+  soft banking rather than a stationary spin/zenith snap. Shared pose evaluation
+  supplies cached server PVS samples. A client hull preflight refuses blocked
+  corridors before hiding UI, and render-time tracing stops newly blocked
+  flights with an explicit browser error. Client hull checks do not establish
+  server-only physics clearance; actual authored-route clearance needs a client.
+  City/den camera behavior, camera-only input blocking, timeout, Escape/Space
+  and parent cleanup remain unchanged.
+  User also chose selected-sky context haze **only inside the launcher sky
+  preview**, not throughout the menu/credits. The owning Atmosphere fog hooks
+  apply that view's colour/distances to both world and scaled 3D-sky fog; day,
+  overcast, twilight and night haze presets follow the selected catalogue entry.
+  Original procedural horizons temporarily match that haze. Imported-cube
+  haze is context-based, not per-image sampled colour calibration. No server
+  weather, saved selection, map capture or baked lighting changes.
+  Static: GLua183/0; offline execution of the changed Lua methods/fog hooks
+  with mocked engine APIs passes3786 assertions, sampling1200 flight steps:
+  max565.797units/s,67.500degrees/s yaw,8.026degrees bank. Checks include authored
+  start, eased endpoints, shared path, clear/blocked hull responses, unchanged
+  city/den sweep, fog context/scope and1/16miniature distances. Browser suite
+  adds two live regression cases; **not run: game closed**, confirmed by user.
+  New flight/fog appearance, actual scene clearance/PVS, return behavior and
+  representative frame cost remain unverified. Phase H is not accepted.
+- **Launcher fog cold-load regression fix (2026-10-06).** User reported repeated
+  `GetLauncherFogSettings` nil-method errors in the Atmosphere world-fog hook.
+  Root cause was an accidentally nested method declaration inside the flight
+  validation loop, not evidence of a stale client. Moved the accessor to module
+  scope; both fog hooks also tolerate an absent/partially loaded inspection
+  module. Browser regression checks accessor availability before flight tests.
+  Earlier offline checks invoked flight validation first and therefore missed
+  this startup defect. New offline execution loads the entire inspection module
+  and actual fog hooks without invoking flight validation:16/16cold/partial-load,
+  preview and capture-scope assertions pass. GLua183/0; editor diagnostics clean.
+  Fresh client load and actual motion/haze review remain unverified.
+- **Launcher lag, automatic tours and authored rebuild (2026-10-06).**
+  User said the flight/haze looks great but reported heavy lag. Direct tracing
+  found that the full-screen inspection rendered a second complete scene in
+  panel Paint over the ordinary launcher scene. Launcher inspection now owns
+  `RenderScene`, renders its flight once and returns true to suppress the
+  original scene; panel Paint only draws tour fades/labels. Launcher globe
+  rendering is excluded during inspection. City/den render paths remain
+  unchanged. Profiler now covers RenderScene and records inspection timings;
+  nested hook/render totals overlap, and neither is GPU-cost evidence. No
+  measured before/after improvement is claimed yet.
+  User chose a20secondautomatic-profile tour: Day/Overcast/Dusk/Night slots,
+  five seconds each, brief fades, continuous time-rescaled flight and matching
+  fog. There is no separate Dawn slot in the approved catalogue. Custom
+  automatic profiles and native slot assignments are retained. Individual
+  skies keep10seconds; selection/serverweather remain unchanged.
+  Static: GLua183/0;71mocked-engine assertions execute actual sequence,
+  palette-update and RenderScene logic, covering cold-load methods, exact slot
+  boundaries, one render per scene, one mesh build per slot, individual/native
+  choices, duration rescaling, capture/recursion guards and context restoration.
+  Fresh live tour, return-flow and matched performance checks remain pending.
+  User correctly noted their latest launcher edits had not been rebuilt.
+  With game closed by user, rebuilt/staged **both launcher maps only** from
+  current authored sources: parity contract and both VBSP/VVIS/VRAD pass.
+  Preview built/staged SHA256:
+  `29054AFCF6AB3F3AF938357BB62DA9F05C36B47FBBA87264413514A26589D729`;
+  city launcher:
+  `2F56831BF4AF57C033A3A3DE96FAEFCA4DE18F40C5EB93180B06BE56FC91BF6D`.
+  No world-cell maps/plans regenerated. Fresh loaded-map support-brush/scene
+  review remains separate from successful compilation; Phase H unaccepted.
+- **Launcher sky-preview soundtrack and ending (2026-10-06).** User supplied
+  `content/sounds/music/preview skybox 1.mp3` and requested playback during the
+  launcher sequence, ending audio fade and fade-to-black. Music owns a separate
+  preview channel with async owner identity,0.6secondfade-in and2secondfade-out,
+  respecting music-enabled/snd_musicvolume without modifying gameplay resume
+  state. All cancellation/parent/interruption/error/shutdown paths stop it;
+  late callbacks dispose their channels instead of reviving cancelled audio.
+  Launcher view fades black over final1.2seconds, including slot label, holds
+  black0.15seconds and restores browser. City/den behavior unchanged. Packaging
+  allowlist adds the track once to common at canonical sound root; fixture
+  verifies ownership. Static: GLua183/0; mocked soundtrack lifecycle/volume/
+  async/cancellation/path/fade23assertions pass; packagefixtures52/52.
+  Browser regression adds exact black-envelope/cleanup assertions. Actual
+  decoding/playback, audible fade, visual ending and live suite remain pending;
+  no map rebuild or publication required. Phase H remains unaccepted.
+- **Tropospheric night 1 retired (2026-10-06).** User requested removing the
+  black-looking night1card without investigating/correcting the asset. Source
+  catalogue excludes `imported_tropo_night_1`; rebuilt published catalogue has
+  35imports/420ownedmaterialfiles (81individualchoices), with all18builtins
+  retained. Tropospheric1-3andWorld'sEnd night slots now use night2; Tropospheric
+  4-6already did. All other context assignments unchanged; JohnTron remains
+  individual/custom-only. Saved standalone night1selection migrates to night2;
+  saved custom slots migrate with original-file backup, preserving ids/names/
+  other slots. Invalid unrelated store values and write failures remain explicit.
+  Source/old loose files preserved; packaging filters imported sky materials
+  by current owned-file allowlist so retired files cannot ship as common content.
+  Static: skycatalogue2319/2319; GLua183/0; packagingfixtures53/53;
+  offline completecatalogue/migration/failurepath90assertions pass. Actual
+  report-only packageaudit6825files/6packs/387deferredblockers confirms
+  zero night1files shipped and all13night2material/licencefiles retained. Live
+  browser removal, replacement appearance and real saved-selection migration
+  remain unverified. No asset defect/root-cause claim, maps or uploads.
 - **Options section persistence and launcher Tools (2026-10-06).** Options
   sections now default closed and remember each open/closed state through
   `zombiesim_options_section_<id>` cookies (`OnToggle`). Preview-launcher-only
@@ -725,6 +865,31 @@ Status: **ACTIVE — expanded licensed catalogue and custom palettes implemented
   launcher Options page toggles a right-side panel instead, closed by
   BACK/Escape. Static: GLua183/0. Live after reload: Tools6/6 (window and
   launcher side panel paths), browser/Options10/10. Visual review is pending.
+- **Clothing repeat rules and sleeve hems (2026-10-06).** Placed artwork no
+  longer generates a whole-garment repeat. `_notrepeating` suppresses it on
+  untagged art, `_repeating` restores it on placed art, and using both is
+  rejected. New `_sleeve_cuff`/`_sleeves` placement: bottom-aligned 36x174
+  left/right sleeve-hem prints from `assets/clothing/sleeve_cuffs.json`,
+  calibrated per arm/sex from new `.arms.json` landmarks. The prototype fixture
+  now uses `deer_front.png`. The builder prunes unreferenced `catalog_*` caches
+  before and after building, and unowned staged `catalog_*` files (1224 legacy
+  files removed). Published 698 finishes (was 866) / 2994 owned files (was 3642);
+  1506 caches pruned. Static: catalogue unit319/319, built5176/5176,
+  fabrics608/608, topology182/182, artwork25/25, prototype398/398, packaging51/51,
+  GLua183/0; audit6681files/6packs/387 blockers unchanged. Live pool/Tools and
+  human sleeve-hem review **not run: game closed**.
+  Follow-up (same day): the user enlarged `flames_sleeves.png` and asked for
+  flames climbing up the arm from the cuff, plus a both-limb option. Sleeve
+  canvas recalibrated to 112x200 on the outer arm face, bottom at the hem
+  (male `[676|520,812]`, female `[694|516,790]`), so 600x1000 art rises about
+  187 UV px (most of the sleeve). New two-piece `sleeve_cuff_both` and
+  `pants_cuff_both` presets reuse the unchanged per-limb rectangles; pants cuff
+  geometry is unchanged. `_sleeve_cuff` now plans left/right/both, and `_pants_cuff`
+  and default pants add both. Published 735 finishes / 3142 owned files.
+  Static: catalogue unit322/322, built5475/5475, fabrics608/608,
+  topology238/238, artwork25/25, prototype434/434, packaging51/51, GLua183/0;
+  audit6837files/6packs/387 blockers. Live after `changelevel`: clothing
+  pool9/9. Human review of the taller and both-limb flames is pending.
 
 **Visual palette editor and additional supplied skies (2026-10-06):**
 - User retained four states: Day, Overcast, Dusk and Night. The left side now
@@ -849,6 +1014,12 @@ Status: **ACTIVE — expanded licensed catalogue and custom palettes implemented
   coherence and profile cost. Procedural membership/appearance beyond reviewed
   daytime and final mounted eligibility remain Phase H gates, not accepted F/G
   work to repeat. Workshop release remains separate/deferred.
+- Integration audit (static): the palette is client-only and draws in the
+  launcher, dens and city cells alike; the user-reviewed sky choice stays
+  personal everywhere. World-map Level captures now skip the palette while
+  `ZM_WorldMap.Capturing`, so cached map images never depend on the cosmetic
+  sky (`world_map_capture_keeps_native_sky` regression added). GLua183/0;
+  the live palette suite is pending a running, unpaused client.
 
 **Supplied-asset assessment:**
 - Inspected all **202 VTF faces** in `assets\skybox`: the six-face `mr_53` sunset, six-face `sky_night01` moon/cloud set, and 190 faces in the UT2004 conversion collection. Local inspection sheets/metadata are session artifacts, not release assets.

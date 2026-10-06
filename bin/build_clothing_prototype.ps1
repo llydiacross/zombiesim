@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('chest', 'chest_left', 'chest_right', 'arm_left', 'arm_right', 'back_small', 'front_full', 'back_full', 'repeat', 'pants_leg', 'pants_leg_right', 'pants_cuff', 'pants_cuff_right', 'pants_back_left', 'pants_back_right', 'arm_back_left', 'arm_back_right')]
+    [ValidateSet('chest', 'chest_left', 'chest_right', 'arm_left', 'arm_right', 'back_small', 'front_full', 'back_full', 'repeat', 'pants_leg', 'pants_leg_right', 'pants_cuff', 'pants_cuff_right', 'pants_cuff_both', 'pants_back_left', 'pants_back_right', 'arm_back_left', 'arm_back_right', 'sleeve_cuff', 'sleeve_cuff_right', 'sleeve_cuff_both')]
     [string[]]$PrintStyles = @(),
     [object]$DefinitionData,
     [object]$PrintData,
@@ -107,7 +107,7 @@ $variants = @(
 foreach ($sex in 'male', 'female') {
     foreach ($leg in (Get-ClothingLegPresets $prints)) {
         if ($PrintStyles.Count -eq 0 -or $leg.id -in $PrintStyles) {
-            if ($leg.id -notin 'pants_leg', 'pants_leg_right', 'pants_cuff', 'pants_cuff_right', 'pants_back_left', 'pants_back_right') { throw 'Invalid pants-leg preset identity.' }
+            if ($leg.id -notin 'pants_leg', 'pants_leg_right', 'pants_cuff', 'pants_cuff_right', 'pants_cuff_both', 'pants_back_left', 'pants_back_right') { throw 'Invalid pants-leg preset identity.' }
             $variants += [pscustomobject]@{ garment = "pants_$sex"; style = $leg }
         }
     }

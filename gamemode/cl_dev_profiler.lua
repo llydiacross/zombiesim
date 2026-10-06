@@ -4,7 +4,7 @@ ZM_DevProfiler = ZM_DevProfiler or {}
 local Profiler = ZM_DevProfiler
 
 local profiledEvents = {
-    "Think", "Tick", "PreRender", "PostRender", "CalcView", "SetupWorldFog", "SetupSkyboxFog", "PostDraw2DSkyBox",
+    "Think", "Tick", "PreRender", "PostRender", "CalcView", "RenderScene", "SetupWorldFog", "SetupSkyboxFog", "PostDraw2DSkyBox",
     "PreDrawOpaqueRenderables", "PostDrawOpaqueRenderables", "PreDrawTranslucentRenderables",
     "PostDrawTranslucentRenderables", "RenderScreenspaceEffects", "PreDrawHUD", "HUDPaintBackground", "HUDPaint", "PostDrawHUD",
     "DrawOverlay", "HUDShouldDraw"
@@ -214,6 +214,7 @@ local function finishProfile()
         snowCover = ZM_Atmosphere and ZM_Atmosphere.SnowCoverAmount or nil,
         puddleRenderLobes = ZM_Atmosphere and ZM_Atmosphere.PuddleRenderLobes or nil,
         puddleDropRings = ZM_Atmosphere and ZM_Atmosphere.PuddleDropRings or nil,
+        skyInspection = ZM_SkyInspection and ZM_SkyInspection:GetDiagnosticSnapshot() or nil,
         hooks = results
     }
     file.CreateDir("zombiesim")

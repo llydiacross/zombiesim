@@ -339,14 +339,21 @@ Optional underscore-separated suffixes can be combined in any order:
 | Suffix | Meaning |
 | --- | --- |
 | `_chest`, `_front`, `_back`, `_arm_left`, `_arm_right` | Restrict single-image shirt placement; chest is a centred upper-chest logo, front is a large torso graphic |
-| `_arm_back_left`, `_arm_back_right` | Restrict single-image shirt artwork to the rear of the named upper arm; retain whole-shirt repeat |
-| `_pants_back_left`, `_pants_back_right` | Restrict single-image pants artwork to the rear of the named thigh; retain whole-pants repeat |
-| `_pants` | Generate pants only, with left/right thigh and left/right cuff-up prints plus an X/Y-repeat counterpart |
-| `_pants_cuff` | Restrict placed graphics to left/right cuff-up prints; retain whole-pants repeat |
+| `_arm_back_left`, `_arm_back_right` | Restrict single-image shirt artwork to the rear of the named upper arm |
+| `_pants_back_left`, `_pants_back_right` | Restrict single-image pants artwork to the rear of the named thigh |
+| `_pants` | Generate pants only, with left/right thigh and left/right cuff-up prints |
+| `_pants_cuff` | Restrict placed graphics to left, right and both-legs cuff-up prints |
+| `_sleeve_cuff` (or `_sleeves`) | Restrict shirt artwork to left, right and both-arms sleeve prints rising from the hem, bottom-aligned like `_pants_cuff` |
+| `_repeating` | Also generate the whole-garment X/Y repeat, even for placed artwork |
+| `_notrepeating` | Never generate a repeat; untagged artwork keeps only its placed variants |
 | `_black`, `_white`, or another configured colour | Fix the garment background colour |
 | `_notblack`, `_notgrey`, or another `not<colour>` | Exclude that named background from single and repeated variants |
 | `_dark` | The **artwork layer** is dark; use contrasting lighter backgrounds |
 | `_light` | The **artwork layer** is light; use contrasting darker backgrounds |
+
+Repeat rule: any placement suffix (`_chest`, `_front`, `_back`, arm, rear-limb, `_pants`, `_pants_cuff` or `_sleeve_cuff`) produces only placed images and no repeat. `_repeating` restores the repeat for placed artwork (for example `acidril_back_repeating.png`); `_notrepeating` removes it from untagged artwork. Using both is rejected. Rebuilding removes no-longer-listed staged `catalog_*` materials and unused `generated/clothing_preview/catalog_*` build caches (also pruned before building, keeping only previously published prefixes). Saved inventories keep removed item IDs flagged rather than deleted.
+
+`_sleeve_cuff` uses [sleeve_cuffs.json](../assets/clothing/sleeve_cuffs.json): a 112x200 bottom-aligned canvas centred on the outer arm face and ending at the hem (male UV Y1012, female Y990), independently calibrated per arm and sex from `.arms.json` inspection landmarks. Art is fitted to the canvas width, so a tall portrait PNG (for example 600x1000) climbs most of the way up the sleeve; author flames with their base at the bottom of the PNG. `sleeve_cuff_both` and `pants_cuff_both` draw the same canvas on both limbs using the unchanged per-limb rectangles (Wardrobe labels `both sleeve hems` / `both cuff-up`).
 
 An untagged image generates both garments from their original curated palettes.
 The combined `front_back` variant was removed at the user's request. Separate

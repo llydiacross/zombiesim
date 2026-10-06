@@ -82,6 +82,7 @@ foreach ($track in $music.tracks) {
     Add-WorkshopFile $inventory (Join-Path $content $original.Replace('/', '\')) $track.file 'common' "audio:$($track.id)"
 }
 Add-WorkshopFile $inventory $musicPath 'data_static/music_definitions.json' 'core' 'registries' ($music | ConvertTo-Json -Depth 8)
+Add-WorkshopFile $inventory (Join-Path $content 'sounds\music\preview skybox 1.mp3') 'sound/music/preview skybox 1.mp3' 'common' 'audio:launcher-sky-preview'
 
 $cataloguePath = Join-Path $content 'data_static\clothing_catalogue.json'
 $catalogue = Read-PackageJson $cataloguePath
@@ -106,6 +107,9 @@ foreach ($directory in $settings.commonMaterialDirectories) {
     foreach ($file in Get-ChildItem -LiteralPath (Join-Path $content $directory) -Recurse -File) {
         if ($file.Extension -in $settings.commonMaterialExtensions) {
             $relative = $file.FullName.Substring($content.Length + 1)
+            if ($relative -match '^materials\\zombiesim\\skies\\imported_' -and
+                $settings.coreStaticFiles -contains 'sky_catalogue.json' -and
+                $relative -notin $skyCatalogue.ownedFiles) { continue }
             Add-Content $relative 'common' ([IO.Path]::GetFileNameWithoutExtension($relative))
         }
     }

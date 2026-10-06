@@ -84,6 +84,19 @@ foreach ($name in 'deer_front_back.png', 'deer_chest_front.png', 'chest.png', 'd
     Assert-Catalogue "reject ambiguous/nameless $name" $rejected
 }
 foreach ($case in @(
+    @('acidril_back_repeating.png', 'acidril', 'back', $true),
+    @('aphextwin_notrepeating.png', 'aphextwin', $null, $false),
+    @('deer_notrepeating_chest_dark.png', 'deer', 'chest', $false),
+    @('deer_front.png', 'deer', 'front', $null))) {
+    $parsed = Read-ClothingFilename $case[0] $settings
+    Assert-Catalogue "repeating parse $($case[0])" ($parsed.family -eq $case[1] -and $parsed.placement -eq $case[2] -and $parsed.repeating -eq $case[3])
+}
+foreach ($name in 'deer_repeating_notrepeating.png', 'deer_notrepeating_notrepeating.png', 'repeating.png') {
+    $rejected = $false
+    try { $null = Read-ClothingFilename $name $settings } catch { $rejected = $true }
+    Assert-Catalogue "reject ambiguous/nameless repeating $name" $rejected
+}
+foreach ($case in @(
     @('boardsofcanada_notblack.png', 'boardsofcanada', $null, $null, @('black')),
     @('deer_front_notblack_notred.png', 'deer', $null, 'front', @('black', 'red')),
     @('deer_notblack_arm_left_white.png', 'deer', 'white', 'arm_left', @('black')),
@@ -129,19 +142,20 @@ try {
     $plan = Get-ClothingCataloguePlan $scratch $settings
     Assert-Catalogue 'exclude diagnostic PNGs' ($plan.families.Count -eq 2)
     $arm = @($plan.variants | Where-Object family -eq 'deer_arm_left_black')
-    Assert-Catalogue 'arm tag generates one placed image and whole-shirt repeat' (
-        $arm.Count -eq 2 -and @($arm | Where-Object style -eq 'arm_left').Count -eq 1 -and
-        @($arm | Where-Object style -eq 'repeat').Count -eq 1 -and @($arm | Where-Object garment -ne 'shirt').Count -eq 0)
+    Assert-Catalogue 'arm tag generates one placed image and no default repeat' (
+        $arm.Count -eq 1 -and @($arm | Where-Object style -eq 'arm_left').Count -eq 1 -and
+        @($arm | Where-Object style -eq 'repeat').Count -eq 0 -and @($arm | Where-Object garment -ne 'shirt').Count -eq 0)
     Assert-Catalogue 'colour suffix fixes both counterparts' (@($arm | Where-Object colour -ne 'black').Count -eq 0)
     $pants = @($plan.variants | Where-Object family -eq 'bird_pants')
     Assert-Catalogue 'pants tag restricts families and uses subdued curated palette' (
         $pants.Count -eq 15 -and @($pants | Where-Object garment -ne 'pants').Count -eq 0 -and
         @($pants | Where-Object style -eq pants_leg_right).Count -eq 3)
-    Assert-Catalogue 'pants retain thighs and add both separately named cuff anchors plus repeat' (
+    Assert-Catalogue 'pants retain thighs and both separately named cuff anchors without default repeat' (
         @($pants | Where-Object style -eq pants_leg).Count -eq 3 -and
         @($pants | Where-Object style -eq pants_cuff).Count -eq 3 -and
         @($pants | Where-Object style -eq pants_cuff_right).Count -eq 3 -and
-        @($pants | Where-Object style -eq repeat).Count -eq 3)
+        @($pants | Where-Object style -eq pants_cuff_both).Count -eq 3 -and
+        @($pants | Where-Object style -eq repeat).Count -eq 0)
     $cuffFamily = Read-ClothingFilename 'flames_pants_cuff_dark_navy.png' $settings
     Assert-Catalogue 'explicit cuff suffix combines with background and tone' (
         $cuffFamily.family -eq 'flames' -and $cuffFamily.placement -eq 'pants_cuff' -and
@@ -151,9 +165,29 @@ try {
     finally { $bitmap.Dispose() }
     $cuffPlan = Get-ClothingCataloguePlan $scratch $settings
     $cuffs = @($cuffPlan.variants | Where-Object family -eq flames_pants_cuff_olive)
-    Assert-Catalogue 'cuff-tagged artwork restricts placed graphics but retains whole-pants repeat' (
-        $cuffs.Count -eq 3 -and @($cuffs | Where-Object { $_.garment -ne 'pants' -or $_.style -notin 'pants_cuff', 'pants_cuff_right', 'repeat' }).Count -eq 0)
+    Assert-Catalogue 'cuff-tagged artwork restricts placed graphics without default repeat' (
+        $cuffs.Count -eq 3 -and @($cuffs | Where-Object { $_.garment -ne 'pants' -or $_.style -notin 'pants_cuff', 'pants_cuff_right', 'pants_cuff_both' }).Count -eq 0)
     Remove-Item -LiteralPath (Join-Path $scratch 'flames_pants_cuff_olive.png')
+    foreach ($sleeveName in 'flames_sleeve_cuff_navy_dark.png', 'flames_sleeves_navy_dark.png') {
+        $sleeveFamily = Read-ClothingFilename $sleeveName $settings
+        Assert-Catalogue "$sleeveName parses as a sleeve-hem placement" (
+            $sleeveFamily.family -eq 'flames' -and $sleeveFamily.placement -eq 'sleeve_cuff' -and
+            $sleeveFamily.colour -eq 'navy' -and $sleeveFamily.artworkTone -eq 'dark' -and $null -eq $sleeveFamily.repeating)
+    }
+    $bitmap = [Drawing.Bitmap]::new(8, 12)
+    try { $bitmap.Save((Join-Path $scratch 'flames_sleeves_olive.png'), [Drawing.Imaging.ImageFormat]::Png) }
+    finally { $bitmap.Dispose() }
+    $sleevePlan = Get-ClothingCataloguePlan $scratch $settings
+    $sleeves = @($sleevePlan.variants | Where-Object family -eq flames_sleeves_olive)
+    Assert-Catalogue 'sleeve-tagged artwork plans both shirt hems without a repeat' (
+        $sleeves.Count -eq 3 -and (($sleeves.style | Sort-Object) -join ',') -eq 'sleeve_cuff,sleeve_cuff_both,sleeve_cuff_right' -and
+        @($sleeves | Where-Object garment -ne 'shirt').Count -eq 0)
+    Remove-Item -LiteralPath (Join-Path $scratch 'flames_sleeves_olive.png')
+    foreach ($style in 'sleeve_cuff', 'sleeve_cuff_right', 'sleeve_cuff_both') {
+        $icon = Get-ClothingCatalogueIcon 'shirt' $style $prints
+        Assert-Catalogue "$style icon uses its bottom-aligned sleeve canvas" ($icon.size[0] -eq 112 -and $icon.size[1] -eq 200 -and
+            @($icon.male).Count -eq $(if ($style -like '*_both') { 2 } else { 1 }))
+    }
     foreach ($tag in 'pants_back_left', 'pants_back_right', 'arm_back_left', 'arm_back_right') {
         $parsed = Read-ClothingFilename "deer_${tag}_white_dark.png" $settings
         Assert-Catalogue "$tag parses separately from family/background/tone" (
@@ -165,10 +199,10 @@ try {
             $rearPlan = Get-ClothingCataloguePlan $scratch $settings
             $rearVariants = @($rearPlan.variants | Where-Object family -eq "deer_${tag}_white")
             $garment = if ($tag -like 'pants_*') { 'pants' } else { 'shirt' }
-            Assert-Catalogue "$tag produces only explicitly selected rear limb and garment repeat" (
-                $rearVariants.Count -eq 2 -and @($rearVariants | Where-Object garment -ne $garment).Count -eq 0 -and
+            Assert-Catalogue "$tag produces only explicitly selected rear limb without default repeat" (
+                $rearVariants.Count -eq 1 -and @($rearVariants | Where-Object garment -ne $garment).Count -eq 0 -and
                 @($rearVariants | Where-Object style -eq $tag).Count -eq 1 -and
-                @($rearVariants | Where-Object style -eq repeat).Count -eq 1)
+                @($rearVariants | Where-Object style -eq repeat).Count -eq 0)
             Assert-Catalogue "$tag leaves all ordinary family variants unchanged" (
                 ($plan.variants | ConvertTo-Json -Depth 6 -Compress) -eq
                 (@($rearPlan.variants | Where-Object family -ne "deer_${tag}_white") | ConvertTo-Json -Depth 6 -Compress))
@@ -188,7 +222,7 @@ try {
         $excludedPlan = Get-ClothingCataloguePlan $scratch $settings
         $excludedVariants = @($excludedPlan.variants | Where-Object family -eq 'boardsofcanada_notblack')
         Assert-Catalogue 'notblack removes black even when curated palettes contain it' (
-            $excludedVariants.Count -eq (2 * ($settings.defaultShirtPlacements.Count + 1) + 10) -and @($excludedVariants | Where-Object colour -eq 'black').Count -eq 0)
+            $excludedVariants.Count -eq (2 * ($settings.defaultShirtPlacements.Count + 1) + 12) -and @($excludedVariants | Where-Object colour -eq 'black').Count -eq 0)
         foreach ($garment in 'shirt', 'pants') {
             $selected = @($excludedVariants | Where-Object garment -eq $garment)
             Assert-Catalogue "notblack preserves allowed single and repeating $garment variants" (
@@ -210,7 +244,7 @@ try {
         $selected = @($tonePlan.variants | Where-Object family -eq "ink_$tone")
         Assert-Catalogue "$tone uses tone-specific shirt/pants palettes" (
             $selected.Count -eq ($settings.tonePalettes.$tone.shirt.Count * ($settings.defaultShirtPlacements.Count + 1) +
-                $settings.tonePalettes.$tone.pants.Count * 5) -and
+                $settings.tonePalettes.$tone.pants.Count * 6) -and
             @($selected | Where-Object artworkTone -ne $tone).Count -eq 0)
         Assert-Catalogue "$tone rejects insufficient contrast for every variant" (
             @($selected | Where-Object {
@@ -227,11 +261,27 @@ try {
         @($tonePlan.variants | Where-Object { $_.artworkTone -eq 'dark' -and $_.colour -in 'black', 'charcoal' }).Count -eq 0)
     $excludedTone = @($tonePlan.variants | Where-Object family -eq 'ink_dark_front_notgray')
     Assert-Catalogue 'tone combines with exclusion aliases and placement' (
-        $excludedTone.Count -eq 4 -and @($excludedTone | Where-Object colour -eq 'grey').Count -eq 0 -and
-        @($excludedTone | Where-Object garment -ne 'shirt').Count -eq 0)
+        $excludedTone.Count -eq 2 -and @($excludedTone | Where-Object colour -eq 'grey').Count -eq 0 -and
+        @($excludedTone | Where-Object garment -ne 'shirt').Count -eq 0 -and @($excludedTone | Where-Object style -eq repeat).Count -eq 0)
     $fixedTone = @($tonePlan.variants | Where-Object family -eq 'ink_white_front_dark')
-    Assert-Catalogue 'compatible explicit background and tone preserve single/repeat variants' (
-        $fixedTone.Count -eq 2 -and @($fixedTone | Where-Object colour -ne 'white').Count -eq 0)
+    Assert-Catalogue 'compatible explicit background and tone preserve the single placed variant' (
+        $fixedTone.Count -eq 1 -and @($fixedTone | Where-Object colour -ne 'white').Count -eq 0)
+    $shirts, $pantsColours = $settings.shirtColours.Count, $settings.pantsColours.Count
+    $shirtPlacements = $settings.defaultShirtPlacements.Count
+    foreach ($case in @(
+        @('ink_front_repeating.png', ($shirts * 2), $shirts),
+        @('ink_repeating.png', ($shirts * ($shirtPlacements + 1) + $pantsColours * 6), ($shirts + $pantsColours)),
+        @('ink_notrepeating.png', ($shirts * $shirtPlacements + $pantsColours * 5), 0),
+        @('ink_chest_notrepeating.png', $shirts, 0))) {
+        $path = Join-Path $scratch $case[0]
+        Copy-Item (Join-Path $scratch 'bird_pants.png') $path
+        try {
+            $identity = [IO.Path]::GetFileNameWithoutExtension($case[0])
+            $selected = @((Get-ClothingCataloguePlan $scratch $settings).variants | Where-Object family -eq $identity)
+            Assert-Catalogue "$($case[0]) applies the repeating suffix rule" (
+                $selected.Count -eq $case[1] -and @($selected | Where-Object style -eq repeat).Count -eq $case[2])
+        } finally { Remove-Item -LiteralPath $path }
+    }
     foreach ($name in 'ink_dark_black_front.png', 'ink_light_white_pants.png', 'x_dark_notwhite_notgrey_nottan_front.png') {
         $path = Join-Path $scratch $name
         Copy-Item (Join-Path $scratch 'bird_pants.png') $path
@@ -274,7 +324,16 @@ if ($ValidateBuilt) {
         Assert-Catalogue "$($family.source) gets the complete colourful default shirt palette" (
             ($colours -join ',') -eq ($expected -join ','))
     }
+    foreach ($family in $plan.families) {
+        $repeats = @($plan.variants | Where-Object { $_.family -eq $family.identity -and $_.style -eq 'repeat' }).Count
+        $expectRepeat = if ($null -ne $family.repeating) { $family.repeating } else { $null -eq $family.placement }
+        Assert-Catalogue "$($family.source) follows placed/_repeating/_notrepeating repeat rules" (($repeats -gt 0) -eq $expectRepeat)
+    }
     $manifest = Get-Content (Join-Path $root 'content\data_static\clothing_catalogue.json') -Raw | ConvertFrom-Json
+    foreach ($directory in (Join-Path $root 'content\materials\models\zombiesim\clothing'), (Join-Path $root '..\..\materials\models\zombiesim\clothing')) {
+        $orphans = @(Get-ChildItem -LiteralPath $directory -File -Filter 'catalog_*' | Where-Object { $_.Name -notin $manifest.files })
+        Assert-Catalogue "no unowned catalogue materials remain in $directory" ($orphans.Count -eq 0)
+    }
     Assert-Catalogue 'published capacity and exact pool ownership match source settings' (
         $manifest.capacity -eq $settings.textureCapacity -and
         ((@($manifest.files | Where-Object { $_ -like 'pool_*' }) | Sort-Object) -join ',') -eq
@@ -310,15 +369,15 @@ if ($ValidateBuilt) {
             @($previous.files | Where-Object { $_ -notin $manifest.files }).Count -eq 0)
         $newFinishes = @($manifest.finishes.PSObject.Properties | Where-Object { $null -eq $previous.finishes.PSObject.Properties[$_.Name] })
         Assert-Catalogue 'limb expansion adds only explicitly named cuff or rear finishes' (
-            @($newFinishes | Where-Object { $_.Value.style -notin 'pants_cuff', 'pants_cuff_right',
-                'pants_back_left', 'pants_back_right', 'arm_back_left', 'arm_back_right' }).Count -eq 0)
+            @($newFinishes | Where-Object { $_.Value.style -notin             'pants_cuff', 'pants_cuff_right', 'pants_cuff_both',
+                            'sleeve_cuff', 'sleeve_cuff_right', 'sleeve_cuff_both', 'pants_back_left', 'pants_back_right', 'arm_back_left', 'arm_back_right' }).Count -eq 0)
     }
     foreach ($variant in $plan.variants) {
         $finish = $manifest.finishes.($variant.id)
         Assert-Catalogue "$($variant.id) retains exact image/placement/colour and item routing" (
             $finish.source -eq $variant.source -and $finish.style -eq $variant.style -and $finish.colour -eq $variant.colour -and
             $manifest.items.($variant.itemId).clothing.finish -eq $variant.id)
-        if ($variant.style -like 'pants_cuff*' -or $variant.style -match '^(pants|arm)_back_') {
+        if ($variant.style -like 'pants_cuff*' -or $variant.style -like 'sleeve_cuff*' -or $variant.style -match '^(pants|arm)_back_') {
             $expectedIcon = Get-ClothingCatalogueIcon $variant.garment $variant.style $prints
             Assert-Catalogue "$($variant.id) publishes the exact model-specific limb icon canvas" (
                 ($finish.icon | ConvertTo-Json -Depth 6 -Compress) -eq ($expectedIcon | ConvertTo-Json -Depth 6 -Compress))

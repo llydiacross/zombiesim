@@ -24,8 +24,9 @@ local clothingCache = {}
 local repeatingStyles = { ["repeat"] = true, checker = true, stripes = true }
 local placementTags = { chest = "CHEST", chest_left = "L CHEST", chest_right = "R CHEST", front_full = "FRONT",
     back_full = "BACK", back_small = "BACK", arm_left = "L ARM", arm_right = "R ARM", pants_leg = "L THIGH",
-    pants_leg_right = "R THIGH", pants_cuff = "L CUFF", pants_cuff_right = "R CUFF", pants_back_left = "L REAR",
-    pants_back_right = "R REAR", arm_back_left = "L REAR ARM", arm_back_right = "R REAR ARM" }
+    pants_leg_right = "R THIGH", pants_cuff = "L CUFF", pants_cuff_right = "R CUFF", pants_cuff_both = "BOTH CUFFS", pants_back_left = "L REAR",
+    pants_back_right = "R REAR", arm_back_left = "L REAR ARM", arm_back_right = "R REAR ARM",
+    sleeve_cuff = "L SLEEVE", sleeve_cuff_right = "R SLEEVE", sleeve_cuff_both = "BOTH SLEEVES" }
 
 local function resolveClothingIcon(finishId, garment, sex, label)
     local finish = ZM_Clothing and ZM_Clothing.Finishes[finishId]

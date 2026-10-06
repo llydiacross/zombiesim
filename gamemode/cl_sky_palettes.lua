@@ -13,6 +13,10 @@ Palettes.NextUpdate = 0
 
 local choice = CreateClientConVar("zombiesim_sky_palette", "default", true, false,
     "Personal cosmetic sky: default, natural, cinematic or an individual sky id. Does not relight the map.")
+if Palettes.RetiredSkies[choice:GetString()] then
+    choice:SetString(Palettes.RetiredSkies[choice:GetString()])
+    print("[ZombieSim] Replaced retired Tropospheric night 1 selection with Tropospheric night 2.")
+end
 local origin = Vector(0, 0, 0)
 local identity = Matrix()
 local white = Color(255, 255, 255)
@@ -122,7 +126,55 @@ function Palettes:GetContext()
     local context = level < 0.45 and "night" or level < 0.7 and "dusk" or "day"
     if context == "day" and atmosphere and
         (atmosphere.Weather ~= "clear" or atmosphere.StormIntensity > 0.25) then context = "overcast" end
+    local inspection = ZM_SkyInspection and ZM_SkyInspection.State
+    if inspection and inspection.launcherFog then
+        color = inspection.launcherFog.color
+        context = inspection.launcherFog.context
+    end
     return context, color
+end
+
+function Palettes:GetLauncherPreviewSequence()
+    local profile = not self.Preview and self:GetProfile(choice:GetString())
+    local sequence = {}
+    if profile then
+        for _, context in ipairs(self.ContextOrder) do
+            local id, failure = self:Resolve(choice:GetString(), context)
+            if failure then return nil, failure end
+            sequence[#sequence + 1] = { id = id or "default", context = context }
+        end
+    else
+        local context = self:GetContext()
+        local id, failure = self:Resolve(choice:GetString(), context)
+        if self.Preview then id, failure = self.Preview.id, nil end
+        if failure then return nil, failure end
+        local entry = id and self.Entries[id]
+        sequence[1] = { id = id or "default", context = entry and entry.context or context }
+    end
+    return sequence
+end
+
+function Palettes:GetLauncherPreviewFog(sky, skyContext)
+    local context = skyContext or self:GetContext()
+    local id, failure
+    if sky then id = sky ~= "default" and sky or nil
+    else
+        id, failure = self:Resolve(choice:GetString(), context)
+        if self.Preview then id, failure = self.Preview.id, nil end
+    end
+    if failure then return nil, failure end
+    local entry = id and self.Entries[id]
+    if id and not entry then return nil, "The selected launcher preview sky is unavailable." end
+    context = entry and entry.context or context
+    local colours = { day = { 160, 186, 210 }, overcast = { 137, 151, 166 },
+        dusk = { 193, 139, 126 }, night = { 30, 43, 64 } }
+    local colour = table.Copy(colours[context])
+    if entry and entry.top then
+        for index = 1, 3 do colour[index] = math.Round(Lerp(0.2, colour[index], entry.top[index])) end
+    end
+    return { start = 700, finish = context == "night" and 4800 or 6500,
+        maxDensity = context == "overcast" and 0.88 or 0.78, color = colour,
+        context = context, sky = id or "default" }
 end
 
 function Palettes:Clear()
@@ -234,6 +286,11 @@ function Palettes:Update()
     local context, fog = self:GetContext()
     local id, failure = self:Resolve(choice:GetString(), context)
     if self.Preview then id, failure = self.Preview.id, nil end
+    local inspection = ZM_SkyInspection and ZM_SkyInspection.State
+    if inspection and inspection.launcherFog then
+        id, failure = inspection.launcherFog.sky, nil
+        if id == "default" then id = nil end
+    end
     if failure then
         if self.Failure ~= failure then ErrorNoHalt("[ZombieSim] " .. failure .. "\n") end
         self.Failure = failure
@@ -262,10 +319,16 @@ hook.Add("Think", "ZM.SkyPalettes.Prepare", function()
     Palettes:Update()
 end)
 
+// Cached world-map captures must not depend on a player's cosmetic sky choice.
+function Palettes:ShouldDraw()
+    if choice:GetString() == "default" and not self.Preview then return false end
+    if ZM_WorldMap and ZM_WorldMap.Capturing then return false end
+    return #self.Meshes > 0
+end
+
 // The documented 2D-sky hook supplies sky masking; disable depth writes so later 3D scenery stays in front.
 hook.Add("PostDraw2DSkyBox", "ZM.SkyPalettes.Draw", function()
-    if choice:GetString() == "default" and not Palettes.Preview then return end
-    if #Palettes.Meshes == 0 then return end
+    if not Palettes:ShouldDraw() then return end
     render.OverrideDepthEnable(true, false)
     cam.Start3D(origin, EyeAngles())
     cam.PushModelMatrix(identity)
@@ -390,6 +453,23 @@ concommand.Add("zombiesim_dev_test_sky_palettes", function()
                 entry.samplingInset.v == 0.5 / texture:Height(), "face samples half-texel-inset edge centres")
             entry.mesh:Destroy()
         end
+    end)
+    suite:Add("world_map_capture_keeps_native_sky", function(check)
+        local savedPreview, savedMeshes, savedCapturing = Palettes.Preview, Palettes.Meshes, ZM_WorldMap and ZM_WorldMap.Capturing
+        local previewId = Palettes:Resolve("natural", "day")
+        local meshes = previewId and Palettes:Prepare(previewId, { 128, 144, 160 })
+        Palettes.Preview = { id = previewId, expiresAt = RealTime() + 60 }
+        Palettes.Meshes = meshes or {}
+        check(Palettes:ShouldDraw(), "an active palette draws in ordinary views")
+        if ZM_WorldMap then
+            ZM_WorldMap.Capturing = true
+            check(not Palettes:ShouldDraw(), "map capture renders the native sky, not the cosmetic palette")
+            ZM_WorldMap.Capturing = savedCapturing
+        else
+            check(false, "world map module is loaded")
+        end
+        for _, entry in ipairs(meshes or {}) do entry.mesh:Destroy() end
+        Palettes.Preview, Palettes.Meshes = savedPreview, savedMeshes
     end)
     local summary = suite:Run()
     file.CreateDir("zombiesim")

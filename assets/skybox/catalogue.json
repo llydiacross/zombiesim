@@ -118,5 +118,6 @@
       ]
     }
   ],
+  "excludedEntries": ["imported_tropo_night_1"],
   "excludedCollections": []
 }

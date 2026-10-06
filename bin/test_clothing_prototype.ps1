@@ -180,9 +180,12 @@ try {
                     $original = $nativePants.GetPixel($x, $y)
                     if ($pixel.A -ne $original.A) { $sameAlpha = $false }
                     if ($pixel.ToArgb() -ne $original.ToArgb()) {
-                        if ($x -ge $rectangle[0] -and $x -lt $rectangle[0] + $rectangle[2] -and
-                            $y -ge $rectangle[1] -and $y -lt $rectangle[1] + $rectangle[3]) { $printChanges++ }
-                        else { $outsideChanges++ }
+                        $insidePrint = $false
+                        foreach ($piece in $legStyle.$sex) {
+                            if ($x -ge $piece.uv[0] -and $x -lt $piece.uv[0] + $piece.uv[2] -and
+                                $y -ge $piece.uv[1] -and $y -lt $piece.uv[1] + $piece.uv[3]) { $insidePrint = $true }
+                        }
+                        if ($insidePrint) { $printChanges++ } else { $outsideChanges++ }
                     }
                 }
             }
@@ -192,13 +195,15 @@ try {
             if ($legStyle.id -like 'pants_cuff*') {
                 Assert-Clothing "$sex/$($legStyle.id) retains bottom-aligned calf-height canvas" (
                     $legStyle.alignment -eq 'bottom' -and $legStyle.size[0] -eq 88 -and $legStyle.size[1] -eq 344)
-                $cuffChanges = 0
-                for ($y = 340; $y -lt 380; $y += 2) {
-                    for ($x = $rectangle[0]; $x -lt $rectangle[0] + 88; $x += 2) {
-                        if ($leg.GetPixel($x, $y).ToArgb() -ne $nativePants.GetPixel($x, $y).ToArgb()) { $cuffChanges++ }
+                foreach ($piece in $legStyle.$sex) {
+                    $cuffChanges = 0
+                    for ($y = 340; $y -lt 380; $y += 2) {
+                        for ($x = $piece.uv[0]; $x -lt $piece.uv[0] + 88; $x += 2) {
+                            if ($leg.GetPixel($x, $y).ToArgb() -ne $nativePants.GetPixel($x, $y).ToArgb()) { $cuffChanges++ }
+                        }
                     }
+                    Assert-Clothing "$sex/$($legStyle.id)@$($piece.uv[0]) image pixels reach below the knee near the opening" ($cuffChanges -gt 20)
                 }
-                Assert-Clothing "$sex/$($legStyle.id) image pixels reach below the knee near the opening" ($cuffChanges -gt 20)
             } elseif ($legStyle.id -like 'pants_back_*') {
                 Assert-Clothing "$sex/$($legStyle.id) retains independent rear thigh canvas" (
                     $legStyle.size[0] -eq 48 -and $legStyle.size[1] -eq 144 -and $rectangle[1] -le 40)

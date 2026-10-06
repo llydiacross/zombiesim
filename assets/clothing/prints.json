@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "image": "deer.png",
+  "image": "deer_front.png",
   "provenance": "User-supplied development artwork; redistribution rights must be confirmed before release.",
   "repeat": {
     "shirt": { "motifSize": [48, 60], "spacing": [12, 12], "offset": [0, 0] },

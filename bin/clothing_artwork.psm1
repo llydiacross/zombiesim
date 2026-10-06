@@ -39,8 +39,8 @@ function Get-ClothingLegPresets {
     param([Parameter(Mandatory)]$Prints)
     $path = Join-Path (Split-Path -Parent $PSScriptRoot) 'assets\clothing\pants_cuffs.json'
     $cuffs = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
-    if ($cuffs.schemaVersion -ne 1 -or $cuffs.presets.Count -ne 2 -or
-        ($cuffs.presets.id -join ',') -ne 'pants_cuff,pants_cuff_right') { throw 'Invalid cuff placement presets.' }
+    if ($cuffs.schemaVersion -ne 1 -or $cuffs.presets.Count -ne 3 -or
+        ($cuffs.presets.id -join ',') -ne 'pants_cuff,pants_cuff_right,pants_cuff_both') { throw 'Invalid cuff placement presets.' }
     foreach ($preset in $cuffs.presets) {
         if ($preset.alignment -ne 'bottom') { throw "Cuff artwork must retain bottom alignment: $($preset.id)" }
     }
@@ -58,9 +58,20 @@ function Get-ClothingRearPresets {
     return @($rear.presets)
 }
 
-function Get-ClothingShirtPresets {
-    param([Parameter(Mandatory)]$Prints)
-    return @($Prints.styles) + @(Get-ClothingRearPresets | Where-Object { $_.id -like 'arm_*' })
+function Get-ClothingSleevePresets {
+    $path = Join-Path (Split-Path -Parent $PSScriptRoot) 'assets\clothing\sleeve_cuffs.json'
+    $cuffs = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+    if ($cuffs.schemaVersion -ne 1 -or $cuffs.presets.Count -ne 3 -or
+        ($cuffs.presets.id -join ',') -ne 'sleeve_cuff,sleeve_cuff_right,sleeve_cuff_both') { throw 'Invalid sleeve cuff placement presets.' }
+    foreach ($preset in $cuffs.presets) {
+        if ($preset.alignment -ne 'bottom') { throw "Sleeve cuff artwork must retain bottom alignment: $($preset.id)" }
+    }
+    return @($cuffs.presets)
 }
 
-Export-ModuleMember -Function New-FittedArtwork, Get-ClothingLegPresets, Get-ClothingRearPresets, Get-ClothingShirtPresets
+function Get-ClothingShirtPresets {
+    param([Parameter(Mandatory)]$Prints)
+    return @($Prints.styles) + @(Get-ClothingSleevePresets) + @(Get-ClothingRearPresets | Where-Object { $_.id -like 'arm_*' })
+}
+
+Export-ModuleMember -Function New-FittedArtwork, Get-ClothingLegPresets, Get-ClothingRearPresets, Get-ClothingSleevePresets, Get-ClothingShirtPresets

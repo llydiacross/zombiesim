@@ -66,6 +66,7 @@ function Write-UvGuide([string]$ModelPath, [byte[]]$Mdl, [byte[]]$Vvd, [int[]]$I
     $triangles = 0
     $neckline = [System.Collections.Generic.List[object]]::new()
     $sleeves = [System.Collections.Generic.List[object]]::new()
+    $arms = [System.Collections.Generic.List[object]]::new()
     $legs = [System.Collections.Generic.List[object]]::new()
     $torso = [System.Collections.Generic.List[object]]::new()
     $bodyTriangles = [System.Collections.Generic.List[object]]::new()
@@ -137,6 +138,13 @@ function Write-UvGuide([string]$ModelPath, [byte[]]$Mdl, [byte[]]$Vvd, [int[]]$I
                                 [math]::Round(($points[0].Y + $points[1].Y + $points[2].Y) / 3, 2))
                         })
                     }
+                    if ([math]::Abs($center[0]) -gt 8 -and $center[2] -gt 20 -and $center[2] -lt 58) {
+                        $arms.Add([pscustomobject]@{
+                            center = $center
+                            uvCenter = @([math]::Round(($points[0].X + $points[1].X + $points[2].X) / 3, 2),
+                                [math]::Round(($points[0].Y + $points[1].Y + $points[2].Y) / 3, 2))
+                        })
+                    }
                     if ($center[2] -gt 6 -and $center[2] -lt 37 -and [math]::Abs($center[0]) -gt 2) {
                         $legs.Add([pscustomobject]@{
                             center = $center
@@ -177,6 +185,8 @@ function Write-UvGuide([string]$ModelPath, [byte[]]$Mdl, [byte[]]$Vvd, [int[]]$I
             Set-Content -LiteralPath ([System.IO.Path]::ChangeExtension($guidePath, '.neckline.json')) -Encoding UTF8
         $sleeves.ToArray() | ConvertTo-Json -Depth 5 |
             Set-Content -LiteralPath ([System.IO.Path]::ChangeExtension($guidePath, '.sleeves.json')) -Encoding UTF8
+        $arms.ToArray() | ConvertTo-Json -Depth 5 |
+            Set-Content -LiteralPath ([System.IO.Path]::ChangeExtension($guidePath, '.arms.json')) -Encoding UTF8
         $legs.ToArray() | ConvertTo-Json -Depth 5 |
             Set-Content -LiteralPath ([System.IO.Path]::ChangeExtension($guidePath, '.legs.json')) -Encoding UTF8
         $torso.ToArray() | ConvertTo-Json -Depth 5 |

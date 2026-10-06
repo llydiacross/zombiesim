@@ -97,6 +97,7 @@ end
 
 function Scene:IsGlobeHidden()
     return not Menu.Active or Menu.Credits or not Menu.Globe
+        or (ZM_SkyInspection and ZM_SkyInspection:IsActive())
         or (Menu.IsCharacterPreviewVisible and Menu:IsCharacterPreviewVisible())
 end
 

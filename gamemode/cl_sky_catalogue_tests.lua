@@ -28,6 +28,21 @@ concommand.Add("zombiesim_dev_test_sky_catalogue", function()
             end
         end
     end)
+    add("retired_night_sky_excluded_from_catalogue_and_automatic_profiles", function(check)
+        check(Palettes.Entries.imported_tropo_night_1 == nil, "retired night sky has no browser entry")
+        for _, id in ipairs(Palettes.ProfileOrder) do
+            for _, context in ipairs(Palettes.ContextOrder) do
+                check(Palettes.Profiles[id].contexts[context] ~= "imported_tropo_night_1",
+                    id .. "/" .. context .. " never selects the retired sky")
+            end
+        end
+        for index = 1, 6 do
+            check(Palettes.Profiles["tropospheric_" .. index].contexts.night == "imported_tropo_night_2",
+                "Tropospheric " .. index .. " uses the retained night sky")
+        end
+        check(Palettes.Profiles.worldsend_horizons.contexts.night == "imported_tropo_night_2",
+            "World's End replaces only the retired night assignment")
+    end)
     add("new_automatic_variants_cover_supplied_skies", function(check)
         local used = {}
         for _, id in ipairs({ "cloud_prelude", "terrassee_horizons", "worldsend_horizons",
@@ -152,6 +167,22 @@ concommand.Add("zombiesim_dev_test_sky_catalogue", function()
             assert(not Palettes:ValidateCustomStore({ schemaVersion = 99, profiles = {} }), "bad schema rejected")
             local broken = { schemaVersion = 1, nextId = 1, profiles = { custom_2 = profile } }
             assert(not Palettes:ValidateCustomStore(broken), "invalid allocator rejected")
+            local retired = { schemaVersion = 1, nextId = 2, profiles = { custom_1 = {
+                label = "Retained personal palette", contexts = {
+                    day = "natural_day", overcast = "default", dusk = "cinematic_dusk",
+                    night = "imported_tropo_night_1" } } } }
+            local original = util.TableToJSON(retired, true)
+            file.Write(path, original)
+            assert(Palettes:LoadCustomProfiles(), "retired custom sky migrates on load")
+            assert(Palettes.CustomStore.profiles.custom_1.contexts.night == "imported_tropo_night_2",
+                "only retired slot replaced")
+            assert(Palettes.CustomStore.profiles.custom_1.label == "Retained personal palette" and
+                Palettes.CustomStore.profiles.custom_1.contexts.overcast == "default" and
+                Palettes.CustomStore.nextId == 2, "name, other slots, id and allocator preserved")
+            assert(file.Read(path .. ".backup.json", "DATA") == original, "original custom store backed up byte-for-byte")
+            local migrated = file.Read(path, "DATA")
+            assert(Palettes:LoadCustomProfiles() and file.Read(path, "DATA") == migrated,
+                "migration persists and does not repeat")
         end)
         local result = suite:Run()
         Palettes.CustomPath, Palettes.CustomStore, Palettes.CustomFailure = savedPath, savedStore, savedFailure

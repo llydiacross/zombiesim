@@ -3,7 +3,8 @@ ZM_Wardrobe = ZM_Wardrobe or {}
 local Wardrobe = ZM_Wardrobe
 local models = { male = "models/player/group01/male_03.mdl", female = "models/player/group01/female_01.mdl" }
 local rearLabels = { pants_back_left = "left rear thigh", pants_back_right = "right rear thigh",
-    arm_back_left = "left rear arm", arm_back_right = "right rear arm" }
+    arm_back_left = "left rear arm", arm_back_right = "right rear arm",
+    sleeve_cuff = "left sleeve hem", sleeve_cuff_right = "right sleeve hem", sleeve_cuff_both = "both sleeve hems" }
 
 function Wardrobe:IsAvailable()
     return IsValid(LocalPlayer()) and LocalPlayer():IsAdmin() and ZM_World and ZM_World.ActiveProfile == "preview"
@@ -325,7 +326,7 @@ function Wardrobe:RefreshGrid()
                 local styleLabel = rearLabels[finish.style] or (finish.style == "pants_leg" and "left thigh" or
                     (finish.style == "pants_leg_right" and "right thigh" or
                     (finish.style == "pants_cuff" and "left cuff-up" or
-                    (finish.style == "pants_cuff_right" and "right cuff-up" or string.Replace(finish.treatment or finish.style or "base", "_", " ")))))
+                    (finish.style == "pants_cuff_right" and "right cuff-up" or (finish.style == "pants_cuff_both" and "both cuff-up" or string.Replace(finish.treatment or finish.style or "base", "_", " "))))))
                 draw.SimpleText(styleLabel, "DermaDefault", 6, height - 18, palette.muted)
                 surface.SetDrawColor(selected and palette.redBright or (control.Hovered and palette.text or palette.muted))
                 surface.DrawOutlinedRect(0, 0, width, height, selected and 2 or 1)

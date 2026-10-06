@@ -25,6 +25,13 @@ local function findMarker(name)
     return ents.FindByName(name)[1]
 end
 
+local function findLauncherSkyCamera()
+    local profile = ZM_World.LauncherMapProfiles[game.GetMap()]
+    if not profile or ZM_World.ActiveProfile ~= profile then return nil end
+    local camera = findMarker("preview_skybox")
+    if IsValid(camera) and camera:GetClass() == "point_camera" then return camera end
+end
+
 local function sendPose(camera)
     net.WriteBool(IsValid(camera))
     if not IsValid(camera) then return end
@@ -82,6 +89,7 @@ function Launcher:SendStatus(target, action, success, message)
         net.WriteString(util.TableToJSON(rows or {}, false) or "[]")
         net.WriteBool(target.ZM_LauncherState == "deploying")
         sendPose(camera)
+        sendPose(findLauncherSkyCamera())
         local creditsCamera = findMarker("credits_camera")
         sendPose(creditsCamera)
         sendCreditsFog(creditsCamera)
@@ -101,6 +109,20 @@ hook.Add("SetupPlayerVisibility", "ZombieSim.Launcher.MenuPVS", function(target)
     if not target.ZM_LauncherState then return end
     local camera = findMarker("menu_camera")
     if IsValid(camera) then AddOriginToPVS(camera:GetPos()) end
+    camera = findLauncherSkyCamera()
+    if IsValid(camera) then
+        local origin, angles = camera:GetPos(), camera:GetAngles()
+        local cached = Launcher.SkyFlightPVS
+        if not cached or cached.origin ~= origin or cached.angles ~= angles then
+            cached = { origin = origin, angles = angles, points = {} }
+            for index = 0, 20 do
+                cached.points[#cached.points + 1] = ZM_LauncherScene:GetSkyFlightPose(
+                    { origin = origin, angles = angles }, index / 20 * ZM_LauncherScene.SkyFlightDuration)
+            end
+            Launcher.SkyFlightPVS = cached
+        end
+        for _, point in ipairs(cached.points) do AddOriginToPVS(point) end
+    end
     if target.ZM_LauncherCredits and CurTime() > (target.ZM_LauncherCreditsUntil or 0) then
         target.ZM_LauncherCredits = nil
     end

@@ -483,8 +483,8 @@ DevConsole.DirectCommands.zombiesim_dev_clothing_uv = function(argumentString)
     local style = arguments[4] or "base"
     local styles = { base = true, chest = true, chest_left = true, chest_right = true, arm_left = true, arm_right = true,
         back_small = true, front_full = true, back_full = true, ["repeat"] = true, pants_leg = true, pants_leg_right = true,
-        pants_cuff = true, pants_cuff_right = true, pants_back_left = true, pants_back_right = true,
-        arm_back_left = true, arm_back_right = true }
+        pants_cuff = true, pants_cuff_right = true, pants_cuff_both = true, pants_back_left = true, pants_back_right = true,
+        arm_back_left = true, arm_back_right = true, sleeve_cuff = true, sleeve_cuff_right = true, sleeve_cuff_both = true }
     local legStyle = string.match(style, "^pants_") ~= nil
     if (action ~= "on" and action ~= "off") or #arguments > 4 or not styles[style] or
         (style ~= "base" and style ~= "repeat" and not legStyle and finish ~= "shirt" and finish ~= "both") or
@@ -492,7 +492,7 @@ DevConsole.DirectCommands.zombiesim_dev_clothing_uv = function(argumentString)
         (style == "repeat" and finish == "uv") or
         (finish ~= "uv" and finish ~= "shirt" and finish ~= "pants" and finish ~= "both") or
         (variant ~= "current" and variant ~= "male" and variant ~= "female") then
-        return false, "usage: zombiesim_dev_clothing_uv on [current|male|female] [uv|shirt|pants|both] [base|chest|chest_left|chest_right|arm_left|arm_right|back_small|front_full|back_full|repeat|pants_leg|pants_leg_right|pants_cuff|pants_cuff_right|pants_back_left|pants_back_right|arm_back_left|arm_back_right] or off"
+        return false, "usage: zombiesim_dev_clothing_uv on [current|male|female] [uv|shirt|pants|both] [base|chest|chest_left|chest_right|arm_left|arm_right|back_small|front_full|back_full|repeat|pants_leg|pants_leg_right|pants_cuff|pants_cuff_right|pants_cuff_both|pants_back_left|pants_back_right|arm_back_left|arm_back_right|sleeve_cuff|sleeve_cuff_right|sleeve_cuff_both] or off"
     end
     if action == "off" then
         removeClothingProbe(target.ZM_DevClothingProbe)

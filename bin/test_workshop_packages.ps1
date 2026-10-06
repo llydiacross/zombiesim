@@ -107,10 +107,13 @@ try {
     Write-Fixture 'content\data_static\zombiesim_signs_preview.json' '{"variants":{}}'
     Write-Fixture 'content\data_static\music_definitions.json' '{"tracks":[{"id":"a","file":"sounds/music/a.mp3"}]}'
     Write-Fixture 'content\data_static\version.json' '{"schemaVersion":1,"product":"Z-Nation","stage":"Alpha","version":"9.8.7","status":"in development"}'
-    Write-Fixture 'content\data_static\sky_catalogue.json' '{"schemaVersion":1,"ownedLicenceFiles":["data_static\\sky_licences\\imported_fixture\\README.txt"]}'
+    Write-Fixture 'content\data_static\sky_catalogue.json' '{"schemaVersion":1,"ownedFiles":["materials\\zombiesim\\skies\\imported_fixtureft.vmt"],"ownedLicenceFiles":["data_static\\sky_licences\\imported_fixture\\README.txt"]}'
+    Write-Fixture 'content\materials\zombiesim\skies\imported_fixtureft.vmt' 'owned sky material'
+    Write-Fixture 'content\materials\zombiesim\skies\imported_tropo_night_1ft.vmt' 'retired sky material'
     Write-Fixture 'content\data_static\sky_licences\imported_fixture\README.txt' 'Artist licence fixture: retain this README.'
     Write-Fixture 'content\data_static\clothing_citizen_calibration.json' '{"schemaVersion":1,"previewOnly":false,"models":{}}'
     Write-Fixture 'content\sounds\music\a.mp3' 'audio'
+    Write-Fixture 'content\sounds\music\preview skybox 1.mp3' 'launcher preview audio'
     Write-Fixture 'content\data_static\consolecommands.txt' 'development command'
     Write-Fixture 'content\maps\zz_dev_zoo.bsp' 'unreferenced development fixture'
     Write-Fixture 'content\materials\models\zombiesim\clothing\catalog_0000000000000000_shirt_male.vtf' 'vtf'
@@ -142,7 +145,7 @@ try {
         schemaVersion = 1; worldProfiles = @('city', 'preview'); maximumShardBytes = 1MB; metadataReserveBytes = 65536
         releaseCleared = $false; coreWorkshopId = 'pending:core'; workshopIds = @{ 'clothing-01' = 'pending:clothing-01' }
         coreStaticFiles = @('clothing_catalogue.json', 'clothing_citizen_calibration.json', 'music_definitions.json', 'sky_catalogue.json', 'version.json', 'zombiesim_signs_preview.json')
-        commonMaterialDirectories = @(); commonMaterialExtensions = @('.vmt', '.vtf', '.png'); externalDependencies = @('Mounted native fixtures') }
+        commonMaterialDirectories = @('materials\zombiesim\skies'); commonMaterialExtensions = @('.vmt', '.vtf', '.png'); externalDependencies = @('Mounted native fixtures') }
     $builder = Join-Path $PSScriptRoot 'build_workshop_packages.ps1'
     & $builder -ProjectRoot $fixtureRoot -SettingsPath $fixtureSettings -Pack
     $fixtureReport = Get-Content -LiteralPath (Join-Path $fixtureRoot 'generated\workshop\inventory-report.json') -Raw | ConvertFrom-Json
@@ -164,6 +167,10 @@ try {
     })
     Assert-Package 'common content owns the original sky README exactly once' (
         $licencePack.Count -eq 1 -and $licencePack[0].id -like 'common-*')
+    Assert-Package 'sky ownership excludes retired materials without deleting source files' (
+        @($fixtureReport.packages.files | Where-Object path -eq 'materials/zombiesim/skies/imported_fixtureft.vmt').Count -eq 1 -and
+        @($fixtureReport.packages.files | Where-Object path -like '*imported_tropo_night_1*').Count -eq 0 -and
+        (Test-Path -LiteralPath (Join-Path $fixtureRoot 'content\materials\zombiesim\skies\imported_tropo_night_1ft.vmt')))
     Assert-Package 'sky README survives GMA staging unchanged' (
         (Get-Content -LiteralPath (Join-Path $fixtureReport.stageRoot "$($licencePack[0].id)\data_static\sky_licences\imported_fixture\readme.txt") -Raw) -eq
         'Artist licence fixture: retain this README.')
@@ -183,6 +190,9 @@ try {
         (Get-Content -LiteralPath (Join-Path $fixtureRoot 'zombiesim.txt') -Raw) -match '15895')
     $transformedMusic = Get-Content -LiteralPath (Join-Path $core 'data_static\music_definitions.json') -Raw | ConvertFrom-Json
     Assert-Package 'canonical sound root and registry agree in staged package' ($transformedMusic.tracks[0].file -eq 'sound/music/a.mp3')
+    $previewAudio = @($fixtureReport.packages | ForEach-Object { $_.files } |
+        Where-Object path -eq 'sound/music/preview skybox 1.mp3')
+    Assert-Package 'launcher preview soundtrack ships at canonical sound root' ($previewAudio.Count -eq 1)
     Assert-Package 'unowned files and bridge input excluded but untouched' (
         @($fixtureReport.excluded | Where-Object path -like '*orphan*').Count -eq 1 -and
         @($fixtureReport.excluded | Where-Object path -like '*consolecommands*').Count -eq 1 -and

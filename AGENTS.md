@@ -109,6 +109,39 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
   its status is `released`. Pre-2.6 changelog entries are reconstructed guesses.
   Full H is not accepted: fresh-load archived persistence, automatic weather/
   context, launcher/den/map-capture and visual/performance gates remain.
+- Clothing repeat rules (2026-10-06): placed art has no repeat unless
+  `_repeating`; `_notrepeating` suppresses it; new `_sleeve_cuff`/`_sleeves`
+  hem placement (`sleeve_cuffs.json`). Published698finishes/2994ownedfiles;
+  builder prunes unreferenced caches and unowned staged `catalog_*` files. Static
+  suites pass. Follow-up: sleeve canvas is now 112x200 (flames climb from the hem);
+  new two-piece `sleeve_cuff_both`/`pants_cuff_both`. Published735finishes/
+  3142ownedfiles; static suites pass, live pool9/9; human review pending.
+- Launcher follow-up (2026-10-06): user confirmed perfect 3D-sky alignment,
+  added invisible G-Man support and saved both launcher scenes. Preserve those
+  authored edits. Launcher-only sky inspection now takes off from its authored
+  island camera into an eased banking flight; shared pose/PVS, obstruction
+  checks and render-scoped selected-sky haze are implemented. Main menu/credits,
+  city/den sweep, gameplay weather and baked lighting remain unchanged. Static
+  GLua183/0 and mocked-engine Lua flight/fog3786assertions pass; game closed,
+  so new live browser cases, route clearance/PVS and motion/haze/performance
+  review remain pending. No maps rebuilt; Phase H still unaccepted.
+- Latest launcher continuation: user approved flight/haze appearance but reports
+  lag. Launcher flight now replaces the main RenderScene (no second panel scene)
+  and excludes the menu globe. Automatic profiles tour their four existing
+  Day/Overcast/Dusk/Night slots over20seconds; individuals retain10seconds,
+  saved choice/serverweather unchanged. GLua183/0 and71mocked tour/render tests
+  pass; fresh live tour and matched performance remain pending. User closed
+  game and authorized both latest authored launcher builds: preview/city
+  VBSP/VVIS/VRAD and staged hashes pass. No world-cell maps regenerated; Phase H
+  remains unaccepted.
+- Sky retirement (2026-10-06): user requested removing Tropospheric night1
+  without diagnosis. Published35imports/420materials;81individuals/18builtins.
+  Tropospheric1-3/World'sEnd night slots now use night2; other assignments and
+  individual/custom-only JohnTron unchanged. Saved selections/custom slots
+  migrate to night2 with custom backup; source/old loose files preserved but
+  current sky ownership excludes retired materials from packaging. Catalogue
+  2319/2319,GLua183/0,packaging53/53,offline migration90assertions pass.
+  Fresh live removal/replacement/migration review remains pending.
 - When a milestone runs, phases proceed in order and each phase gets focused static/automated checks as changes land; fix failures before advancing and record static and live results separately. A phase is accepted only on the user's confirmation; a successful map compile alone does not establish in-game acceptance.
 - [docs/todo-alpha-2.9.1.md](docs/todo-alpha-2.9.1.md) archives the completed compiler-pool, preset, generation-diagnostics, portal-budget, and test-organization milestone.
 - `docs/todo-alpha-2.8.6.md` remains as milestone history and source context for the safe-zone contract and Storm Drain work that landed before the current cycle.

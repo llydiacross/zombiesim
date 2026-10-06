@@ -1,6 +1,7 @@
 ZM_SkyPalettes = ZM_SkyPalettes or {}
 local Palettes = ZM_SkyPalettes
 Palettes.ContextOrder = { "day", "overcast", "dusk", "night" }
+Palettes.RetiredSkies = { imported_tropo_night_1 = "imported_tropo_night_2" }
 Palettes.Entries = {
     natural_day = { label = "Natural daylight", context = "day", top = { 65, 119, 184 } },
     natural_dusk = { label = "Natural dusk", context = "dusk", top = { 77, 82, 120 } },
@@ -85,7 +86,7 @@ for index = 1, 6 do
     Palettes.ProfileOrder[#Palettes.ProfileOrder + 1] = id
     Palettes.Profiles[id] = { label = "Tropospheric " .. index, contexts = {
         day = "imported_tropo_day_" .. index, overcast = "imported_tropo_verycloudy_" .. index,
-        dusk = "imported_tropo_dusk_" .. index, night = "imported_tropo_night_" .. (index <= 3 and 1 or 2) } }
+        dusk = "imported_tropo_dusk_" .. index, night = "imported_tropo_night_2" } }
 end
 
 for _, profile in ipairs({
@@ -97,7 +98,7 @@ for _, profile in ipairs({
         dusk = "imported_terrassee", night = "imported_tropo_night_2" } },
     { id = "worldsend_horizons", label = "World's End horizons", contexts = {
         day = "imported_plainsky", overcast = "imported_tropo_cloudy_3",
-        dusk = "imported_worldsend", night = "imported_tropo_night_1" } },
+        dusk = "imported_worldsend", night = "imported_tropo_night_2" } },
     { id = "neon_twilight", label = "Neon twilight (stylized)", contexts = {
         day = "imported_sky1", overcast = "imported_tropo_cloudy_4",
         dusk = "imported_waporvave", night = "cinematic_night" } },
@@ -172,11 +173,35 @@ function Palettes:LoadCustomProfiles()
     end
     local raw = file.Read(self.CustomPath, "DATA")
     local parsed = raw and util.JSONToTable(raw)
+    local migrated = false
+    if istable(parsed) and istable(parsed.profiles) then
+        for _, profile in pairs(parsed.profiles) do
+            if istable(profile) and istable(profile.contexts) then
+                for context, id in pairs(profile.contexts) do
+                    local replacement = isstring(id) and self.RetiredSkies[id]
+                    if replacement then
+                        profile.contexts[context] = replacement
+                        migrated = true
+                    end
+                end
+            end
+        end
+    end
     local ok, failure = self:ValidateCustomStore(parsed)
     if not ok then
         self.CustomFailure = failure .. " Existing file preserved: data/" .. self.CustomPath
         ErrorNoHalt("[ZombieSim] " .. self.CustomFailure .. "\n")
         return false, self.CustomFailure
+    end
+    if migrated then
+        self.CustomFailure = nil
+        ok, failure = self:WriteCustomStore(parsed)
+        if not ok then
+            self.CustomFailure = failure
+            ErrorNoHalt("[ZombieSim] Retired sky migration failed: " .. failure .. "\n")
+            return false, failure
+        end
+        print("[ZombieSim] Replaced retired Tropospheric night 1 in saved palettes with Tropospheric night 2; previous file backed up.")
     end
     self.CustomStore, self.CustomFailure = parsed, nil
     return true

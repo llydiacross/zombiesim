@@ -2678,6 +2678,13 @@ end)
 
 hook.Add("SetupWorldFog", "ZM.Atmosphere.WorldFog", function()
     if ZM_LauncherMenu and ZM_LauncherMenu.Active then
+        local preview = ZM_SkyInspection and ZM_SkyInspection.GetLauncherFogSettings and
+            ZM_SkyInspection:GetLauncherFogSettings()
+        if preview then
+            local applied = applyFog(preview)
+            recordHookResult("SetupWorldFog", applied, applied, preview, 1, "launcher sky preview")
+            return applied
+        end
         recordHookResult("SetupWorldFog", nil, false, nil, nil, "launcher menu active")
         return
     end
@@ -2693,6 +2700,13 @@ end)
 
 hook.Add("SetupSkyboxFog", "ZM.Atmosphere.SkyboxFog", function(scale)
     if ZM_LauncherMenu and ZM_LauncherMenu.Active then
+        local preview = ZM_SkyInspection and ZM_SkyInspection.GetLauncherFogSettings and
+            ZM_SkyInspection:GetLauncherFogSettings()
+        if preview then
+            local applied = applyFog(preview, scale)
+            recordHookResult("SetupSkyboxFog", applied, applied, preview, scale, "launcher sky preview")
+            return applied
+        end
         recordHookResult("SetupSkyboxFog", nil, false, nil, scale, "launcher menu active")
         return
     end

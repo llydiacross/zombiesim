@@ -22,6 +22,11 @@ foreach ($collection in $settings.collections) {
         }
     }
 }
+$excludedEntries = @($settings.excludedEntries)
+foreach ($id in $excludedEntries) {
+    if (@($specs | Where-Object id -EQ $id).Count -ne 1) { throw "Unknown or ambiguous excluded sky id: $id" }
+}
+$specs = @($specs | Where-Object { $_.id -notin $excludedEntries })
 foreach ($entry in $specs) {
     if ($entry.id -notmatch '^[a-z][a-z0-9_]+$' -or $ids.ContainsKey($entry.id)) { throw 'Invalid or duplicate sky id.' }
     $ids[$entry.id] = $true
@@ -97,6 +102,7 @@ foreach ($entry in $specs) {
 }
 $manifest = [ordered]@{ schemaVersion = 1; entries = $entries; ownedFiles = $owned
     ownedLicenceFiles = $ownedLicences
+    excludedEntries = $excludedEntries
     excludedCollections = @($settings.excludedCollections) }
 $json = $manifest | ConvertTo-Json -Depth 8
 foreach ($base in $output, (Join-Path $root 'content\data_static')) {

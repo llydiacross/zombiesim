@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "presets": [
+    {
+      "id": "sleeve_cuff",
+      "alignment": "bottom",
+      "size": [112, 200],
+      "male": [{ "uv": [676, 812, 112, 200], "source": [0, 0, 112, 200] }],
+      "female": [{ "uv": [694, 790, 112, 200], "source": [0, 0, 112, 200] }]
+    },
+    {
+      "id": "sleeve_cuff_right",
+      "alignment": "bottom",
+      "size": [112, 200],
+      "male": [{ "uv": [520, 812, 112, 200], "source": [0, 0, 112, 200] }],
+      "female": [{ "uv": [516, 790, 112, 200], "source": [0, 0, 112, 200] }]
+    },
+    {
+      "id": "sleeve_cuff_both",
+      "alignment": "bottom",
+      "size": [112, 200],
+      "male": [
+        { "uv": [676, 812, 112, 200], "source": [0, 0, 112, 200] },
+        { "uv": [520, 812, 112, 200], "source": [0, 0, 112, 200] }
+      ],
+      "female": [
+        { "uv": [694, 790, 112, 200], "source": [0, 0, 112, 200] },
+        { "uv": [516, 790, 112, 200], "source": [0, 0, 112, 200] }
+      ]
+    }
+  ]
+}

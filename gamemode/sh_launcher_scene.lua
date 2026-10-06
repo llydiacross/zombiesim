@@ -1,6 +1,31 @@
 // Presentation data is authored independently of the generated world.
 ZM_LauncherScene = ZM_LauncherScene or {}
 local Scene = ZM_LauncherScene
+Scene.SkyFlightDuration = 10
+Scene.SkyFlightHeight = 512
+Scene.SkyFlightRadius = 480
+
+local function easeFlight(value)
+    value = math.Clamp(value, 0, 1)
+    return value * value * value * (value * (value * 6 - 15) + 10)
+end
+
+function Scene:GetSkyFlightPose(camera, elapsed)
+    elapsed = math.Clamp(elapsed, 0, self.SkyFlightDuration)
+    local progress = easeFlight(elapsed / self.SkyFlightDuration)
+    local turn = progress * math.pi * 2
+    local heading = Angle(0, camera.angles.y, 0)
+    local lift = easeFlight(elapsed / 3.2)
+    local settling = easeFlight(elapsed / 1.6)
+    local envelope = math.sin(progress * math.pi)
+    local flap = 10 * easeFlight(elapsed / 0.6) * (1 - lift) * math.sin(elapsed * math.pi * 1.5) ^ 2
+    local origin = camera.origin + heading:Forward() * (self.SkyFlightRadius * math.sin(turn))
+        + heading:Right() * (self.SkyFlightRadius * (1 - math.cos(turn)))
+        + Vector(0, 0, self.SkyFlightHeight * lift + flap + 8 * envelope * math.sin(turn * 2))
+    local pitch = Lerp(settling, camera.angles.p, -6) + 2 * envelope * math.sin(turn)
+    local roll = Lerp(settling, camera.angles.r, 0) - 7 * envelope + 1.5 * envelope * math.sin(turn * 2)
+    return origin, Angle(pitch, camera.angles.y - progress * 360, roll)
+end
 
 function Scene:GetData()
     if self.Data then return self.Data end

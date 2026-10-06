@@ -97,13 +97,17 @@ try {
         $sex = if ($path -like '*male_03*') { 'male' } else { 'female' }
         Import-Module (Join-Path $PSScriptRoot 'clothing_artwork.psm1')
         foreach ($legStyle in (Get-ClothingLegPresets $prints)) {
-        $rectangle = $legStyle.$sex[0].uv
+        $pieceCount = @($legStyle.$sex).Count
+        Assert-ClothingInspection "$path/$($legStyle.id) has one piece per selected leg" (
+            $pieceCount -eq $(if ($legStyle.id -like '*_both') { 2 } else { 1 }))
+        for ($pieceIndex = 0; $pieceIndex -lt $pieceCount; $pieceIndex++) {
+        $rectangle = $legStyle.$sex[$pieceIndex].uv
         $covered = @($legs | Where-Object {
             $_.uvCenter[0] -ge $rectangle[0] -and $_.uvCenter[0] -lt $rectangle[0] + $rectangle[2] -and
             $_.uvCenter[1] -ge $rectangle[1] -and $_.uvCenter[1] -lt $rectangle[1] + $rectangle[3]
         })
         Assert-ClothingInspection "$path/$($legStyle.id) covers populated thigh geometry" ($covered.Count -gt 10)
-        $direction = if ($legStyle.id -like '*_right') { -1 } else { 1 }
+        $direction = if ($legStyle.id -like '*_right' -or ($legStyle.id -like '*_both' -and $pieceIndex -eq 1)) { -1 } else { 1 }
         Assert-ClothingInspection "$path/$($legStyle.id) does not cross to the other anatomical leg" (
             @($covered | Where-Object { $_.center[0] * $direction -le 0 }).Count -eq 0)
         if ($legStyle.id -like 'pants_back_*') {
@@ -121,6 +125,31 @@ try {
             @($covered | Where-Object { $_.center[1] -lt -1 -and $_.center[2] -gt 28 }).Count -gt 0 -and
             @($covered | Where-Object { $_.center[2] -lt 18 }).Count -eq 0)
         }
+        }
+        }
+        foreach ($sleeveStyle in (Get-ClothingSleevePresets)) {
+            $arms = Get-Content -LiteralPath ([System.IO.Path]::ChangeExtension($body.uvGuide.path, '.arms.json')) -Raw | ConvertFrom-Json
+            $pieceCount = @($sleeveStyle.$sex).Count
+            Assert-ClothingInspection "$path/$($sleeveStyle.id) has one piece per selected arm" (
+                $pieceCount -eq $(if ($sleeveStyle.id -like '*_both') { 2 } else { 1 }))
+            for ($pieceIndex = 0; $pieceIndex -lt $pieceCount; $pieceIndex++) {
+            $rectangle = $sleeveStyle.$sex[$pieceIndex].uv
+            $covered = @($arms | Where-Object {
+                $_.uvCenter[0] -ge $rectangle[0] -and $_.uvCenter[0] -lt $rectangle[0] + $rectangle[2] -and
+                $_.uvCenter[1] -ge $rectangle[1] -and $_.uvCenter[1] -lt $rectangle[1] + $rectangle[3]
+            })
+            $direction = if ($sleeveStyle.id -like '*_right' -or ($sleeveStyle.id -like '*_both' -and $pieceIndex -eq 1)) { -1 } else { 1 }
+            Assert-ClothingInspection "$path/$($sleeveStyle.id) covers populated selected-arm sleeve geometry" (
+                $covered.Count -ge 6 -and @($covered | Where-Object { $_.center[0] * $direction -le 0 }).Count -eq 0)
+            $ordered = @($covered | Sort-Object { $_.uvCenter[1] })
+            Assert-ClothingInspection "$path/$($sleeveStyle.id) bottom-aligned artwork points down toward the sleeve hem" (
+                $ordered[0].center[2] -gt $ordered[-1].center[2] + 2 -and
+                ($covered | ForEach-Object { $_.uvCenter[1] } | Measure-Object -Maximum).Maximum -gt $rectangle[1] + $rectangle[3] - 40)
+            Assert-ClothingInspection "$path/$($sleeveStyle.id) does not stretch artist canvas" (
+                $rectangle[2] -eq $sleeveStyle.size[0] -and $rectangle[3] -eq $sleeveStyle.size[1])
+            Assert-ClothingInspection "$path/$($sleeveStyle.id) climbs at least 150 UV px up the sleeve from the hem" (
+                $rectangle[3] -ge 150 -and $sleeveStyle.size[0] -ge 96)
+            }
         }
         foreach ($rear in (Get-ClothingRearPresets)) {
             $rectangle = $rear.$sex[0].uv

@@ -2246,72 +2246,6 @@
                                   }
                     },
                     {
-                        "id":  "imported_tropo_night_1",
-                        "label":  "Tropospheric night 1",
-                        "context":  "night",
-                        "material":  "zombiesim/skies/imported_tropo_night_1",
-                        "credit":  "Hsyenoh05, Tropospheric Boxes",
-                        "permission":  "Use this pack for any purpose, including commercially; credit appreciated but not required.",
-                        "licence":  "(Tropospheric Boxes, Made by Hsyenoh05)\r\n\r\nA collection of 2k (2048 pixels wide) skyboxes made for Source games, use this pack for any purpose, including commercially, giving credits isn\u0027t required but is appreciated.\r\n\r\nSome of the software used:\r\n\r\n- Mateusz Wisniowski\u0027s HDRI-to-CubeMap (MIT) [https://raw.githubusercontent.com/matheowis/HDRI-to-CubeMap/master/LICENSE]",
-                        "licenceFile":  "data_static\\sky_licences\\imported_tropo_night_1\\README.txt",
-                        "faces":  {
-                                      "ft":  {
-                                                 "width":  4,
-                                                 "height":  4,
-                                                 "scaleX":  1,
-                                                 "scaleY":  1,
-                                                 "transform":  "",
-                                                 "source":  "tropospheric_boxes\\skybox\\blank.vtf",
-                                                 "sha256":  "42cf7246afc4a112998854c8069f7ccb329f69307a97fbad646a66a3744ffcc5"
-                                             },
-                                      "bk":  {
-                                                 "width":  4,
-                                                 "height":  4,
-                                                 "scaleX":  1,
-                                                 "scaleY":  1,
-                                                 "transform":  "",
-                                                 "source":  "tropospheric_boxes\\skybox\\blank.vtf",
-                                                 "sha256":  "42cf7246afc4a112998854c8069f7ccb329f69307a97fbad646a66a3744ffcc5"
-                                             },
-                                      "lf":  {
-                                                 "width":  4,
-                                                 "height":  4,
-                                                 "scaleX":  1,
-                                                 "scaleY":  1,
-                                                 "transform":  "",
-                                                 "source":  "tropospheric_boxes\\skybox\\blank.vtf",
-                                                 "sha256":  "42cf7246afc4a112998854c8069f7ccb329f69307a97fbad646a66a3744ffcc5"
-                                             },
-                                      "rt":  {
-                                                 "width":  4,
-                                                 "height":  4,
-                                                 "scaleX":  1,
-                                                 "scaleY":  1,
-                                                 "transform":  "",
-                                                 "source":  "tropospheric_boxes\\skybox\\blank.vtf",
-                                                 "sha256":  "42cf7246afc4a112998854c8069f7ccb329f69307a97fbad646a66a3744ffcc5"
-                                             },
-                                      "up":  {
-                                                 "width":  2048,
-                                                 "height":  2048,
-                                                 "scaleX":  1,
-                                                 "scaleY":  1,
-                                                 "transform":  "",
-                                                 "source":  "tropospheric_boxes\\skybox\\night_1up.vtf",
-                                                 "sha256":  "fd538a609d5725b3566ca497ff883f38209d4bf086dd7b05961ae9b21232bc07"
-                                             },
-                                      "dn":  {
-                                                 "width":  4,
-                                                 "height":  4,
-                                                 "scaleX":  1,
-                                                 "scaleY":  1,
-                                                 "transform":  "",
-                                                 "source":  "tropospheric_boxes\\skybox\\blank.vtf",
-                                                 "sha256":  "42cf7246afc4a112998854c8069f7ccb329f69307a97fbad646a66a3744ffcc5"
-                                             }
-                                  }
-                    },
-                    {
                         "id":  "imported_tropo_night_2",
                         "label":  "Tropospheric night 2",
                         "context":  "night",
@@ -2787,18 +2721,6 @@
                        "materials\\zombiesim\\skies\\imported_tropo_dusk_6up.vmt",
                        "materials\\zombiesim\\skies\\imported_tropo_dusk_6dn.vtf",
                        "materials\\zombiesim\\skies\\imported_tropo_dusk_6dn.vmt",
-                       "materials\\zombiesim\\skies\\imported_tropo_night_1ft.vtf",
-                       "materials\\zombiesim\\skies\\imported_tropo_night_1ft.vmt",
-                       "materials\\zombiesim\\skies\\imported_tropo_night_1bk.vtf",
-                       "materials\\zombiesim\\skies\\imported_tropo_night_1bk.vmt",
-                       "materials\\zombiesim\\skies\\imported_tropo_night_1lf.vtf",
-                       "materials\\zombiesim\\skies\\imported_tropo_night_1lf.vmt",
-                       "materials\\zombiesim\\skies\\imported_tropo_night_1rt.vtf",
-                       "materials\\zombiesim\\skies\\imported_tropo_night_1rt.vmt",
-                       "materials\\zombiesim\\skies\\imported_tropo_night_1up.vtf",
-                       "materials\\zombiesim\\skies\\imported_tropo_night_1up.vmt",
-                       "materials\\zombiesim\\skies\\imported_tropo_night_1dn.vtf",
-                       "materials\\zombiesim\\skies\\imported_tropo_night_1dn.vmt",
                        "materials\\zombiesim\\skies\\imported_tropo_night_2ft.vtf",
                        "materials\\zombiesim\\skies\\imported_tropo_night_2ft.vmt",
                        "materials\\zombiesim\\skies\\imported_tropo_night_2bk.vtf",
@@ -2847,9 +2769,11 @@
                               "data_static\\sky_licences\\imported_tropo_dusk_4\\README.txt",
                               "data_static\\sky_licences\\imported_tropo_dusk_5\\README.txt",
                               "data_static\\sky_licences\\imported_tropo_dusk_6\\README.txt",
-                              "data_static\\sky_licences\\imported_tropo_night_1\\README.txt",
                               "data_static\\sky_licences\\imported_tropo_night_2\\README.txt"
                           ],
+    "excludedEntries":  [
+                            "imported_tropo_night_1"
+                        ],
     "excludedCollections":  [
 
                             ]

@@ -44,6 +44,20 @@ if ($null -ne $previous) {
         }
     }
 }
+function Remove-UnusedClothingCaches([string[]]$OwnedFiles) {
+    # Remove only builder-owned catalog_<hash> caches that no listed published layer references.
+    $usedPrefixes = @{}
+    foreach ($name in $OwnedFiles) { if ($name -match '^(catalog_[a-f0-9]{16})_') { $usedPrefixes[$Matches[1]] = $true } }
+    $removed = 0
+    foreach ($directory in @(Get-ChildItem -LiteralPath (Join-Path $root 'generated\clothing_preview') -Directory -Filter 'catalog_*')) {
+        if ($directory.Name -match '^catalog_[a-f0-9]{16}$' -and -not $usedPrefixes.ContainsKey($directory.Name) -and
+            ($directory.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
+            Remove-Item -LiteralPath $directory.FullName -Recurse -Force
+            $removed++
+        }
+    }
+    return $removed
+}
 function Test-ClothingBuiltLayers([string]$Prefix, [string[]]$Names) {
     foreach ($name in $Names) {
         if (-not (Test-Path -LiteralPath (Join-Path $root "generated\clothing_preview\$Prefix\source\$name.png"))) { return $false }
@@ -76,6 +90,11 @@ try {
             if ($name -notmatch '^pool_') { $null = $files.Add($name) }
         }
     }
+    $prunedBefore = 0
+    if (-not $PoolOnly) {
+        # Only previously published prefixes are reusable, so other caches can go before the disk-heavy build.
+        $prunedBefore = Remove-UnusedClothingCaches $(if ($null -ne $previous) { @($previous.files) } else { @() })
+    }
     foreach ($variant in $plan.variants) {
         $family = $plan.families | Where-Object identity -eq $variant.family
         $design = $prototype | ConvertFrom-Json
@@ -91,6 +110,9 @@ try {
         }
         if ($variant.style -match '^(pants|arm)_back_') {
             $signature += '|rear-limbs-v1|' + (Get-Content -LiteralPath (Join-Path $art 'rear_limbs.json') -Raw)
+        }
+        if ($variant.style -like 'sleeve_cuff*') {
+            $signature += '|sleeve-cuff-v1|' + (Get-Content -LiteralPath (Join-Path $art 'sleeve_cuffs.json') -Raw)
         }
         $hash = ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($signature)))).Replace('-', '').ToLowerInvariant()
         $prefix = 'catalog_' + $hash.Substring(0, 16)
@@ -198,4 +220,19 @@ if ($null -ne $previous) {
     }
 }
 $finishCount = if ($PoolOnly) { @($finishes.PSObject.Properties).Count } else { $finishes.Count }
+$prunedCaches = $prunedBefore
+$removedStaged = 0
+if (-not $PoolOnly) {
+    $prunedCaches += Remove-UnusedClothingCaches $files
+    # Older unpublished iterations can leave builder-namespace layers that no manifest lists.
+    foreach ($directory in $destinations) {
+        foreach ($file in @(Get-ChildItem -LiteralPath $directory -File -Filter 'catalog_*')) {
+            if ($file.Name -match '^catalog_[a-f0-9]{16}_[a-z_]+\.(vtf|vmt)$' -and -not $files.Contains($file.Name)) {
+                Remove-Item -LiteralPath $file.FullName
+                $removedStaged++
+            }
+        }
+    }
+}
+Write-Host "Pruned $prunedCaches unused generated catalogue build caches and $removedStaged unowned staged catalogue files."
 Write-Host "Published $finishCount clean wearable finishes / $($settings.textureCapacity) outfit targets; staged $($files.Count) owned files and catalogue metadata. Not release-cleared."

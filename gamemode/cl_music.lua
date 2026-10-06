@@ -1,5 +1,6 @@
 local Music = ZM_Music
 if Music.Pause then Music:Pause() end
+if Music.StopSkyPreview then Music:StopSkyPreview() end
 local enabled = CreateClientConVar("zombiesim_music_enabled", "1", true, false, "Enables environment music.", 0, 1)
 local volume = GetConVar("snd_musicvolume")
 Music.Generation = (Music.Generation or 0) + 1
@@ -9,6 +10,57 @@ Music.Gain = 0
 Music.Channel = nil
 Music.Profile = nil
 Music.State = nil
+
+function Music:StopSkyPreview(owner)
+    local preview = self.SkyPreview
+    if not preview or (owner and preview.owner ~= owner) then return end
+    self.SkyPreview = nil
+    if IsValid(preview.channel) then preview.channel:Stop() end
+end
+
+function Music:StartSkyPreview(owner)
+    self:StopSkyPreview()
+    if not enabled:GetBool() then return end
+    local path = "sounds/music/preview skybox 1.mp3"
+    if not file.Exists(path, "GAME") then path = "sound/music/preview skybox 1.mp3" end
+    if not file.Exists(path, "GAME") then
+        ErrorNoHalt("[ZombieSim] Launcher sky-preview music is missing: preview skybox 1.mp3\n")
+        return
+    end
+    local preview = { owner = owner, file = path }
+    self.SkyPreview = preview
+    sound.PlayFile(path, "noplay", function(channel, errorId, errorName)
+        if self.SkyPreview ~= preview or not ZM_SkyInspection or ZM_SkyInspection.State ~= owner then
+            if IsValid(channel) then channel:Stop() end
+            return
+        end
+        if not IsValid(channel) then
+            self.SkyPreview = nil
+            ErrorNoHalt("[ZombieSim] Launcher sky-preview music failed: " .. tostring(errorName) ..
+                " (" .. tostring(errorId) .. ")\n")
+            return
+        end
+        preview.channel = channel
+        channel:SetVolume(0)
+        channel:Play()
+    end)
+end
+
+hook.Add("Think", "ZM.Music.SkyPreview", function()
+    local preview = Music.SkyPreview
+    if not preview then return end
+    if not ZM_SkyInspection or ZM_SkyInspection.State ~= preview.owner or not enabled:GetBool() then
+        Music:StopSkyPreview()
+        return
+    end
+    if not IsValid(preview.channel) then return end
+    local elapsed = RealTime() - preview.owner.startedAt
+    local gain = math.Clamp(elapsed / 0.6, 0, 1) *
+        math.Clamp((preview.owner.duration - elapsed) / 2, 0, 1)
+    preview.channel:SetVolume(volume:GetFloat() * gain)
+end)
+
+hook.Add("ShutDown", "ZM.Music.SkyPreview", function() Music:StopSkyPreview() end)
 
 local function registry()
     local data = ZM_StaticData:GetRegistry()
@@ -229,6 +281,8 @@ function Music:GetDiagnosticSnapshot()
         saved = self.Saved, fallbackUsed = self.FallbackUsed, lastError = self.LastError,
         trackSet = self.State and self.State.routeSet, trackSafeZoneId = self.State and self.State.safeZoneId,
         lastTransition = self.LastTransition,
+        skyPreview = self.SkyPreview and { file = self.SkyPreview.file,
+            playing = IsValid(self.SkyPreview.channel) } or nil,
         assets = table.Copy(self.Assets)
     }
 end

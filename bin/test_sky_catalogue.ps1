@@ -17,6 +17,9 @@ foreach ($collection in $sourceSettings.collections) {
         foreach ($index in 1..$family.count) { $expectedIds += $collection.idPrefix + $family.prefix + $index }
     }
 }
+$expectedIds = @($expectedIds | Where-Object { $_ -notin $sourceSettings.excludedEntries })
+Assert-Sky ($expectedIds -notcontains 'imported_tropo_night_1') 'retired night sky excluded from source allowlist'
+Assert-Sky (@($catalogue.entries | Where-Object id -EQ 'imported_tropo_night_1').Count -eq 0) 'retired night sky not published'
 Assert-Sky ($catalogue.entries.Count -eq $expectedIds.Count) 'every allowlisted set is published'
 Assert-Sky ($catalogue.ownedFiles.Count -eq $expectedIds.Count * 12) 'six texture/material pairs per set'
 Assert-Sky ($catalogue.ownedLicenceFiles.Count -eq $expectedIds.Count) 'each set retains a standalone licence file'

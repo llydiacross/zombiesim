@@ -45,9 +45,16 @@ function Read-ClothingFilename {
     $colour = $null
     $placement = $null
     $artworkTone = $null
+    $repeating = $null
     $excludedColours = [Collections.Generic.List[string]]::new()
     while ($tokens.Count -gt 0) {
         $last = $tokens[$tokens.Count - 1]
+        if ($last -in 'repeating', 'notrepeating') {
+            if ($null -ne $repeating) { throw "Ambiguous repeating suffixes: $Filename" }
+            $repeating = $last -eq 'repeating'
+            $tokens.RemoveAt($tokens.Count - 1)
+            continue
+        }
         if ($last -in 'light', 'dark') {
             if ($null -ne $artworkTone) { throw "Ambiguous artwork tone suffixes: $Filename" }
             $artworkTone = $last
@@ -82,6 +89,11 @@ function Read-ClothingFilename {
             $tag = 'pants_cuff'
             $length = 2
         }
+        if ($tokens.Count -ge 2 -and $tokens[$tokens.Count - 2] -eq 'sleeve' -and $last -eq 'cuff') {
+            $tag = 'sleeve_cuff'
+            $length = 2
+        }
+        if ($last -eq 'sleeves') { $tag = 'sleeve_cuff' }
         if ($tokens.Count -ge 2 -and $tokens[$tokens.Count - 2] -eq 'arm' -and $last -in 'left', 'right') {
             $tag = 'arm_' + $last
             $length = 2
@@ -91,7 +103,7 @@ function Read-ClothingFilename {
             $length = 2
         }
         if ($tag -in 'chest', 'front', 'back', 'arm_left', 'arm_right', 'pants', 'pants_cuff',
-            'pants_back_left', 'pants_back_right', 'arm_back_left', 'arm_back_right') {
+            'pants_back_left', 'pants_back_right', 'arm_back_left', 'arm_back_right', 'sleeve_cuff') {
             if ($null -ne $placement) { throw "Ambiguous placement suffixes: $Filename" }
             $placement = $tag
             $tokens.RemoveRange($tokens.Count - $length, $length)
@@ -102,7 +114,8 @@ function Read-ClothingFilename {
     if ($tokens.Count -eq 0) { throw "Artwork requires a family name before suffixes: $Filename" }
     if ($null -ne $colour -and $excludedColours.Contains($colour)) { throw "Fixed colour is also excluded: $Filename" }
     return [pscustomobject]@{ source = $Filename; identity = $identity; family = $tokens -join '_';
-        colour = $colour; placement = $placement; excludedColours = $excludedColours.ToArray(); artworkTone = $artworkTone }
+        colour = $colour; placement = $placement; excludedColours = $excludedColours.ToArray(); artworkTone = $artworkTone
+        repeating = $repeating }
 }
 
 function Get-ClothingCataloguePlan {
@@ -177,14 +190,18 @@ function Get-ClothingCataloguePlan {
             if ($colours.Count -eq 0) { throw "No allowed $garment colours remain for $($family.source) after exclusions/tone contrast; change suffixes or curated palette." }
             $placements = if ($garment -eq 'pants') {
                     if ($family.placement -like 'pants_back_*') { @($family.placement) }
-                    elseif ($family.placement -eq 'pants_cuff') { @('pants_cuff', 'pants_cuff_right') }
-                    else { @('pants_leg', 'pants_leg_right', 'pants_cuff', 'pants_cuff_right') }
+                    elseif ($family.placement -eq 'pants_cuff') { @('pants_cuff', 'pants_cuff_right', 'pants_cuff_both') }
+                    else { @('pants_leg', 'pants_leg_right', 'pants_cuff', 'pants_cuff_right', 'pants_cuff_both') }
                 }
                 elseif ($family.placement -eq 'front') { @('front_full') }
                 elseif ($family.placement -eq 'back') { @('back_full') }
+                elseif ($family.placement -eq 'sleeve_cuff') { @('sleeve_cuff', 'sleeve_cuff_right', 'sleeve_cuff_both') }
                 elseif ($null -ne $family.placement) { @($family.placement) } else { @($Settings.defaultShirtPlacements) }
+            # Placed artwork defaults to single images; _repeating overrides that, _notrepeating suppresses repeats.
+            $repeat = if ($null -ne $family.repeating) { $family.repeating } else { $null -eq $family.placement }
+            $styles = @($placements) + @(if ($repeat) { 'repeat' })
             foreach ($colour in $colours) {
-                foreach ($style in @($placements) + @('repeat')) {
+                foreach ($style in $styles) {
                     $finish = 'catalogue_' + $family.identity + '_' + $garment + '_' + $colour + '_' + $style
                     $item = 'itemClothing' + (($finish.Substring(10).Split('_') | ForEach-Object {
                         $_.Substring(0, 1).ToUpperInvariant() + $_.Substring(1)
