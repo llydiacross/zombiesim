@@ -61,6 +61,18 @@ foreach ($name in $settings.coreStaticFiles) {
     if ($name -eq 'music_definitions.json') { continue }
     Add-Content "data_static/$name" 'core' 'registries'
 }
+if ($settings.coreStaticFiles -contains 'sky_catalogue.json') {
+    $skyCatalogue = Read-PackageJson (Join-Path $content 'data_static\sky_catalogue.json')
+    $licenceFiles = $skyCatalogue.PSObject.Properties['ownedLicenceFiles']
+    if ($null -ne $licenceFiles) {
+        foreach ($path in $licenceFiles.Value) {
+            if ($path -notmatch '^data_static\\sky_licences\\imported_[a-z0-9_]+\\README\.txt$') {
+                throw "Invalid sky licence ownership path: $path"
+            }
+            Add-Content $path 'common' 'sky-licences'
+        }
+    }
+}
 $musicPath = Join-Path $content 'data_static\music_definitions.json'
 $music = Read-PackageJson $musicPath
 foreach ($track in $music.tracks) {
@@ -203,12 +215,16 @@ foreach ($path in $snapshots.Keys) {
     if ((Get-FileHash -LiteralPath $path).Hash -ne $snapshots[$path]) { throw "Build inputs changed during inventory: $path. Retry after publication." }
 }
 if (-not $settings.releaseCleared) { $blockers.Add('Common assets and release provenance have not been signed off.') }
+$gameVersion = Read-PackageJson (Join-Path $content 'data_static\version.json')
+if ($gameVersion.schemaVersion -ne 1 -or [string]$gameVersion.version -notmatch '^\d+(\.\d+)+$') { throw 'Invalid data_static\version.json.' }
+if ($gameVersion.status -ne 'released') { $blockers.Add("Game version $($gameVersion.stage) $($gameVersion.version) is still '$($gameVersion.status)' in data_static\version.json.") }
 $packs = @(Split-WorkshopPackages @($inventory.Values) ($settings.maximumShardBytes - $settings.metadataReserveBytes))
 $identity = @($WorldProfiles | Sort-Object) -join ','
 foreach ($file in @($inventory.Values | Sort-Object path)) { $identity += "`n$($file.path):$($file.bytes):$($file.sha256)" }
 $toolHash = (Get-FileHash -LiteralPath $PSCommandPath).Hash + (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'workshop_packages.psm1')).Hash
 $releaseId = Get-WorkshopTextHash ($identity + "`n" + (Get-Content -LiteralPath $SettingsPath -Raw) + "`n" + $toolHash + "`nrelease=" + [bool]$Release)
 $manifest = [ordered]@{ schemaVersion = 1; releaseId = $releaseId; development = -not [bool]$Release;
+    gameVersion = [string]$gameVersion.version; gameStage = [string]$gameVersion.stage; gameStatus = [string]$gameVersion.status
     profiles = @($WorldProfiles | Sort-Object); packs = @()
     integrityErrors = @($blockers | Where-Object { $_ -like 'Missing *' }) }
 $usedWorkshopIds = @{}
@@ -229,6 +245,7 @@ foreach ($package in $packs) {
 }
 $reportDirectory = Join-Path $root 'generated\workshop'
 $report = [ordered]@{ schemaVersion = 1; releaseId = $releaseId; profiles = $manifest.profiles
+    gameVersion = $manifest.gameVersion; gameStage = $manifest.gameStage; gameStatus = $manifest.gameStatus
     maximumShardBytes = $settings.maximumShardBytes; releaseEligible = $blockers.Count -eq 0
     blockers = @($blockers); warnings = @($warnings); excluded = @($excluded)
     externalDependencies = @($settings.externalDependencies); externalModels = @($externalModels | Sort-Object)

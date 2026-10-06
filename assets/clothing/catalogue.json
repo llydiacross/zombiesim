@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "maximumImages": 32,
   "maximumVariants": 896,
+  "textureCapacity": 96,
   "excludeFiles": ["uv_probe.png"],
   "shirtColours": ["yellow", "blue", "orange", "red", "teal", "green", "pink"],
   "pantsColours": ["charcoal", "olive", "navy"],

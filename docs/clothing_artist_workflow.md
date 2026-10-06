@@ -1,6 +1,76 @@
 # Clothing finish prototype
 
-This is the Alpha 3.1.0 Phase F clothing workflow. The approved visual prototype has live fixed-finish equipment evidence and an initial generated catalogue; catalogue/pool live integration and complete Phase F acceptance remain pending. Only `models/player/group01/male_03.mdl` and `models/player/group01/female_01.mdl` are enabled for finishes. Other models retain their native appearance; do not infer UV compatibility from similar material names.
+This is the Alpha 3.1.0 Phase F clothing workflow. All fifteen group01 citizens
+(`male_01`-`male_09`, `female_01`-`female_06`) now have independently measured
+garment transfers and explicit human visual approval. Rebels are deliberately
+excluded from catalogue clothing and retain their mounted native bloody
+appearance. Full Phase F performance/lifecycle acceptance remains separate.
+
+## Citizen catalogue outfits
+
+Each citizen walker selects a shirt and pants independently from the entire
+eligible catalogue, including artist prints and original fabrics. The current
+catalogue contains 866 finishes; this is not a sixteen-outfit shortlist.
+An individual spawn keeps a unique random seed, and Walker ticket identities
+keep repeated materialization stable for the same model/profile/cell/revision.
+Refreshing blood does not reroll an outfit. Corpse packets and queued/live
+severed pieces retain their original selection. These are networked cosmetics,
+not wearable grants or saved player appearance changes.
+
+The user approved **96 shared outfit render targets**, replacing the original
+sixteen-slot budget. Targets are created on demand and remain engine-resident
+for the map/session: up to approximately **384 MiB of RGBA colour storage**,
+plus source textures, materials and the legacy prototype targets. Identical
+outfits share composites; live players, UI models, corpses and pending/live
+limb copies pin their slots. At full capacity, new distinct outfits explicitly
+stay native and retry after references release; pinned appearances are never
+overwritten. The catalogue still has its independent 896-finish cap.
+
+`textureCapacity` in [catalogue.json](../assets/clothing/catalogue.json) must
+match `ZM_Clothing.TextureCapacity`. Refresh only generated pool patches and
+ownership metadata without rebuilding or changing garment textures/identities:
+
+```powershell
+.\bin\build_clothing_catalogue.ps1 -PoolOnly
+.\bin\test_clothing_catalogue.ps1 -ValidateBuilt -PreviousCatalogue '.\generated\clothing_preview\catalogue\pool_previous_catalogue.json'
+```
+
+The generator emits 192 tiny native-inheriting VMT patches for 96 targets.
+Published ownership is now 3642 files; all 866 finish definitions, item IDs,
+icons and existing source textures are retained. Pool-only publication verifies
+the existing two catalogue copies, validates ownership and hash-checks all
+staged payloads before publishing. It does not prune unowned assets.
+
+Citizen transfers reuse the original 1024-square catalogue and blood layers,
+not new textures per model/finish. Engine mesh inspection confirmed alternate
+shirt atlases on several citizens; robust upright affine fitting and
+per-triangle clipping preserve unmatched native neckline charts. The generated
+transfer manifest is approximately 5.3 MB. Rebuild it through the owners:
+
+```powershell
+.\bin\inspect_clothing_citizen_calibration.ps1
+.\bin\test_clothing_citizen_calibration.ps1
+.\bin\build_clothing_citizen_calibration.ps1 -StagePreview
+```
+
+The default manifest is preview-only. `-EnableRuntime` is an explicit rollout
+gate, already approved for these fifteen measured models; never apply it to
+rebels or an unreviewed model set. Wardrobe's citizen dropdown remains window-only.
+
+Normal entity composition uses a **2 ms soft per-frame work budget**. One cold
+build can exceed that budget, but another is not batched behind it. The actual
+pool suite also advances capacity and citizen fixtures one step per frame,
+rather than creating 96 targets and thousands of atlas draw calls in one
+frame. Its JSON first reports `running: true`, then the final pass/fail summary;
+bridge dispatch alone is not completion.
+
+For harmless preview-admin crowd checks, `zn_gore_probe crowd` uses all fifteen
+models; `zn_gore_probe crowd male_03` repeats one model with independently
+selected outfits. Append `native` for a matched native-clothing control.
+Probes do not attack, reward kills, or acquire Walker tickets; they expire after
+120 seconds. Use `zn_gore_probe off` for owned cleanup. Profile without taking
+a screenshot during the measurement. Earlier cold builds measured 21-36 ms
+and the background client ran near 20 FPS; neither is 60-FPS acceptance.
 
 ## Editable source
 
@@ -214,9 +284,9 @@ Single-survivor five-second profiles measured the clothing scan at 0.0098 ms/fra
 native and 0.0170 ms/frame equipped (max 0.150/0.140 ms; about 0.028/0.044 KiB
 positive allocation per frame). Both runs were approximately 20 FPS, so these
 are focused cost observations, not 60-FPS or crowd/performance acceptance.
-Additional wearable finishes now use a bounded 16-slot outfit pool, with
+Additional wearable finishes now use the user-approved bounded 96-slot outfit pool, with
 reference checks for players, UI models, corpses and queued/live gore copies.
-Its live capacity/reuse/recovery acceptance remains pending. The six legacy
+Its actual capacity/reuse/recovery regression passes; broader performance acceptance remains pending. The six legacy
 equipment textures remain only for the fixed-finish fallback.
 
 ## Single-image pants placement prototype
@@ -351,14 +421,55 @@ The fifteen group03 player bodies use **2048x2048** sheets with different
 body-vertex counts and UV fingerprints from group01. This does not prove every
 pixel is incompatible, but it rules out treating the survivor charts as
 verified walker charts. No group03 runtime support or bloody catalogue is
-enabled by inspection. Non-group01 UV-guide requests explicitly fail until
-separate chart naming/calibration is implemented.
+enabled by inspection. Group03 male_03/female_01 now have separately named
+2048-square guides and full physical/UV triangle exports:
+`uv_group03_male_03.png` and `uv_group03_female_01.png`, with corresponding
+`.bodytriangles.json`. These diagnostics do not approve garment masks.
+The walker inspection suite passes56/56, including chart separation, all
+finite/bounded body triangles, and rejection of wrong-group requests before
+writes. Run chart-generating commands serially when checking output isolation;
+the blood builder also refreshes the survivor inspection.
 
 The current mounted search paths do not resolve `models/player/group02/male_01.mdl`;
 group02 inspection fails explicitly rather than pretending it was verified.
 Existing walker model selection is unchanged. Preserve the current
 server-owned bloody overrides and client gore/corpse material-copy lifecycle
 while separately designing original bloody layers and group03 calibration.
+
+### Original shared bloody counterparts
+
+The user selected shared overlays, not duplicate bloody item IDs or hundreds
+of new full sheets. [blood.json](../assets/clothing/blood.json) owns the seed,
+stain/droplet counts, colour and maximum opacity. All stain shapes are original
+procedural artwork: irregular soft-edged patches with clustered droplets,
+not copies of mounted Valve/GMod blood textures. Existing garment masks clip
+the overlays; native inner shirts, skin and shoes remain excluded. Shirt
+backs use the same inspected physical projection as the clean fabric.
+
+Build offline with `.\bin\build_clothing_blood.ps1`, then run
+`.\bin\test_clothing_blood.ps1`. Three shared1024-square DXT5 layers (male/female
+shirt and common pants), six VTF/VMT files, cover all existing866finishes.
+They stage to the existing content/installed-material locations and belong
+to packaging's fixed-clothing group. They are not catalogue-owned files or
+new wearable definitions, and do not change persistence or stats.
+Blood checks32/32 include every pixel of all three masks, deterministic raw
+pixels, bounded partial coverage, alpha/mips/compression, invalid settings,
+and exact staging hashes.
+
+The client compositor adds these overlays only over selected garments, keyed
+separately from clean outfits within the shared 96-slot pool. Missing
+overlays fail explicitly and can retry; no clean-looking success fallback is
+used. Wardrobe has a window-only **BLOOD PREVIEW: OFF/ON** button, off whenever
+the window opens. Native garment buttons still restore that garment; no
+inventory, survivor appearance or gameplay blood state is changed.
+
+The client pool suite includes blood/clean sharing, restoration, retry and
+invalid-input cases. Live tests pass 9/9; the user approved blood toggling,
+all fifteen citizen transfers, and actual citizen walker/corpse/detached-piece
+appearance. Close dressed windows and remove crowd probes before the isolated
+capacity case. Group03 walkers retain native mounted bloody overrides by
+explicit user direction, not as a pending catalogue integration target.
+Phase F is not accepted solely by these individual visual approvals.
 
 Publication is complete:866finishes/3482ownedfiles; exact preservation and
 built-output checks7319/7319, fabrics2754/2754, prototype306/306, topology134/134,

@@ -1,2 +1,2 @@
-# request: bridge-20261005-131224-442
-zombiesim_dev_capture alpha310_rear_cleaned
+# request: bridge-20261006-023619-835
+zombiesim_dev_test_sky_browser

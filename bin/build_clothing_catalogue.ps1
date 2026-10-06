@@ -1,4 +1,4 @@
-param([switch]$PlanOnly)
+param([switch]$PlanOnly, [switch]$PoolOnly)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'clothing_catalogue.psm1') -Force
@@ -7,17 +7,23 @@ $root = Split-Path -Parent $PSScriptRoot
 $null = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile preview
 $art = Join-Path $root 'assets\clothing'
 $settings = Get-Content (Join-Path $art 'catalogue.json') -Raw | ConvertFrom-Json
-$plan = Get-ClothingCataloguePlan $art $settings
-$fabricSettings = Get-Content (Join-Path $art 'fabrics.json') -Raw | ConvertFrom-Json
-$fabrics = @(Get-ClothingFabricPlan $fabricSettings $settings)
-if ($plan.variants.Count + $fabrics.Count -gt $settings.maximumVariants) { throw 'Combined image/fabric catalogue exceeds variant budget.' }
-$plan | Add-Member -NotePropertyName fabrics -NotePropertyValue $fabrics
+if ($PlanOnly -and $PoolOnly) { throw 'PlanOnly and PoolOnly are mutually exclusive.' }
+if ($settings.textureCapacity -isnot [int] -or $settings.textureCapacity -lt 1 -or $settings.textureCapacity -gt 99) {
+    throw 'Clothing textureCapacity must be a whole number from 1 to 99.'
+}
 $output = Join-Path $root 'generated\clothing_preview\catalogue'
 $null = New-Item -ItemType Directory -Force -Path $output
 $utf8 = [Text.UTF8Encoding]::new($false)
-[IO.File]::WriteAllText((Join-Path $output 'plan.json'), ($plan | ConvertTo-Json -Depth 8), $utf8)
-if ($PlanOnly) { Write-Host "Planned $($plan.families.Count) image families / $($plan.variants.Count) image and $($fabrics.Count) fabric variants; no staging."; return }
-& (Join-Path $PSScriptRoot 'inspect_clothing_models.ps1') -UvGuideModels @('models/player/group01/male_03.mdl', 'models/player/group01/female_01.mdl')
+if (-not $PoolOnly) {
+    $plan = Get-ClothingCataloguePlan $art $settings
+    $fabricSettings = Get-Content (Join-Path $art 'fabrics.json') -Raw | ConvertFrom-Json
+    $fabrics = @(Get-ClothingFabricPlan $fabricSettings $settings)
+    if ($plan.variants.Count + $fabrics.Count -gt $settings.maximumVariants) { throw 'Combined image/fabric catalogue exceeds variant budget.' }
+    $plan | Add-Member -NotePropertyName fabrics -NotePropertyValue $fabrics
+    [IO.File]::WriteAllText((Join-Path $output 'plan.json'), ($plan | ConvertTo-Json -Depth 8), $utf8)
+    if ($PlanOnly) { Write-Host "Planned $($plan.families.Count) image families / $($plan.variants.Count) image and $($fabrics.Count) fabric variants; no staging."; return }
+    & (Join-Path $PSScriptRoot 'inspect_clothing_models.ps1') -UvGuideModels @('models/player/group01/male_03.mdl', 'models/player/group01/female_01.mdl')
+}
 $prototype = Get-Content (Join-Path $art 'prototype.json') -Raw
 $printSource = Get-Content (Join-Path $art 'prints.json') -Raw
 $sha = [Security.Cryptography.SHA256]::Create()
@@ -56,6 +62,20 @@ function Test-ClothingBuiltLayers([string]$Prefix, [string[]]$Names) {
     return $true
 }
 try {
+    if ($PoolOnly) {
+        if ($null -eq $previous -or $previous.schemaVersion -ne 1) { throw 'PoolOnly requires a published clothing catalogue.' }
+        $installed = Get-Content -LiteralPath $cataloguePaths[1] -Raw
+        $baseline = Get-Content -LiteralPath $cataloguePaths[0] -Raw
+        if ($baseline -ne $installed) { throw 'Existing clothing catalogue staging mismatch; pool refresh refused.' }
+        [IO.File]::WriteAllText((Join-Path $output 'pool_previous_catalogue.json'), $baseline, $utf8)
+        $plan = [pscustomobject]@{ provenance = $previous.provenance; variants = @() }
+        $fabrics = @()
+        $finishes = $previous.finishes
+        $items = $previous.items
+        foreach ($name in $previous.files) {
+            if ($name -notmatch '^pool_') { $null = $files.Add($name) }
+        }
+    }
     foreach ($variant in $plan.variants) {
         $family = $plan.families | Where-Object identity -eq $variant.family
         $design = $prototype | ConvertFrom-Json
@@ -148,29 +168,19 @@ try {
             thumbnail = $fabric.itemId; value = 25; maxStack = 1; lootCategory = 'other' }
     }
 } finally { $sha.Dispose() }
-foreach ($slot in 1..16) {
-    $number = $slot.ToString('00')
-    foreach ($sex in 'male', 'female') {
-        $name = "pool_${number}_$sex.vmt"
-        $text = @"
-"Patch"
-{
-    "include" "materials/models/humans/$sex/group01/players_sheet.vmt"
-    "replace" { "`$basetexture" "zombiesim_clothing_pool_${number}_v1" }
-}
-"@
-        foreach ($directory in $destinations) {
-            $null = New-Item -ItemType Directory -Force -Path $directory
-            [IO.File]::WriteAllText((Join-Path $directory $name), $text, $utf8)
-        }
-        $null = $files.Add($name)
+$patches = Get-ClothingTexturePool $settings.textureCapacity
+foreach ($name in $patches.Keys) {
+    foreach ($directory in $destinations) {
+        $null = New-Item -ItemType Directory -Force -Path $directory
+        [IO.File]::WriteAllText((Join-Path $directory $name), $patches[$name], $utf8)
     }
+    $null = $files.Add($name)
 }
 foreach ($name in $files) {
     $first = Get-FileHash -LiteralPath (Join-Path $destinations[0] $name)
     if ($first.Hash -ne (Get-FileHash -LiteralPath (Join-Path $destinations[1] $name)).Hash) { throw "Catalogue staging mismatch: $name" }
 }
-$manifest = [ordered]@{ schemaVersion = 1; capacity = 16; releaseEligible = $false;
+$manifest = [ordered]@{ schemaVersion = 1; capacity = $settings.textureCapacity; releaseEligible = $false;
     provenance = $plan.provenance; finishes = $finishes; items = $items; files = @($files | Sort-Object) }
 $json = $manifest | ConvertTo-Json -Depth 10
 foreach ($path in $cataloguePaths) {
@@ -187,4 +197,5 @@ if ($null -ne $previous) {
         }
     }
 }
-Write-Host "Built $($finishes.Count) clean wearable finishes; staged $($files.Count) owned files and catalogue metadata. Not release-cleared."
+$finishCount = if ($PoolOnly) { @($finishes.PSObject.Properties).Count } else { $finishes.Count }
+Write-Host "Published $finishCount clean wearable finishes / $($settings.textureCapacity) outfit targets; staged $($files.Count) owned files and catalogue metadata. Not release-cleared."

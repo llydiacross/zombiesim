@@ -1,0 +1,8 @@
+"UnlitGeneric"
+{
+	$basetexture "skybox/null_plainskyBK"
+	$nofog 1
+	$nomip 1
+	$ignorez 1
+
+}

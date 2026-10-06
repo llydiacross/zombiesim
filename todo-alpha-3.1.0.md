@@ -1,7 +1,7 @@
 # Alpha 3.1.0
 
 Status: **ACTIVE — authorized by user on 2026-10-05.**
-Current phase: **Phase E — sign/billboard prototype approved; workflow implemented, integrated placement checks remain.**
+Current phase: **Phase H — optional user-selectable sky palettes; Phases F and G accepted by the user on 2026-10-05.**
 
 ## Milestone Rules
 
@@ -296,7 +296,7 @@ Status: **ACCEPTED — user confirmed the workflow/zoo on 2026-10-05 and explici
 
 ## Phase F — Artist-Friendly Human Clothing Workflow
 
-Status: **IN PROGRESS — Wardrobe and revised spiral fabric direction approved; filename/fabric catalogues built; generated-item equip/reload/restoration and pool regressions pass. Real gore visuals, additional limb-placement calibration, bloody/walker work and representative performance remain pending.**
+Status: **ACCEPTED — user confirmed on 2026-10-05 that existing checks and visuals are sufficient. Uncaptured cold/lifecycle comparisons remain recorded validation limits, not pending phase acceptance gates.**
 
 **Discovery (2026-10-05):**
 - `ZM_CharacterRules.Models` permits nine male and six female `models/player/group01` citizen meshes. `GM:PlayerSetModel` in `gamemode/init.lua` owns applying the persisted character model, skin, bodygroups and player colour; character storage remains profile/character-scoped in `sv_characters.lua`.
@@ -425,6 +425,62 @@ Status: **IN PROGRESS — Wardrobe and revised spiral fabric direction approved;
 - **Next rear-limb scope decision:** user chose **explicit artist filename tags only** for rear-facing leg/arm variants, not adding them to every eligible image or raising the 896-finish budget. Independently calibrate supported rear charts and keep ordinary/default catalogue identities unchanged; do not silently replace existing front/outer-limb styles. Rear placement implementation and visual approval remain pending.
 - **Rear-limb implementation and placement accepted:** added `_pants_back_left`, `_pants_back_right`, `_arm_back_left`, `_arm_back_right`; each restricts the single graphic to the named anatomical rear limb and retains its whole-garment repeat. Separate `rear_limbs.json` owns independently inspected male/female rectangles/signatures (48x144 rear thigh, 24x48 rear upper arm). Planner/icons, model-specific build/hash inputs, Wardrobe labels and diagnostics are wired. Existing20image-family/866finish/868entry plan and896cap unchanged; there are no rear-tagged source PNGs, so no extra rear wearable entries were published. Parser106/106, actual topology170/170, prototype370/370, published catalogue7335/7335, GLua175/0; editor diagnostics/whitespace clean. Reloaded confirmed preview `zz_preview_817d995084d3`; user approved all eight model-family/side/limb placements with temporary deer fixtures, then fixtures were removed. No saved inventory/equipment changes. This accepts rear placement, not glyph-by-glyph text, all-animation/gore/performance or full Phase F.
 - **Walker inspection prerequisite:** extended mounted inspector with explicit model groups and separate reports; default survivor report and guides remain unchanged. All15group03player bodies inspected:2048-square sheets, distinct body-vertex counts/UV fingerprints versus correspondinggroup01bodies. Walker inspection48/48 verifies metadata and isolation. Do not apply1024survivormasks to these uncalibrated charts. Currentmounted search cannot resolvegroup02player/male_01; that separate attempt failed explicitly and is not verified. Existingwalker selection/bloodyoverrides unchanged. **Next:** original bloody layers/counterparts, independentgroup03calibration and actual walker/sever/corpse lifecycle/performance. No maps regenerated, Workshop uploads or asset cleanup.
+- **Offline bloody-counterpart implementation (game closed, 2026-10-05):** user explicitly chose shared original blood overlays over existing finishes, not duplicate bloody item definitions or increased budgets. Added editable `blood.json`, deterministic original soft irregular stain/droplet generator, builder and exhaustive regression. Three1024DXT5/11mip layers (male/female shirt, shared pants), six stagedfiles/4,195,578bytes; masks preserve native skin/shoes/inner shirt, backs reuse inspected physical projection. Blood32/32 checks every pixel of each mask, raw-pixel determinism, bounded partial coverage, alpha/mips/compression and exact staging. Preview-only Wardrobe blood toggle/compositor/cache distinction uses existing sixteen slots, defaults off, fails explicitly for missing overlays and retries rather than clean success fallback. No new items, saved blood state or automatic gameplay/walker changes. Existing866finish/868entry catalogue passes5753/5753; GLua175/0/editor diagnostics clean. Client pool suite now includes blood/clean sharing, restoration, retry and invalid-flag cases; **new cases and toggle/render appearance unrun while the game is closed**, not covered by prior5/5.
+- **Independent walker calibration groundwork:** mounted inspector now writes group03male_03/female_01 independently named2048charts and full physical/UV body-triangle diagnostics, always `garmentMasksVerified=false`. Wrong-group requests reject before writes; survivor1024charts/report unchanged. Survivor170/170 and walker56/56 pass serially. An initial parallel isolation check raced the blood builder's survivor-report refresh; serial rerun passed, not a claimed compatibility fix. No survivor masks stretched onto walker sheets. Packaging fixtures47/47 (including six blood companions in one clothing shard/native GMA verification); actual read-only audit6681files/7packs/1505exclusions/387releaseblockers unchanged. No fullGMArebuild/upload or map generation. **Next:** live blood toggle/pool/seam acceptance, actual gore/corpse/limb checks, independentgroup03garment-mask calibration and walker variety integration; retain existing native bloody overrides until verified. Phase F remains unaccepted.
+
+**Citizen-only integration and individual randomisation (2026-10-05):**
+
+- The user explicitly prohibited artist/catalogue clothing on rebels. Group03
+  calibration is no longer a rollout target; its diagnostics remain research,
+  while native mounted rebel blood/material behavior is preserved.
+- Engine `util.GetModelMeshes` confirmed alternate shirt atlases among citizens.
+  Independent physical-triangle matching, robust upright affine fitting and
+  clipped per-model transfers retain unmatched native neckline charts. Calibration
+  passes **80/80**. A generated ~5.3 MB transfer manifest reuses existing catalogue
+  and blood layers; no per-model/finish texture multiplication.
+- The user reviewed and approved **all fifteen group01 citizens** (nine male,
+  six female), including chest/back/repeat/leg artwork, blood and native restoration.
+  The user also approved actual citizen walker, corpse and detached-piece visuals.
+  Wardrobe has all fifteen model choices and remains window-only.
+- The initial implementation shared one outfit per model/cell. The user requested
+  independent full-catalogue randomisation instead and approved **96 shared targets**
+  (~384 MiB maximum RGBA storage, created lazily, plus source/material memory).
+  Each spawn now has a unique persistent seed; ticketed walkers use their stable
+  ticket identity/profile/source cell/model/catalogue revision. Blood refresh does
+  not reroll clothing. All eligible shirts and pants, including original fabrics,
+  participate; deterministic coverage tests reach every garment.
+- Corpse snapshots and pending/live severed pieces retain immutable outfit
+  selections and reference-safe copied materials. No player wearable grants,
+  saved appearance changes or inventory writes are introduced by outfit assignment.
+- `build_clothing_catalogue.ps1 -PoolOnly` publishes 192 native-inheriting pool
+  patches while retaining all **866 finish/item definitions and existing textures**.
+  Ownership grows only by 160 tiny VMTs: **3642 files**, 868 Wardrobe entries,
+  unchanged 896-finish limit. Catalogue/preservation checks **8035/8035**,
+  packaging fixtures **48/48**, GLua **175 files / 0 failures**.
+  Actual package audit: **6842 files / 7 packages / 1505 exclusions / 387 blockers**.
+- Fresh preview live checks passed **Gore 16/16**, **static 18/18**, **inventory
+  51/51**, and **client pool 9/9**. The first 96-slot stress run passed but froze
+  the client and logged a render-queue flush. The test now spreads capacity and
+  citizen steps across frames; its fresh rerun again passed **9/9**. Runtime
+  composition also uses a **2 ms soft per-frame budget**, allowing one cold build
+  to exceed it but not batching another behind that build.
+- Real same-model crowd: **15 male_03 walkers, 15 independently selected outfits,
+  all bloody**. Its later client capture contained 14 walkers, one dressed corpse
+  and seven copied limb models with 15 distinct materials; do not misreport the
+  total applied-entity count of 22 as 22 outfit targets. A clean subsequent mixed
+  crowd verified **15 dressed walkers / 15 citizen models / 15 composites /
+  96 capacity / zero pending**.
+- Mixed-crowd cold builds measured **16.807 ms mean / 21.452 ms maximum**. The
+  capture-free warm run recorded **600 frames / 10 seconds / 60.00 FPS**;
+  equipped-clothing hook **0.02034 ms/frame**, max **0.4482 ms**. This is one
+  representative warm observation, not worst-case cold/horde acceptance.
+  The native-control attempt copied a stale report before its delayed completion,
+  used a different model mix and removed probes before completion; it is **not a
+  valid matched comparison**. No IMesh optimization is claimed.
+- Owned crowd/quality probes were removed/restored. Survivor remained alive,
+  health100, preview `zz_preview_817d995084d3`, persisted cell22,0. No map generation,
+  production promotion, uploads, commits or broad cleanup. Phase F still requires
+  explicit whole-phase user acceptance; Phase G/H and release deferrals remain.
 
 ## Phase G — Integrated Preview, Visual Review, And Acceptance
 
@@ -509,7 +565,14 @@ Status: **IN PROGRESS — Wardrobe and revised spiral fabric direction approved;
   actual published-ID/subscription/download/mount acceptance. Earlier
   seven-GMA output remains historical validation, not a latest-source release.
 
-Status: **PLANNED**
+Status: **ACCEPTED — user confirmed on 2026-10-05 that existing integrated results and earlier skybox reviews are sufficient, and explicitly requested proceeding directly to Phase H without repeated checks or regeneration.**
+
+The steps below retain the original integration checklist for historical context.
+No additional Phase G build, inspection or matched capture was performed by this
+acceptance. Previously uncaptured collision/baked-light/neighbour-view and
+performance checks remain evidence limits, not outstanding milestone gates.
+Separate Workshop rights/IDs/navmesh/production-export/clean-mount release
+blockers remain deferred and are not cleared by this development acceptance.
 
 1. Regenerate the preview manifest and template plan from the agreed stable seed, rebuild only affected recipes and skybox models, and stage the preview only after focused checks pass.
    - Validate the updated launcher rooms with `bin/test_launcher_parity.ps1`, resolving intentional versus accidental differences first, then explicitly run `bin/build_launchers.ps1 -WorldProfile preview`. The city build does not update launchers automatically. Verify both preview BSP staging hashes and test the launcher scene/deployment flow after a safe reload; leave production city untouched.
@@ -550,7 +613,242 @@ No bugs have been confirmed for this milestone yet. Add verified findings here w
 
 ## Phase H — Optional User-Selectable Sky Palettes
 
-Status: **QUEUED — added at the user's request on 2026-10-05, after the existing phases; investigation only, no sky textures staged or renderer/settings changed.**
+Status: **ACTIVE — expanded licensed catalogue and custom palettes implemented/user-reviewed; visual slot editor implemented. Broader palette/lifecycle/performance acceptance remains. No maps rebuilt for this work.**
+
+**Additional automatic variants and Phase H continuation (2026-10-06):**
+- Added six profiles: Cloud prelude, Terrassee horizons, World's End horizons,
+  Cloudbound, Neon twilight (stylized) and Alien embers (stylized). Eighteen
+  built-ins now use all eight newly added sets except John Tron, explicitly
+  excluded from automatic membership at the user's request. John Tron remains
+  available individually/custom; Neon uses Cinematic silver-blue night, Alien
+  uses Moonlit clouds. All six extra Tropospheric cloudy sets are represented.
+  Existing profile IDs/assignments, saved selection, assets and lighting unchanged.
+- Regression checks require exact new membership, deterministic four-state
+  resolution, availability, custom-copy eligibility and exclusion of John Tron.
+  Isolated context matrix covers the 0.45/0.7 light boundaries, clear/rain/snow
+  and storm intensity 0.25/0.251; restores real atmosphere/skyline owners after
+  the fixture even on assertion failure. This is not visual weather acceptance.
+- GLua 180/0; fresh renderer 7/7, catalogue/context/materials 78/78 and browser
+  9/9. First browser command was correctly rejected because the user had opened
+  Options; its old result was not counted as fresh. After approved UI closure,
+  rerun timestamp 1791244976 confirms 9/9 with the expanded catalogue.
+- Human confirmed **the new variants and the ten-second aerial preview/return
+  look right**. This supersedes the prior pending aerial-render review, not all
+  cardinal/context/launcher/den/performance gates.
+- Actual fresh-load persistence verified for the user's custom "Test" palette:
+  independently captured selected `custom_1` / dusk `imported_mr53` before and
+  after approved `changelevel zz_preview_817d995084d3`; six meshes/12 triangles
+  render afterward, no reported failure. Custom store SHA256 remains
+  `7D8367D2FD62FA50F16A36185E818ECDADDD2DA89985D0AA25F40D25D6E43251`.
+  Captures `alpha310-h-custom-before`/`alpha310-h-custom-after` retain evidence;
+  user's custom selection is left active, not replaced with an earlier default.
+- Phase H remains active. Live weather changes and day/night/fog coherence,
+  launcher/den/map-capture integration and representative performance remain.
+  No production changes, regeneration, extra texture copies or Workshop upload.
+
+**Live H integration and authored inspection direction (2026-10-06):**
+- User restored Default for consistency; independent snapshot confirms
+  `default`, no active entry, zero meshes/triangles, Options/browser closed.
+  User authorized temporary Natural/weather/travel checks with restoration.
+- Actual rain in preview logical22,0 (`zz_preview_817d995084d3`) correctly
+  retains `natural_dusk` at scenery light0.582; weather reports rain/storm0.55.
+  User confirmed rain/fog/horizon coherence and refreshed world-map Level view/
+  camera return. Clear restoration retains the same dusk entry.
+- User confirmed normal den entry/exit, first-person camera, dry interiors and
+  Options. Independent return snapshot confirms Natural on the original city
+  map. These are human flow confirmations, not instrumented snapshots inside
+  the den. Launcher independently loaded `zn_preview_start`, character slot2
+  Jim; user confirmed all Options work, except the requested preview redesign.
+- Profiling gap fixed: `PostDraw2DSkyBox` now included in the existing hook
+  profiler. GLua180/0. Actual warm Natural dusk sample:9.954s/198frames,
+  19.89FPS, palette draw CPU0.04866ms/frame (396calls, max0.1461ms), prepare
+  CPU0.00332ms/frame. Before/after camera and workload matched: origin
+  (-358.57,244.1881,130.2658), forward(0.0937,0.9889,-0.1149), clear/no snow,
+  sky detail2/props0.7/fires on;20models/139props/30fires. No comparable native
+  draw sample yet; earlier53.25/59.64FPS samples omitted this draw hook and
+  had different cameras. No performance improvement/regression or GPU-cost
+  claim is established. Saved session `alpha310-h-natural-draw-profile.json`.
+- **Paused at user's request for authored preview-area work.** User clarified
+  the new area is **launcher-only**, not shared city-cell/den templates. Add a `point_camera`
+  named **`Preview_skybox`**. User chose camera-only movement to the authored
+  position/angles, never survivor teleportation. This supersedes the procedural
+  upward sweep **in the launcher only**; city cells keep their existing sky
+  and current camera-only preview. No new city-cell area is required.
+  New launcher marker consumption/availability/error handling and authored
+  live checks are not implemented yet. Do not generate maps before the authored
+  source is ready/approved or infer that the old preview satisfies this direction.
+- Temporary weather hold released and verified independently: automatic1,
+  manual0, clear seasonal weather. Original deadline had expired during checks,
+  so normal schedule rolled the next spell. No hold remains.
+- Client was left at preview launcher when the user paused; do not assume the
+  Default selection or original gameplay location has already been restored.
+  Restore/verify Default and existing slot2 Jim to logical22,0 (raw22,12),
+  safe-zone none when the user is ready. Do not use refill/origin-reset helpers.
+- **Options section persistence and launcher Tools (2026-10-06).** Options
+  sections now default closed and remember each open/closed state through
+  `zombiesim_options_section_<id>` cookies (`OnToggle`). Preview-launcher-only
+  **TOOLS** is a launcher tab: the left column switches to Wardrobe, Item Atlas,
+  Map Atlas, Sky browser and Content Status plus BACK. The two atlas views and
+  Content Status render on the right side of the same launcher frame rather than
+  in a separate hub window. Back/Escape always returns to the main menu and
+  closes any open view. Wardrobe and the Sky browser keep their existing windows
+  and sit below a horizontal rule, separate from the right-panel tools.
+  Tools are read-only: no item grants, equipment changes or survivor teleports.
+  Map Atlas images are staged PNGs, not live 3D renders. Static: GLua181/0,
+  diff check clean. Live after fresh reload: Tools4/4 and browser/Options10/10;
+  the user confirmed the tab layout and behaviour.
+- **Game versioning and Content Status (2026-10-06).** New single-source
+  `data_static/version.json` (Alpha 3.1.0, in development, Phase H) and shipped
+  `changelog.json` (3.1.0 back to 1.0; pre-2.6 entries inferred from Git, with a
+  data-only flag and no UI label; highlights ordered `+`, `?`, `-`). `ZM_Version` (`sh_version.lua`) loads both and reads the local Git
+  commit. Content Status is now sectioned: banner, health, version/source,
+  distribution, world, registry counts and a changelog with green `+`, red `-`
+  and yellow `?` markers. Packaging ships both files in core, stamps the game
+  version into the manifest/report and blocks release until the status is
+  `released`. Static: GLua182/0, packaging51/51. Live: Tools4/4 with
+  version/changelog/marker/history assertions; the user approved the layout,
+  and the coloured markers await review. Follow-up art pass: changelog versions
+  are underlined, highlights are grouped under ADDED/CHANGED/REMOVED subheadings
+  and atlas cards widen to fill each row.
+- **Clothing item swatches (2026-10-06).** Clothing items no longer show the
+  generic box model. `ZM_ItemIcons:GetClothingIcon` (moved from the Wardrobe,
+  which now shares it, with cached results) crops the real garment layer.
+  `DrawClothing` draws a fabric swatch with shirt/pants and repeat badges plus a
+  placement tag at 72px or larger. `DrawOverride` covers inventory, loot,
+  crafting and trading; `Attach` refuses clothing; atlas cards/inspector draw it
+  directly. Static: GLua182/0. Live after reload: Tools5/5, including per-style
+  male/female swatch resolution. The user approved the swatches.
+- **Options changelog button (2026-10-06).** `cl_changelog.lua` (`ZM_Changelog`)
+  now owns the changelog renderer/fonts shared by Content Status. A VIEW
+  CHANGELOG button sits below all Options sections: in game it opens a
+  Changelog window (Options stays open, Escape closes only the window); the
+  launcher Options page toggles a right-side panel instead, closed by
+  BACK/Escape. Static: GLua183/0. Live after reload: Tools6/6 (window and
+  launcher side panel paths), browser/Options10/10. Visual review is pending.
+
+**Visual palette editor and additional supplied skies (2026-10-06):**
+- User retained four states: Day, Overcast, Dusk and Night. The left side now
+  has clickable preview slots; the right grid shows individual sky thumbnails
+  plus native-map sky, never automatic palette cards during editing. Clicking
+  a sky changes only the active draft slot. Save & use commits; Cancel/Escape
+  discards the draft and restores the browsing search/filter.
+- Edit selected is enabled for all built-in/custom automatic palettes. At the
+  user's choice, built-ins create personal copies; existing custom palettes edit
+  in place. Original built-in definitions and saved choices remain untouched by
+  draft assignments. No state dropdowns remain in the editor.
+- Earlier expanded browser/custom editor was explicitly user-approved. Latest
+  expansion adds nine supplied sets (Prelude, Terrassee, World's End, Alien red,
+  John Tron, Plain sky, Sky 1, Waporvave and MR 53). User confirmed the author
+  instructed copying the supplied licence into each pack; configuration records
+  this provenance rather than claiming independently verified authorship for
+  those copied README packs. MR 53's former exclusion is superseded by that
+  specific permission, not blanket licence clearing. UT assets remain removed.
+- Current catalogue: 82 individual skies, twelve built-in automatic palettes,
+  95 cards before custom profiles; 36 imported sets, 432 material files,
+  391.48 MiB and 36 byte-preserved standalone licence files. The package builder
+  retains the READMEs in common content at `data_static/sky_licences`, a location
+  verified through bundled gmad; the trial `licenses/` location was rejected by
+  gmad's whitelist and only this task's exact trial README files were removed.
+- Static: GLua 180/0, asset checks 2383/2383, package fixtures 50/50 including
+  README ownership and archive round-trip.   fresh actual-client renderer 7/7, browser/UI/inspection 9/9 and incremental
+  catalogue/materials 76/76. UI tests cover visual assignment/cancellation,
+  built-in copy creation, custom edit-in-place and isolated disk reload.
+- Initial aerial starts ran too early after arrival; waited for user-confirmed
+  unpause instead of retrying stale-heartbeat requests. Fresh checks exposed
+  deferred parent-removal cleanup; browser now ends inspection synchronously
+  before removal and restores cursor ownership to other visible UI. Both
+  inspection lifecycle cases subsequently pass. A client screenshot also
+  exposed a partially hidden Night slot; slots now resize to fit all four at
+  ordinary window heights, retaining scrolling for small screens.
+- Actual package audit: 7316 files / seven packages / 1505 report-only exclusions /
+  387 existing publication blockers. No maps rebuilt, uploads, inventory changes
+  or unowned-asset deletion.
+- Final fresh editor suite remains 9/9 after responsive sizing. Human confirmed
+  **all four slots are visible and the picker works/is clearer**. Final actual
+  capture `alpha310-visual-palette-editor-final` has 83 individual/native cards,
+  zero thumbnail errors/pending work, preserved saved choice and no custom profile
+  creation during the probe. New skies' full six-face appearance and real
+  ten-second aerial rendering still need human review. Do not treat this as
+  Phase H acceptance.
+
+**Sky browser and Options follow-up (2026-10-06; supersedes dropdown/preview-only controls below):**
+- User chose automatic palettes **plus saved individual skies** and requested
+  thumbnail cards instead of the dropdown. `cl_sky_browser.lua` now owns a
+  secondary window over the shared launcher/radial Options surface: twelve
+  responsive cards, selected state, apply-on-click/local persistence, Back/X/
+  Escape paths and parent-removal cleanup through the existing UI registry.
+  Nine individual entries include the reviewed mounted candidate; it remains
+  excluded from automatic palettes. Fixed skies are labelled cosmetic overrides,
+  with a context-mismatch warning; no BSP relighting or weather changes.
+- Original thumbnails share the renderer's gradient curve; mounted/native-map
+  thumbnails reference a mounted face, with an honest labelled placeholder
+  when the map manages its sky without a usable face. No extra render targets,
+  per-card scene renders, extracted assets or generated maps.
+- Options now has nine collapsible headers, with weather/radiation/camera/
+  advanced horizon/server fine-tuning initially collapsed. All bound controls,
+  precision, presets and server-edit guards remain. Removed the clipboard tuning
+  utility from normal Options, not its diagnostic API. Replaced the technical
+  engine-audio readout with a friendly Audio notice directing players to
+  Garry's Mod Options > Audio; no engine volume writes.
+- Fixed sky bridge registrations accidentally nested in the clothing-pool
+  command; all sky test/preview commands now exist on a clean load.
+  `zombiesim_dev_ui options|sky` and VGUI-aware capture diagnostics support review.
+- Static: **177 GLua files / 0 failures**, edited UI files have no editor errors.
+  Fresh actual-client renderer **7/7**, browser/Options **5/5**. Tests verify all
+  choice IDs, unchanged individual resolution across contexts, gradient endpoints,
+  mounted seams/materials, all31 convar controls, audio ownership, responsive
+  widths, card selection/saved convar/default reset, parent cleanup and restoration
+  of the original cosmetic selection. Initial UI control-retention test used a
+  nonexistent getter; corrected to the verified Derma child binding field, then
+  reran successfully after a fresh preview reload.
+- Human: user confirmed **looks good; selection and closing work**, including
+  browser Back, grouped Options, selecting/reopening and restored camera/mouse
+  control. This accepts the requested UI follow-up, **not all of Phase H**.
+- Still pending: actual archived-choice survival across fresh map loads,
+  automatic context/weather transitions, launcher/den/map-capture behaviour,
+  dusk/night/storm/snow visual coherence and profiling. Keep F/G accepted and
+  Workshop publication deferred; no new world-build or clothing gates.
+
+**Phase H prototype and seam correction (2026-10-05):**
+- User selected saved Default/Natural/Cinematic palettes that choose compatible
+  contexts, with individual-sky development previews. `cl_sky_palettes.lua` is
+  sent/included in the client realm; the existing shared Options panel now has
+  a saved palette dropdown and Restore map sky button. Default remains unchanged.
+- Eight original procedural day/dusk/night/overcast entries use a bounded
+  single1536-triangle mesh, native fog at the horizon and palette-specific zenith.
+  Context uses existing baked-light scenery level and weather; it changes no
+  server weather, gameplay lighting, reflections or map recipes. Old meshes
+  are destroyed on replacement. Only the selected backdrop is drawn.
+- `PostDraw2DSkyBox` renders behind the existing3Dskybox with depth writes
+  disabled, using the documented origin-centred camera pattern. References:
+  [sky hook](https://wiki.facepunch.com/gmod/GM:PostDraw2DSkyBox),
+  [mesh vertices](https://wiki.facepunch.com/gmod/Structures/MeshVertex).
+  User reviewed Natural daylight and confirmed correct layering/appearance.
+- VPK inventory confirmed complete mounted `sky_day03_06c` faces. A development-only
+  mounted candidate references native textures in place through six bounded
+  UnlitGeneric face meshes; no Valve assets extracted/copied or imported files
+  staged. It remains outside automatic palette membership pending broader
+  compatibility review.
+- First mounted preview exposed reversed side correspondence/top rotation.
+  In-memory DXT5 edge comparison established ft-right/lf-left, lf-right/bk-left,
+  bk-right/rt-left, rt-right/ft-left and matching top-edge directions. Corrected
+  mapping passed geometric-edge regression and user rotation review.
+- User then supplied a screenshot clarifying a remaining **tiny seam**, not a
+  rotation issue. Kept orientation unchanged; face UVs now sample edge texel
+  centres at half-texel insets rather than wrapping boundaries. Fresh confirmed
+  preview reload, live suite **5/5**, GLua **176 files / 0 failures**; the user
+  explicitly confirmed **the seam is gone**. No shader/texture asset alteration.
+- Commands: `zombiesim_dev_sky_palette <entry>|restore` (preview admin,
+  temporary120-second local override), `zombiesim_dev_test_sky_palettes`
+  (actual mesh/material/edge/sampling checks; result in DATA sky_palette_tests.json).
+  Screenshot metadata now includes skyPalette active entry/meshes/triangles/draws
+  and errors. Natural capture verified1536triangles/positive draws; mounted
+  capture verified6meshes/12triangles/positive draws.
+- Still unverified: automatic context changes, persisted Options/reopening/reset
+  across fresh loads, launcher/den/map-capture behavior, dusk/night/storm/snow
+  coherence and profile cost. Procedural membership/appearance beyond reviewed
+  daytime and final mounted eligibility remain Phase H gates, not accepted F/G
+  work to repeat. Workshop release remains separate/deferred.
 
 **Supplied-asset assessment:**
 - Inspected all **202 VTF faces** in `assets\skybox`: the six-face `mr_53` sunset, six-face `sky_night01` moon/cloud set, and 190 faces in the UT2004 conversion collection. Local inspection sheets/metadata are session artifacts, not release assets.
@@ -561,6 +859,20 @@ Status: **QUEUED — added at the user's request on 2026-10-05, after the existi
 - UT README explains conversion but supplies no usage licence. No licence/author documentation was found with `mr_53`. Keep those as reference/private inspection inputs until rights/provenance are verified; user-supplied files are not automatically authorized for redistribution. Do not package or commit imported copyrighted texture copies without appropriate permission.
 
 **Proposed palette structure:**
+- **Development/publication separation reaffirmed (2026-10-05):** user
+  confirmed continuing Phase H (not reopening accepted Phase G). Workshop
+  release is a separate future task; do not block ordinary development on
+  final IDs, publication or clean-download acceptance. Existing packaging,
+  ownership, byte budgets, launcher readiness and pending-ID handling remain
+  in place for that future task. Free distribution is not blanket third-party
+  asset permission: retain provenance flags and exclude imports without
+  verified permission; do not mark them cleared merely because release is free.
+- **Source decision accepted (2026-10-05):** use mounted game skies plus
+  original procedural palettes for the first selector. Keep supplied imports
+  with unresolved permission excluded from staging and distribution. Mounted
+  assets are referenced in place, never extracted/copied into the addon;
+  diagnose any required game mount explicitly. This decision does not yet
+  approve palette membership, control design or procedural visual results.
 - **Default / atmosphere-matched:** preserve existing maps and behavior.
 - **Natural:** clear blue, warm hazy day, grey overcast, restrained dusk and moonlit night.
 - **Cinematic:** richer warm sunset, violet twilight and silver-blue night, with compatible daylight/overcast fallbacks.

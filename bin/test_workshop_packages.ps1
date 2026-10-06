@@ -106,12 +106,20 @@ try {
     Write-Fixture 'content\data_static\clothing_catalogue.json' '{"schemaVersion":1,"releaseEligible":false,"files":["catalog_0000000000000000_shirt_male.vtf","catalog_0000000000000000_shirt_male.vmt"]}'
     Write-Fixture 'content\data_static\zombiesim_signs_preview.json' '{"variants":{}}'
     Write-Fixture 'content\data_static\music_definitions.json' '{"tracks":[{"id":"a","file":"sounds/music/a.mp3"}]}'
+    Write-Fixture 'content\data_static\version.json' '{"schemaVersion":1,"product":"Z-Nation","stage":"Alpha","version":"9.8.7","status":"in development"}'
+    Write-Fixture 'content\data_static\sky_catalogue.json' '{"schemaVersion":1,"ownedLicenceFiles":["data_static\\sky_licences\\imported_fixture\\README.txt"]}'
+    Write-Fixture 'content\data_static\sky_licences\imported_fixture\README.txt' 'Artist licence fixture: retain this README.'
+    Write-Fixture 'content\data_static\clothing_citizen_calibration.json' '{"schemaVersion":1,"previewOnly":false,"models":{}}'
     Write-Fixture 'content\sounds\music\a.mp3' 'audio'
     Write-Fixture 'content\data_static\consolecommands.txt' 'development command'
     Write-Fixture 'content\maps\zz_dev_zoo.bsp' 'unreferenced development fixture'
     Write-Fixture 'content\materials\models\zombiesim\clothing\catalog_0000000000000000_shirt_male.vtf' 'vtf'
     Write-Fixture 'content\materials\models\zombiesim\clothing\catalog_0000000000000000_shirt_male.vmt' '"UnlitGeneric" {}'
     Write-Fixture 'content\materials\models\zombiesim\clothing\catalog_1111111111111111_orphan.vtf' 'orphan must survive'
+    foreach ($name in 'prototype_blood_shirt_male', 'prototype_blood_shirt_female', 'prototype_blood_pants') {
+        Write-Fixture "content\materials\models\zombiesim\clothing\$name.vtf" 'original blood'
+        Write-Fixture "content\materials\models\zombiesim\clothing\$name.vmt" '"UnlitGeneric" {}'
+    }
     foreach ($profile in 'city', 'preview') {
         $name = if ($profile -eq 'city') { 'zombiesim_world.json' } else { 'zombiesim_world_preview.json' }
         Write-WorkshopJson (Join-Path $fixtureRoot "content\data_static\$name") @{
@@ -133,7 +141,7 @@ try {
     Write-WorkshopJson $fixtureSettings @{
         schemaVersion = 1; worldProfiles = @('city', 'preview'); maximumShardBytes = 1MB; metadataReserveBytes = 65536
         releaseCleared = $false; coreWorkshopId = 'pending:core'; workshopIds = @{ 'clothing-01' = 'pending:clothing-01' }
-        coreStaticFiles = @('clothing_catalogue.json', 'music_definitions.json', 'zombiesim_signs_preview.json')
+        coreStaticFiles = @('clothing_catalogue.json', 'clothing_citizen_calibration.json', 'music_definitions.json', 'sky_catalogue.json', 'version.json', 'zombiesim_signs_preview.json')
         commonMaterialDirectories = @(); commonMaterialExtensions = @('.vmt', '.vtf', '.png'); externalDependencies = @('Mounted native fixtures') }
     $builder = Join-Path $PSScriptRoot 'build_workshop_packages.ps1'
     & $builder -ProjectRoot $fixtureRoot -SettingsPath $fixtureSettings -Pack
@@ -141,11 +149,33 @@ try {
     Assert-Package 'full builder stages and round-trip packs both sandbox and city' (
         $fixtureReport.staged -and $fixtureReport.packed -and @($fixtureReport.profiles).Count -eq 2 -and
         @($fixtureReport.packages | Where-Object { -not $_.extractionVerified }).Count -eq 0)
+    $bloodFiles = @($fixtureReport.packages.files | Where-Object path -like 'materials/models/zombiesim/clothing/prototype_blood_*')
+    $bloodPacks = @($fixtureReport.packages | Where-Object {
+        @($_.files | Where-Object path -like 'materials/models/zombiesim/clothing/prototype_blood_*').Count -gt 0
+    })
+    Assert-Package 'three shared blood overlays ship once with their companions in fixed clothing ownership' (
+        $bloodFiles.Count -eq 6 -and @($bloodFiles.path | Select-Object -Unique).Count -eq 6 -and
+        $bloodPacks.Count -eq 1 -and $bloodPacks[0].id -like 'clothing-*')
+    Assert-Package 'core owns the citizen transfer manifest exactly once' (
+        @($fixtureReport.packages.files | Where-Object path -eq 'data_static/clothing_citizen_calibration.json').Count -eq 1 -and
+        @($fixtureReport.packages | Where-Object id -eq 'core').files.path -contains 'data_static/clothing_citizen_calibration.json')
+    $licencePack = @($fixtureReport.packages | Where-Object {
+        $_.files.path -contains 'data_static/sky_licences/imported_fixture/readme.txt'
+    })
+    Assert-Package 'common content owns the original sky README exactly once' (
+        $licencePack.Count -eq 1 -and $licencePack[0].id -like 'common-*')
+    Assert-Package 'sky README survives GMA staging unchanged' (
+        (Get-Content -LiteralPath (Join-Path $fixtureReport.stageRoot "$($licencePack[0].id)\data_static\sky_licences\imported_fixture\readme.txt") -Raw) -eq
+        'Artist licence fixture: retain this README.')
     $core = Join-Path $fixtureReport.stageRoot 'core'
     $fixtureManifest = Get-Content -LiteralPath (Join-Path $core 'data_static\zombiesim_distribution.json') -Raw | ConvertFrom-Json
     Assert-Package 'manifest keeps placeholders separate from actionable Workshop IDs' (
         @($fixtureManifest.packs | Where-Object workshopId -ne '').Count -eq 0 -and
         @($fixtureManifest.packs | Where-Object workshopIdPlaceholder -like 'pending:*').Count -eq $fixtureManifest.packs.Count)
+    Assert-Package 'manifest and report carry the single-source game version' (
+        $fixtureManifest.gameVersion -eq '9.8.7' -and $fixtureManifest.gameStage -eq 'Alpha' -and $fixtureReport.gameVersion -eq '9.8.7' -and
+        @($fixtureReport.packages | Where-Object id -eq 'core').files.path -contains 'data_static/version.json' -and
+        @($fixtureReport.blockers | Where-Object { $_ -like "*9.8.7*in development*" }).Count -eq 1)
     Assert-Package 'packaged bootstrap cannot silently bypass missing manifest' (
         (Get-Content -LiteralPath (Join-Path $core 'gamemodes\zombiesim\gamemode\sh_distribution.lua') -Raw) -eq 'Distribution.Packaged = true')
     Assert-Package 'obsolete hardcoded Workshop ID removed without changing source' (
@@ -187,6 +217,7 @@ try {
     $assignedCatalogue = Get-Content -LiteralPath $assignedCataloguePath -Raw | ConvertFrom-Json
     $assignedCatalogue.releaseEligible = $true
     Write-WorkshopJson $assignedCataloguePath $assignedCatalogue
+    Write-Fixture 'content\data_static\version.json' '{"schemaVersion":1,"product":"Z-Nation","stage":"Alpha","version":"9.8.7","status":"released"}'
     & $builder -ProjectRoot $fixtureRoot -SettingsPath $fixtureSettings -Release -Stage
     $assignedReport = Get-Content -LiteralPath (Join-Path $fixtureRoot 'generated\workshop\inventory-report.json') -Raw | ConvertFrom-Json
     $assignedCore = Join-Path $assignedReport.stageRoot 'core'

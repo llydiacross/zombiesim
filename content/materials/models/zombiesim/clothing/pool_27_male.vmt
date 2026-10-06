@@ -1,0 +1,5 @@
+"Patch"
+{
+    "include" "materials/models/humans/male/group01/players_sheet.vmt"
+    "replace" { "$basetexture" "zombiesim_clothing_pool_27_v1" }
+}

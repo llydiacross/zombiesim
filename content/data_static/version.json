@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "product": "Z-Nation",
+  "stage": "Alpha",
+  "version": "3.1.0",
+  "status": "in development",
+  "currentPhase": "Phase H - Optional user-selectable sky palettes",
+  "started": "2026-10-05",
+  "released": null,
+  "previousRelease": "3.0"
+}

@@ -241,7 +241,7 @@ function Menu:Open()
     frame:SetTitle("")
     frame:ShowCloseButton(false)
     frame:SetDraggable(false)
-    local frameWidth = math.Clamp(ScrW() * 0.38, 340, 680)
+    local frameWidth = math.floor(math.Clamp(ScrW() * 0.38, 340, 680))
     frame:SetSize(frameWidth, ScrH())
     frame:SetPos(0, 0)
     frame:MakePopup()
@@ -290,12 +290,18 @@ function Menu:Open()
         if ZM_UI then ZM_UI:UnregisterTransient(frame) end
     end
     self.Frame = frame
+    self.FrameWidth = frameWidth
     if ZM_UI then ZM_UI:OpenExclusive(frame) end
     self:Render()
 end
 
 function Menu:Render()
     if not IsValid(self.Frame) then return end
+    if ZM_LauncherTools then
+        ZM_LauncherTools:Attach(self.Frame, self.FrameWidth)
+        if self.Page ~= "tools" or self.Waiting or self.Credits then ZM_LauncherTools:CloseWorkspace() end
+    end
+    if ZM_Changelog and (self.Page ~= "options" or self.Waiting or self.Credits) then ZM_Changelog:ClosePanel() end
     self:SyncCharacterPreview()
     if IsValid(self.Content) then self.Content:Remove() end
     local content = vgui.Create("DScrollPanel", self.Frame)
@@ -343,6 +349,9 @@ function Menu:Render()
         end)
         button("EDIT CHARACTERS", function() self.Page = "load" self:Render() end)
         button("OPTIONS", function() self.Page = "options" self:Render() end)
+        if ZM_LauncherTools and ZM_LauncherTools:IsAvailable() then
+            button("TOOLS", function() self.Page = "tools" self:Render() end)
+        end
         button("CONTENT ADDONS", function()
             ZM_Distribution:RefreshWorkshop()
             self.Page = "content"
@@ -374,13 +383,18 @@ function Menu:Render()
             self:Render()
         end)
         button("BACK", function() self:Back() end)
+    elseif self.Page == "tools" and ZM_LauncherTools and ZM_LauncherTools:IsAvailable() then
+        ZM_LauncherTools:BuildMenu(content, button, addLabel, function() self:Render() end)
+        button("BACK", function() self:Back() end)
     elseif self.Page == "options" then
         button("BACK", function() self:Back() end)
         local panel = vgui.Create("DPanel", content)
         panel:Dock(TOP)
         panel:SetTall(640)
         panel.Paint = function() end
-        ZM_Options:BuildPanel(panel)
+        ZM_Options:BuildPanel(panel, { openChangelog = function()
+            ZM_Changelog:TogglePanel(self.Frame, self.FrameWidth)
+        end })
     elseif self.Page == "load" then
         addLabel(content, "CHOOSE A SURVIVOR", 36)
         for slot = 1, 3 do

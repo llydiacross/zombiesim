@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "version": "3.1.0",
+      "title": "Skyline, Coastline, Clothing and Skies",
+      "status": "in development",
+      "date": "2026-10-05",
+      "summary": "Develops the city skyline and world edges, artist workflows for signs and clothing, and optional client sky palettes.",
+      "highlights": [
+        "+ Skyscrapers integrated into city density with a centre-weighted skyline (Phases A-B, accepted).",
+        "+ Artist-friendly sign and billboard workflow (Phase E, accepted).",
+        "+ Wardrobe clothing catalogue: hundreds of fabrics, chest/back/thigh/cuff prints, shared blood overlays and independent outfits per citizen zombie (Phase F, accepted).",
+        "+ Integrated preview review and Workshop packaging foundations (Phase G, accepted).",
+        "+ Preview launcher Tools tab: Item Atlas, Map Atlas, Wardrobe, Sky browser and Content Status.",
+        "+ Clothing item icons show a fabric swatch with shirt/pants and pattern badges.",
+        "+ Changelog viewer from Options, in the launcher and in game.",
+        "? Redesigned shoreline with waves and distinct cardinal world edges (Phases C-D, accepted).",
+        "? Optional sky palettes: sky browser, automatic and custom palettes, aerial sky preview and grouped Options (Phase H, in progress)."
+      ]
+    },
+    {
+      "version": "3.0",
+      "title": "City Presentation, Survival and Economy",
+      "status": "released",
+      "date": "2026-10-04",
+      "summary": "Develops the city-world presentation and the survival, interaction and economy loops.",
+      "highlights": [
+        "+ Player item protection and clearer interaction outcomes.",
+        "+ NPC interaction and service navigation in dens.",
+        "+ Economy and trading with an editor preview.",
+        "+ Radiation, damage and target feedback; radiation-responsive zombies and gore.",
+        "+ Environment and safe-zone music, movement and combat balance.",
+        "? 3D skybox prototype, city generation, tile and foliage improvements."
+      ]
+    },
+    {
+      "version": "2.9.2",
+      "title": "Client Performance and Quality Presets",
+      "status": "released",
+      "date": "2026-10-02",
+      "summary": "Reduced client frame cost of weather and atmosphere systems and added Low/Medium/High quality presets.",
+      "highlights": [
+        "+ Configurable quality presets for weaker or stronger hardware.",
+        "+ Hook profiler baselines for matched performance comparisons.",
+        "? Cheaper snow cover, compass and atmosphere hooks with less per-frame Lua allocation."
+      ]
+    },
+    {
+      "version": "2.9.1",
+      "title": "Build Pipeline and Test Organisation",
+      "status": "released",
+      "date": "2026-10-02",
+      "summary": "Faster, better-reported world builds.",
+      "highlights": [
+        "+ Bounded multi-process map compiling.",
+        "+ Fast preview and final compiler presets.",
+        "+ Step-by-step world generation logging.",
+        "? Portal budgets raised to 750 clusters / 1,350 portals.",
+        "? Lua test suites moved to gamemode/tests/."
+      ]
+    },
+    {
+      "version": "2.9",
+      "title": "Gameplay, HUD, Transitions and Atmosphere",
+      "status": "released",
+      "date": "2026-10-02",
+      "summary": "Reworked den camera and gates, HUD, weapon presentation, weather and gore.",
+      "highlights": [
+        "+ New HUD with ammo display and slot-key badges.",
+        "+ Muzzle flashes, tracers, casings and recoil.",
+        "+ Weather, puddles, snow cover, fog, film grain and cinematic cell transitions.",
+        "+ Runtime foliage and debris, dismemberment and gore, entity loot targeting.",
+        "+ World map render modes and level view.",
+        "? First-person den camera, reworked entrances and tunnel exits."
+      ]
+    },
+    {
+      "version": "2.8.6",
+      "title": "Landmark Safe Zones and The Storm Drain",
+      "status": "released",
+      "date": "2026-10-01",
+      "summary": "Safe zones per landmark rather than per environment, with placed 3x3 entrances.",
+      "highlights": [
+        "+ Landmark-specific safe-zone configuration with cell_safezone as the default den.",
+        "+ Safe-zone entrance tiles placed beside roads by the planner.",
+        "? The Evac Zone renamed to The Storm Drain at 0,0.",
+        "? Preview world regenerated and staged."
+      ]
+    },
+    {
+      "version": "2.8.5",
+      "title": "Launcher and Character Menu",
+      "status": "released",
+      "date": "2026-10-01",
+      "summary": "A launcher room with a menu, rotating globe and full character creation.",
+      "highlights": [
+        "+ Main menu with rotating globe, options, credits and exit to Garry's Mod.",
+        "+ Three character slots with load and edit screens.",
+        "+ Character creation: appearance, player model, profession and starting attributes."
+      ]
+    },
+    {
+      "version": "2.8",
+      "title": "Weapons, Ammo, Food, Crafting and Trading",
+      "status": "released",
+      "date": "2026-09-27",
+      "summary": "Counter-Strike: Source weapons, ammunition and the first den economy.",
+      "highlights": [
+        "+ CSS weapon catalogue with realistic rarity and attributes.",
+        "+ Inventory-backed ammunition types and firing modes.",
+        "+ Scavenged resources and a tiered food system.",
+        "+ Validated recipes and atomic den crafting.",
+        "+ Professions with daily den deliveries, implants, mastercrafting and offline trading.",
+        "+ Mounted asset catalogue and semantic world loot."
+      ]
+    },
+    {
+      "version": "2.7",
+      "title": "Items, Loot, Enemies and Bosses",
+      "status": "released",
+      "date": "2026-09-26",
+      "summary": "Data-driven items, loot rolls, enemies and bosses.",
+      "highlights": [
+        "+ Static data registries for items, loot, enemies and bosses.",
+        "+ Persistent item instances with scaled attributes.",
+        "+ Loot composition and world loot spots with cell refresh.",
+        "+ Inventory and loot interface, boss lifecycle and world markers."
+      ]
+    },
+    {
+      "version": "2.6",
+      "title": "World Generation Fixes",
+      "status": "released",
+      "date": "2026-09-26",
+      "summary": "Corrected tile orientation and the rules of procedural world generation.",
+      "highlights": [
+        "? Fixed tile road-connection direction markers and building rotation toward roads.",
+        "? World generation rules and multi-tile template fixtures."
+      ]
+    },
+    {
+      "version": "2.5",
+      "title": "Item and Loot Prototypes",
+      "status": "released",
+      "date": "2026-09-22",
+      "reconstructed": true,
+      "summary": "Design groundwork for the 2.7 item system.",
+      "highlights": [
+        "+ Pseudo-prototypes for the new item, loot and spawn systems.",
+        "+ Completed prototype document with code examples.",
+        "? Assorted fixes and tweaks."
+      ]
+    },
+    {
+      "version": "2.0",
+      "title": "Zombie Walker Simulator",
+      "status": "released",
+      "date": "2026-09-11",
+      "reconstructed": true,
+      "summary": "The independent C++ walker population simulator.",
+      "highlights": [
+        "+ Finished the portable C++ zombie walker simulator.",
+        "+ New city tiles.",
+        "- Broken tile thumbnails removed.",
+        "- Compiled city maps no longer tracked in the repository."
+      ]
+    },
+    {
+      "version": "1.4",
+      "title": "Scoreboard and Persistence",
+      "status": "released",
+      "date": "2026-09-08",
+      "reconstructed": true,
+      "highlights": [
+        "+ New scoreboard.",
+        "? SQL persistence fixes.",
+        "? Preview world updated."
+      ]
+    },
+    {
+      "version": "1.3",
+      "title": "Release City and World Map",
+      "status": "released",
+      "date": "2026-09-07",
+      "reconstructed": true,
+      "highlights": [
+        "+ First rendered release city.",
+        "+ In-game world map.",
+        "+ Variable tile sizes.",
+        "? Improved carpark engine and city layout."
+      ]
+    },
+    {
+      "version": "1.2",
+      "title": "Safe Zones and Atmosphere",
+      "status": "released",
+      "date": "2026-09-06",
+      "reconstructed": true,
+      "highlights": [
+        "+ Safe zones.",
+        "+ Atmosphere profile system.",
+        "+ Desert test profile and new FGD.",
+        "? General fixes."
+      ]
+    },
+    {
+      "version": "1.1",
+      "title": "City Generator",
+      "status": "released",
+      "date": "2026-09-05",
+      "reconstructed": true,
+      "highlights": [
+        "+ Procedural city generator.",
+        "+ Generator settings and expanded documentation."
+      ]
+    },
+    {
+      "version": "1.0",
+      "title": "Foundations",
+      "status": "released",
+      "date": "2026-09-05",
+      "reconstructed": true,
+      "summary": "The first commit of the gamemode.",
+      "highlights": [
+        "+ Initial gamemode.",
+        "+ Third-person camera.",
+        "+ Attribute system.",
+        "+ First HUD elements."
+      ]
+    }
+  ],
+  "markers": {
+    "+": "added",
+    "-": "removed",
+    "?": "changed, fixed or in progress"
+  }
+}

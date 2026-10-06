@@ -7,12 +7,82 @@ local supported = {
     ["models/player/group01/female_01.mdl"] = "female"
 }
 
-local function buildFinish(sex, mode, style, namespace, poolSlot, shirt, pants)
+local function loadCitizenLayouts()
+    local data = ZM_Clothing.CitizenCalibrationData
+    ZM_Clothing.CitizenCalibrationData = nil
+    if not data then return end
+    ZM_Loading:Step("Preparing calibrated citizen clothing")
+    if type(data) ~= "table" or data.schemaVersion ~= 1 or data.size ~= 1024 or
+        type(data.previewOnly) ~= "boolean" or type(data.models) ~= "table" or table.Count(data.models) ~= 15 then
+        ErrorNoHalt("[ZombieSim] Invalid preview citizen calibration manifest.\n")
+        return
+    end
+    local layouts = {}
+    for path, layout in pairs(data.models) do
+        local sex, number
+        if type(path) == "string" then sex, number = string.match(path, "^models/player/group01/(%a+)_(%d%d)%.mdl$") end
+        number = tonumber(number)
+        if (sex ~= "male" and sex ~= "female") or not number or number < 1 or
+            number > (sex == "male" and 9 or 6) or type(layout) ~= "table" or layout.sex ~= sex then
+            ErrorNoHalt("[ZombieSim] Citizen calibration contains an invalid or rebel model.\n")
+            return
+        end
+        local prepared = { sex = sex, polygons = {} }
+        for _, garment in ipairs({ "shirt", "pants" }) do
+            local triangles = layout[garment]
+            if type(triangles) ~= "table" or #triangles < 400 or #triangles > 2000 then
+                ErrorNoHalt("[ZombieSim] Invalid citizen garment coverage: " .. path .. "\n")
+                return
+            end
+            prepared.polygons[garment] = {}
+            for _, triangle in ipairs(triangles) do
+                if type(triangle) ~= "table" or #triangle ~= 3 then
+                    ErrorNoHalt("[ZombieSim] Invalid citizen transfer triangle.\n")
+                    return
+                end
+                local polygon = {}
+                for _, vertex in ipairs(triangle) do
+                    if type(vertex) ~= "table" or #vertex ~= 4 then
+                        ErrorNoHalt("[ZombieSim] Invalid citizen transfer vertex.\n")
+                        return
+                    end
+                    for _, value in ipairs(vertex) do
+                        if not isnumber(value) or value ~= value or value < 0 or value > 1 then
+                            ErrorNoHalt("[ZombieSim] Non-finite or unbounded citizen transfer coordinate.\n")
+                            return
+                        end
+                    end
+                    polygon[#polygon + 1] = { x = vertex[1] * 1024, y = vertex[2] * 1024, u = vertex[3], v = vertex[4] }
+                end
+                local a, b, c = polygon[1], polygon[2], polygon[3]
+                if (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x) < 0 then
+                    polygon[2], polygon[3] = polygon[3], polygon[2]
+                end
+                prepared.polygons[garment][#prepared.polygons[garment] + 1] = polygon
+            end
+        end
+        layouts[path] = prepared
+    end
+    ZM_Clothing.CitizenLayouts = layouts
+    ZM_Loading:Step("Citizen clothing layouts ready", "ok")
+end
+
+loadCitizenLayouts()
+
+function ZM_Clothing:GetCitizenLayout(path)
+    if self.CitizenLayoutPreviewOnly and
+        (not IsValid(LocalPlayer()) or not LocalPlayer():IsAdmin() or not ZM_World or ZM_World.ActiveProfile ~= "preview") then return end
+    return self.CitizenLayouts and self.CitizenLayouts[path]
+end
+
+ZM_Clothing.GetPreviewCitizenLayout = ZM_Clothing.GetCitizenLayout
+
+local function buildFinish(sex, mode, style, namespace, poolSlot, shirt, pants, bloody, layout)
     namespace = namespace or ""
     local path = "models/humans/" .. sex .. "/group01/players_sheet"
     local native = Material(path)
     local base = not native:IsError() and native:GetTexture("$basetexture")
-    local layers = {}
+    local layers, bloodLayers = {}, {}
     for _, garment in ipairs(mode == "both" and { "shirt", "pants" } or { mode }) do
         local layerName = garment == "shirt" and "shirt_" .. sex or garment
         local legStyle = string.match(style or "", "^pants_") ~= nil
@@ -29,7 +99,17 @@ local function buildFinish(sex, mode, style, namespace, poolSlot, shirt, pants)
         if not texture or texture:Width() ~= 1024 or texture:Height() ~= 1024 then
             return nil, "missing original " .. garment .. " layer"
         end
-        layers[#layers + 1] = layer
+        layers[#layers + 1] = { material = layer, garment = garment }
+        if bloody then
+            local bloodName = "models/zombiesim/clothing/prototype_blood_" ..
+                (garment == "shirt" and "shirt_" .. sex or "pants")
+            local blood = Material(bloodName)
+            local bloodTexture = not blood:IsError() and blood:GetTexture("$basetexture")
+            if not bloodTexture or bloodTexture:Width() ~= 1024 or bloodTexture:Height() ~= 1024 then
+                return nil, "missing original blood overlay: " .. bloodName
+            end
+            bloodLayers[#bloodLayers + 1] = { material = blood, garment = garment }
+        end
     end
     if not base or base:Width() ~= 1024 or base:Height() ~= 1024 then return nil, "unsupported mounted body sheet" end
     local key = namespace .. sex .. "_" .. mode
@@ -56,10 +136,16 @@ local function buildFinish(sex, mode, style, namespace, poolSlot, shirt, pants)
         surface.DrawTexturedRect(0, 0, 1024, 1024)
         render.OverrideBlend(true, BLEND_SRC_ALPHA, BLEND_ONE_MINUS_SRC_ALPHA, BLENDFUNC_ADD,
             BLEND_ZERO, BLEND_ONE_MINUS_SRC_ALPHA, BLENDFUNC_ADD)
-        for _, layer in ipairs(layers) do
-            surface.SetMaterial(layer)
-            surface.DrawTexturedRect(0, 0, 1024, 1024)
+        local function drawLayer(layer)
+            surface.SetMaterial(layer.material)
+            if layout then
+                for _, polygon in ipairs(layout.polygons[layer.garment]) do surface.DrawPoly(polygon) end
+            else
+                surface.DrawTexturedRect(0, 0, 1024, 1024)
+            end
         end
+        for _, layer in ipairs(layers) do drawLayer(layer) end
+        for _, layer in ipairs(bloodLayers) do drawLayer(layer) end
     end, debug.traceback)
     if in2D then cam.End2D() end
     render.OverrideBlend(false)
@@ -77,8 +163,8 @@ local function buildFinish(sex, mode, style, namespace, poolSlot, shirt, pants)
     return name
 end
 
-function ZM_Clothing:BuildEquippedFinish(sex, mode, slot, shirt, pants)
-    return buildFinish(sex, mode, "base", "equipped_", slot, shirt, pants)
+function ZM_Clothing:BuildEquippedFinish(sex, mode, slot, shirt, pants, bloody, layout)
+    return buildFinish(sex, mode, "base", "equipped_", slot, shirt, pants, bloody, layout)
 end
 
 hook.Add("PreRender", "ZM.ClothingPreview.Fixtures", function()

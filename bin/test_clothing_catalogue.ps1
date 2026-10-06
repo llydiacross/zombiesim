@@ -12,6 +12,22 @@ function Assert-Catalogue([string]$Name, [bool]$Condition) {
     $script:passed++
     Write-Host "PASS: $Name"
 }
+$patches = Get-ClothingTexturePool $settings.textureCapacity
+Assert-Catalogue 'approved texture pool has exactly 96 slots and two native-family patches per slot' (
+    $settings.textureCapacity -eq 96 -and $patches.Count -eq 192)
+foreach ($slot in 1..$settings.textureCapacity) {
+    $number = $slot.ToString('00')
+    foreach ($sex in 'male', 'female') {
+        Assert-Catalogue "pool $number/$sex inherits native shader and names its matching shared target" (
+            $patches["pool_${number}_$sex.vmt"].Contains("materials/models/humans/$sex/group01/players_sheet.vmt") -and
+            $patches["pool_${number}_$sex.vmt"].Contains("zombiesim_clothing_pool_${number}_v1"))
+    }
+}
+foreach ($invalid in 0, 100) {
+    $rejected = $false
+    try { $null = Get-ClothingTexturePool $invalid } catch { $rejected = $true }
+    Assert-Catalogue "pool rejects capacity $invalid outside the two-digit material namespace" $rejected
+}
 foreach ($preset in @(Get-ClothingShirtPresets $prints) + @(Get-ClothingLegPresets $prints)) {
     $icon = Get-ClothingCatalogueIcon $(if ($preset.id -like 'pants_*') { 'pants' } else { 'shirt' }) $preset.id $prints
     Assert-Catalogue "wardrobe icon retains calibrated canvas and split UV pieces: $($preset.id)" (
@@ -259,6 +275,14 @@ if ($ValidateBuilt) {
             ($colours -join ',') -eq ($expected -join ','))
     }
     $manifest = Get-Content (Join-Path $root 'content\data_static\clothing_catalogue.json') -Raw | ConvertFrom-Json
+    Assert-Catalogue 'published capacity and exact pool ownership match source settings' (
+        $manifest.capacity -eq $settings.textureCapacity -and
+        ((@($manifest.files | Where-Object { $_ -like 'pool_*' }) | Sort-Object) -join ',') -eq
+        (($patches.Keys | Sort-Object) -join ','))
+    foreach ($name in $patches.Keys) {
+        Assert-Catalogue "$name published native patch matches configured target exactly" (
+            (Get-Content -LiteralPath (Join-Path $root "content\materials\models\zombiesim\clothing\$name") -Raw) -eq $patches[$name])
+    }
     $finishCount = @($manifest.finishes.PSObject.Properties).Count
     $items = @($manifest.items.PSObject.Properties.Value)
     Assert-Catalogue 'combined front-back finishes are absent from the staged registry' (
@@ -286,8 +310,8 @@ if ($ValidateBuilt) {
             @($previous.files | Where-Object { $_ -notin $manifest.files }).Count -eq 0)
         $newFinishes = @($manifest.finishes.PSObject.Properties | Where-Object { $null -eq $previous.finishes.PSObject.Properties[$_.Name] })
         Assert-Catalogue 'limb expansion adds only explicitly named cuff or rear finishes' (
-            @($newFinishes.Value | Where-Object style -notin 'pants_cuff', 'pants_cuff_right',
-                'pants_back_left', 'pants_back_right', 'arm_back_left', 'arm_back_right').Count -eq 0)
+            @($newFinishes | Where-Object { $_.Value.style -notin 'pants_cuff', 'pants_cuff_right',
+                'pants_back_left', 'pants_back_right', 'arm_back_left', 'arm_back_right' }).Count -eq 0)
     }
     foreach ($variant in $plan.variants) {
         $finish = $manifest.finishes.($variant.id)

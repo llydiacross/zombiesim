@@ -283,6 +283,7 @@ local function buildStumps(entity)
                 Effects.PushBounded(GoreClient.LimbSpawns, {
                     model = entity:GetModel(), skin = entity:GetSkin(), region = region, capture = capture, event = event,
                     materials = materials,
+                    clothing = ZM_Clothing and ZM_Clothing:GetEntitySelection(entity),
                     lift = region == "legs" and entity:GetClass() ~= "prop_ragdoll" and crawlerLift or nil
                 }, Effects.Budget(quality).limbs)
                 GoreClient.EmitSever(entity, region, event, capture.cutPosition)
@@ -395,6 +396,7 @@ local function spawnLimb(spawn)
     addLimb({
         entity = limb,
         materials = table.Copy(spawn.materials or {}),
+        clothing = spawn.clothing,
         rigid = true,
         velocity = event.direction * event.force * (spawn.region == "legs" and 0.3 or 0.6) + Vector(0, 0, spawn.region == "head" and 200 or 140),
         angularVelocity = Angle(math.Rand(-spin, spin), math.Rand(-spin, spin), math.Rand(-spin, spin)),

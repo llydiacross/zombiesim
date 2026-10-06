@@ -135,27 +135,84 @@ DevConsole.DirectCommands.zombiesim_dev_profile_client = function(argumentString
     return true
 end
 
-// Bridge-only: requests a PostRender capture; optional angles and origin do not move the player.
+DevConsole.DirectCommands.zombiesim_dev_test_clothing_pool = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        return false, "Clothing pool tests require a connected preview admin"
+    end
+
+    target:ConCommand("zombiesim_dev_test_clothing_pool")
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_sky_palette = function(argumentString)
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        return false, "individual sky previews require a connected preview admin"
+    end
+    local id = string.Trim(argumentString or "")
+    if not id:match("^[a-z_]+$") then return false, "expected an individual sky id or restore" end
+    local valid = { restore = true, mounted_day = true }
+    for _, palette in ipairs({ "natural", "cinematic" }) do
+        for _, context in ipairs({ "day", "dusk", "night", "overcast" }) do valid[palette .. "_" .. context] = true end
+    end
+    if not valid[id] then return false, "unknown individual sky id" end
+    target:ConCommand("zombiesim_dev_sky_palette " .. id)
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_test_sky_palettes = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        return false, "sky palette tests require a connected preview admin"
+    end
+    target:ConCommand("zombiesim_dev_test_sky_palettes")
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_test_sky_browser = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        return false, "sky browser tests require a connected preview admin"
+    end
+
+    target:ConCommand("zombiesim_dev_test_sky_browser")
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_test_sky_catalogue = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        return false, "sky catalogue tests require a connected preview admin"
+    end
+    target:ConCommand("zombiesim_dev_test_sky_catalogue")
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_clothing_meshes = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        return false, "Clothing mesh inspection requires a connected preview admin"
+    end
+    target:ConCommand("zombiesim_dev_clothing_meshes")
+    return true
+end
+
 DevConsole.DirectCommands.zombiesim_dev_wardrobe = function(argumentString)
     local target = ZM_Util.FirstHuman()
     if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
         return false, "Wardrobe requires a connected preview admin"
     end
-
-    DevConsole.DirectCommands.zombiesim_dev_test_clothing_pool = function()
-        local target = ZM_Util.FirstHuman()
-        if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
-            return false, "Clothing pool tests require a connected preview admin"
-        end
-        target:ConCommand("zombiesim_dev_test_clothing_pool")
-        return true
-    end
     local argument = string.Trim(argumentString or "")
     local itemId = string.match(argument, "^select (item[%w]+)$")
+    local citizenSex, citizenNumber = string.match(argument, "^model (%a+)_(%d%d)$")
+    citizenNumber = tonumber(citizenNumber)
+    local citizenModel = (citizenSex == "male" or citizenSex == "female") and citizenNumber and
+        citizenNumber >= 1 and citizenNumber <= (citizenSex == "male" and 9 or 6)
     local definition = itemId and ZM_Items:GetDefinition(itemId)
     if argument ~= "" and argument ~= "close" and argument ~= "model male" and argument ~= "model female" and
-        not (definition and definition.clothing) then
-        return false, "usage: zombiesim_dev_wardrobe [close|model male|female|select itemId]"
+        not citizenModel and not (definition and definition.clothing) then
+        return false, "usage: zombiesim_dev_wardrobe [close|model male|female|male_01..09|female_01..06|select itemId]"
     end
     target:ConCommand("zombiesim_dev_wardrobe " .. argument)
     return true
@@ -167,8 +224,19 @@ DevConsole.DirectCommands.zombiesim_dev_ui = function(argumentString)
     if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
         return false, "UI inspection requires a connected preview admin"
     end
-    if mode ~= "inventory" and mode ~= "scoreboard" and mode ~= "wardrobe" and mode ~= "close" then
-        return false, "usage: zombiesim_dev_ui inventory|scoreboard|wardrobe|close"
+    if mode ~= "inventory" and mode ~= "scoreboard" and mode ~= "wardrobe" and mode ~= "options" and
+        mode ~= "sky" and mode ~= "sky_edit" and mode ~= "tools" and mode ~= "close" then
+        return false, "usage: zombiesim_dev_ui inventory|scoreboard|wardrobe|options|sky|sky_edit|close"
+    end
+
+    DevConsole.DirectCommands.zombiesim_dev_test_launcher_tools = function()
+        local target = ZM_Util.FirstHuman()
+        if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" or
+            game.GetMap() ~= "zn_preview_start" then
+            return false, "Tools tests require a preview launcher admin"
+        end
+        target:ConCommand("zombiesim_dev_test_launcher_tools")
+        return true
     end
     target:ConCommand("zombiesim_dev_ui " .. mode)
     return true
@@ -373,7 +441,7 @@ DevConsole.DirectCommands.zombiesim_dev_clothing_model = function(argumentString
     if not target:Alive() or not target.ZM_PersistentStateLoaded then return false, "deploy a living survivor first" end
     local mode = string.Trim(argumentString or "")
     local models = { male = "models/player/group01/male_03.mdl", female = "models/player/group01/female_01.mdl",
-        unsupported = "models/player/group01/male_01.mdl" }
+        unsupported = "models/player/group03/male_01.mdl" }
     if mode ~= "restore" and not models[mode] then
         return false, "usage: zombiesim_dev_clothing_model male|female|unsupported|restore"
     end

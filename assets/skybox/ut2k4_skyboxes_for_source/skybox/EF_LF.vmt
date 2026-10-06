@@ -1,9 +1,0 @@
-sky
-
-{
-	$basetexture "skybox/EF_LF"
-	$nofog 1
-	$nomip 1
-	$ignorez 1
-
-}

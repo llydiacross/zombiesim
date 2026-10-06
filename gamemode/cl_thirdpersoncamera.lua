@@ -297,6 +297,10 @@ local function setCameraLocked(locked)
 end
 
 hook.Add("Think", "ZM.CameraLockToggle", function()
+    if ZM_SkyInspection and ZM_SkyInspection:IsActive() then
+        middleWasDown = input.IsMouseDown(MOUSE_MIDDLE)
+        return
+    end
     local ply = LocalPlayer()
     if not IsValid(ply) or not ply:Alive() then
         entryCameraUntil = 0
@@ -446,6 +450,7 @@ end)
 
 // Consumes mouse and wheel input for the active camera mode.
 hook.Add("CreateMove", "ZM.RotateThirdPersonModel", function(cmd)
+    if ZM_SkyInspection and ZM_SkyInspection:BlockInput(cmd) then return end
     local ply = LocalPlayer()
     if not IsValid(ply) or not ply:Alive() then return end
 

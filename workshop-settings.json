@@ -14,11 +14,12 @@
     "world-02": "pending:world-02"
   },
   "coreStaticFiles": [
-    "boss_spawns.json", "clothing_catalogue.json", "den_service_definitions.json",
+    "boss_spawns.json", "clothing_catalogue.json", "clothing_citizen_calibration.json", "den_service_definitions.json",
     "enemy_definitions.json", "enemy_spawns.json", "entity_loot.json",
     "item_definitions.json", "launcher_scene.json", "loot.json",
     "music_definitions.json", "profession_definitions.json",
-    "recipe_definitions.json", "trade_definitions.json", "zombiesim_signs_preview.json"
+    "recipe_definitions.json", "sky_catalogue.json", "trade_definitions.json", "zombiesim_signs_preview.json",
+      "version.json", "changelog.json"
   ],
   "commonMaterialDirectories": [
     "materials\\scoreboard", "materials\\zombiesim", "materials\\models\\zombiesim\\signs"

@@ -19,6 +19,7 @@ Gore.MaximumChance = 0.85
 Gore.DefaultFactor = 0.6
 
 function Gore:ApplyBloodyAppearance(entity)
+    ZM_Clothing:AssignWalkerOutfit(entity, entity.WalkerSourceCellId)
     for index, material in pairs(entity.GoreBloodyOverrides or {}) do
         if entity:GetSubMaterial(index) == material then entity:SetSubMaterial(index, nil) end
     end
@@ -384,7 +385,7 @@ local function findEnemy(target)
 end
 
 ZM_Util.RegisterCommands({
-    zn_gore_probe = "Preview-only: on|off creates/removes two harmless bloody walker/corpse fixtures for 120 seconds.",
+    zn_gore_probe = "Preview-only: on|citizens|crowd [male_01..09|female_01..06] [native]|off creates harmless fixtures for 120 seconds.",
     zn_gore_quality_probe = "Preview-only: 0|1|2|restore temporarily selects gore quality, with automatic restoration."
 }, function(caller, command, arguments)
     local target = ZM_Util.ResolveCommandTarget(caller, command)
@@ -402,9 +403,23 @@ ZM_Util.RegisterCommands({
         target:ConCommand("zombiesim_gore_quality_probe " .. action)
         return true
     end
-    if arguments[1] ~= "on" and arguments[1] ~= "off" then
-        ZM_Util.Reply(caller, "Usage: " .. command .. " on|off")
-        return false, "expected on or off"
+    if arguments[1] ~= "on" and arguments[1] ~= "citizens" and arguments[1] ~= "crowd" and arguments[1] ~= "off" then
+        ZM_Util.Reply(caller, "Usage: " .. command .. " on|citizens|crowd|off")
+        return false, "expected on, citizens, crowd or off"
+    end
+    local crowdSex, crowdNumber
+    if arguments[2] then
+        crowdSex, crowdNumber = string.match(arguments[2], "^(%a+)_(%d%d)$")
+        crowdNumber = tonumber(crowdNumber)
+        if arguments[1] ~= "crowd" or not crowdSex or not crowdNumber or
+            not ZM_Clothing.Models["models/player/group01/" .. arguments[2] .. ".mdl"] then
+            ZM_Util.Reply(caller, "Crowd model must be one of the fifteen calibrated citizens.")
+            return false, "invalid citizen crowd model"
+        end
+    end
+    if arguments[3] and (arguments[1] ~= "crowd" or arguments[3] ~= "native") then
+        ZM_Util.Reply(caller, "Optional crowd presentation must be native.")
+        return false, "invalid crowd presentation"
     end
     for _, entity in ipairs(target.ZM_GoreProbes or {}) do
         if IsValid(entity) then entity:Remove() end
@@ -425,52 +440,99 @@ ZM_Util.RegisterCommands({
         return false, "no walkable ground"
     end
     local report = {}
-    for index, sex in ipairs({ "male", "female" }) do
+    local crowd = arguments[1] == "crowd"
+    local descriptions = { { sex = "male", number = 2 }, { sex = "female", number = 2 } }
+    if crowd then
+        descriptions = {}
+        if crowdSex then
+            for index = 1, 15 do descriptions[index] = { sex = crowdSex, number = crowdNumber } end
+        else
+            for _, sex in ipairs({ "male", "female" }) do
+                for number = 1, sex == "male" and 9 or 6 do
+                    descriptions[#descriptions + 1] = { sex = sex, number = number }
+                end
+            end
+        end
+    end
+    for index, description in ipairs(descriptions) do
+        local sex = description.sex
+        local offset = crowd and Vector((index - 1) % 5 * 52, math.floor((index - 1) / 5) * 52, 4) or
+            Vector((index - 1) * 52, 0, 4)
+        local position = ground.HitPos + offset
+        if crowd then
+            local placement = util.TraceLine({ start = position + Vector(0, 0, 128), endpos = position - Vector(0, 0, 256),
+                filter = target, mask = MASK_SOLID_BRUSHONLY })
+            if not placement.HitWorld or placement.HitSky or placement.HitNormal.z < 0.9 then
+                for _, fixture in ipairs(target.ZM_GoreProbes) do if IsValid(fixture) then fixture:Remove() end end
+                return false, "crowd fixture " .. index .. " has no flat walkable ground"
+            end
+            position = placement.HitPos + Vector(0, 0, 4)
+        end
         local entity = ents.Create("zn_walker_zombie")
         if not IsValid(entity) then
             for _, fixture in ipairs(target.ZM_GoreProbes) do if IsValid(fixture) then fixture:Remove() end end
             ZM_Util.Reply(caller, "Could not create a gore fixture.")
             return false, "entity creation failed"
         end
-        entity:SetPos(ground.HitPos + Vector((index - 1) * 52, 0, 4))
+        entity:SetPos(position)
         entity:Spawn()
         // Do not reward kills, acknowledge Walker tickets, or allow these presentation fixtures to attack.
         entity.RunBehaviour = function() end
-        entity:SetModel("models/player/group03/" .. sex .. "_01.mdl")
+        local citizens = arguments[1] == "citizens" or crowd
+        entity:SetModel(string.format("models/player/%s/%s_%02d.mdl", citizens and "group01" or "group03",
+            sex, citizens and description.number or 1))
         entity:SetAngles(Angle(0, (target:GetPos() - entity:GetPos()):Angle().y, 0))
         entity:StartActivity(entity.IdleActivity)
         Gore:ApplyBloodyAppearance(entity)
-        local region = index == 1 and "leftArm" or "head"
-        entity.GoreForcedRegion = region
-        entity.GoreTraceTick = engine.TickCount()
-        entity.GoreTraceDamage = { [region] = 1 }
-        entity.GoreTraceHitPos = entity:WorldSpaceCenter()
-        local damage = DamageInfo()
-        damage:SetDamage(100)
-        damage:SetDamageType(DMG_SLASH)
-        damage:SetAttacker(game.GetWorld())
-        damage:SetInflictor(game.GetWorld())
-        Gore:HandleDamage(entity, damage, index == 2)
-        if index == 2 then
-            local corpse = entity:CreateCorpse()
-            if not IsValid(corpse) then
+        if crowd and arguments[3] == "native" then
+            entity:SetNWString("ZM_Clothing_shirt", "")
+            entity:SetNWString("ZM_Clothing_pants", "")
+            entity:SetNWBool("ZM_ClothingBloody", false)
+        end
+        local function sever()
+            if not IsValid(entity) then return true end
+            local region = index == 1 and "leftArm" or "head"
+            entity.GoreForcedRegion = region
+            entity.GoreTraceTick = engine.TickCount()
+            entity.GoreTraceDamage = { [region] = 1 }
+            entity.GoreTraceHitPos = entity:WorldSpaceCenter()
+            local damage = DamageInfo()
+            damage:SetDamage(100)
+            damage:SetDamageType(DMG_SLASH)
+            damage:SetAttacker(game.GetWorld())
+            damage:SetInflictor(game.GetWorld())
+            Gore:HandleDamage(entity, damage, index == 2)
+            if index == 2 then
+                local corpse = entity:CreateCorpse()
+                if not IsValid(corpse) then
+                    entity:Remove()
+                    for _, fixture in ipairs(target.ZM_GoreProbes) do if IsValid(fixture) then fixture:Remove() end end
+                    ZM_Util.Reply(caller, "Could not create a gore corpse fixture.")
+                    return false
+                end
+                Gore:ApplyCorpse(entity, corpse)
                 entity:Remove()
-                for _, fixture in ipairs(target.ZM_GoreProbes) do if IsValid(fixture) then fixture:Remove() end end
-                ZM_Util.Reply(caller, "Could not create a gore corpse fixture.")
-                return false, "corpse creation failed"
+                entity = corpse
+                if citizens and IsValid(target) then target.ZM_GoreProbes[index] = corpse end
             end
-            Gore:ApplyCorpse(entity, corpse)
-            entity:Remove()
-            entity = corpse
+            return true
+        end
+        if citizens and not crowd then
+            timer.Simple(1, sever)
+        elseif not crowd and not sever() then
+            return false, "corpse creation failed"
         end
         target.ZM_GoreProbes[#target.ZM_GoreProbes + 1] = entity
         local materials = {}
         for slot in ipairs(entity:GetMaterials()) do materials[slot] = entity:GetSubMaterial(slot - 1) end
-        report[#report + 1] = { entityIndex = entity:EntIndex(), model = entity:GetModel(), overrides = materials }
+        report[#report + 1] = { entityIndex = entity:EntIndex(), model = entity:GetModel(), overrides = materials,
+            clothing = ZM_Clothing:GetEntitySelection(entity) }
         timer.Simple(120, function() if IsValid(entity) then entity:Remove() end end)
     end
     if ZM_DevConsole then ZM_DevConsole:Report("goreProbe", report) end
-    ZM_Util.Reply(caller, "Bloody walker and corpse ready for visual review; auto-remove in 120 seconds.")
+    ZM_Util.Reply(caller, crowd and "Fifteen harmless citizen clothing fixtures ready; auto-remove in 120 seconds." or arguments[1] == "citizens" and
+        "Dressed citizen probes created; sever after one second, auto-remove in 120 seconds." or
+        "Bloody walker and corpse ready for visual review; auto-remove in 120 seconds.")
     return true
 end)
 

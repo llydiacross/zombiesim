@@ -2,6 +2,7 @@
 include("sh_player.lua")
 include("sh_loading.lua")
 include("sh_distribution.lua")
+include("sh_version.lua")
 include("sh_compass.lua")
 include("utils/world.lua")
 include("utils/safezone.lua")

@@ -13,7 +13,102 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 - Launcher Content Addons/Recheck/Back UI is user-approved in loose preview. Core owns both launcher BSPs. Settings use safe `pending:<package-id>` labels, never fake numeric Steam IDs; real IDs are assigned by creating private Workshop items, then rebuilding/updating those same items. Builder does not upload. Subscription/download/mount states are distinct and mounted compatibility gates deployment, not subscription alone. Fixtures46/46/live distribution9/9 pass; actual published-ID and clean-mount acceptance still deferred until publication.
 - Cuff-up extension is published and user-reviewed on male/female left/right sides:866finishes/868Wardrobe/3482ownedfiles. Separate bottom-aligned `pants_cuff`/`pants_cuff_right` presets preserve all790priorfinish/itemdefinitions and ownedfiles; `_pants_cuff` permits artist opt-in restrictions. Artwork25/25, topology134/134, prototype306/306, published7319/7319, fabrics2754/2754, GLua175/0; fresh live static18/18/distribution9/9/pool5/5. Package audit6659files/7packs remains within shard budgets;387releaseblockers unchanged. Rear-facing limbs, bloody/walker integration and representative animation/gore/performance remain unfinished; cuff review is not Phase F acceptance.
 - Rear-limb artist tags and placements now implemented/user-approved for all eight male/female left/right rear thigh/upper-arm combinations. No rear-tagged PNGs currently; default866finishes/896cap unchanged. Parser106/106,topology170/170,prototype370/370,published7335/7335,GLua175/0. Temporary live fixtures removed,inventory/equipment untouched. Next is bloody/walker integration: mountedgroup03inspection48/48 shows2048sheets/differentUVfingerprints, so survivor1024charts are not approved there. Separategroup03report preserves defaultinspection; group02player path failed lookup and is unverified. Preserve existing gore overrides/material copies and unsupported-model appearance. Phase F remains unaccepted.
+- Offline Phase F continuation: user chose shared original blood overlays, not duplicateitems/budget expansion. `build_clothing_blood.ps1` stages3sharedlayers/6files (~4MiB); exhaustiveblood32/32, survivor170/170, independentlynamedgroup03charts/fullbodytriangles56/56, catalogue5753/5753, packaging47/47, GLua175/0. Preview-onlyWardrobeBLOODtoggle and clean/bloodypoolkeys implemented; newclientpoolcases/render/gore acceptance **not run: game closed**. Group03diagnostics remain mask-unapproved; existingnativewalkerblood unchanged. Run chart writers serially for isolation checks. Actualaudit6681files/7packs/387releaseblockers; no maps/uploads/inventory changes. Phase F still needs live blood/gore/performance and independently calibrated walker clothing.
 - [docs/todo-alpha-2.9.2.md](docs/todo-alpha-2.9.2.md) archives the completed client performance and quality-presets milestone (accepted 2026-10-02); its baseline and validation remain useful for Alpha 3.0 comparisons.
+- Current Phase F evidence supersedes the closed-game/group03 next steps above:
+  the user approved blood preview, all fifteen independently calibrated group01
+  citizens and actual citizen walker/corpse/detached-piece appearance. **Never
+  apply catalogue clothing to rebels**; preserve their native mounted blood.
+  Engine mesh transfers pass80/80; no per-model catalogue texture duplication.
+  The user subsequently chose independent full-catalogue outfits per zombie,
+  not a shared outfit per model/cell, and approved96 shared targets (~384MiB
+  maximum RGBA storage plus source/material memory). Individual/ticket identities
+  preserve outfits through blood refresh and immutable corpse/limb copies.
+  Pool-only publication retains866finishes/868Wardrobe, now3642ownedfiles;
+  catalogue8035/8035, packaging48/48, GLua175/0. Live Gore16/16, static18/18,
+  inventory51/51, clientpool9/9; the enlarged stress test initially froze/flushed
+  the renderer, so capacity/citizen tests now run across frames and passed9/9 again.
+  Runtime composition uses a2ms soft frame budget; individual cold builds can
+  exceed it. Verified15same-model independent outfits and15mixed-model composites.
+  One clean warm mixed-crowd run measured60FPS/0.02034ms clothing-hook average;
+  cold builds16.807ms mean/21.452ms max and a failed/stale native-control comparison
+  remain validation limits. Actualaudit6842files/7packs/387blockers. Owned probes
+  removed, quality restored, survivor alive at preview22,0.
+- The user subsequently **accepted Phases F and G on 2026-10-05**, explicitly
+  confirming existing checks/earlier skybox reviews are sufficient and asking
+  to proceed directly to **Phase H**. Do not repeat Phase G regeneration or
+  visual checks merely to close historical checklist entries. Uncaptured
+  cold/lifecycle/matched-performance and sign integration checks remain
+  validation limits, not pending phase gates; no new checks are implied by
+  acceptance. Workshop release rights/IDs/navmesh/production export/clean-mount
+  blockers remain deferred. Phase H source eligibility and palette/control
+  decisions must be settled before changing the optional client sky renderer.
+- Phase H's first-selector source choice is approved: mounted game skies plus
+  original procedural palettes; uncleared imports remain excluded. Reference
+  mounted paths without extracting/copying assets. Palette/control design and
+  actual renderer appearance remain separate implementation decisions.
+- Phase H prototype now uses `cl_sky_palettes.lua`: saved Default/Natural/
+  Cinematic Options, original context gradients and temporary individual
+  preview commands. Default remains native; no BSP relighting or server weather
+  changes. Natural daytime layering is user-reviewed. Mounted `sky_day03_06c`
+  remains a development candidate, referenced in place. Measured texture-edge
+  matching corrected side/top mapping; a subsequent tiny seam was fixed with
+  half-texel UV insets without changing rotation. User confirmed seam gone
+  after fresh reload; live5/5, GLua176/0. Do not repeat accepted F/G checks.
+  Phase H still needs context/persistence/reset/launcher/den/capture/weather/
+  performance review and final palette membership. Publication stays deferred.
+- Phase H UI follow-up supersedes the dropdown/preview-only restriction:
+  user chose automatic palettes plus locally saved individual skies. The
+  thumbnail browser offers12cards, context warnings and parent-safe Back/X/
+  Escape cleanup; mounted sky remains outside automatic palette membership.
+  Options has9collapsible sections and a friendly engine-owned audio notice;
+  existing controls/precision/presets/server guards retained. Fresh GLua177/0,
+  renderer7/7, browser/Options5/5; user confirmed grid/grouped Options, saved
+  selection/reopening and restored mouse/camera control look/work correctly.
+- Latest Phase H palette UI replaces state dropdowns with four clickable
+  preview slots on the left and individual/native thumbnail choices on the
+  right. Built-in Edit creates a personal copy; custom Edit retains its ID.
+  Draft assignment/cancel never changes the saved choice. Expanded browser and
+  revised editor are user-approved: all four slots visible and picker works. The catalogue
+  now has82individuals/12built-ins/36imports,432materialfiles/391.48MiB;
+  supplied-author permission specifically clears the additional nine sets
+  including MR53. Retain original README files in `data_static/sky_licences`
+  and common packages. Assets2383/2383, packagefixtures50/50, GLua180/0;
+  fresh renderer7/7, UI/inspection9/9 and materials76/76 pass. Deferred parent
+  cleanup is fixed; ordinary editor heights show all four slots. New full-cube
+  appearance/aerial-render human review remains; no map builds/publication or F/G redo.
+- Latest H continuation adds six automatic variants (18built-ins total), using
+  all new sets except John Tron at the user's explicit request; keep that sky
+  individual/custom only. User approved variants and real aerial preview/return.
+  Fresh renderer7/7, browser9/9, catalogue/context78/78, GLua180/0. Isolated
+  weather/light boundaries pass; real weather visuals are not thereby accepted.
+  Actual selected custom "Test" (`custom_1`/dusk `imported_mr53`) survives preview
+  changelevel with six meshes and byte-identical store. Leave user's custom
+  selection active. H still needs live weather/context, launcher/den/map-capture
+  and representative performance; do not reopen F/G or deferred publication.
+- H live continuation: user confirmed rain/Level-view return, normal den
+  first-person/Options round trip and launcher Options. Profiler now includes
+  PostDraw2DSkyBox; warm Natural draw CPU0.04866ms/frame is scoped operation
+  evidence, not native/GPU comparison. User paused to author a **launcher-only**
+  preview area in Hammer with point_camera `Preview_skybox`: camera-only
+  position/angles, no survivor teleport; replaces launcher upward sweep only,
+  not implemented yet. City cells retain their existing sky/current preview;
+  do not add areas or rebuild city templates for this request.
+  Weather scheduling restored/verified auto1/manual0. Client remains at preview
+  launcher; when ready restore/verify Default and slot2 Jim at logical22,0
+  (raw22,12), safe-zone none. Do not move them or rebuild maps while paused.
+  Options sections default closed and persist each section's open/closed state.
+  The preview-launcher-only TOOLS tab is user-approved. Its left column offers
+  Wardrobe, Item/Map Atlas, Sky browser and Content Status. Atlases and Content
+  Status use the right side of the launcher frame, not a hub window. Tools are
+  read-only; Back/Escape always returns to the main menu, and the window tools
+  sit below a rule. Live tests pass: Tools4/4 and browser/Options10/10.
+  `content/data_static/version.json` is the single version source; update it
+  (and the matching `changelog.json` entry, marked `+`/`-`/`?`) whenever a
+  milestone, phase or release status changes. Packaging blocks release until
+  its status is `released`. Pre-2.6 changelog entries are reconstructed guesses.
+  Full H is not accepted: fresh-load archived persistence, automatic weather/
+  context, launcher/den/map-capture and visual/performance gates remain.
 - When a milestone runs, phases proceed in order and each phase gets focused static/automated checks as changes land; fix failures before advancing and record static and live results separately. A phase is accepted only on the user's confirmation; a successful map compile alone does not establish in-game acceptance.
 - [docs/todo-alpha-2.9.1.md](docs/todo-alpha-2.9.1.md) archives the completed compiler-pool, preset, generation-diagnostics, portal-budget, and test-organization milestone.
 - `docs/todo-alpha-2.8.6.md` remains as milestone history and source context for the safe-zone contract and Storm Drain work that landed before the current cycle.

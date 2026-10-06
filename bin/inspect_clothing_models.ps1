@@ -17,8 +17,9 @@ $reportName = if (($ModelGroups -join ',') -eq 'group01') { 'model-inspection.js
     else { 'model-inspection-' + ($ModelGroups -join '-') + '.json' }
 $reportPath = Join-Path $output $reportName
 foreach ($requested in $UvGuideModels) {
-    if ($requested -notlike 'models/player/group01/*') {
-        throw "Non-group01 UV guide output needs independently named charts before calibration: $requested"
+    if ($requested -notmatch '^models/player/(group01|group03)/(male|female)_\d{2}\.mdl$' -or
+        $Matches[1] -notin $ModelGroups) {
+        throw "UV guide model is not in a supported selected model group: $requested"
     }
 }
 if (Test-Path -LiteralPath $reportPath) { Remove-Item -LiteralPath $reportPath }
@@ -39,7 +40,8 @@ function Read-String([byte[]]$Bytes, [int]$Offset) {
     return [Text.Encoding]::UTF8.GetString($Bytes, $Offset, $end - $Offset)
 }
 function Write-UvGuide([string]$ModelPath, [byte[]]$Mdl, [byte[]]$Vvd, [int[]]$Indices,
-    [int]$VertexData, [int]$BodyIndex, [int]$SubmodelIndex, [int]$MeshIndex, [int]$FirstVertex, [int]$VertexCount) {
+    [int]$VertexData, [int]$BodyIndex, [int]$SubmodelIndex, [int]$MeshIndex, [int]$FirstVertex, [int]$VertexCount,
+    [int]$Size) {
     Add-Type -AssemblyName System.Drawing
     $vtx = (Read-Asset ($ModelPath.Substring(0, $ModelPath.Length - 4) + '.dx90.vtx')).Bytes
     if ((Read-Int $vtx 0) -ne 7 -or (Read-Int $vtx 16) -ne (Read-Int $Mdl 8)) {
@@ -55,7 +57,8 @@ function Write-UvGuide([string]$ModelPath, [byte[]]$Mdl, [byte[]]$Vvd, [int[]]$I
     $mesh = $lod + (Read-Int $vtx ($lod + 4)) + 9 * $MeshIndex
     $groupCount = Read-Int $vtx $mesh
     $groupStart = $mesh + (Read-Int $vtx ($mesh + 4))
-    $guide = [System.Drawing.Bitmap]::new(1024, 1024)
+    if ($Size -notin 1024, 2048) { throw "Unsupported clothing chart size: $Size" }
+    $guide = [System.Drawing.Bitmap]::new($Size, $Size)
     $graphics = [System.Drawing.Graphics]::FromImage($guide)
     $pen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(200, 232, 235, 239), 1)
     $gridPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(255, 228, 132, 50), 1)
@@ -65,7 +68,10 @@ function Write-UvGuide([string]$ModelPath, [byte[]]$Mdl, [byte[]]$Vvd, [int[]]$I
     $sleeves = [System.Collections.Generic.List[object]]::new()
     $legs = [System.Collections.Generic.List[object]]::new()
     $torso = [System.Collections.Generic.List[object]]::new()
-    $guidePath = Join-Path $output ('uv_' + [System.IO.Path]::GetFileNameWithoutExtension($ModelPath) + ".png")
+    $bodyTriangles = [System.Collections.Generic.List[object]]::new()
+    $groupName = $ModelPath.Split('/')[2]
+    $guideName = if ($groupName -eq 'group01') { 'uv_' } else { 'uv_' + $groupName + '_' }
+    $guidePath = Join-Path $output ($guideName + [System.IO.Path]::GetFileNameWithoutExtension($ModelPath) + ".png")
     try {
         $graphics.Clear([System.Drawing.Color]::FromArgb(22, 25, 30))
         for ($g = 0; $g -lt $groupCount; $g++) {
@@ -101,7 +107,7 @@ function Write-UvGuide([string]$ModelPath, [byte[]]$Mdl, [byte[]]$Vvd, [int[]]$I
                         if ([single]::IsNaN($u) -or [single]::IsNaN($v) -or $u -lt 0 -or $u -gt 1 -or $v -lt 0 -or $v -gt 1) {
                             throw "Invalid guide UV coordinates: $ModelPath"
                         }
-                        $points[$corner] = [System.Drawing.PointF]::new($u * 1023, $v * 1023)
+                        $points[$corner] = [System.Drawing.PointF]::new($u * ($Size - 1), $v * ($Size - 1))
                         $positions += ,@(
                             [BitConverter]::ToSingle($Vvd, $vertex + 16),
                             [BitConverter]::ToSingle($Vvd, $vertex + 20),
@@ -111,6 +117,12 @@ function Write-UvGuide([string]$ModelPath, [byte[]]$Mdl, [byte[]]$Vvd, [int[]]$I
                     $center = @(0.0, 0.0, 0.0)
                     foreach ($position in $positions) {
                         for ($axis = 0; $axis -lt 3; $axis++) { $center[$axis] += $position[$axis] / 3 }
+                    }
+                    if ($groupName -ne 'group01') {
+                        $bodyTriangles.Add([pscustomobject]@{
+                            center = $center; positions = $positions
+                            uv = @($points | ForEach-Object { $_.X; $_.Y })
+                        })
                     }
                     if ([math]::Abs($center[0]) -lt 3 -and $center[1] -lt -1 -and $center[2] -gt 48 -and $center[2] -lt 61) {
                         $neckline.Add([pscustomobject]@{
@@ -145,14 +157,22 @@ function Write-UvGuide([string]$ModelPath, [byte[]]$Mdl, [byte[]]$Vvd, [int[]]$I
         }
         if ($triangles -lt 1) { throw "UV guide contains no body triangles: $ModelPath" }
         for ($i = 0; $i -lt 8; $i++) {
-            $graphics.DrawLine($gridPen, $i * 128, 0, $i * 128, 1023)
-            $graphics.DrawLine($gridPen, 0, $i * 128, 1023, $i * 128)
+            $step = [int]($Size / 8)
+            $graphics.DrawLine($gridPen, $i * $step, 0, $i * $step, $Size - 1)
+            $graphics.DrawLine($gridPen, 0, $i * $step, $Size - 1, $i * $step)
             for ($j = 0; $j -lt 8; $j++) {
                 $graphics.DrawString(([string][char](65 + $i) + ($j + 1)), $font,
-                    [System.Drawing.Brushes]::Orange, $j * 128 + 4, $i * 128 + 4)
+                    [System.Drawing.Brushes]::Orange, $j * $step + 4, $i * $step + 4)
             }
         }
         $guide.Save($guidePath, [System.Drawing.Imaging.ImageFormat]::Png)
+        if ($groupName -ne 'group01') {
+            [pscustomobject]@{
+                schemaVersion = 1; model = $ModelPath; size = $Size
+                garmentMasksVerified = $false; triangles = $bodyTriangles.ToArray()
+            } | ConvertTo-Json -Depth 7 |
+                Set-Content -LiteralPath ([IO.Path]::ChangeExtension($guidePath, '.bodytriangles.json')) -Encoding UTF8
+        }
         $neckline.ToArray() | ConvertTo-Json -Depth 5 |
             Set-Content -LiteralPath ([System.IO.Path]::ChangeExtension($guidePath, '.neckline.json')) -Encoding UTF8
         $sleeves.ToArray() | ConvertTo-Json -Depth 5 |
@@ -164,7 +184,7 @@ function Write-UvGuide([string]$ModelPath, [byte[]]$Mdl, [byte[]]$Vvd, [int[]]$I
     } finally {
         $font.Dispose(); $gridPen.Dispose(); $pen.Dispose(); $graphics.Dispose(); $guide.Dispose()
     }
-    return [pscustomobject]@{ path = $guidePath; triangles = $triangles; topologyVersion = 7; garmentMasksVerified = $false }
+    return [pscustomobject]@{ path = $guidePath; triangles = $triangles; topologyVersion = 7; size = $Size; garmentMasksVerified = $false }
 }
 $rules = Get-Content -LiteralPath (Join-Path $root 'gamemode\sh_characters.lua') -Raw
 if ($rules -notmatch 'models/player/group01/' -or $rules -notmatch 'gender == "male" and 9 or 6') {
@@ -292,7 +312,7 @@ foreach ($sex in 'male', 'female') {
                     finally { $sha.Dispose() }
                     $uvGuide = $null
                     if ($path -in $UvGuideModels -and $materials[$materialIndex].name -eq 'players_sheet') {
-                        $uvGuide = Write-UvGuide $path $mdl $vvd $indices.ToArray() $vertexOffset $body $sub $meshIndex $first $countVertices
+                        $uvGuide = Write-UvGuide $path $mdl $vvd $indices.ToArray() $vertexOffset $body $sub $meshIndex $first $countVertices $materials[$materialIndex].width
                     }
                     [pscustomobject]@{
                         materialIndex = $materialIndex; material = $materials[$materialIndex].path

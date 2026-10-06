@@ -2,6 +2,24 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'clothing_artwork.psm1')
 
+function Get-ClothingTexturePool {
+    param([Parameter(Mandatory)][ValidateRange(1, 99)][int]$Capacity)
+    $patches = [ordered]@{}
+    foreach ($slot in 1..$Capacity) {
+        $number = $slot.ToString('00')
+        foreach ($sex in 'male', 'female') {
+            $patches["pool_${number}_$sex.vmt"] = @"
+"Patch"
+{
+    "include" "materials/models/humans/$sex/group01/players_sheet.vmt"
+    "replace" { "`$basetexture" "zombiesim_clothing_pool_${number}_v1" }
+}
+"@
+        }
+    }
+    return $patches
+}
+
 function Get-ClothingToneContrast {
     param([Parameter(Mandatory)][ValidateSet('light', 'dark')][string]$Tone,
         [Parameter(Mandatory)][ValidatePattern('^#[0-9A-Fa-f]{6}$')][string]$Background)
@@ -202,4 +220,4 @@ function Get-ClothingCatalogueIcon {
     return [ordered]@{ size = $preset.size; male = @($preset.male); female = @($preset.female) }
 }
 
-Export-ModuleMember -Function Read-ClothingFilename, Get-ClothingCataloguePlan, Get-ClothingToneContrast, Get-ClothingCatalogueIcon
+Export-ModuleMember -Function Read-ClothingFilename, Get-ClothingCataloguePlan, Get-ClothingToneContrast, Get-ClothingCatalogueIcon, Get-ClothingTexturePool

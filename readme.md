@@ -28,7 +28,9 @@ Hundreds of finishes multiply full sheets: separate male/female shirts,
 model-specific thigh prints and flat back-print icons, even where much of the
 sheet is transparent. The current 866-finish plan needs up to **1725 layers /
 2300.4 MiB** before deduplication, plus small VMT/metadata files. The sixteen
-runtime render targets limit live composites, not shipped source texture size.
+runtime render targets at that audit limited live composites, not shipped source texture size.
+The subsequently approved citizen outfit pool has 96 targets, created on demand
+(up to approximately 384 MiB RGBA storage, before other texture/material memory).
 Do not reduce texture quality or remove mipmaps without a separate visual gate.
 
 Maps include both production and preview assets (**239.92 MiB** city/generated,
@@ -367,7 +369,14 @@ shirt library and restrained pants finishes, generated alongside image families.
 It now expands to 206 fabrics across fourteen colourways and distinct shirt/
 pants treatments. Dye is rendered per texel at 1024 square (not 8x8 colour
 blocks), with spiral, rings, cloud and marble styles. Stable original IDs and
-the sixteen-slot runtime outfit pool are retained.
+the 896-finish limit are retained; the user-approved runtime outfit pool now has
+96 shared targets. Use `.\bin\build_clothing_catalogue.ps1 -PoolOnly` to refresh
+only pool patches/ownership metadata while retaining existing finishes and textures.
+All fifteen verified group01 citizens can use the full catalogue. Each walker
+has an independent stable outfit seed (ticket identity for ticketed walkers);
+rebels retain native bloody appearance. Corpse and severed-piece copies keep
+their original garments. Composition is frame-budgeted, not a whole-crowd
+synchronous build.
 Run `.\bin\test_clothing_fabrics.ps1 -ValidateBuilt` after the catalogue build.
 `.\bin\test_clothing_catalogue.ps1 -ValidateBuilt` checks every image finish,
 flat back-print icons and owned staging hashes. The model inspector also writes
@@ -377,7 +386,141 @@ backs and smooth dyes in a freshly reloaded preview before visual acceptance.
 Preview-only `zombiesim_dev_test_clothing_pool` exercises actual client texture
 capacity/recovery and immutable gore-reference pinning; inspect its asynchronous
 `data/zombiesim/clothing_pool_tests.json` result, not just bridge dispatch.
+The suite now advances the capacity and citizen tests across frames; the initial
+`running: true` report is not a completed result. `zn_gore_probe crowd` creates
+fifteen harmless citizen fixtures; `zn_gore_probe crowd male_03` checks outfit
+variety on the same model, and appending `native` provides a control.
+Remove only these owned fixtures with `zn_gore_probe off`.
 See [fabric controls and pool validation](docs/clothing_artist_workflow.md#original-fabric-library).
+
+## Sky browser and Options
+
+Options groups settings under nine collapsible headers, including Interface,
+Camera & controls, Graphics & effects, Weather detail, Audio, Radiation
+feedback, Sky appearance, Advanced sky & horizon and server Zombie population.
+Fine-tuning starts collapsed; existing sliders, precision, presets and server
+permissions remain intact. The Audio notice points to Garry's Mod Options >
+Audio for master/effects/music levels; these remain engine-owned.
+
+**Sky appearance > Choose sky...** opens a separate responsive thumbnail grid
+over Options. It offers **Default (map)**, eighteen built-in automatic palettes
+and 82 individual skies (eight original gradients, 38 mounted HL2 sets and
+36 licensed imports). Custom palettes add further cards. Click a card to apply and save it;
+Back or the close button returns to Options. Closing the parent also closes
+the browser. `zombiesim_sky_palette` persists locally; **Restore map sky**
+resets it and clears temporary previews. These
+backdrops do not relight BSPs, alter authoritative weather or replace skyline
+geometry. Default leaves the native sky intact.
+
+Automatic palettes choose a fixed sky for each Day/Overcast/Dusk/Night state
+using existing scenery-light/weather context. Built-in palettes include curated
+original, mounted and imported choices, including six Tropospheric profiles.
+The additional **Cloud prelude**, **Terrassee horizons**, **World's End horizons**
+and **Cloudbound** profiles combine the new skies with Tropospheric clouds and
+night skies. **Neon twilight (stylized)** and **Alien embers (stylized)** are
+explicit cosmetic alternatives, using Waporvave/Alien red at dusk and
+Cinematic silver-blue/Moonlit clouds at night. John Tron is not used by any
+built-in automatic palette; it remains an individual/custom choice.
+Broader visual/context/performance acceptance is still pending. Mounted HL2
+textures are referenced, not copied into packages.
+Fixed skies do not switch with the atmosphere, and the browser warns when their
+context differs from current lighting. Gradient thumbnails use the backdrop's
+colour curve; mounted thumbnails reference an existing face. The native-map
+card uses the map's mounted face when available, otherwise a labelled map-managed
+placeholder. No per-card render targets or scene renders are created.
+**New custom palette** opens a visual editor in the browser. Click one of the
+four preview slots on the left, then click an individual sky thumbnail on the
+right to assign it. Search filters the available images; automatic palette
+cards are hidden while editing. The native-map card can fill any slot.
+Name the palette and choose **Save & use** to apply it. **Cancel** or Escape
+discards the draft and restores the previous search/filter without changing
+the saved selection.
+
+Select an automatic palette to enable **Edit selected**. Built-in palettes
+open as a named personal copy, preserving the original; custom palettes retain
+their ID when edited and can be deleted with confirmation. Custom palettes
+are saved locally in `data/zombiesim/sky_custom_palettes.json`.
+
+Licensed imports include Moonlit Night, 26 Tropospheric sets and nine additional
+sets supplied with author-confirmed permission. The sky builder retains full
+licence/credit metadata and byte-identical README files under
+`content/data_static/sky_licences`; the package builder includes the latter
+in common content. Run `bin/build_sky_catalogue.ps1`, then
+`bin/test_sky_catalogue.ps1` after changing the source allowlist.
+Uncleared imports are not staged. Workshop publication remains a separate future task.
+
+**Preview current skybox** performs a ten-second camera-only aerial inspection
+and returns to the browser; Escape or Space returns early. The survivor is
+not teleported, but the world keeps running. This previews the active saved
+sky, not an unsaved palette slot. Human visual verification remains required.
+
+Preview-admin commands:
+
+```text
+zombiesim_dev_sky_palette natural_day
+zombiesim_dev_sky_palette cinematic_day
+zombiesim_dev_sky_palette mounted_day
+zombiesim_dev_sky_palette restore
+zombiesim_dev_test_sky_palettes
+zombiesim_dev_test_sky_browser
+zombiesim_dev_test_launcher_tools
+zombiesim_dev_ui options
+zombiesim_dev_ui tools
+zombiesim_dev_ui sky
+zombiesim_dev_ui sky_edit
+```
+
+Individual previews expire after120seconds and do not change the saved palette.
+The test results are `data/zombiesim/sky_palette_tests.json` and
+`data/zombiesim/sky_browser_tests.json`. Close Options/browser before their UI
+tests; temporary selections are restored. Screenshot metadata includes
+`skyPalette` and `skyBrowser`; Options/browser captures include VGUI.
+
+Options sections start closed and remember their open/closed state. A **VIEW
+CHANGELOG** button below every section opens the shipped changelog
+(`ZM_Changelog`, `cl_changelog.lua`, shared with Content Status): in game it
+opens a Changelog window above Options (Escape or X closes only that window), and
+on the launcher Options page it uses the right side of the launcher (the button
+toggles it, and BACK/Escape returns to the main menu). In the
+preview launcher (`zn_preview_start`, preview profile), **TOOLS** switches the
+left launcher column to Wardrobe, Item Atlas, Map Atlas, Sky browser and
+Content Status, then a rule above Wardrobe and Sky browser (which open their
+own windows). Atlases and Content Status open on the right side of the
+launcher. BACK or Escape always returns to the main menu and closes any open
+view. Tools are read-only; Map Atlas images are staged PNGs, not live renders.
+Atlas cards widen to fill each row. Clothing items everywhere (inventory, loot,
+crafting, trading, atlases) draw a fabric swatch cropped from the actual garment
+layer (`ZM_ItemIcons:DrawClothing`, shared with the Wardrobe), with a shirt or
+pants badge, a repeat badge for repeat/checker/stripe fabrics and, at 72px or
+larger, a placement tag such as CHEST, BACK or L THIGH. Placement prints show the
+whole crop over a dim fabric fill; they never fall back to the box model.
+`zombiesim_dev_test_launcher_tools` writes
+`data/zombiesim/launcher_tools_tests.json`.
+
+The game version lives in `content/data_static/version.json` (the single source
+of truth, loaded by `ZM_Version` in `sh_version.lua`), and the shipped changelog
+lives in `content/data_static/changelog.json`. Changelog highlights start with
+`+` (added, green), `-` (removed, red) or `?` (changed, fixed or in progress,
+yellow), listed in that order: additions, changes, then removals. Entries
+before 2.6 are inferred from Git history (a `reconstructed` data flag only;
+the UI does not label them). Content Status shows the following sections: a version
+banner, build health problems, version and source (local Git commit when loose),
+distribution and packages, world (profile, map, cells, dens, mounted BSPs and
+city map images), loaded registry counts and the changelog. Workshop
+packaging ships both files in core, stamps `gameVersion`/`gameStage`/`gameStatus`
+into the distribution manifest and report, and adds a release blocker until
+`version.json` status is `released`.
+The user approved the thumbnail grid, grouped Options, expanded custom-palette
+browser and revised four-slot visual editor (all slots visible and picker works).
+Fresh renderer tests pass 7/7, browser/editor/inspection lifecycle tests 9/9 and
+incremental catalogue/material/context tests 78/78. The latter include exact
+new-profile coverage and isolated day/overcast/dusk/night light boundaries,
+rain/snow and storm-threshold checks without changing live server weather.
+Run after the arrival/loading hold
+finishes. The user reviewed the new automatic variants and aerial preview/return.
+An actual selected custom palette also survives a fresh preview map reload with
+unchanged saved JSON. Broader weather/context, launcher/den/capture and performance
+acceptance remains; these results do not establish full Phase H completion.
 
 ## Original billboard artwork
 
@@ -572,7 +715,7 @@ For launcher testing, the bridge also supports `zombiesim_dev_character_slots` (
 
 For a live preview atmosphere snapshot, submit `zombiesim_dev_atmosphere_status` through the bridge. The admin-only request asks the local client for its active/expected profile, fog, and render-hook diagnostic and writes the response to `garrysmod/data/zombiesim/atmosphere_status.json`. This is separate from the server bridge acknowledgement and is only available in the preview profile.
 
-For a client frame-cost profile, run `zombiesim_dev_profile_hooks [seconds]` (default 10, maximum 120; also reachable through the bridge). It temporarily wraps named render, Think and HUD hooks, records frame times and Lua allocation, restores the original hooks, prints the top entries and writes `garrysmod/data/zombiesim/hook_profile.json`.
+For a client frame-cost profile, run `zombiesim_dev_profile_hooks [seconds]` (default 10, maximum 120; also reachable through the bridge). It temporarily wraps named render, Think and HUD hooks, including `PostDraw2DSkyBox` for palette drawing, records frame times and Lua allocation, restores the original hooks, prints the top entries and writes `garrysmod/data/zombiesim/hook_profile.json`. Hook timings are CPU-side call measurements, not isolated GPU cost; record camera, weather, quality and population/render counts before making comparisons.
 
 Weather follows a seasonal schedule driven by the server's clock (northern hemisphere): every 8–25 minutes the server rolls clear, rain or snow from the current month's chances. Snow is rare, most likely in December, guaranteed all of Christmas Day (25 December) and never falls in June–August; out-of-season snow is replaced at once. The schedule state is archived (`zombiesim_weather_until`, `zombiesim_weather_manual`), so level changes do not reroll it. From the server console or an admin client, `zombiesim_weather clear`, `zombiesim_weather rain` or `zombiesim_weather snow` (and the preview cheat buttons) override the weather for one spell, after which the schedule resumes; `zombiesim_weather auto` resumes it immediately, `zombiesim_weather` with no argument reports the mode and time to the next change, and `zombiesim_weather_auto 0` keeps the weather steady. Rain and snow effects are limited to outdoor city cells; sheltered interiors and dens remain dry. Puddle footsteps retain the textured ground footprint/ring and throw five short-lived upward water-splash particles, with a mounted slosh sound when available. The footprint material is rebound after rain crowns so they cannot change its appearance. In multiplayer, puddle steps replace the ordinary footstep sound; singleplayer retains the distance-based layered fallback because its client does not receive `PlayerFootstep`. Wet-ground and lying-snow footsteps still use the existing distance-based effects. Rain impacts are bounded to 240 single-quad rings and 40 crowns, rather than expanded procedural ripple meshes. Rain also forms client-local puddles at fixed map locations; off-screen puddles remain in world space and are rendered only when visible. Their irregular, feathered water meshes grow while forming and shrink/fade as they dry, with bounded cluster and per-frame render limits. Puddles that stay wet slowly spread, and some become large pools where the surrounding ground is level. The launcher and in-game Options panels include **Rain density** (0.5-2.0, default 1.5), **Puddle opacity** (0.05-0.45, default 0.15), and **Puddle amount** (0.5-3.0, default 1.0). All three are saved locally. Lower puddle opacity shows more ground through the water, and higher puddle amounts form more puddles at some extra frame cost. Snow cools the colour grade and fog, adds breath, a frost edge, and wind, and gradually lays a snow blanket over exposed outdoor ground (built client-side per map, no recompile). The cover settles in drifting patches over about three minutes of snowfall before joining up and thickening. The server owns the lying-snow amount (`zombiesim_snow_cover`, archived), so it carries over level changes. When snow is lying, a newly loaded map keeps the loading screen up until the cover is built (normally 1–2 s, capped at 12 s). Walking through the snow carves a trail, which fresh snowfall fills back in. The cover melts when the weather clears or turns to rain. Weather does not change movement. The options menu's “Subtle film grain” toggle is off by default.
 
@@ -700,6 +843,26 @@ zn_test_weapon_catalog          // check local SWEP/model/item mappings at runti
 `zn_validate_static`, `zn_reload_static`, `zn_test_static_data`, and `zn_test_weapon_catalog` run synchronously through the development bridge and add structured reports to `consolecommands.result.json`. Warnings for missing SWEPs, icon models, models, or entity classes never block a load.
 
 ## Automated Test Suites
+
+Phase F clothing can be built and checked with Garry's Mod closed:
+
+```powershell
+.\bin\build_clothing_blood.ps1
+.\bin\test_clothing_blood.ps1
+.\bin\test_clothing_model_inspection.ps1
+.\bin\test_clothing_walker_inspection.ps1
+.\bin\test_glua_syntax.ps1
+```
+
+Run these chart writers serially. The blood builder stages three original
+shared garment overlays, not duplicate wearable items; the existing866finish
+catalogue and sixteen-slot runtime pool remain unchanged. In an admin preview,
+Wardrobe's **BLOOD PREVIEW** toggle changes only its window model. The expanded
+`zombiesim_dev_test_clothing_pool` suite and blood appearance/seam/corpse checks
+must still be run in the client; offline success does not accept Phase F.
+Group03 calibration exports are separate2048-square diagnostics, not approved
+survivor-mask compatibility or enabled walker clothing. See the
+[artist workflow](docs/clothing_artist_workflow.md) for controls and remaining gates.
 
 Each gameplay service has a server-side suite that uses throwaway SteamIDs and profiles and removes every row it writes. Run them from an admin console or through the bridge; each writes `garrysmod/data/zombiesim/<name>_tests.json` and a bridge report, and a bridge command fails when any case fails:
 

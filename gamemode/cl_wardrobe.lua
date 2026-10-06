@@ -26,46 +26,7 @@ function Wardrobe:GetEntries()
 end
 
 local function iconData(entry, sex)
-    local finish = ZM_Clothing.Finishes[entry.finish]
-    local path = finish.layers and finish.layers[sex] or
-        "models/zombiesim/clothing/prototype_" .. (entry.garment == "shirt" and "shirt_" .. sex or "pants")
-    local icon = finish.icon
-    if icon and icon.layer then path = icon.layer end
-    if not icon then
-        local uv = entry.garment == "shirt" and { 144, 764, 176, 224 } or { 784, 72, 88, 312 }
-        if sex == "female" then uv[1] = entry.garment == "shirt" and 163 or 812 end
-        icon = { size = { uv[3], uv[4] }, [sex] = { { uv = uv, source = { 0, 0, uv[3], uv[4] } } } }
-    end
-    local material = Material(path)
-    local texture = not material:IsError() and material:GetTexture("$basetexture")
-    if not texture or texture:Width() ~= 1024 or texture:Height() ~= 1024 then
-        return nil, "Missing wardrobe texture: " .. path
-    end
-    if type(icon.size) ~= "table" or type(icon[sex]) ~= "table" or
-        not isnumber(icon.size[1]) or not isnumber(icon.size[2]) or
-        not (icon.size[1] > 0 and icon.size[1] <= 1024 and icon.size[2] > 0 and icon.size[2] <= 1024) or
-        #icon[sex] < 1 or #icon[sex] > 8 then
-        return nil, "Invalid wardrobe icon canvas: " .. entry.id
-    end
-    for _, piece in ipairs(icon[sex]) do
-        if type(piece) ~= "table" or type(piece.uv) ~= "table" or type(piece.source) ~= "table" then
-            return nil, "Invalid wardrobe icon piece: " .. entry.id
-        end
-        for _, rectangle in ipairs({ piece.uv, piece.source }) do
-            if type(rectangle) ~= "table" or #rectangle ~= 4 then return nil, "Invalid wardrobe icon piece: " .. entry.id end
-            for _, value in ipairs(rectangle) do
-                if not isnumber(value) or value ~= value or value < 0 or value > 1024 then
-                    return nil, "Invalid wardrobe icon coordinate: " .. entry.id
-                end
-                if piece.uv[3] <= 0 or piece.uv[4] <= 0 or piece.source[3] <= 0 or piece.source[4] <= 0 or
-                    piece.uv[1] + piece.uv[3] > 1024 or piece.uv[2] + piece.uv[4] > 1024 or
-                    piece.source[1] + piece.source[3] > icon.size[1] or piece.source[2] + piece.source[4] > icon.size[2] then
-                    return nil, "Wardrobe icon piece exceeds its canvas: " .. entry.id
-                end
-            end
-        end
-    end
-    return { material = material, icon = icon }
+    return ZM_ItemIcons:GetClothingIcon(entry.finish, entry.garment, sex, entry.id)
 end
 
 function Wardrobe:Select(entry)
@@ -80,14 +41,27 @@ end
 function Wardrobe:SetModel(sex)
     if not self:IsAvailable() or not IsValid(self.ModelPanel) or not models[sex] then return false end
     self.Sex = sex
+    self.CitizenModel = nil
     if IsValid(self.ModelPanel.Entity) then ZM_Clothing:Apply(self.ModelPanel.Entity, "", "") end
     self.ModelPanel:SetModel(models[sex])
+    if IsValid(self.CitizenSelector) then self.CitizenSelector:SetValue(sex == "male" and "male_03" or "female_01") end
     self.Dirty, self.NextApply = true, 0
     self:RefreshGrid()
     return true
 end
 
-function Wardrobe:Open()
+function Wardrobe:SetCitizenModel(name)
+    local path = "models/player/group01/" .. name .. ".mdl"
+    local layout = ZM_Clothing:GetPreviewCitizenLayout(path)
+    if not layout or not self:SetModel(layout.sex) then return false end
+    self.ModelPanel:SetModel(path)
+    self.CitizenModel = path
+    if IsValid(self.CitizenSelector) then self.CitizenSelector:SetValue(name) end
+    self.Dirty, self.NextApply = true, 0
+    return true
+end
+
+function Wardrobe:Open(parent)
     if not self:IsAvailable() then
         ErrorNoHalt("[ZombieSim] Wardrobe requires a preview admin.\n")
         return
@@ -96,8 +70,9 @@ function Wardrobe:Open()
     local frame = vgui.Create("DFrame")
     self.Frame = frame
     self.Selection, self.SelectedItems = {}, {}
-    self.Applied = false
+    self.Applied, self.Bloody = false, false
     self.Sex = ZM_Clothing.Models[string.lower(LocalPlayer():GetModel() or "")] or "male"
+    self.CitizenModel = nil
     self.Dirty, self.NextApply, self.IconErrors = true, 0, {}
     self.Yaw, self.Filter, self.Search = 0, "all", ""
     frame:SetSkin("ZombieSim")
@@ -108,15 +83,19 @@ function Wardrobe:Open()
     frame:MakePopup()
     frame.OnRemove = function()
         if IsValid(self.ModelPanel) and IsValid(self.ModelPanel.Entity) then ZM_Clothing:Apply(self.ModelPanel.Entity, "", "") end
-        self.Frame, self.ModelPanel = nil, nil
+        self.Frame, self.ModelPanel, self.CitizenSelector = nil, nil, nil
         self.Selection, self.SelectedItems = {}, {}
         self.Applied = false
         if ZM_UI then ZM_UI:UnregisterTransient(frame) end
     end
     frame.Think = function()
-        if not self:IsAvailable() then frame:Close() end
+        if not self:IsAvailable() or (parent ~= nil and not IsValid(parent)) then frame:Close() end
     end
-    if ZM_UI then ZM_UI:OpenExclusive(frame) end
+    frame.OnClose = function() if IsValid(parent) then parent:MakePopup() end end
+    frame.OnKeyCodePressed = function(_, key) if key == KEY_ESCAPE then frame:Close() end end
+    if ZM_UI then
+        if IsValid(parent) then ZM_UI:RegisterTransient(frame) else ZM_UI:OpenExclusive(frame) end
+    end
 
     local palette = ZM_DermaSkin.Palette
     local function background(_, width, height)
@@ -161,6 +140,31 @@ function Wardrobe:Open()
         self.Dirty, self.NextApply = true, 0
     end)
     reset:Dock(FILL)
+    if ZM_Clothing.CitizenLayouts then
+        local selector = ZM_DermaSkin.StyleComboBox(vgui.Create("DComboBox", right))
+        self.CitizenSelector = selector
+        selector:Dock(TOP)
+        selector:SetTall(28)
+        selector:SetValue(self.Sex == "male" and "male_03" or "female_01")
+        for _, sex in ipairs({ "male", "female" }) do
+            for number = 1, sex == "male" and 9 or 6 do
+                local name = string.format("%s_%02d", sex, number)
+                selector:AddChoice(name, name)
+            end
+        end
+        selector.OnSelect = function(_, _, _, name)
+            if not self:SetCitizenModel(name) then
+                ErrorNoHalt("[ZombieSim] Selected citizen calibration is unavailable.\n")
+            end
+        end
+    end
+    local blood = button(right, "BLOOD PREVIEW: OFF", function(control)
+        self.Bloody = not self.Bloody
+        control:SetText(self.Bloody and "BLOOD PREVIEW: ON" or "BLOOD PREVIEW: OFF")
+        self.Dirty, self.NextApply = true, 0
+    end)
+    blood:Dock(TOP)
+    blood:SetTall(28)
     self.Status = vgui.Create("DLabel", right)
     self.Status:Dock(BOTTOM)
     self.Status:SetTall(76)
@@ -332,9 +336,10 @@ function Wardrobe:RefreshGrid()
 end
 
 function Wardrobe:GetDiagnosticSnapshot()
-    return { open = IsValid(self.Frame), model = models[self.Sex or "male"], selection = self.Selection,
+    return { open = IsValid(self.Frame), model = self.CitizenModel or models[self.Sex or "male"], selection = self.Selection,
         selectedItems = self.SelectedItems, entries = self.EntryCount, visible = self.VisibleCount,
-        iconErrors = self.IconErrors, applied = self.Applied, windowOnly = true, cursorVisible = vgui.CursorVisible(),
+        iconErrors = self.IconErrors, applied = self.Applied, bloody = self.Bloody == true,
+        windowOnly = true, cursorVisible = vgui.CursorVisible(),
         liveShirt = IsValid(LocalPlayer()) and LocalPlayer():GetNWString("ZM_Clothing_shirt", ""),
         livePants = IsValid(LocalPlayer()) and LocalPlayer():GetNWString("ZM_Clothing_pants", "") }
 end
@@ -344,9 +349,10 @@ hook.Add("PreRender", "ZM.Wardrobe.Outfit", function()
     local entity = IsValid(Wardrobe.ModelPanel) and Wardrobe.ModelPanel.Entity
     if not IsValid(entity) then return end
     Wardrobe.NextApply = RealTime() + 0.5
-    Wardrobe.Applied = ZM_Clothing:Apply(entity, Wardrobe.Selection.shirt, Wardrobe.Selection.pants)
+    Wardrobe.Applied = ZM_Clothing:Apply(entity, Wardrobe.Selection.shirt, Wardrobe.Selection.pants, Wardrobe.Bloody)
     Wardrobe.Dirty = not Wardrobe.Applied
-    Wardrobe.Status:SetText((Wardrobe.Applied and "WINDOW OUTFIT" or "Texture unavailable or pool pinned; retrying...") ..
+    Wardrobe.Status:SetText((Wardrobe.Applied and (Wardrobe.Bloody and "WINDOW OUTFIT / BLOODY" or "WINDOW OUTFIT") or
+        "Texture unavailable or pool pinned; retrying...") ..
         "\nShirt: " .. (Wardrobe.SelectedItems.shirt and ZM_Items:GetDefinition(Wardrobe.SelectedItems.shirt).name or "native") ..
         "\nPants: " .. (Wardrobe.SelectedItems.pants and ZM_Items:GetDefinition(Wardrobe.SelectedItems.pants).name or "native"))
 end)
@@ -358,11 +364,15 @@ concommand.Add("zombiesim_dev_wardrobe", function(_, _, arguments)
     elseif #arguments == 2 and arguments[1] == "model" and models[arguments[2]] then
         Wardrobe:Open()
         Wardrobe:SetModel(arguments[2])
+    elseif #arguments == 2 and arguments[1] == "model" and
+        ZM_Clothing:GetPreviewCitizenLayout("models/player/group01/" .. arguments[2] .. ".mdl") then
+        Wardrobe:Open()
+        Wardrobe:SetCitizenModel(arguments[2])
     elseif #arguments == 2 and arguments[1] == "select" then
         Wardrobe:Open()
         for _, entry in ipairs(Wardrobe:GetEntries()) do
             if entry.id == arguments[2] and Wardrobe:Select(entry) then return end
         end
         ErrorNoHalt("[ZombieSim] Wardrobe selection requires an available clothing item.\n")
-    else ErrorNoHalt("[ZombieSim] Usage: zombiesim_dev_wardrobe [close|model male|female|select itemId]\n") end
+    else ErrorNoHalt("[ZombieSim] Usage: zombiesim_dev_wardrobe [close|model male|female|male_01..09|female_01..06|select itemId]\n") end
 end)

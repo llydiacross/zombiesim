@@ -59,6 +59,7 @@ function ENT:SetWalkerTicket(ticket, sourceCellId)
     self.WalkerHordeIdLow = ticket.HordeIdLow
     self.WalkerHordeIdHigh = ticket.HordeIdHigh
     self.WalkerSourceCellId = sourceCellId
+    ZM_Clothing:AssignWalkerOutfit(self, sourceCellId)
     self.WalkerMaterializedAt = CurTime()
     return true
 end
@@ -362,6 +363,7 @@ function ENT:CreateCorpse()
     if IsValid(corpse) then
         corpse:SetModel(self:GetModel())
         corpse:SetSkin(self:GetSkin())
+        corpse:SetNWString("ZM_ClothingCorpse", util.TableToJSON(ZM_Clothing:GetEntitySelection(self)))
         for index in ipairs(self:GetMaterials()) do
             corpse:SetSubMaterial(index - 1, self:GetSubMaterial(index - 1))
         end

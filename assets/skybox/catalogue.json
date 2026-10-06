@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "imported_moonlit",
+      "label": "Moonlit clouds",
+      "context": "night",
+      "sourceDirectory": "sky_night01\\Materials\\skybox",
+      "sourcePrefix": "Sky_Night01",
+      "credit": "Jasper Carmack, Sky_Night01 (2021)",
+      "licenceFile": "sky_night01\\README.txt",
+      "permission": "Use and modification permitted in games and mods; no resale of textures or texture packs without express permission."
+    },
+    {
+      "id": "imported_prelude",
+      "label": "Prelude / sea of clouds",
+      "context": "dusk",
+      "sourceDirectory": "sky_prelude07\\Materials\\skybox",
+      "sourcePrefix": "Sky_Prelude07",
+      "credit": "Jasper Carmack, Sky_Prelude07 (2021)",
+      "licenceFile": "sky_prelude07\\README.txt",
+      "permission": "Personal and commercial games/mods, redistribution with this README and modification permitted."
+    },
+    {
+      "id": "imported_terrassee",
+      "label": "Terrassee / sunset",
+      "context": "dusk",
+      "sourceDirectory": "sky_terrassee01\\Materials\\skybox",
+      "sourcePrefix": "Sky_Terrassee01",
+      "credit": "Jasper Carmack, Sky_Terrassee01 (2021)",
+      "licenceFile": "sky_terrassee01\\README.txt",
+      "permission": "Personal and commercial games/mods, redistribution with this README and modification permitted."
+    },
+    {
+      "id": "imported_worldsend",
+      "label": "World's End",
+      "context": "dusk",
+      "sourceDirectory": "sky_worldsend01\\Materials\\skybox",
+      "sourcePrefix": "Sky_WorldsEnd01",
+      "credit": "Jasper Carmack, Sky_WorldsEnd01 (2021)",
+      "licenceFile": "sky_worldsend01\\README.txt",
+      "permission": "Personal and commercial games/mods, redistribution with this README and modification permitted."
+    },
+    {
+      "id": "imported_alienred",
+      "label": "Alien red",
+      "context": "dusk",
+      "sourceDirectory": "skybox_de270",
+      "sourcePrefix": "alienred",
+      "credit": "Jasper Carmack (author identified by the contributor)",
+      "licenceFile": "skybox_de270\\README.txt",
+      "permission": "Contributor confirmed the artist authorized copying this licence into this pack. Personal/commercial games/mods, redistribution with README and modification permitted."
+    },
+    {
+      "id": "imported_john_tron",
+      "label": "John Tron",
+      "context": "night",
+      "sourceDirectory": "skybox_de270",
+      "sourcePrefix": "john_tron",
+      "credit": "Jasper Carmack (author identified by the contributor)",
+      "licenceFile": "skybox_de270\\README.txt",
+      "permission": "Contributor confirmed the artist authorized copying this licence into this pack. Personal/commercial games/mods, redistribution with README and modification permitted."
+    },
+    {
+      "id": "imported_plainsky",
+      "label": "Plain sky",
+      "context": "day",
+      "sourceDirectory": "skybox_de270",
+      "sourcePrefix": "null_plainsky",
+      "credit": "Jasper Carmack (author identified by the contributor)",
+      "licenceFile": "skybox_de270\\README.txt",
+      "permission": "Contributor confirmed the artist authorized copying this licence into this pack. Personal/commercial games/mods, redistribution with README and modification permitted."
+    },
+    {
+      "id": "imported_sky1",
+      "label": "Sky 1",
+      "context": "day",
+      "sourceDirectory": "skybox_sky1\\materials\\skybox",
+      "sourcePrefix": "sky1",
+      "credit": "Jasper Carmack (author identified by the contributor)",
+      "licenceFile": "skybox_sky1\\README.txt",
+      "permission": "Contributor confirmed the artist authorized copying this licence into this pack. Personal/commercial games/mods, redistribution with README and modification permitted."
+    },
+    {
+      "id": "imported_waporvave",
+      "label": "Waporvave",
+      "context": "dusk",
+      "sourceDirectory": "waporvave_d5e0b",
+      "sourcePrefix": "sky_waporvave",
+      "credit": "Jasper Carmack (author identified by the contributor)",
+      "licenceFile": "waporvave_d5e0b\\README.txt",
+      "permission": "Contributor confirmed the artist authorized copying this licence into this pack. Personal/commercial games/mods, redistribution with README and modification permitted."
+    },
+    {
+      "id": "imported_mr53",
+      "label": "MR 53",
+      "context": "day",
+      "sourceDirectory": "mr_53\\materials\\skybox",
+      "sourcePrefix": "mr_53",
+      "credit": "Jasper Carmack (author identified by the contributor)",
+      "licenceFile": "mr_53\\README.txt",
+      "permission": "Contributor confirmed the artist authorized copying this licence into this pack. Personal/commercial games/mods, redistribution with README and modification permitted."
+    }
+  ],
+  "collections": [
+    {
+      "idPrefix": "imported_tropo_",
+      "sourceDirectory": "tropospheric_boxes\\skybox",
+      "licenceFile": "tropospheric_boxes\\license.txt",
+      "credit": "Hsyenoh05, Tropospheric Boxes",
+      "permission": "Use this pack for any purpose, including commercially; credit appreciated but not required.",
+      "families": [
+        { "prefix": "day_", "label": "Tropospheric daylight", "context": "day", "count": 6 },
+        { "prefix": "cloudy_", "label": "Tropospheric clouds", "context": "day", "count": 6 },
+        { "prefix": "verycloudy_", "label": "Tropospheric overcast", "context": "overcast", "count": 6 },
+        { "prefix": "dusk_", "label": "Tropospheric dusk", "context": "dusk", "count": 6 },
+        { "prefix": "night_", "label": "Tropospheric night", "context": "night", "count": 2 }
+      ]
+    }
+  ],
+  "excludedCollections": []
+}

@@ -2237,6 +2237,19 @@ hook.Add("RenderScene", "ZM.Skybox.ViewOrigin", function(origin, angles)
     end
 end)
 
+// RenderView bypasses RenderScene, so secondary client views must temporarily supply the skyline basis.
+function Skybox:RenderClientView(view)
+    local savedOrigin = Vector(self.ViewOrigin)
+    local forward, right, up = self.ViewForward, self.ViewRight, self.ViewUp
+    self.ViewOrigin:Set(view.origin)
+    self.ViewForward, self.ViewRight, self.ViewUp = view.angles:Forward(), view.angles:Right(), view.angles:Up()
+    local ok, failure = xpcall(function() render.RenderView(view) end, debug.traceback)
+    self.ViewOrigin:Set(savedOrigin)
+    self.ViewForward, self.ViewRight, self.ViewUp = forward, right, up
+    if not ok then ErrorNoHalt("[ZombieSim] Client view render failed: " .. tostring(failure) .. "\n") end
+    return ok, failure
+end
+
 hook.Add("PostDrawOpaqueRenderables", "ZM.Skybox.Draw", function(drawingDepth, _, drawing3DSkybox)
     if drawingDepth or not drawing3DSkybox then return end
     if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end

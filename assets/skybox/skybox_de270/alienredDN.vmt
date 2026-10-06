@@ -1,0 +1,8 @@
+"UnlitGeneric"
+{
+	$basetexture "skybox/alienredDN"
+	$nofog 1
+	$nomip 1
+	$ignorez 1
+
+}

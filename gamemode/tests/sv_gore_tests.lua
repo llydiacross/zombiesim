@@ -292,6 +292,96 @@ test("bloody_rebel_material_preserves_player_model_and_corpse", function(check)
     remove(corpse, zombie)
 end)
 
+test("citizen_walker_catalogue_choices_are_stable_and_exclude_rebels", function(check)
+    check(ZM_Clothing.CatalogueReady and not ZM_Clothing.CitizenLayoutPreviewOnly,
+        "accepted catalogue and citizen calibration are enabled")
+    for _, sex in ipairs({ "male", "female" }) do
+        for number = 1, sex == "male" and 9 or 6 do
+            local model = string.format("models/player/group01/%s_%02d.mdl", sex, number)
+            local first = ZM_Clothing:GetWalkerOutfit(model, "preview:fixture")
+            local second = ZM_Clothing:GetWalkerOutfit(model, "preview:fixture")
+            check(first and first.bloody and ZM_Clothing.Finishes[first.shirt].garment == "shirt" and
+                ZM_Clothing.Finishes[first.pants].garment == "pants", "citizen " .. model .. " selects valid bloody garments")
+            check(first and second and first.shirt == second.shirt and first.pants == second.pants,
+                "same model/individual seed/revision has one stable outfit")
+            check(not ZM_Clothing:GetWalkerOutfit(string.Replace(model, "/group01/", "/group03/"), "preview:fixture"),
+                "rebel counterpart never selects catalogue clothing")
+        end
+    end
+end)
+
+test("citizen_walker_selection_reaches_the_entire_shirt_and_pants_catalogue", function(check)
+    local Clothing = ZM_Clothing
+    local first = Clothing:GetWalkerOutfit("models/player/group01/male_03.mdl", "preview:coverage:0")
+    check(first ~= nil, "runtime citizen selection is enabled")
+    if not first then return end
+    local expectedShirts, expectedPants = {}, {}
+    for id, finish in pairs(Clothing.Finishes) do
+        if finish.garment == "shirt" then expectedShirts[id] = true
+        elseif finish.garment == "pants" then expectedPants[id] = true end
+    end
+    check(#Clothing.WalkerShirts == table.Count(expectedShirts) and #Clothing.WalkerPants == table.Count(expectedPants),
+        "candidate families include every eligible finish, not a fixed outfit subset")
+    local shirts, pants = {}, {}
+    for seed = 1, math.max(#Clothing.WalkerShirts, #Clothing.WalkerPants) * 64 do
+        local outfit = Clothing:GetWalkerOutfit("models/player/group01/male_03.mdl", "preview:coverage:" .. seed)
+        shirts[outfit.shirt], pants[outfit.pants] = true, true
+    end
+    check(table.Count(shirts) == table.Count(expectedShirts), "deterministic individual-seed sweep reaches every shirt")
+    check(table.Count(pants) == table.Count(expectedPants), "deterministic individual-seed sweep reaches every pants finish")
+end)
+
+test("individual_walkers_and_tickets_keep_independent_stable_outfits", function(check)
+    local first = spawnZombie()
+    if not first then check(false, "first walker fixture exists") return end
+    local second = spawnZombie()
+    if not second then remove(first) check(false, "second walker fixture exists") return end
+    check(first.ZM_ClothingOutfitSeed ~= second.ZM_ClothingOutfitSeed, "separate spawns have unique persistent outfit seeds")
+    first:SetModel("models/player/group01/male_03.mdl")
+    second:SetModel(first:GetModel())
+    first.ZM_ClothingOutfitSeed, second.ZM_ClothingOutfitSeed = "fixture:individual:1", "fixture:individual:2"
+    ZM_Clothing:AssignWalkerOutfit(first, 17)
+    ZM_Clothing:AssignWalkerOutfit(second, 17)
+    local a, b = ZM_Clothing:GetEntitySelection(first), ZM_Clothing:GetEntitySelection(second)
+    check(a.shirt ~= b.shirt or a.pants ~= b.pants, "same-model same-cell individuals do not share a model-wide outfit")
+    ZM_Clothing:AssignWalkerOutfit(first, 17)
+    local reapplied = ZM_Clothing:GetEntitySelection(first)
+    check(reapplied.shirt == a.shirt and reapplied.pants == a.pants, "repeated assignment does not reroll an individual")
+    local ticket = { TicketIdLow = 310, TicketIdHigh = 96, HordeIdLow = 1, HordeIdHigh = 0 }
+    first:SetWalkerTicket(ticket, 17)
+    second:SetWalkerTicket(ticket, 17)
+    a, b = ZM_Clothing:GetEntitySelection(first), ZM_Clothing:GetEntitySelection(second)
+    check(a.shirt == b.shirt and a.pants == b.pants, "rematerializing the same model/ticket retains its outfit")
+    Gore:ApplyBloodyAppearance(first)
+    reapplied = ZM_Clothing:GetEntitySelection(first)
+    check(reapplied.shirt == a.shirt and reapplied.pants == a.pants, "blood refresh retains ticket identity and source cell")
+    remove(first, second)
+end)
+
+test("citizen_corpse_keeps_immutable_outfit_and_model_changes_clear_rebel_selection", function(check)
+    local zombie = spawnZombie()
+    if not zombie then check(false, "walker fixture exists") return end
+    zombie:SetModel("models/player/group01/male_02.mdl")
+    Gore:ApplyBloodyAppearance(zombie)
+    local original = ZM_Clothing:GetEntitySelection(zombie)
+    check(original.shirt ~= "" and original.pants ~= "" and original.bloody, "citizen has server-selected bloody catalogue outfit")
+    local corpse = zombie:CreateCorpse()
+    check(IsValid(corpse), "citizen corpse exists")
+    if IsValid(corpse) then
+        local packet = corpse:GetNWString("ZM_ClothingCorpse", "")
+        local snapshot = util.JSONToTable(packet)
+        check(snapshot and snapshot.shirt == original.shirt and snapshot.pants == original.pants and snapshot.bloody,
+            "corpse retains both original garments and blood flag")
+        zombie:SetModel("models/player/group03/male_01.mdl")
+        Gore:ApplyBloodyAppearance(zombie)
+        local cleared = ZM_Clothing:GetEntitySelection(zombie)
+        check(cleared.shirt == "" and cleared.pants == "" and not cleared.bloody, "changing to a rebel clears citizen-only selection")
+        check(corpse:GetNWString("ZM_ClothingCorpse", "") == packet,
+            "changing the source model does not mutate the corpse packet")
+    end
+    remove(corpse, zombie)
+end)
+
 function Gore:RunTests()
     return suite:Run()
 end

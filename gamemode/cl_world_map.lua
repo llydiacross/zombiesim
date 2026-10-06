@@ -679,6 +679,10 @@ local function getCellRenderMaterial(cell)
     return getCellZoomMaterial(cell, "satellite")
 end
 
+function WorldMap:GetCellAtlasMaterial(cell, wireframe)
+    return getCellZoomMaterial(cell, wireframe and "wireframe" or "satellite")
+end
+
 local function getCellGridCoordinates(cell)
     local worldX, worldY = ZM_World:GetWorldCoordinates(cell)
     if worldX == nil or worldY == nil then

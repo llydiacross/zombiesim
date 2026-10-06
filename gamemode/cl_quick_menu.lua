@@ -115,7 +115,64 @@ function ZM_PreviewCheats:Request(action)
     net.SendToServer()
 end
 
-function ZM_Options:BuildPanel(panel)
+// options.openChangelog overrides the default in-game Changelog window (the launcher uses its right side panel).
+function ZM_Options:BuildPanel(panel, options)
+    local root, sections = panel, {}
+    local function section(id, title)
+        local category = vgui.Create("DCollapsibleCategory", root)
+        category:Dock(TOP)
+        category:DockMargin(4, 0, 4, 8)
+        category:SetLabel(title)
+        category:SetHeaderHeight(30)
+        local stateKey = "zombiesim_options_section_" .. id
+        category:SetExpanded(cookie.GetString(stateKey, "0") == "1")
+        category.OnToggle = function(_, expanded)
+            cookie.Set(stateKey, expanded and "1" or "0")
+        end
+        category:SetAnimTime(0)
+        category.Header:SetTextColor(ZM_DermaSkin.Palette.text)
+        category.Header:SetFont("DermaDefaultBold")
+        category.Header.Paint = function(_, width, height)
+            surface.SetDrawColor(ZM_DermaSkin.Palette.raised)
+            surface.DrawRect(0, 0, width, height)
+            draw.SimpleText(category:GetExpanded() and "-" or "+", "DermaDefaultBold", width - 14,
+                height / 2, ZM_DermaSkin.Palette.muted, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+        end
+        local content = vgui.Create("DPanel", category)
+        content:DockPadding(4, 6, 4, 4)
+        content.Paint = function(_, width, height)
+            surface.SetDrawColor(ZM_DermaSkin.Palette.panel)
+            surface.DrawRect(0, 0, width, height)
+        end
+        category:SetContents(content)
+        sections[#sections + 1] = { category = category, content = content, title = title, id = id }
+        return content
+    end
+    local interface = section("interface", "Interface")
+    local controls = section("controls", "Camera & controls")
+    local graphics = section("graphics", "Graphics & effects")
+    local weather = section("weather", "Weather detail")
+    local audio = section("audio", "Audio")
+    local radiation = section("radiation", "Radiation feedback")
+    local skies = section("skies", "Sky appearance")
+    local skyTuning = section("sky_tuning", "Advanced sky & horizon")
+    local zombies = section("zombies", "Zombie population (server)")
+    root.ZM_OptionSections = sections
+    local changelog = vgui.Create("DButton", root)
+    changelog:Dock(TOP)
+    changelog:DockMargin(4, 4, 4, 8)
+    changelog:SetTall(32)
+    changelog:SetText("VIEW CHANGELOG")
+    changelog:SetTooltip("What changed in each version of Z-Nation.")
+    changelog.DoClick = function()
+        if options and options.openChangelog then
+            options.openChangelog()
+        elseif ZM_Changelog then
+            ZM_Changelog:Open(root)
+        end
+    end
+    root.ZM_ChangelogButton = changelog
+    panel = interface
     local labels = vgui.Create("DCheckBoxLabel", panel)
     labels:Dock(TOP)
     labels:DockMargin(4, 4, 4, 8)
@@ -141,6 +198,7 @@ function ZM_Options:BuildPanel(panel)
     end
 
     local qualityPreset
+    panel = graphics
     if ZM_Quality then
         local qualityLabel = vgui.Create("DLabel", panel)
         qualityLabel:Dock(TOP)
@@ -239,6 +297,15 @@ function ZM_Options:BuildPanel(panel)
             tooltip = "Controls blood, severed limbs and stump effects. Crawlers still lose their legs when gore is off."
         }
     }) do
+        if setting.convar == "zombiesim_compass_height" or setting.convar == "zombiesim_minimap_size" then
+            panel = interface
+        elseif setting.convar == "zombiesim_geiger_volume" or setting.convar == "zombiesim_music_enabled" then
+            panel = audio
+        elseif setting.convar:find("radiation", 1, true) or setting.convar == "zombiesim_geiger_visual" or
+            setting.convar == "zombiesim_radiated_visuals" then
+            panel = radiation
+        elseif setting.convar == "zombiesim_gore_quality" then panel = graphics
+        else panel = weather end
         local slider = vgui.Create("DNumSlider", panel)
         slider:Dock(TOP)
         slider:DockMargin(4, 0, 4, 4)
@@ -250,27 +317,25 @@ function ZM_Options:BuildPanel(panel)
         slider:SetConVar(setting.convar)
     end
 
-    // Lua cannot write these engine audio convars (https://wiki.facepunch.com/gmod/Blocked_ConCommands), so a bound
-    // slider errors whenever it writes back; show the values and point players to the engine's own Audio options.
-    local engineAudio = vgui.Create("DLabel", panel)
+    local engineAudio = vgui.Create("DPanel", audio)
     engineAudio:Dock(TOP)
     engineAudio:DockMargin(4, 0, 4, 8)
-    engineAudio:SetTall(34)
-    engineAudio:SetWrap(true)
-    engineAudio:SetTextColor(ZM_DermaSkin.Palette.text)
-    engineAudio:SetTooltip("Garry's Mod blocks gamemodes from changing these values. Music follows the engine Music volume.")
-    local function audioValue(name)
-        local convar = GetConVar(name)
-        return convar and string.format("%.2f", convar:GetFloat()) or "?"
+    engineAudio:SetTall(76)
+    engineAudio.Paint = function(_, width, height)
+        surface.SetDrawColor(ZM_DermaSkin.Palette.raised)
+        surface.DrawRect(0, 0, width, height)
+        surface.SetDrawColor(ZM_DermaSkin.Palette.redBright)
+        surface.DrawRect(0, 0, 3, height)
     end
-    engineAudio.NextRefresh = 0
-    engineAudio.Think = function(self)
-        if RealTime() < self.NextRefresh then return end
-        self.NextRefresh = RealTime() + 0.5
-        self:SetText(string.format("Game volume - master %s, effects %s, music %s (0 pauses). Change these in Garry's Mod Options > Audio.",
-            audioValue("volume"), audioValue("volume_sfx"), audioValue("snd_musicvolume")))
-    end
+    local audioNotice = vgui.Create("DLabel", engineAudio)
+    audioNotice:Dock(FILL)
+    audioNotice:DockMargin(12, 6, 10, 6)
+    audioNotice:SetWrap(true)
+    audioNotice:SetTextColor(ZM_DermaSkin.Palette.text)
+    audioNotice:SetText("Sound levels follow Garry's Mod's audio settings.\n" ..
+        "Adjust master, effects and music volume in Garry's Mod Options > Audio.")
 
+    panel = graphics
     local filmGrain = vgui.Create("DCheckBoxLabel", panel)
     filmGrain:Dock(TOP)
     filmGrain:DockMargin(4, 4, 4, 8)
@@ -289,23 +354,38 @@ function ZM_Options:BuildPanel(panel)
     end
 
     if ZM_Skybox then
-        local skyLabel = vgui.Create("DLabel", panel)
-        skyLabel:Dock(TOP)
-        skyLabel:DockMargin(4, 10, 4, 4)
-        skyLabel:SetTall(18)
-        skyLabel:SetText("Skybox - live tuning")
-        skyLabel:SetTextColor(ZM_DermaSkin.Palette.text)
+        panel = skies
+        local browse = vgui.Create("DButton", panel)
+        browse:Dock(TOP)
+        browse:DockMargin(4, 4, 4, 4)
+        browse:SetTall(34)
+        browse:SetText("Choose sky...")
+        browse:SetTooltip("Browse sky images, automatic palettes and fixed individual skies.")
+        browse.DoClick = function() ZM_SkyBrowser:Open(root) end
+        local selectedSky = vgui.Create("DLabel", panel)
+        selectedSky:Dock(TOP)
+        selectedSky:DockMargin(4, 0, 4, 4)
+        selectedSky:SetTall(22)
+        selectedSky:SetTextColor(ZM_DermaSkin.Palette.muted)
+        selectedSky.Think = function(control) control:SetText("Selected: " .. ZM_SkyPalettes:GetChoiceLabel()) end
+        local resetPalette = vgui.Create("DButton", panel)
+        resetPalette:Dock(TOP)
+        resetPalette:DockMargin(4, 0, 4, 4)
+        resetPalette:SetTall(28)
+        resetPalette:SetText("Restore map sky")
+        resetPalette.DoClick = function() ZM_SkyPalettes:Select("default") end
+        panel = skyTuning
         local skyHint = vgui.Create("DLabel", panel)
         skyHint:Dock(TOP)
         skyHint:DockMargin(4, 0, 4, 6)
         skyHint:SetTall(38)
         skyHint:SetWrap(true)
-        skyHint:SetText("Saved locally; changes apply immediately. Fog and lighting tuning are not overwritten by quality presets.")
+        skyHint:SetText("Fine-tune distant scenery, haze and lighting. These settings are saved separately from graphics presets.")
         skyHint:SetTextColor(ZM_DermaSkin.Palette.text)
         local skySliders = {
-            { label = "Skybox detail (0 off, 1-2 rings)", name = "zombiesim_sky_detail", minimum = 0, maximum = 2, decimals = 0,
-                tooltip = "Detailed neighbouring cells. 0 disables the city skybox, including distant towers." },
-            { label = "Skybox props / wrecks", name = "zombiesim_sky_props", minimum = 0, maximum = 1,
+            { label = "Distant scenery detail (0 off, 1-2)", name = "zombiesim_sky_detail", minimum = 0, maximum = 2, decimals = 0,
+                tooltip = "Neighbourhood scenery. 0 hides distant city scenery and towers, not your selected sky backdrop." },
+            { label = "Distant props / wrecks", name = "zombiesim_sky_props", minimum = 0, maximum = 1,
                 tooltip = "Scales the per-frame prop budget; higher values cost more frame time." }
         }
         for _, setting in ipairs(ZM_Skybox.TuningSettings) do skySliders[#skySliders + 1] = setting end
@@ -321,9 +401,9 @@ function ZM_Options:BuildPanel(panel)
             slider:SetConVar(setting.name)
         end
         for _, setting in ipairs({
-            { label = "Skybox clouds", name = "zombiesim_sky_clouds" },
-            { label = "Skybox fires, smoke and distant combat", name = "zombiesim_sky_fires" },
-            { label = "Matched skybox lighting", name = "zombiesim_sky_matched_lighting" }
+            { label = "Distant clouds", name = "zombiesim_sky_clouds" },
+            { label = "Distant fires, smoke and combat", name = "zombiesim_sky_fires" },
+            { label = "Match distant scenery lighting", name = "zombiesim_sky_matched_lighting" }
         }) do
             local checkbox = vgui.Create("DCheckBoxLabel", panel)
             checkbox:Dock(TOP)
@@ -336,24 +416,12 @@ function ZM_Options:BuildPanel(panel)
         resetSky:Dock(TOP)
         resetSky:DockMargin(4, 0, 4, 8)
         resetSky:SetTall(28)
-        resetSky:SetText("Reset skybox fog / lighting tuning")
+        resetSky:SetText("Reset horizon fog & lighting")
         resetSky:SetTooltip("Restores the five tuning sliders and matched lighting only; does not change quality, props, clouds, fires or city fog.")
         resetSky.DoClick = function() ZM_Skybox:ResetTuning() end
-        local copySky = vgui.Create("DButton", panel)
-        copySky:Dock(TOP)
-        copySky:DockMargin(4, 0, 4, 8)
-        copySky:SetTall(28)
-        copySky:SetText("Copy skybox tuning values")
-        copySky:SetTooltip("Copies the five tuning values and matched-lighting toggle so you can share your preferred settings.")
-        copySky.DoClick = function()
-            SetClipboardText(util.TableToJSON(ZM_Skybox:GetTuningSnapshot(), true))
-            copySky:SetText("Skybox tuning values copied")
-            timer.Simple(2, function()
-                if IsValid(copySky) then copySky:SetText("Copy skybox tuning values") end
-            end)
-        end
     end
 
+    panel = controls
     if ZM_GetMouseSensitivity then
         local minimumSensitivity, maximumSensitivity = ZM_GetMouseSensitivityRange()
         local sensitivity = vgui.Create("DNumSlider", panel)
@@ -387,7 +455,7 @@ function ZM_Options:BuildPanel(panel)
     end
 
     if GetConVar("zombiesim_globe_quality") then
-        local globeQuality = vgui.Create("DCheckBoxLabel", panel)
+        local globeQuality = vgui.Create("DCheckBoxLabel", graphics)
         globeQuality:Dock(TOP)
         globeQuality:DockMargin(4, 4, 4, 4)
         globeQuality:SetText("High-detail menu globe")
@@ -395,14 +463,7 @@ function ZM_Options:BuildPanel(panel)
         globeQuality:SetConVar("zombiesim_globe_quality")
     end
 
-    local walkerHeading = vgui.Create("DLabel", panel)
-    walkerHeading:Dock(TOP)
-    walkerHeading:DockMargin(4, 14, 4, 4)
-    walkerHeading:SetTall(20)
-    walkerHeading:SetFont("DermaDefaultBold")
-    walkerHeading:SetText("ZOMBIE SETTINGS")
-    walkerHeading:SetTextColor(ZM_DermaSkin.Palette.text)
-
+    panel = zombies
     local activeCap = vgui.Create("DNumSlider", panel)
     activeCap:Dock(TOP)
     activeCap:DockMargin(4, 0, 4, 4)
@@ -414,7 +475,8 @@ function ZM_Options:BuildPanel(panel)
     local populationPerZombie = vgui.Create("DNumSlider", panel)
     populationPerZombie:Dock(TOP)
     populationPerZombie:DockMargin(4, 0, 4, 4)
-    setSliderLabel(populationPerZombie, "Virtual walkers per zombie")
+    setSliderLabel(populationPerZombie, "Population represented by each zombie")
+    populationPerZombie:SetTooltip("Server setting: how much simulated population each visible zombie represents.")
     populationPerZombie:SetMin(1)
     populationPerZombie:SetMax(10)
     populationPerZombie:SetDecimals(0)
@@ -432,7 +494,11 @@ function ZM_Options:BuildPanel(panel)
     local displayedActiveCap
     local displayedPopulationPerZombie
     local displayedPreset
-    panel.Think = function()
+    root.Think = function()
+        local height = 8
+        for _, group in ipairs(sections) do height = height + group.category:GetTall() + 8 end
+        height = height + changelog:GetTall() + 12
+        if root:GetTall() ~= height then root:SetTall(height) end
         if qualityPreset and ZM_Quality then
             local preset = ZM_Quality:GetPreset()
             if preset ~= displayedPreset and not qualityPreset:IsMenuOpen() then
@@ -455,13 +521,15 @@ function ZM_Options:BuildPanel(panel)
             displayedPopulationPerZombie = settings.populationPerZombie
         end
     end
-    // Size to the docked children so new options never fall off the bottom of the scroll area.
-    local contentHeight = 8
-    for _, child in ipairs(panel:GetChildren()) do
-        local _, marginTop, _, marginBottom = child:GetDockMargin()
-        contentHeight = contentHeight + child:GetTall() + marginTop + marginBottom
+    for _, group in ipairs(sections) do
+        local height = 10
+        for _, child in ipairs(group.content:GetChildren()) do
+            local _, top, _, bottom = child:GetDockMargin()
+            height = height + child:GetTall() + top + bottom
+        end
+        group.content:SetTall(height)
+        group.category:InvalidateLayout(true)
     end
-    panel:SetTall(contentHeight)
     self:RequestWalkerSettings()
 end
 
