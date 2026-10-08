@@ -157,6 +157,29 @@ if ([string]::IsNullOrWhiteSpace($Output)) {
 
 $map = Get-Content -Raw -LiteralPath $MapData | ConvertFrom-Json
 $plan = Get-Content -Raw -LiteralPath $PlanData | ConvertFrom-Json
+$cellBounds = Get-OptionalProperty $plan 'cellBounds'
+if ($null -ne $cellBounds -and [int]$cellBounds.revision -eq 2) {
+    foreach ($recipe in @($plan.cells | Group-Object cellTemplateFilename)) {
+        $sourcePath = Join-Path $plan.cellDirectory $recipe.Name
+        $layoutPath = [System.IO.Path]::ChangeExtension($sourcePath, '.layout.json')
+        if (-not (Test-Path -LiteralPath $layoutPath -PathType Leaf) -or -not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+            throw "Expanded runtime export requires the generated VMF and layout: $sourcePath"
+        }
+        $layout = Get-Content -Raw -LiteralPath $layoutPath | ConvertFrom-Json
+        if ($layout.bounds.revision -ne 2 -or $layout.bounds.visualHalfExtent -ne $cellBounds.visualHalfExtent -or
+            $layout.vmfSha256 -ne (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash.ToLowerInvariant()) {
+            throw "Expanded runtime export has stale or incompatible layout metadata: $layoutPath"
+        }
+        foreach ($cell in $recipe.Group) {
+            $expectedSides = @($(if ($cell.x -eq 0) { 'W' }))
+            if ($null -eq $cell.PSObject.Properties['skyboxOceanSides'] -or
+                (@($cell.skyboxOceanSides) -join ',') -cne ($expectedSides -join ',') -or
+                (@($layout.waterSides) -join ',') -cne ($expectedSides -join ',')) {
+                throw "Expanded runtime export has stale skybox coast policy: $layoutPath"
+            }
+        }
+    }
+}
 if ($map.schemaVersion -lt 2) {
     throw "Map manifest schema version $($map.schemaVersion) does not provide the required runtime environment data."
 }
@@ -414,6 +437,10 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
         danger = $dangerIntensity
         topology = [string]$planCell.topology
         entrances = @($planCell.activeEntrances)
+        waterSides = @(if ($null -ne $cellBounds -and $cellBounds.revision -eq 2) {
+            if ($null -eq $planCell.PSObject.Properties['skyboxOceanSides']) { throw 'Expanded runtime export requires a fresh skybox-ocean template plan.' }
+            $planCell.skyboxOceanSides
+        } else { (Get-OptionalProperty $planCell 'waterBorderSides') | ForEach-Object { if ($null -ne $_) { [string]$_.side } } })
         transport = [ordered]@{ bridge = [bool]$mapCell.highway.bridge; rampExits = if ([bool]$mapCell.highway.bridge) { @() } else { @($mapCell.highway.rampExits) }; diagonal = [bool]$mapCell.highway.diagonal }
         exits = @($exits)
         metro = [ordered]@{ lines = $metroLineIds; stop = $metroStopId }
@@ -474,6 +501,7 @@ $runtimeWorld = [ordered]@{
         originSafeZoneId = $originSafeZoneId
         mapManifestSha256 = $mapHash
         templatePlanSha256 = $planHash
+        cellBounds = $cellBounds
     }
     atmosphereProfiles = @($atmosphereProfiles)
     hazards = [ordered]@{ radiation = [ordered]@{ damagePerSecondAtPeak = [Math]::Max(0, $radiationDamagePerSecondAtPeak); epicenter = $radiationEpicenter; epicenters = @($radiationEpicenters); falloutRadiusCells = [Math]::Max(0, $radiationFalloutRadiusCells); destroyedThreshold = [Math]::Max(0.0, [Math]::Min(1.0, $radiationDestroyedThreshold)) }; danger = [ordered]@{ enabled = $dangerEnabled; pattern = $dangerPattern; origin = $dangerOrigin; tierCount = [Math]::Max(0, $dangerTierCount) } }

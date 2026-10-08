@@ -7,6 +7,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'cell_bounds.psm1') -Force
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $profile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -SettingsPath $SettingsPath
 $prefix = [string]$profile.Config.filePrefix
@@ -24,17 +25,47 @@ $sky = $profile.Settings.vmfBuild.skybox3d
 foreach ($field in 'schemaVersion', 'profile', 'scale', 'neighbourRadius', 'skylineRadius', 'maxTowerModels', 'cameraOrigin', 'cellSpan', 'recipes', 'snow', 'towers') {
     if (-not $manifest.PSObject.Properties[$field]) { throw "Skybox manifest is stale or invalid: missing $field." }
 }
-if ($manifest.schemaVersion -ne 1 -or $manifest.profile -ne $prefix -or
+$expanded = $profile.Settings.vmfBuild.ContainsKey('outerEdges') -and [bool]$profile.Settings.vmfBuild.outerEdges.enabled
+$bounds = Get-ZMCellBounds $plan.cellTileGridSize $profile.Settings.vmfBuild.tileSize $expanded
+$expectedSchema = if ($expanded) { 2 } else { 1 }
+if ($manifest.schemaVersion -ne $expectedSchema -or $manifest.profile -ne $prefix -or
     $manifest.scale -ne $sky.scale -or $manifest.neighbourRadius -ne $sky.neighbourRadius -or
     $manifest.skylineRadius -ne $sky.skylineRadius -or $manifest.maxTowerModels -ne $sky.maxTowerModels -or
     $manifest.cameraOrigin[2] -ne $sky.cameraZ -or
-    $manifest.cellSpan -ne ($plan.cellTileGridSize + 2) * $profile.Settings.vmfBuild.tileSize) {
+    $manifest.cellSpan -ne $bounds.neighbourPitch) {
     throw 'Skybox manifest does not match the active plan/settings.'
 }
 
 $recipeNames = @($plan.cells | ForEach-Object {
     [System.IO.Path]::GetFileNameWithoutExtension($_.cellTemplateFilename).ToLowerInvariant()
 } | Sort-Object -Unique)
+if ($expanded) {
+    if ($manifest.templatePlanSha256 -ne (Get-FileHash -LiteralPath $PlanData -Algorithm SHA256).Hash.ToLowerInvariant()) {
+        throw 'Expanded skyline plan hash mismatch.'
+    }
+    foreach ($key in $bounds.Keys) {
+        if ($manifest.cellBounds.$key -ne $bounds[$key]) { throw "Expanded skyline bounds mismatch: $key" }
+    }
+    if (@($manifest.geometry.PSObject.Properties).Count -ne $recipeNames.Count) { throw 'Expanded skyline footprint coverage mismatch.' }
+    foreach ($name in $recipeNames) {
+        $recipePath = Join-Path $plan.cellDirectory "$name.vmf"
+        $layout = Get-Content -Raw -LiteralPath ([IO.Path]::ChangeExtension($recipePath, '.layout.json')) | ConvertFrom-Json
+        $footprint = $manifest.geometry.$name
+        if ($footprint.vmfSha256 -ne (Get-FileHash -LiteralPath $recipePath -Algorithm SHA256).Hash.ToLowerInvariant() -or
+            $footprint.visualHalfExtent -ne $bounds.visualHalfExtent -or $footprint.coastHalfExtent -ne $bounds.coastContactHalfExtent -or
+            (@($footprint.waterSides) -join ',') -cne (@($layout.waterSides) -join ',')) {
+            throw "Expanded skyline footprint does not match generated layout: $name"
+        }
+        foreach ($cell in @($plan.cells | Where-Object { [IO.Path]::GetFileNameWithoutExtension($_.cellTemplateFilename).ToLowerInvariant() -eq $name })) {
+            $expectedSides = @($(if ($cell.x -eq 0) { 'W' }))
+            if ($null -eq $cell.PSObject.Properties['skyboxOceanSides'] -or
+                (@($cell.skyboxOceanSides) -join ',') -cne ($expectedSides -join ',') -or
+                (@($footprint.waterSides) -join ',') -cne ($expectedSides -join ',')) {
+                throw "Expanded skyline ocean side differs from the west grid boundary: $name"
+            }
+        }
+    }
+}
 foreach ($tableName in 'recipes', 'snow', 'towers') {
     $table = $manifest.$tableName
     $actualNames = @($table.PSObject.Properties.Name | Sort-Object)

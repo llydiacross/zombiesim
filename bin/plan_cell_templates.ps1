@@ -16,6 +16,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'ps_progress_utils.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'cell_bounds.psm1') -Force
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Write-ZMProgress -Activity 'Planning cell templates' -Status 'Loading map manifest and template catalog.' -PercentComplete 2 -Step 'setup'
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
@@ -2924,6 +2925,19 @@ if ($forcedCarparkPlacements.Count -ne $forcedCarparkCells.Count) {
     throw "Carpark coverage selected $($forcedCarparkCells.Count) cells, but only $($forcedCarparkPlacements.Count) received an entrance placement."
 }
 
+$outerEdgesEnabled = $generatorSettings.vmfBuild.ContainsKey('outerEdges') -and [bool]$generatorSettings.vmfBuild.outerEdges.enabled
+if ($outerEdgesEnabled) {
+    foreach ($cell in $planCells) {
+        # Matches cl_skybox.ClassifyEdge: only west of the grid is the 3D ocean.
+        # Authored waterBorderSides select old border tiles, not outer scenery omissions.
+        $oceanSides = @($(if ($cell.x -eq 0) { 'W' }))
+        $cell | Add-Member -NotePropertyName skyboxOceanSides -NotePropertyValue $oceanSides
+        $oceanSuffix = if ($oceanSides.Count -gt 0) { '-oceanw' } else { '' }
+        $cell.cellTemplateFilename = [System.IO.Path]::GetFileNameWithoutExtension($cell.cellTemplateFilename) + $oceanSuffix + '-edge2.vmf'
+        $cell.cellTemplatePath = Join-Path $CellDirectory $cell.cellTemplateFilename
+        $cell.cellTemplateExists = Test-Path -LiteralPath $cell.cellTemplatePath
+    }
+}
 $requiredCellFiles = @($planCells | Group-Object cellTemplateFilename | Sort-Object Name | ForEach-Object {
     $representative = $_.Group[0]
     [pscustomobject]@{
@@ -2960,6 +2974,7 @@ $plan = [ordered]@{
     availableChunkTemplates = @($templateFiles.Values | Sort-Object)
     filenameAbbreviations = $filenameAbbreviations
     cellTileGridSize = $CellTileSize
+    cellBounds = Get-ZMCellBounds $CellTileSize ([int]$generatorSettings.vmfBuild.tileSize) $outerEdgesEnabled
     mapSeed = [int64]$map.map.seed
     mapGridCells = [int]$map.map.gridCells
     selectedCellCount = $planCells.Count

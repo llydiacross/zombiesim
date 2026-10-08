@@ -4,7 +4,8 @@ param(
     [switch]$Force,
     [string]$WorldProfile = '',
     [switch]$Preview,
-    [string]$SettingsPath = ''
+    [string]$SettingsPath = '',
+    [string]$BuildDirectory = ''
 )
 
 # Builds the runtime 3D skybox content for a world profile: every unique cell recipe in the template plan is converted
@@ -16,12 +17,14 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'vpk_reader.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'skybox_models.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'cell_bounds.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'vmf_source_dependencies.psm1') -Force
 
-# Kept from the prototype builder so its unchanged models are reused rather than recompiled.
-$builderVersion = 'skybox-cell-v2'
+# Geometry/dependency changes invalidate base and derivative model stamps together.
+$builderVersion = 'skybox-cell-v3'
 # Snow overlays carry their own stamps so changing them never recompiles the base cell models.
-$snowBuilderVersion = 'skybox-snow-v1'
-$towerBuilderVersion = 'skybox-towers-v1'
+$snowBuilderVersion = 'skybox-snow-v2'
+$towerBuilderVersion = 'skybox-towers-v2'
 $manifestSchemaVersion = 1
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
@@ -69,9 +72,24 @@ if ([string]::IsNullOrWhiteSpace($PlanData)) {
     $PlanData = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter "$($profileName)_grid_*_template_plan.json" -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1)[0].FullName
 }
 $plan = Get-Content -Raw -LiteralPath $PlanData | ConvertFrom-Json
+if ($null -ne $plan.PSObject.Properties['cellDirectory'] -and -not [string]::IsNullOrWhiteSpace([string]$plan.cellDirectory)) {
+    $cellDirectory = [string]$plan.cellDirectory
+    if (-not [IO.Path]::IsPathRooted($cellDirectory)) { $cellDirectory = Join-Path $projectRoot $cellDirectory }
+}
 $tileGridSize = [int]$plan.cellTileGridSize
-# Interior tiles plus the one-tile border ring on each side.
-$cellSpan = ($tileGridSize + 2) * $tileSize
+$outerEnabled = $worldGenerationProfile.Settings.vmfBuild.ContainsKey('outerEdges') -and [bool]$worldGenerationProfile.Settings.vmfBuild.outerEdges.enabled
+$bounds = Get-ZMCellBounds $tileGridSize $tileSize $outerEnabled
+$cellSpan = $bounds.neighbourPitch
+$geometry = [ordered]@{}
+if ($null -ne $plan.PSObject.Properties['cellBounds'] -and ($plan.cellBounds.revision -eq 2) -ne $outerEnabled) {
+    throw 'Skyline footprint settings and template plan disagree.'
+}
+if ($outerEnabled) {
+    if ($null -eq $plan.PSObject.Properties['cellBounds'] -or $plan.cellBounds.revision -ne 2 -or $plan.cellBounds.neighbourPitch -ne $cellSpan) {
+        throw 'Expanded skyline requires a matching expanded template plan.'
+    }
+    $manifestSchemaVersion = 2
+}
 
 $recipePaths = [System.Collections.Generic.List[string]]::new()
 foreach ($recipe in @($plan.cells | ForEach-Object { [string]$_.cellTemplateFilename } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)) {
@@ -80,6 +98,29 @@ foreach ($recipe in @($plan.cells | ForEach-Object { [string]$_.cellTemplateFile
         throw "Recipe $recipe is missing; run build_cell_vmfs.ps1 for the $profileName profile first."
     }
     $recipePaths.Add($recipePath)
+    if ($outerEnabled) {
+        $layoutPath = [IO.Path]::ChangeExtension($recipePath, '.layout.json')
+        if (-not (Test-Path -LiteralPath $layoutPath -PathType Leaf)) { throw "Missing expanded skyline layout: $layoutPath" }
+        $layout = Get-Content -Raw -LiteralPath $layoutPath | ConvertFrom-Json
+        $hash = (Get-FileHash -LiteralPath $recipePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($layout.vmfSha256 -ne $hash -or $layout.bounds.neighbourPitch -ne $cellSpan -or $layout.bounds.revision -ne 2) {
+            throw "Stale expanded skyline layout: $layoutPath"
+        }
+        foreach ($cell in @($plan.cells | Where-Object cellTemplateFilename -eq $recipe)) {
+            $expectedSides = @($(if ($cell.x -eq 0) { 'W' }))
+            if ($null -eq $cell.PSObject.Properties['skyboxOceanSides'] -or
+                (@($cell.skyboxOceanSides) -join ',') -cne ($expectedSides -join ',') -or
+                (@($layout.waterSides) -join ',') -cne ($expectedSides -join ',')) {
+                throw "Stale expanded skyline ocean policy: $layoutPath"
+            }
+        }
+        $geometry[[IO.Path]::GetFileNameWithoutExtension($recipe).ToLowerInvariant()] = [ordered]@{
+            vmfSha256 = $hash
+            waterSides = @($layout.waterSides)
+            coastHalfExtent = $bounds.coastContactHalfExtent
+            visualHalfExtent = $bounds.visualHalfExtent
+        }
+    }
 }
 if ($recipePaths.Count -eq 0) { throw "The $profileName template plan contains no cell recipes." }
 Write-Host "Building skybox models for $($recipePaths.Count) $profileName recipe(s)."
@@ -130,7 +171,7 @@ function Get-VtfSize([string]$TexturePath) {
     return @([System.BitConverter]::ToUInt16($file.Bytes, 16), [System.BitConverter]::ToUInt16($file.Bytes, 18))
 }
 
-$outputRoot = Join-Path $projectRoot "generated\skybox_$profileName"
+$outputRoot = if ([string]::IsNullOrWhiteSpace($BuildDirectory)) { Join-Path $projectRoot "generated\skybox_$profileName" } else { [IO.Path]::GetFullPath($BuildDirectory) }
 if (-not [string]::IsNullOrWhiteSpace($OutputContentDirectory)) {
     $contentDirectory = if ([System.IO.Path]::IsPathRooted($OutputContentDirectory)) {
         $OutputContentDirectory
@@ -249,20 +290,31 @@ function Invoke-SkyboxModelCompile([string]$partName, [string]$Smd) {
 }
 
 $materialSignature = ($materialMap.Keys | Sort-Object | ForEach-Object { "$_=$($materialMap[$_].ModelMaterial):$($materialMap[$_].Width)x$($materialMap[$_].Height)" }) -join ';'
+function Test-ModelCompanions {
+    param([object]$Stamp)
+    foreach ($part in $Stamp.parts) {
+        $base = Join-Path $contentDirectory ("models\" + ([string]$part.model -replace '/', '\' -replace '\.mdl$', ''))
+        foreach ($extension in '.mdl', '.vvd', '.dx90.vtx') {
+            if (-not (Test-Path -LiteralPath "$base$extension" -PathType Leaf) -or (Get-Item -LiteralPath "$base$extension").Length -eq 0) {
+                return $false
+            }
+        }
+    }
+    return $true
+}
 $cellModels = @{}
 foreach ($recipePath in $uniqueRecipes) {
     $recipeName = [System.IO.Path]::GetFileNameWithoutExtension($recipePath)
     $sourceParts = [System.Collections.Generic.List[string]]::new()
     $sourceParts.Add($builderVersion); $sourceParts.Add("$skyScale|$minBrushExtent|$maxPartVertices|$maxPartMaterials"); $sourceParts.Add($materialSignature)
     $sourceParts.Add((Get-Content -Raw -LiteralPath $recipePath))
-    foreach ($tilePath in @([ZombieSim.Skybox.CellModelBuilder]::ReadInstances($recipePath) | ForEach-Object { $_.File } | Sort-Object -Unique)) {
-        if (Test-Path -LiteralPath $tilePath) { $sourceParts.Add((Get-FileHash -LiteralPath $tilePath -Algorithm SHA256).Hash) }
-    }
+    $sourceParts.Add(($bounds | ConvertTo-Json -Compress))
+    foreach ($dependencyHash in Get-VmfSourceHashes $recipePath) { $sourceParts.Add($dependencyHash) }
     $sourceHash = Get-TextHash ($sourceParts -join "`n")
     $stampPath = Join-Path $modelSourceDirectory "$recipeName.json"
     if (-not $Force -and (Test-Path -LiteralPath $stampPath)) {
         $stamp = Get-Content -Raw -LiteralPath $stampPath | ConvertFrom-Json
-        $allPresent = $stamp.sourceHash -eq $sourceHash -and @($stamp.parts | Where-Object { -not (Test-Path -LiteralPath (Join-Path $contentDirectory "models\$($_.model.Replace('/', '\'))")) }).Count -eq 0
+        $allPresent = $stamp.sourceHash -eq $sourceHash -and (Test-ModelCompanions $stamp)
         if ($allPresent) {
             $cellModels[$recipePath] = $stamp
             Write-Host "Skybox model current: $recipeName ($(@($stamp.parts).Count) part(s))"
@@ -313,7 +365,7 @@ if ($snowEnabled) {
         $snowStampPath = Join-Path $modelSourceDirectory "${recipeName}_snow.json"
         if (-not $Force -and (Test-Path -LiteralPath $snowStampPath)) {
             $snowStamp = Get-Content -Raw -LiteralPath $snowStampPath | ConvertFrom-Json
-            $snowPresent = $snowStamp.sourceHash -eq $snowSourceHash -and @($snowStamp.parts | Where-Object { -not (Test-Path -LiteralPath (Join-Path $contentDirectory "models\$($_.model.Replace('/', '\'))")) }).Count -eq 0
+            $snowPresent = $snowStamp.sourceHash -eq $snowSourceHash -and (Test-ModelCompanions $snowStamp)
             if ($snowPresent) {
                 $snowModels[$recipePath] = $snowStamp
                 continue
@@ -348,9 +400,7 @@ foreach ($recipePath in $uniqueRecipes) {
     $towerStampPath = Join-Path $modelSourceDirectory "${recipeName}_towers.json"
     if (-not $Force -and (Test-Path -LiteralPath $towerStampPath)) {
         $towerStamp = Get-Content -Raw -LiteralPath $towerStampPath | ConvertFrom-Json
-        $towerPresent = $towerStamp.sourceHash -eq $towerHash -and @($towerStamp.parts | Where-Object {
-            -not (Test-Path -LiteralPath (Join-Path $contentDirectory "models\$($_.model.Replace('/', '\'))"))
-        }).Count -eq 0
+        $towerPresent = $towerStamp.sourceHash -eq $towerHash -and (Test-ModelCompanions $towerStamp)
         if ($towerPresent) { $towerModels[$recipePath] = $towerStamp; continue }
     }
     $towerParts = $builder.BuildTowerParts($recipePath, 1.0 / $skyScale, $materialMap, $maxPartVertices, $maxPartMaterials)
@@ -464,6 +514,9 @@ $manifest = [ordered]@{
     builderVersion = $builderVersion
     scale = $skyScale
     cellSpan = $cellSpan
+    cellBounds = $bounds
+    templatePlanSha256 = (Get-FileHash -LiteralPath $PlanData -Algorithm SHA256).Hash.ToLowerInvariant()
+    geometry = $geometry
     neighbourRadius = $neighbourRadius
     skylineRadius = $skylineRadius
     maxTowerModels = $maxTowerModels

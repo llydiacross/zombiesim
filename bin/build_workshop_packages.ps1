@@ -171,7 +171,26 @@ foreach ($profile in @($WorldProfiles | Sort-Object)) {
         continue
     }
     $sky = Read-PackageJson $skyPath
-    if ($sky.schemaVersion -ne 1 -or $sky.profile -ne $profile) { throw "Invalid skyline manifest: $profile" }
+    if ($sky.schemaVersion -notin @(1, 2) -or $sky.profile -ne $profile) { throw "Invalid skyline manifest: $profile" }
+    $worldBoundsProperty = $world.world.PSObject.Properties['cellBounds']
+    $expandedWorld = $null -ne $worldBoundsProperty -and $worldBoundsProperty.Value.revision -eq 2
+    if ($expandedWorld -ne ($sky.schemaVersion -eq 2)) { throw "Skyline/world footprint revision mismatch: $profile" }
+    if ($expandedWorld) {
+        if ($sky.templatePlanSha256 -notmatch '^[a-f0-9]{64}$' -or $sky.templatePlanSha256 -ne $world.world.templatePlanSha256 -or
+            $sky.cellSpan -ne $world.world.cellBounds.neighbourPitch) { throw "Skyline/world plan mismatch: $profile" }
+        foreach ($key in $world.world.cellBounds.PSObject.Properties.Name) {
+            if ($sky.cellBounds.$key -ne $world.world.cellBounds.$key) { throw "Skyline/world bounds mismatch: $profile/$key" }
+        }
+        foreach ($cell in $world.cells) {
+            $footprint = $sky.geometry.($cell.map)
+            if ($null -eq $footprint -or $footprint.coastHalfExtent -ne $world.world.cellBounds.coastContactHalfExtent -or
+                $footprint.vmfSha256 -notmatch '^[a-f0-9]{64}$' -or
+                $footprint.visualHalfExtent -ne $world.world.cellBounds.visualHalfExtent -or
+                (@($footprint.waterSides | Sort-Object) -join ',') -cne (@($cell.waterSides | Sort-Object) -join ',')) {
+                throw "Skyline/world coast mismatch: $profile/$($cell.map)"
+            }
+        }
+    }
     Add-Content "data_static/zombiesim_skybox_$profile.json" 'core' 'registries'
     $skyModels = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($section in 'recipes', 'snow', 'towers') {

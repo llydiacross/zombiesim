@@ -2,11 +2,33 @@
   "schemaVersion": 1,
   "entries": [
     {
+      "version": "3.1.5",
+      "title": "Expanded City Edges and Launcher Presentation",
+      "status": "in development",
+      "date": "2026-10-06",
+      "summary": "Phase A accepted. Phase B shared skyline spacing, coast attachment and compatibility pass isolated builds/regressions; fresh expanded client visuals and matched performance remain pending.",
+      "highlights": [
+        "? Phase 0 accepted: authored edge inventory, verified restoration copies and focused launcher baseline; remaining baseline limits carried forward.",
+        "+ Gated deterministic outer-edge generation, tagged pools, coast omissions and shared core/traversal/visual bounds.",
+        "+ Isolated layout metadata, revision-distinct maps and core-only spawn eligibility for enlarged cells.",
+        "+ Corrected incompatible new-edge trees/signs without moving or replacing authored models.",
+        "+ Land/coast Hammer and isolated in-game geometry reviewed and accepted; launcher and survivor state restoration verified.",
+        "+ Phase A accepted; integrated gameplay limits carried into later phases.",
+        "+ Shared 5760 skyline pitch and versioned plan/coast compatibility; original beach and 2240 omitted-side attachment retained.",
+        "+ Corrected Storm Drain/west-ocean omission: existing border tiles retained, only western outer scenery omitted; skyline shoreline meets the old border without an intended gap.",
+        "+ Isolated skyline, snow, tower, recursive-cache, mesh-seam and packaging checks pass without replacing installed assets.",
+        "? Fresh expanded skyline visuals, matched performance and Phase C gate migration remain pending; expanded maps are not deployed.",
+        "? Planned border-aware map previews, slower movement and rarer spaced searchable loot.",
+        "? Planned distressed Earth-to-city launcher and read-only character outfit thumbnails.",
+        "? Production rebuilds and Workshop publication remain separately gated."
+      ]
+    },
+    {
       "version": "3.1.0",
       "title": "Skyline, Coastline, Clothing and Skies",
-      "status": "in development",
-      "date": "2026-10-05",
-      "summary": "Develops the city skyline and world edges, artist workflows for signs and clothing, and optional client sky palettes.",
+      "status": "development complete",
+      "date": "2026-10-06",
+      "summary": "Development accepted: city skyline and world edges, artist workflows for signs and clothing, and optional client sky palettes. Workshop publication remains deferred.",
       "highlights": [
         "+ Skyscrapers integrated into city density with a centre-weighted skyline (Phases A-B, accepted).",
         "+ Artist-friendly sign and billboard workflow (Phase E, accepted).",
@@ -18,7 +40,10 @@
          "+ Both-arms and both-legs cuff prints; sleeve flames now climb up the arm.",
         "+ Changelog viewer from Options, in the launcher and in game.",
         "? Redesigned shoreline with waves and distinct cardinal world edges (Phases C-D, accepted).",
-        "? Optional sky palettes: sky browser, automatic and custom palettes, aerial sky preview and grouped Options (Phase H, in progress)."
+        "+ Optional sky palettes: sky browser, automatic and custom palettes, aerial sky preview and grouped Options (Phase H, accepted).",
+        "+ Authored launcher sky tours with smooth bird-like flight, context haze, preview music and an ending blackout.",
+        "- Tropospheric night 1 removed from selection and packaging; saved choices and affected automatic profiles use night 2.",
+        "? Workshop publication remains deferred; development acceptance is not a public release."
       ]
     },
     {

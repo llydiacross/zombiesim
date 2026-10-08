@@ -4,7 +4,87 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Active Task Tracker
 
-- [todo-alpha-3.1.0.md](todo-alpha-3.1.0.md) is the active tracker, authorized by the user on 2026-10-05. Begin with Phase 0, then follow the ordered skyscraper, skyline, shoreline, cardinal-edge, signage, clothing, and integrated acceptance phases. World-generation work remains preview-only; do not promote production outputs without approval.
+- **Fixture-review preference:** when the user chooses to inspect fixtures,
+  open the exact requested VMFs in the installed Hammer++ for them; do not
+  merely provide paths or ask them to find the files. Identify which opened
+  fixture covers each review case. Preserve unsaved editor work and do not
+  treat opening a fixture as visual acceptance.
+
+- **Active milestone: [Alpha 3.1.5](todo-alpha.3.1.5.md).** The user authorized
+  implementation on 2026-10-06 after adding the edge tiles. Phase 0 is accepted:
+  nine edge sources inventoried, current 179-recipe baseline and verified
+  restoration copies retained, focused launcher baseline captured. User carried
+  coast/gate photographs and full quality/cold-warm baseline into A/B/G; do not
+  reopen Phase 0 for those limits. Preserve approved source overhangs.
+  **Phase B is in progress**, then follow Phases C-I in order. Shared bounds,
+  deterministic outer-ring generation and layout metadata are implemented but
+  disabled in normal settings. Isolated checks: outer edges 519 assertions,
+  GLua 184/0, border showcase/entrances pass, ten VBSP/portal fixtures pass,
+  BSP entity checks retain 287 corrected dynamic props, live bounds 6/6 in the
+  preview launcher. Human confirmed north-facing straights and NW-opening
+  corners, and approved class-only correction of 15 incompatible new-edge
+  trees/signs; original brush/prop placement and overhangs are unchanged.
+  User accepted both land/coast Hammer fixtures on 2026-10-06 after the agent
+  opened them in Hammer++; the user closed the editor windows after review.
+  User subsequently accepted both enlarged land/coast in-game geometry
+  reviews in Sandbox. Two isolated BSPs completed VVIS/VRAD without failures;
+  temporary runtime copies were removed after verified return to
+  `zn_preview_start`/preview. Before/after city and preview survivor persistence
+  snapshots match exactly; live bounds remain 6/6. This is geometry acceptance,
+  not integrated ZombieSim pursuit, loot, skyline or gate acceptance.
+  **Phase A is accepted**; the user authorized Phase B on 2026-10-06,
+  carrying integrated pursuit/loot/gate checks into later phases. Generated
+  fixture sources/zoos are under `generated/outer_edges`; no enlarged maps,
+  skyline or runtime exports staged. Gates/transition-road blocking geometry
+  still require the planned Phase C migration. Preview-first; production
+  city rebuilds and Workshop publication require separate approval. The supplied
+  logo, exact globe asset clearance and live baseline gaps are explicit gates,
+  not permission to guess. No phase is accepted solely by static checks.
+- Phase B source/isolation checks now pass: shared 5760 pitch, schema-2
+  plan/bounds/coast compatibility, recursive source hashes and complete model
+  companion caches. User explicitly retained the original procedural beach
+  beyond the 2240 coast edge; do not replace it with a water-only strip.
+  Six isolated skyline fixtures: 177 assertions, manifest/tower/height pass,
+  VBSP/portals 417/1317 maximum; installed legacy manifest 179 recipes still
+  passes. GLua186/0, fresh isolated geometry8/8, packaging57/57.
+  `generated/skybox_edges` contains models/room/VMFs/reports; none staged.
+  Fresh expanded renderer visuals and matched performance remain Phase B
+  gates. Launcher reloads verified logic only, not renderer appearance.
+- **Coast clarification 2026-10-07:** the requested fixture is the Storm Drain
+  grid `(0,12)` / logical `(0,0)`, not the SE authored water-corner fixture.
+  Omit new outer scenery only along the west 3D-skybox ocean; preserve all old
+  border and water-corner tiles. `skyboxOceanSides` drives omission/renderer
+  attachment separately from `waterBorderSides`. West recipes use
+  `-oceanw-edge2`; expanded preview187 recipes vs unchanged legacy179.
+  Exact Storm Drain has21 unchanged border pieces,23 outer pieces,zero west
+  outer pieces. West skybox shoreline attaches at-2240, not-2880; its640-unit
+  band fills the gap while retaining the approved beach. Skyline275 assertions/
+  eight recipes, outer1158/exact old source transforms, original border/entrance
+  suites and VBSP/portals474/1517 pass. New no-gap live case not run
+  because game closed; expanded visual review remains pending. Do not stage
+  or treat earlier SE-corner review as approval of this corrected coast.
+- Alpha 3.1.0 development is complete: the user
+  accepted final Phase H and the milestone on 2026-10-06 after a bounded fresh
+  launcher check. [docs/todo-alpha-3.1.0.md](docs/todo-alpha-3.1.0.md) archives
+  its evidence and validation limits. Do not reopen accepted phases or infer
+  work from historical pending lists.
+- Final live checks: renderer 8/8, catalogue/materials 78/78 and
+  browser/flight/fog/cleanup 15/15. Human confirmed smooth automatic tour,
+  replacement night, soundtrack fade, blackout and return. The captured
+  Coastal tour is scoped CPU operation evidence, not a matched/GPU benchmark.
+  Final preference/audio/return-state capture was rejected because no connected
+  preview admin was available; retain that limit separately from human review.
+  User subsequently confirmed Default restored and returned to their survivor.
+- Workshop release remains separately deferred: rights/IDs, navmeshes,
+  production export/skyline and clean mounts/downloads. Version status is
+  `in development` for Alpha 3.1.5, not `released`; no production rebuild/upload
+  is authorized. Preview remains the default for approved iteration.
+
+### Archived Alpha 3.1.0 chronology
+
+The notes below record earlier decisions and evidence. Their pending/active
+wording is superseded by the final acceptance above, not a current task list.
+
 - The user accepted Alpha 3.0 on 2026-10-04; [docs/todo-alpha-3.0.md](docs/todo-alpha-3.0.md) archives its implementation, regression/live evidence and retained validation limits. Its uncaptured checks are historical limitations, not new Alpha 3.1.0 work.
 - Alpha 3.1.0 Phase E is accepted; the user carried remaining sign integration into Phase G. Phase F Wardrobe and revised spiral fabric direction are approved. Filename/fabric catalogue builds; actual client pool regressions pass 5/5 after fixing owned-material pins and failed-build retries. Generated equipment survives reload and independent restoration with exact original inventory cleanup; scoreboard composition moved to PreRender after a verified clipping regression. Cuff-anchored/opposite-limb/front-back calibration, real gore visuals, bloody/walker variants and representative performance remain pending; Phase F is not accepted. Optional client-local sky palettes are Phase H; settle imported provenance and baked-light compatibility before staging/distribution.
 - Clothing follow-up: the user subsequently requested hundreds of fabrics, smooth high-detail dye, centred `_chest` artwork and fixes for visible full-back/repeating-back seams. Source now expands to 206 fabrics, supports pink/chest and uses inspected torso-triangle back projection. Physical continuity checks pass 38/38 and rebuilt prototype checks 248/248. Full expanded catalogue staging and fresh human visual review are the immediate gate; do not carry the earlier spiral approval forward as approval of these new outputs.

@@ -12,7 +12,8 @@ param(
     [switch]$WhatIf,
     [string]$WorldProfile = '',
     [switch]$Preview,
-    [string]$SettingsPath = ''
+    [string]$SettingsPath = '',
+    [string]$SkyboxOutputDirectory = ''
 )
 
 Set-StrictMode -Version Latest
@@ -28,11 +29,16 @@ if (-not $PSBoundParameters.ContainsKey('TileZOffset')) { $TileZOffset = [int]$g
 $vmfBuildSettings = $generatorSettings.vmfBuild
 $borderSettings = if ($vmfBuildSettings.ContainsKey('border')) { $vmfBuildSettings.border } else { @{} }
 $borderEnabled = $borderSettings.ContainsKey('enabled') -and [bool]$borderSettings.enabled
+$outerEdgeSettings = if ($vmfBuildSettings.ContainsKey('outerEdges')) { $vmfBuildSettings.outerEdges } else { @{} }
+$outerEdgesEnabled = $outerEdgeSettings.ContainsKey('enabled') -and [bool]$outerEdgeSettings.enabled
+if ($outerEdgesEnabled -and -not $borderEnabled) { throw 'Outer edges require the existing border ring.' }
 $topologyTemplates = $generatorSettings.cellPlanning.topologyTemplates
 $transportTemplates = $generatorSettings.cellPlanning.transportTemplates
 if (-not $PSBoundParameters.ContainsKey('PruneStaleGenerated')) { $PruneStaleGenerated = $true }
 Import-Module (Join-Path $PSScriptRoot 'carpark_endcaps.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'vmf_source_dependencies.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'cell_bounds.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'outer_edges.psm1') -Force
 
 # Writes the shared 3D skybox room (sealed sky shell, ground plane, sky_camera) above the playable cell volume and
 # returns its repository-relative path. It holds no props: cl_skybox.lua draws each cell's neighbour models at runtime.
@@ -47,7 +53,7 @@ function Write-SkyboxRoomVmf {
     $roomHeight = if ($Settings.ContainsKey('roomHeight')) { [int]$Settings.roomHeight } else { 512 }
     $groundMaterial = if ($Settings.ContainsKey('groundMaterial')) { [string]$Settings.groundMaterial } else { 'CS_HAVANA/SWAMPDIRT01' }
     if ($scale -lt 1 -or $radius -lt 1) { throw 'vmfBuild.skybox3d scale and neighbourRadius must be positive.' }
-    $cellSpan = ($TileGridSize + 2) * $TileWidth
+    $cellSpan = (Get-ZMCellBounds $TileGridSize $TileWidth $outerEdgesEnabled).neighbourPitch
     # Neighbour models sit inside the room so their lighting origins resolve to a lit sky leaf. Every vertical room
     # plane lies on VBSP's 1024-unit block grid: off-grid planes become splitters that cut the playable cell's leaves
     # and add portals (measured +36 portals on zz_preview_594c1fb8277a with walls at +/-768 and +/-784).
@@ -111,6 +117,10 @@ function Write-SkyboxRoomVmf {
 
     $relativePath = "generated\skybox_$ProfileName\skybox_room.vmf"
     $roomPath = Join-Path $projectRoot $relativePath
+    if (-not [string]::IsNullOrWhiteSpace($SkyboxOutputDirectory)) {
+        $roomPath = Join-Path ([System.IO.Path]::GetFullPath($SkyboxOutputDirectory)) 'skybox_room.vmf'
+        $relativePath = $roomPath
+    }
     $null = New-Item -ItemType Directory -Force -Path (Split-Path -Parent $roomPath)
     $null = Write-TextFileIfChanged -Path $roomPath -Content (($vmf -join "`r`n") + "`r`n")
     return $relativePath
@@ -144,6 +154,15 @@ if ([string]::IsNullOrWhiteSpace($PlanData) -or -not (Test-Path $PlanData)) {
 }
 
 $plan = Get-Content -Raw $PlanData | ConvertFrom-Json
+if ($outerEdgesEnabled -and ($null -eq $plan.PSObject.Properties['cellBounds'] -or $plan.cellBounds.revision -ne 2)) {
+    throw 'Outer-edge generation requires a fresh expanded plan from matching settings.'
+}
+if ($null -ne $plan.PSObject.Properties['cellBounds'] -and ([int]$plan.cellBounds.revision -eq 2) -ne $outerEdgesEnabled) {
+    throw 'Template plan and builder disagree about outer-edge enablement.'
+}
+if ($outerEdgesEnabled -and ($plan.cellBounds.tileSize -ne $TileSize -or $plan.cellBounds.coreTileGridSize -ne $plan.cellTileGridSize)) {
+    throw 'Expanded plan tile dimensions do not match this build.'
+}
 if ($plan.schemaVersion -lt 2 -or $plan.cellTileGridSize -lt 1) {
     throw 'The template plan must contain a cellTileGridSize and tilePlacements.'
 }
@@ -182,7 +201,23 @@ function Get-WaterWallTemplate {
     if (($Index % $waterPierInterval) -eq 0) {
         return [string]$pierTemplates[[int](($Index / $waterPierInterval) % $pierTemplates.Count)]
     }
+
     return [string]$waterSettings.noneTemplate
+}
+
+function Get-SkyboxOceanPlan {
+    param([object]$Recipe)
+
+    if ($null -eq $Recipe.PSObject.Properties['skyboxOceanSides']) {
+        throw 'Expanded recipe lacks skyboxOceanSides; regenerate its template plan.'
+    }
+    $expected = @($(if ($Recipe.x -eq 0) { 'W' }))
+    if ((@($Recipe.skyboxOceanSides) -join ',') -cne ($expected -join ',')) {
+        throw "Expanded recipe has invalid skybox ocean sides at $($Recipe.x),$($Recipe.y)."
+    }
+    $sides = @{}
+    foreach ($side in $expected) { $sides[$side] = $true }
+    return $sides
 }
 
 if ([string]::IsNullOrWhiteSpace($CellDirectory)) {
@@ -265,7 +300,7 @@ function Get-VmfInstancePath {
         [string]$TemplateFilename
     )
 
-    $fullTemplatePath = Join-Path $TemplateDirectory $TemplateFilename
+    $fullTemplatePath = if ([System.IO.Path]::IsPathRooted($TemplateFilename)) { $TemplateFilename } else { Join-Path $TemplateDirectory $TemplateFilename }
     if (-not (Test-Path $fullTemplatePath)) {
         throw "Tile template was not found: $fullTemplatePath"
     }
@@ -486,7 +521,7 @@ function Test-GeneratedCellVmf {
     }
     return $contents -match 'tiletemplates/' -and
         $instanceCount -gt 0 -and
-        [regex]::Matches($contents, '"targetname" "(?:zm_border_|zm_transition_road_)').Count -eq $expectedBorderCount
+        [regex]::Matches($contents, '"targetname" "(?:zm_border_|zm_transition_road_|zm_outer_)').Count -eq $expectedBorderCount
 }
 
 function Get-RecipeLightingProfile {
@@ -846,6 +881,9 @@ function New-CellVmf {
     Test-RecipeTilePlacements $Recipe $TileGridSize
 
     $baseVmf = Get-Content -Raw $BaseTemplatePath
+    if ($outerEdgesEnabled) {
+        $baseVmf = Expand-ZMOuterEdgeShell $baseVmf (Get-ZMCellBounds $TileGridSize $TileWidth $true)
+    }
     $baseVmf = Remove-TemplateCubemaps $baseVmf
     $baseVmf = Set-VmfLightingProfile $baseVmf (Get-RecipeLightingProfile $Recipe)
     $baseVmf = Set-CellPlayerStart $baseVmf $Recipe $TileGridSize $TileWidth
@@ -1121,6 +1159,35 @@ foreach ($recipe in $recipes) {
         $(if ($skyboxEnabled) { 1 } else { 0 })
     $cubemapAnchors = Get-CubemapAnchors $recipe $plan.cellTileGridSize $TileSize $TileZOffset
     $borderPlacements = Get-BorderPlacements $recipe $plan.cellTileGridSize
+    $outerPlacements = @()
+    if ($outerEdgesEnabled) {
+        $roadTemplates = @{}
+        $routeSources = @([string]$topologyTemplates['road-straight'], [string]$topologyTemplates['motorway-straight'], [string]$transportTemplates.bridgeRoad)
+        foreach ($placement in $borderPlacements) {
+            if ($placement.targetname -like 'zm_transition_road_*' -or $placement.template -in $routeSources) {
+                $side = if ($placement.tileY -eq -1) { 'N' } elseif ($placement.tileY -eq $plan.cellTileGridSize) { 'S' } elseif ($placement.tileX -eq -1) { 'W' } else { 'E' }
+                $roadTemplates[$side] = if ($placement.targetname -like 'zm_transition_road_*') { [string]$topologyTemplates['road-straight'] } else { [string]$placement.template }
+            }
+        }
+        $outerPlacements = @(Get-ZMOuterEdgePlacements $recipe $plan.cellTileGridSize $outerEdgeSettings $borderPlacements (Get-SkyboxOceanPlan $recipe) $roadTemplates)
+        foreach ($placement in $outerPlacements) {
+            if (-not (Test-Path -LiteralPath (Join-Path $TileDirectory $placement.template) -PathType Leaf)) {
+                throw "Required outer-edge source is missing: $($placement.template)"
+            }
+        }
+    }
+    $layout = [ordered]@{
+        schemaVersion = 1
+        recipe = $recipe.cellTemplateFilename
+        corePlacements = @($recipe.tilePlacements)
+        bounds = Get-ZMCellBounds $plan.cellTileGridSize $TileSize $outerEdgesEnabled
+        waterSides = @(if ($outerEdgesEnabled) { (Get-SkyboxOceanPlan $recipe).Keys | Sort-Object } else { (Get-WaterBorderPlan $recipe).Keys | Sort-Object })
+        authoredWaterBorderSides = @((Get-WaterBorderPlan $recipe).Keys | Sort-Object)
+        borderPlacements = @($borderPlacements)
+        outerPlacements = @($outerPlacements)
+    }
+    $legacyBorderCount = $borderPlacements.Count
+    $borderPlacements = @($borderPlacements) + @($outerPlacements)
     $transitionGates = @(Get-TransitionGatePlacements $recipe)
     $expectedBorderInstanceCount = $borderPlacements.Count
     $cubemapProbeCount += $cubemapAnchors.Count
@@ -1132,7 +1199,18 @@ foreach ($recipe in $recipes) {
         # A recipe written before the skybox room was enabled or disabled differs only by that one instance.
         $skyboxToggledCount = $expectedInteriorInstanceCount + $(if ($skyboxEnabled) { -1 } else { 1 })
         $matchesSkyboxToggle = Test-GeneratedCellVmf $outputPath $skyboxToggledCount $expectedBorderInstanceCount $transitionGates.Count
-        if (-not $RefreshGenerated -or (-not $matchesExpectedStructure -and -not $matchesSkyboxToggle)) {
+        $matchesLegacyRing = $outerEdgesEnabled -and (Test-GeneratedCellVmf $outputPath $expectedInteriorInstanceCount $legacyBorderCount $transitionGates.Count)
+        $matchesPreviousLayout = $false
+        $previousLayoutPath = [IO.Path]::ChangeExtension($outputPath, '.layout.json')
+        if ($outerEdgesEnabled -and (Test-Path -LiteralPath $previousLayoutPath -PathType Leaf)) {
+            $previousLayout = Get-Content -Raw -LiteralPath $previousLayoutPath | ConvertFrom-Json
+            if ($previousLayout.vmfSha256 -eq (Get-FileHash -LiteralPath $outputPath -Algorithm SHA256).Hash.ToLowerInvariant() -and
+                $previousLayout.bounds.revision -eq 2 -and $previousLayout.recipe -eq $recipe.cellTemplateFilename) {
+                $previousBorderCount = @($previousLayout.borderPlacements).Count + @($previousLayout.outerPlacements).Count
+                $matchesPreviousLayout = Test-GeneratedCellVmf $outputPath $expectedInteriorInstanceCount $previousBorderCount $transitionGates.Count
+            }
+        }
+        if (-not $RefreshGenerated -or (-not $matchesExpectedStructure -and -not $matchesSkyboxToggle -and -not $matchesLegacyRing -and -not $matchesPreviousLayout)) {
             $skipped++
             continue
         }
@@ -1144,6 +1222,8 @@ foreach ($recipe in $recipes) {
     if (-not $WhatIf) {
         # Unchanged recipes keep their timestamps so compilers skip them.
         $vmfChanged = Write-TextFileIfChanged -Path $outputPath -Content $vmf
+        $layout.vmfSha256 = (Get-FileHash -LiteralPath $outputPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        $null = Write-TextFileIfChanged -Path ([System.IO.Path]::ChangeExtension($outputPath, '.layout.json')) -Content (($layout | ConvertTo-Json -Depth 10) + [Environment]::NewLine)
         if (-not (Test-GeneratedCellVmf $outputPath $expectedInteriorInstanceCount $expectedBorderInstanceCount $transitionGates.Count)) {
             throw "Generated VMF failed border structure validation: $outputPath"
         }

@@ -36,6 +36,43 @@ local function coordinateKey(x, y)
 	return tostring(x) .. "," .. tostring(y)
 end
 
+// Legacy exports have no geometry metadata; their original 5x5 core remains authoritative.
+function World:GetCellBounds()
+	if self.Data and self.Data.world and self.Data.world.cellBounds then
+		return self.Data.world.cellBounds
+	end
+	return {
+		revision = 1, tileSize = 640, coreTileGridSize = 5, coreHalfExtent = 1600,
+		traversableHalfExtent = 2240, visualHalfExtent = 2240,
+		neighbourPitch = 4480, coastContactHalfExtent = 2240, playableCeiling = 4608
+	}
+end
+
+function World:IsCoreSpawnPosition(position)
+	local bounds = self:GetCellBounds()
+	local half = bounds.coreHalfExtent
+	return position and position.x == position.x and position.y == position.y
+		and math.abs(position.x) <= half and math.abs(position.y) <= half
+		and position.z == position.z and position.z <= bounds.playableCeiling and position.z > -math.huge
+end
+
+function World:GetCellSideExtent(reference, side)
+	if side ~= "N" and side ~= "E" and side ~= "S" and side ~= "W" then
+		return nil, "invalid cardinal side"
+	end
+	local cell = self:ResolveCell(reference)
+	if not cell then
+		return nil, "unknown world cell"
+	end
+	local bounds = self:GetCellBounds()
+	for _, waterSide in ipairs(cell.waterSides or {}) do
+		if waterSide == side then
+			return bounds.coastContactHalfExtent
+		end
+	end
+	return bounds.visualHalfExtent
+end
+
 local function mapBasename(mapPath)
 	local mapName = string.lower(string.match(tostring(mapPath or ""), "([^/\\]+)$") or mapPath or "")
 	return string.gsub(mapName, "%.bsp$", "")
@@ -320,6 +357,36 @@ function World:Load(path)
 		return false, self.LastError
 	end
 
+	if data.world.cellBounds ~= nil then
+		local bounds = data.world.cellBounds
+		local valid = type(bounds) == "table"
+		if valid then
+			for _, key in ipairs({"tileSize", "coreHalfExtent", "traversableHalfExtent", "visualHalfExtent", "neighbourPitch", "coastContactHalfExtent", "playableCeiling"}) do
+				local value = bounds[key]
+				if type(value) ~= "number" or value ~= value or value <= 0 or value == math.huge then
+					valid = false
+					break
+				end
+			end
+		end
+		if valid then
+			valid = (bounds.revision == 1 or bounds.revision == 2)
+				and type(bounds.coreTileGridSize) == "number" and bounds.coreTileGridSize >= 1
+				and bounds.coreTileGridSize == math.floor(bounds.coreTileGridSize)
+				and bounds.coreHalfExtent == bounds.tileSize * bounds.coreTileGridSize / 2
+				and bounds.traversableHalfExtent == bounds.coreHalfExtent + bounds.tileSize
+				and bounds.visualHalfExtent == bounds.traversableHalfExtent + (bounds.revision == 2 and bounds.tileSize or 0)
+				and bounds.neighbourPitch == bounds.visualHalfExtent * 2
+				and bounds.coastContactHalfExtent == bounds.traversableHalfExtent
+		end
+		if not valid then
+			self.Data = nil
+			self.Indexes = nil
+			self.LastError = "Runtime world data at " .. path .. " has invalid cell bounds"
+			return false, self.LastError
+		end
+	end
+
 	if type(data.atmosphereProfiles) ~= "table" or #data.atmosphereProfiles < 1 then
 		self.Data = nil
 		self.Indexes = nil
@@ -380,6 +447,26 @@ function World:Load(path)
 			self.Indexes = nil
 			self.LastError = "Runtime world data at " .. path .. " has duplicate or invalid cell ids or atmosphere profiles"
 			return false, self.LastError
+		end
+
+		if cell.waterSides ~= nil or (data.world.cellBounds and data.world.cellBounds.revision == 2) then
+			local valid = type(cell.waterSides) == "table"
+			local seen = {}
+			if valid then
+				for _, side in ipairs(cell.waterSides) do
+					if (side ~= "N" and side ~= "E" and side ~= "S" and side ~= "W") or seen[side] then
+						valid = false
+						break
+					end
+					seen[side] = true
+				end
+			end
+			if not valid then
+				self.Data = nil
+				self.Indexes = nil
+				self.LastError = "Runtime world data at " .. path .. " has invalid coast sides for cell " .. id
+				return false, self.LastError
+			end
 		end
 
 		local x = id % width

@@ -238,6 +238,36 @@ try {
         @($assignedManifest.packs | Where-Object workshopIdPlaceholder -ne '').Count -eq 0)
     Assert-Package 'core bootstrap descriptor embeds the privately reserved real ID' (
         (Get-Content -LiteralPath (Join-Path $assignedCore 'gamemodes\zombiesim\zombiesim.txt') -Raw) -match '"workshopid"\s*"123456"')
+    $expandedWorldPath = Join-Path $fixtureRoot 'content\data_static\zombiesim_world_preview.json'
+    $expandedSkyPath = Join-Path $fixtureRoot 'content\data_static\zombiesim_skybox_preview.json'
+    $worldFixture = Get-Content -Raw $expandedWorldPath | ConvertFrom-Json
+    $skyFixture = Get-Content -Raw $expandedSkyPath | ConvertFrom-Json
+    $fixtureBounds = @{revision = 2; tileSize = 640; coreTileGridSize = 5; coreHalfExtent = 1600;
+        traversableHalfExtent = 2240; visualHalfExtent = 2880; neighbourPitch = 5760;
+        coastContactHalfExtent = 2240; playableCeiling = 4608}
+    $worldFixture.world | Add-Member cellBounds $fixtureBounds
+    $worldFixture.world | Add-Member templatePlanSha256 ('a' * 64)
+    $worldFixture.cells[0] | Add-Member waterSides @('N', 'W')
+    Write-WorkshopJson $expandedWorldPath $worldFixture
+    Assert-Rejected 'expanded world cannot package a legacy skyline' { & $builder -ProjectRoot $fixtureRoot -SettingsPath $fixtureSettings }
+    $skyFixture.schemaVersion = 2
+    $skyFixture | Add-Member cellBounds $fixtureBounds
+    $skyFixture | Add-Member cellSpan 5760
+    $skyFixture | Add-Member templatePlanSha256 ('a' * 64)
+    $skyFixture | Add-Member geometry @{zz_preview_fixture = @{waterSides = @('W', 'N');
+        coastHalfExtent = 2240; visualHalfExtent = 2880; vmfSha256 = ('b' * 64)}}
+    Write-WorkshopJson $expandedSkyPath $skyFixture
+    & $builder -ProjectRoot $fixtureRoot -SettingsPath $fixtureSettings
+    Assert-Package 'matching expanded skyline packages alongside legacy city' $?
+    $skyFixture.templatePlanSha256 = 'c' * 64
+    Write-WorkshopJson $expandedSkyPath $skyFixture
+    Assert-Rejected 'expanded skyline rejects stale world plan' { & $builder -ProjectRoot $fixtureRoot -SettingsPath $fixtureSettings }
+    $skyFixture.templatePlanSha256 = 'a' * 64
+    $skyFixture.geometry.zz_preview_fixture.waterSides = @('N')
+    Write-WorkshopJson $expandedSkyPath $skyFixture
+    Assert-Rejected 'expanded skyline rejects wrong coast attachment' { & $builder -ProjectRoot $fixtureRoot -SettingsPath $fixtureSettings }
+    $skyFixture.geometry.zz_preview_fixture.waterSides = @('N', 'W')
+    Write-WorkshopJson $expandedSkyPath $skyFixture
     Remove-Item -LiteralPath (Join-Path $fixtureRoot 'content\maps\zz_preview_fixture.bsp')
     Assert-Rejected 'missing sandbox map fails before staging' { & $builder -ProjectRoot $fixtureRoot -SettingsPath $fixtureSettings }
 } finally {

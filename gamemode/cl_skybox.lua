@@ -4,7 +4,6 @@
 ZM_Skybox = ZM_Skybox or {}
 local Skybox = ZM_Skybox
 
-local manifestSchemaVersion = 1
 local domeSegments = 48
 // Elevation (degrees above the eye) and alpha for each horizon-wall ring; below the eye the wall is opaque.
 local domeRings = {
@@ -353,10 +352,17 @@ function Skybox:GetManifest()
     end
     local data = util.JSONToTable(text)
     local origin = type(data) == "table" and data.cameraOrigin
-    if type(data) ~= "table" or tonumber(data.schemaVersion) ~= manifestSchemaVersion or
+    if type(data) ~= "table" or
         (tonumber(data.scale) or 0) <= 0 or (tonumber(data.cellSpan) or 0) <= 0 or
         (tonumber(data.neighbourRadius) or 0) < 1 or type(origin) ~= "table" or type(data.recipes) ~= "table" then
         self.ManifestError = "invalid " .. path
+        return nil
+    end
+    local worldData = ZM_World:GetData()
+    local compatible, compatibilityError = ZM_SkyboxGeometry.ValidateManifest(data, worldData and worldData.world, worldData and worldData.cells)
+    if not compatible then
+        self.ManifestError = compatibilityError .. " (" .. path .. ")"
+        ErrorNoHalt("[ZombieSim] " .. self.ManifestError .. "\n")
         return nil
     end
     data.cameraVector = Vector(tonumber(origin[1]) or 0, tonumber(origin[2]) or 0, tonumber(origin[3]) or 0)
@@ -435,7 +441,7 @@ function Skybox:Refresh()
         return nil
     end
     local radius = self:GetRadius(manifest)
-    local key = table.concat({ tostring(self.ManifestProfile), gridX, gridY, radius, "activity-v3" }, ":")
+    local key = table.concat({ tostring(self.ManifestProfile), gridX, gridY, radius, manifest.cellSpan, manifest.schemaVersion, "activity-v4" }, ":")
     stats.state = "ready"
     if key == self.PlacementKey then return manifest end
 
@@ -627,6 +633,22 @@ function Skybox:BuildCoast(manifest, gridX, gridY, radius)
     local function isLand(dx, dy) return land[classify(dx, dy)] end
     local function isCity(dx, dy) return city[classify(dx, dy)] end
     local seaSlots, edges = {}, {}
+    local function landRectangle(dx, dy)
+        local cell = ZM_World:GetCell(gridX + dx, gridY + dy)
+        local x, y = camera.x + dx * span, camera.y - dy * span
+        return ZM_SkyboxGeometry.GetLandRectangle(manifest, cell and mapBasename(cell.map), x, y)
+    end
+    local function nearbyLand(dx, dy)
+        local lands = {}
+        for ny = -1, 1 do
+            for nx = -1, 1 do
+                if isLand(dx + nx, dy + ny) then
+                    table.insert(lands, landRectangle(dx + nx, dy + ny))
+                end
+            end
+        end
+        return lands
+    end
     // Grid east (dx + 1) is +X; grid north (dy - 1) is +Y in Hammer space.
     local sides = { { 1, 0, 1, 0 }, { -1, 0, -1, 0 }, { 0, -1, 0, 1 }, { 0, 1, 0, -1 } }
     for dy = -reach, reach do
@@ -634,21 +656,25 @@ function Skybox:BuildCoast(manifest, gridX, gridY, radius)
             local cx, cy = camera.x + dx * span, camera.y - dy * span
             if isLand(dx, dy) then
                 if not isCity(dx, dy) then continue end
+                local rectangle = landRectangle(dx, dy)
+                for _, band in ipairs(ZM_SkyboxGeometry.GetWaterBands(rectangle, cx, cy, half)) do
+                    band.lands = nearbyLand(dx, dy)
+                    table.insert(seaSlots, band)
+                end
                 for _, side in ipairs(sides) do
-                    if not isLand(dx + side[1], dy + side[2]) then
-                        table.insert(edges, { x = cx + side[3] * half, y = cy + side[4] * half, nx = side[3], ny = side[4] })
+                    local omitted = (side[3] == 1 and rectangle.x1 < cx + half) or
+                        (side[3] == -1 and rectangle.x0 > cx - half) or
+                        (side[4] == 1 and rectangle.y1 < cy + half) or
+                        (side[4] == -1 and rectangle.y0 > cy - half)
+                    if omitted or not isLand(dx + side[1], dy + side[2]) then
+                        local x = side[3] == 1 and rectangle.x1 or (side[3] == -1 and rectangle.x0 or (rectangle.x0 + rectangle.x1) * 0.5)
+                        local y = side[4] == 1 and rectangle.y1 or (side[4] == -1 and rectangle.y0 or (rectangle.y0 + rectangle.y1) * 0.5)
+                        table.insert(edges, { x = x, y = y, nx = side[3], ny = side[4],
+                            length = side[3] ~= 0 and rectangle.y1 - rectangle.y0 or rectangle.x1 - rectangle.x0 })
                     end
                 end
             else
-                local lands = {}
-                for ny = -1, 1 do
-                    for nx = -1, 1 do
-                        if (nx ~= 0 or ny ~= 0) and isLand(dx + nx, dy + ny) then
-                            table.insert(lands, { cx + nx * span, cy - ny * span })
-                        end
-                    end
-                end
-                table.insert(seaSlots, { x = cx, y = cy, lands = lands })
+                table.insert(seaSlots, { x = cx, y = cy, lands = nearbyLand(dx, dy) })
             end
         end
     end
@@ -662,10 +688,7 @@ function Skybox:BuildCoast(manifest, gridX, gridY, radius)
         local nearest = far
         for index = 1, #lands do
             local slot = lands[index]
-            local ox = math.max(math.abs(px - slot[1]) - half, 0)
-            local oy = math.max(math.abs(py - slot[2]) - half, 0)
-            local squared = ox * ox + oy * oy
-            if squared < nearest * nearest then nearest = math.sqrt(squared) end
+            nearest = math.min(nearest, ZM_SkyboxGeometry.DistanceToLand(px, py, slot))
         end
         if nearest >= far then return seaZ - 8, 0, nearest end
         local wx, wy = px + offsetX, py + offsetY
@@ -686,13 +709,19 @@ function Skybox:BuildCoast(manifest, gridX, gridY, radius)
     end
     // Samples a slot grid with a one-sample border so terrain normals are continuous across slot edges.
     local function sampleGrid(slot, divisions)
-        local step = span / divisions
-        local stride = divisions + 3
-        local grid = { step = step, stride = stride, x0 = slot.x - half, y0 = slot.y - half, heights = {}, rocks = {}, nearest = {} }
-        for row = -1, divisions + 1 do
-            for column = -1, divisions + 1 do
+        local width, height = (slot.halfX or half) * 2, (slot.halfY or half) * 2
+        local cx = camera.x + math.floor((slot.x - camera.x) / span + 0.5) * span
+        local cy = camera.y + math.floor((slot.y - camera.y) / span + 0.5) * span
+        local coastHalf = manifest.schemaVersion == 2 and manifest.cellBounds.coastContactHalfExtent / manifest.scale or nil
+        local xs, columns = ZM_SkyboxGeometry.GetCoastAxis(slot.x - width * 0.5, slot.x + width * 0.5, cx, span, divisions, coastHalf)
+        local ys, rows = ZM_SkyboxGeometry.GetCoastAxis(slot.y - height * 0.5, slot.y + height * 0.5, cy, span, divisions, coastHalf)
+        local stride = columns + 3
+        local grid = { xs = xs, ys = ys, stepX = width / columns, stepY = height / rows, columns = columns, rows = rows, stride = stride,
+            x0 = slot.x - width * 0.5, y0 = slot.y - height * 0.5, heights = {}, rocks = {}, nearest = {} }
+        for row = -1, rows + 1 do
+            for column = -1, columns + 1 do
                 local index = (row + 1) * stride + column + 2
-                grid.heights[index], grid.rocks[index], grid.nearest[index] = sample(grid.x0 + column * step, grid.y0 + row * step, slot.lands)
+                grid.heights[index], grid.rocks[index], grid.nearest[index] = sample(xs[column], ys[row], slot.lands)
             end
         end
         return grid
@@ -703,7 +732,8 @@ function Skybox:BuildCoast(manifest, gridX, gridY, radius)
     local tile = coast.rippleTile
     local lightX, lightY, lightZ = 0.45, 0.35, 0.82
     for _, slot in ipairs(seaSlots) do
-        local x0, y0, x1, y1 = slot.x - half, slot.y - half, slot.x + half, slot.y + half
+        local halfX, halfY = slot.halfX or half, slot.halfY or half
+        local x0, y0, x1, y1 = slot.x - halfX, slot.y - halfY, slot.x + halfX, slot.y + halfY
         local deepRed, deepGreen, deepBlue = waterShade(99)
         local underlayZ = seaZ - 0.4
         local underlay = buffers.underlay
@@ -711,15 +741,15 @@ function Skybox:BuildCoast(manifest, gridX, gridY, radius)
         pushCoastVertex(underlay, x1, y0, underlayZ, deepRed, deepGreen, deepBlue, 255, (x1 + offsetX) / tile, (y0 + offsetY) / tile)
         pushCoastVertex(underlay, x1, y1, underlayZ, deepRed, deepGreen, deepBlue, 255, (x1 + offsetX) / tile, (y1 + offsetY) / tile)
         pushCoastVertex(underlay, x0, y1, underlayZ, deepRed, deepGreen, deepBlue, 255, (x0 + offsetX) / tile, (y1 + offsetY) / tile)
-        if #slot.lands > 0 then
+        if slot.lands and #slot.lands > 0 then
             // Beach and rock terrain: only quads that reach the surface are kept; the rest is hidden by water.
             local grid = sampleGrid(slot, coast.terrainDivisions)
-            local step, stride, heights, rocks, nearest = grid.step, grid.stride, grid.heights, grid.rocks, grid.nearest
+            local stepX, stepY, stride, heights, rocks, nearest = grid.stepX, grid.stepY, grid.stride, grid.heights, grid.rocks, grid.nearest
             local function terrainVertex(buffer, row, column, rocky)
                 local index = (row + 1) * stride + column + 2
                 local height = heights[index]
-                local slopeX = (heights[index + 1] - heights[index - 1]) / (2 * step)
-                local slopeY = (heights[index + stride] - heights[index - stride]) / (2 * step)
+                local slopeX = (heights[index + 1] - heights[index - 1]) / (grid.xs[column + 1] - grid.xs[column - 1])
+                local slopeY = (heights[index + stride] - heights[index - stride]) / (grid.ys[row + 1] - grid.ys[row - 1])
                 local light = (-slopeX * lightX - slopeY * lightY + lightZ) / math.sqrt(slopeX * slopeX + slopeY * slopeY + 1)
                 local shade = 0.5 + 0.5 * math.max(light, 0)
                 local wet = 1 - smoothstep(seaZ + 0.1, seaZ + 0.9, height)
@@ -731,17 +761,17 @@ function Skybox:BuildCoast(manifest, gridX, gridY, radius)
                     shade = shade * (1 - 0.38 * wet)
                     red, green, blue = 255 * shade, 226 * shade, 172 * shade
                 end
-                local x, y = grid.x0 + column * step, grid.y0 + row * step
+                local x, y = grid.xs[column], grid.ys[row]
                 pushCoastVertex(buffer, x, y, height, red, green, blue, 255, (x + offsetX) / 24, (y + offsetY) / 24)
             end
-            for row = 0, coast.terrainDivisions - 1 do
-                for column = 0, coast.terrainDivisions - 1 do
+            for row = 0, grid.rows - 1 do
+                for column = 0, grid.columns - 1 do
                     local a = (row + 1) * stride + column + 2
                     local b, c, d = a + 1, a + stride + 1, a + stride
                     local highest = math.max(heights[a], heights[b], heights[c], heights[d])
                     if highest > seaZ - 0.4 and math.min(nearest[a], nearest[b], nearest[c], nearest[d]) < coast.bandWidth then
                         local lowest = math.min(heights[a], heights[b], heights[c], heights[d])
-                        local rocky = (rocks[a] + rocks[b] + rocks[c] + rocks[d]) * 0.25 > 0.42 or highest - lowest > step * 0.75
+                        local rocky = (rocks[a] + rocks[b] + rocks[c] + rocks[d]) * 0.25 > 0.42 or highest - lowest > math.min(stepX, stepY) * 0.75
                         local buffer = rocky and buffers.rock or buffers.sand
                         terrainVertex(buffer, row, column, rocky)
                         terrainVertex(buffer, row, column + 1, rocky)
@@ -753,11 +783,11 @@ function Skybox:BuildCoast(manifest, gridX, gridY, radius)
 
             // Shallow water shades with depth and carries the breaking-foam layer.
             grid = sampleGrid(slot, coast.waterDivisions)
-            step, stride, heights, nearest = grid.step, grid.stride, grid.heights, grid.nearest
+            stepX, stepY, stride, heights, nearest = grid.stepX, grid.stepY, grid.stride, grid.heights, grid.nearest
             local foamZ = seaZ + 0.2
             local corners = {}
-            for row = 0, coast.waterDivisions - 1 do
-                for column = 0, coast.waterDivisions - 1 do
+            for row = 0, grid.rows - 1 do
+                for column = 0, grid.columns - 1 do
                     local a = (row + 1) * stride + column + 2
                     corners[1], corners[2], corners[3], corners[4] = a, a + 1, a + stride + 1, a + stride
                     if math.min(nearest[a], nearest[a + 1], nearest[a + stride + 1], nearest[a + stride]) < coast.bandWidth then
@@ -766,14 +796,14 @@ function Skybox:BuildCoast(manifest, gridX, gridY, radius)
                             local index = corners[corner]
                             local depth = seaZ - heights[index]
                             shallowest, deepest = math.min(shallowest, depth), math.max(deepest, depth)
-                            local x, y = grid.x0 + (column + quadOffsets[corner][1]) * step, grid.y0 + (row + quadOffsets[corner][2]) * step
+                            local x, y = grid.xs[column + quadOffsets[corner][1]], grid.ys[row + quadOffsets[corner][2]]
                             local red, green, blue = waterShade(depth)
                             pushCoastVertex(buffers.water, x, y, seaZ, red, green, blue, 255, (x + offsetX) / tile, (y + offsetY) / tile)
                         end
                         if shallowest < coast.foamDepth and deepest > -0.4 then
                             for corner = 1, 4 do
                                 local depth = seaZ - heights[corners[corner]]
-                                local x, y = grid.x0 + (column + quadOffsets[corner][1]) * step, grid.y0 + (row + quadOffsets[corner][2]) * step
+                                local x, y = grid.xs[column + quadOffsets[corner][1]], grid.ys[row + quadOffsets[corner][2]]
                                 local foam = 255 * (1 - smoothstep(2.6, coast.foamDepth, depth)) * smoothstep(-0.4, 0.2, depth)
                                 pushCoastVertex(buffers.foam, x, y, foamZ, foam, foam, foam, 255, (x + y + offsetX + offsetY) / 70, depth / coast.waveDepthLength)
                             end
@@ -788,13 +818,14 @@ function Skybox:BuildCoast(manifest, gridX, gridY, radius)
     local topZ, footZ = camera.z + coast.streetHeight, seaZ - 1
     for _, edge in ipairs(edges) do
         // The edge runs perpendicular to its outward normal.
-        local tx, ty = -edge.ny * half, edge.nx * half
+        local edgeHalf = edge.length * 0.5
+        local tx, ty = -edge.ny * edgeHalf, edge.nx * edgeHalf
         local ox, oy = edge.nx * 1.5, edge.ny * 1.5
         local buffer = buffers.embankment
         local height = (topZ - footZ) / 8
         pushCoastVertex(buffer, edge.x - tx, edge.y - ty, topZ, 205, 200, 194, 255, 0, 0)
-        pushCoastVertex(buffer, edge.x + tx, edge.y + ty, topZ, 205, 200, 194, 255, span / 8, 0)
-        pushCoastVertex(buffer, edge.x + tx + ox, edge.y + ty + oy, footZ, 150, 146, 140, 255, span / 8, height)
+        pushCoastVertex(buffer, edge.x + tx, edge.y + ty, topZ, 205, 200, 194, 255, edge.length / 8, 0)
+        pushCoastVertex(buffer, edge.x + tx + ox, edge.y + ty + oy, footZ, 150, 146, 140, 255, edge.length / 8, height)
         pushCoastVertex(buffer, edge.x - tx + ox, edge.y - ty + oy, footZ, 150, 146, 140, 255, 0, height)
     end
 
@@ -1042,7 +1073,7 @@ function Skybox:BuildEdgeTerrain(manifest)
     local width, height = tonumber(grid and grid[1]), tonumber(grid and grid[2])
     if not width or not height then return end
     local span = manifest.cellSpan / manifest.scale
-    local key = table.concat({ tostring(self.ManifestProfile), width, height, span, manifest.cameraVector.z, "edges-v2" }, ":")
+    local key = table.concat({ tostring(self.ManifestProfile), width, height, span, manifest.cameraVector.z, manifest.schemaVersion, "edges-v3" }, ":")
     if key == self.EdgeKey and self.EdgeMeshes then return end
     self:DestroyEdgeTerrain()
     local started = SysTime()
@@ -1253,7 +1284,7 @@ function Skybox:RunEdgeRegression()
     check("sky direction north is +Y", northY > camera.y + span, string.format("north sky y %.1f vs camera %.1f", northY, camera.y))
     // Sky fog must continue the city fog: never clearer at the cell boundary, and at least the city maximum beyond.
     if self.Manifest and self.Stats.state == "ready" then
-        local boundary = self.Manifest.cellSpan * 0.5
+        local boundary = ZM_SkyboxGeometry.GetFogBoundary(self.Manifest)
         local function density(fog, distance)
             return fog.maxDensity * math.Clamp((distance - fog.start) / math.max(fog.finish - fog.start, 1), 0, 1)
         end
@@ -1467,7 +1498,7 @@ end
 function Skybox:GetSkyboxFog(settings)
     local manifest = self.Manifest
     if not settings or not manifest or self.Stats.state ~= "ready" then return settings end
-    local boundary = manifest.cellSpan * 0.5
+    local boundary = ZM_SkyboxGeometry.GetFogBoundary(manifest)
     local edge = math.max(boundary + 1, self:GetFogEdge(manifest) *
         math.Clamp(getConVarNumber("zombiesim_sky_fog_distance", 0.9), 0.5, 3))
     local range = math.max(settings.finish - settings.start, 1)
@@ -1507,6 +1538,11 @@ function Skybox:CollectLightSamples()
     local minimum, maximum = world:GetRenderBounds()
     minimum, maximum = self:ClampWorldBounds(minimum, maximum)
     if not minimum or not maximum then return nil end
+    if self.Manifest and self.Manifest.schemaVersion == 2 then
+        local half = self.Manifest.cellBounds.traversableHalfExtent
+        minimum = Vector(math.max(minimum.x, -half), math.max(minimum.y, -half), minimum.z)
+        maximum = Vector(math.min(maximum.x, half), math.min(maximum.y, half), maximum.z)
+    end
     self.LightSampleMap = mapName
     self.LightSamples = {}
     local minX, maxX = minimum.x + lightSampleInset, maximum.x - lightSampleInset
@@ -1808,7 +1844,7 @@ function Skybox:DrawActivity(manifest, skyEye, skyFog, fogColor)
     stats.activityExplosions, stats.activityBursts, stats.activityBeams = 0, 0, 0
     stats.activityPreview = false
     if getConVarNumber("zombiesim_sky_fires", 1) <= 0 or not self.ViewForward or not self.ViewRight or not self.ViewUp or
-        (ZM_WorldMap and ZM_WorldMap.Capturing) or (skyFog and skyFog.finish <= manifest.cellSpan * 0.5) then return end
+        (ZM_WorldMap and ZM_WorldMap.Capturing) or (skyFog and skyFog.finish <= ZM_SkyboxGeometry.GetFogBoundary(manifest)) then return end
     local now = CurTime()
     local preview = (self.ActivityPreviewUntil or 0) > now
     local visible = self.ActivityVisible
@@ -2080,7 +2116,7 @@ function Skybox:DrawTowers(manifest, skyEye, skyFog, fogColor, lightCube)
     local scale = manifest.scale
     local finish = ((manifest.skylineRadius or manifest.neighbourRadius) + 1) * manifest.cellSpan * math.sqrt(2) / scale
     // If weather already hides the playable edge, distant towers must remain hidden too.
-    if skyFog and skyFog.finish <= manifest.cellSpan * 0.5 then return end
+    if skyFog and skyFog.finish <= ZM_SkyboxGeometry.GetFogBoundary(manifest) then return end
     local towerFog = math.Clamp(getConVarNumber("zombiesim_sky_tower_fog", 0.8), 0, 1)
     // Pale fog makes dark tower silhouettes stand out against the fogged neighbour cells, so lighter fog colours
     // (already darkened on dark-lit cells) blend the towers onto the same fog curve as that scenery; dark fog keeps
@@ -2133,6 +2169,10 @@ function Skybox:GetDiagnosticSnapshot()
         manifestError = self.ManifestError,
         recipes = manifest and manifest.recipeCount,
         scale = manifest and manifest.scale,
+        manifestSchema = manifest and manifest.schemaVersion,
+        neighbourPitch = manifest and manifest.cellSpan,
+        coastContactHalfExtent = manifest and ZM_SkyboxGeometry.GetFogBoundary(manifest),
+        templatePlanSha256 = manifest and manifest.templatePlanSha256,
         grid = stats.grid,
         radius = stats.radius,
         neighbourCells = stats.neighbourCells,

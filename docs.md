@@ -857,6 +857,84 @@ Generated recipes receive one to three deterministic `env_cubemap` entities. Aft
 | `tileZOffset` | Vertical offset, in Hammer units, applied to every generated tile instance. | Default `0`. A non-zero value moves all generated chunks up or down together. |
 | `skybox3d` | Runtime 3D skybox. With `enabled: true`, `build_cell_vmfs.ps1` writes one shared room (`generated/skybox_<profile>/skybox_room.vmf`: a sealed TOOLSSKYBOX shell, a seabed ground brush at `cameraZ - 24`, and a `sky_camera`) and instances it into every city recipe as `zm_skybox_room`. Dens, safe-zone maps, and launchers do not get it. The settings are `enabled`; `scale` (sky_camera scale, `16`); `neighbourRadius` (how many cells out are modelled); `cameraZ` and `roomHeight` (the room above the playable cell box); `minBrushExtent` (brushes smaller than this are culled); `maxPartVertices` and `maxPartMaterials` (limits for splitting a model into parts; at most 60 materials per part); and `groundMaterial`. Snow overlay settings: `snowOverlay` (build per-recipe `<recipe>_s<N>` snow models), `snowMinNormalZ` (minimum face normal z for snow, `0.7`), `snowLift` (world units the snow is raised, `2`; larger lifts show as a slab at the cell edge), and `snowTextureWorldSize` (planar UV tile size, `256`). Set dressing settings: `detailProps` (emit the manifest `detail` table), `detailPropPattern` and `detailVehiclePattern` (model regexes for authored tile props and vehicles), `roadCarMaterial` (lane surface for generated wrecks, `CONCRETE/CONCRETEFLOOR037A`), `roadCarModels`, `roadCarSpacing` (`320`), `roadCarChance` (`0.35`), and `roofFireMinHeight` (lowest rooftop that can burn, `192`). | Build the models with `bin/build_skybox_models.ps1 -WorldProfile <profile>` after the recipe VMFs exist. It converts each unique recipe's brushes and displacements (not tile props) into models under `content/models/zombiesim/skybox/cells`, with wrapper VMTs in `content/materials/models/zombiesim/skybox`. It also writes the runtime manifest `content/data_static/zombiesim_skybox_<profile>.json`. `gamemode/cl_skybox.lua` draws the current cell's neighbours from that manifest in the 3D sky pass. Out-of-grid slots become a client-drawn coast: sea, sea wall, and foam. The snow models fade in with `ZM_Atmosphere.SnowCoverAmount` and draw with a small `render.DepthRange` bias. Skybox models are lit from the playable cell's lighting (`render.ComputeLighting` sampled on a ring near the cell edge) so the seam matches the lightmapped map; client convars `zombiesim_sky_matched_lighting` (default 1) and `zombiesim_sky_light_scale` (default 0.2) control this. Set dressing (authored props, generated road wrecks, and fire candidates) is drawn through one shared scaled model per prop type, within a per-frame draw budget scaled by `zombiesim_sky_props`; `zombiesim_sky_fires` toggles burning wrecks and rooftops with smoke plumes. Both are part of the quality presets. The module also draws a fog-coloured horizon wall and weather-driven clouds, and grades skybox fog so it is opaque at the wall. Every vertical room plane lies on VBSP's 1024-unit block grid so the room does not split the playable cell's leaves. Compilers find the models through the `_compile_game` overlay that `compile_cell_vmfs.ps1` writes; its mount.cfg adds `content`. |
 
+### Alpha 3.1.5 outer edges (gated)
+
+`vmfBuild.outerEdges.enabled` is currently false for ordinary builds. Isolated
+preview fixtures enable it through a separate `-SettingsPath`; do not enable
+it globally or promote city outputs before the milestone approval gates.
+`wallVariationTemplates` and `cornerTemplate` define the default pieces.
+`profileTemplates` independently replaces each piece kind: radioactive uses
+`ra`; military/fortified use `army`; a missing tagged corner falls back to the
+default corner. `_none` is an authored tile, not an omission.
+
+The 5x5 core stays at +/-1600, the existing traversable border envelope at
++/-2240, and the new inaccessible scenery perimeter at tile coordinates -2..6,
+nominally +/-2880. The visual neighbour pitch is 5760, but Phase B must regenerate
+and wire matching skyline assets before rollout; Phase A does not change the
+installed skyline. Outer fill is omitted only on the west 3D-skybox ocean
+boundary (`x = 0`), including its NW/SW outer corners. The planner's
+`skyboxOceanSides` is deliberately separate from `waterBorderSides`: the latter
+continues selecting the previously authored border/water-corner tiles, unchanged.
+Only reserved centre road/bridge corridors may continue on omitted sides.
+Safe-zone suppression takes precedence.
+
+Authored north-facing straights use inward N180/E90/S0/W270. The separately
+inspected NW-opening corner uses NW180/NE90/SE0/SW270. Do not rotate or trim
+the source VMFs. The generator widens only the recognised source base shell:
+sky seals at +/-3072 contain the approved brush overhangs; perimeter clips begin
+at +/-2240 and stop access to scenery. The original shell ceiling is retained.
+Gate positions and transition-road clip/barrier migration remain Phase C work.
+
+Expanded recipe names end in `-edge2.vmf`, preventing reuse of old map-revision
+BSPs. West-ocean recipes additionally use `-oceanw-edge2.vmf`, so an otherwise
+shared recipe cannot reuse inland scenery. The builder writes a sibling `.layout.json` containing core, original
+border and outer placements, coast sides, bounds and the exact VMF hash.
+Artwork/skyline consumers should use that generated metadata rather than
+reconstructing a separate border policy. Expanded runtime exports require
+matching generated layouts; legacy exports without bounds remain supported.
+Expanded skyline manifests use schema 2 with shared `cellBounds`, the exact
+`templatePlanSha256` and per-recipe `geometry` (VMF hash, water sides, coast and
+visual extents). Legacy skyline schema 1 remains valid for legacy worlds only.
+The client and package builder reject mixed revisions and mismatched coast/
+plan metadata. The sky-room writer uses the same neighbour pitch as the model
+builder. No expanded assets are installed merely by passing isolated checks.
+
+The Storm Drain at grid `(0,12)` (logical `(0,0)`) keeps its original 21 border
+pieces and west entrance suppression. Its new western edge layer is omitted,
+not its old border. The renderer's west land rectangle ends at `x = -2240`
+world units relative to the cell centre, not `-2880`. The additional 640-unit
+band joins that border to the adjacent skybox ocean; no exposed gap is intended.
+
+On omitted sides the client retains the original procedural beach beyond 2240
+(explicitly approved 2026-10-06), with water filling the remaining space.
+Full sea slots and omitted bands share sample cuts to avoid corner T-junctions;
+sea height, beach width, foam and wall materials remain unchanged. Fog starts
+its continuation at 2240, and lighting samples stay within the traversal
+envelope rather than growing their count with the scenery ring.
+
+Run `.\bin\test_skybox_edges.ps1 -BuildModels` for isolated source-transform,
+snow/tower, dependency-hash, companion-cache and compiled-manifest checks.
+It writes only under `generated\skybox_edges`. The source directory supplied
+to `check_vis_budgets.ps1` is also forwarded to the compiler, so an isolated
+portal refresh does not accidentally compile the normal profile directory.
+`zn_test_skybox_geometry` runs the shared compatibility/cardinal/mixed-corner
+mesh-cut suite without moving a player or changing live state.
+
+`ZM_World:GetCellBounds()` exposes core/traversal/visual/pitch/coast/ceiling
+values; `IsCoreSpawnPosition(position)` excludes border, scenery and sky-room
+spawn candidates without trimming pursuit navigation. `GetCellSideExtent(cell,
+side)` retains coast contact at 2240 on water-facing sides. Legacy searchable
+prop behaviour stays unchanged until expanded-cell metadata is loaded.
+
+Fifteen VBSP-incompatible trees/signs in four new tagged edge assets use
+`prop_dynamic_override` instead of `prop_static`, preserving all other source
+bytes. The user approved this fixed-dynamic correction. See the
+[archived VDC documentation](https://web.archive.org/web/20241130040812/https://developer.valvesoftware.com/wiki/Prop_dynamic_override)
+and [SDK props.cpp at b8cfb12](https://github.com/ValveSoftware/source-sdk-2013/blob/b8cfb12c0e083a2ef5b2f9f9b50f3902fa034474/src/game/server/props.cpp#L1988).
+The live VDC pages were inaccessible. SDK evidence is not the exact GMod branch;
+compiled BSP retention is verified, while actual appearance/collision and
+representative performance still need client review.
+
 ### Tall Building Clearance
 
 The authored city shell has a 4608-unit inner sky ceiling and a 4672-unit outer top, fitting the current 4384-unit skyscraper. The shared sky room uses `cameraZ = 5120`; its lowest outer brush plane is 5040, separate from the playable shell. The VMF builder measures the chosen base template's maximum brush-plane Z rather than assuming an old fixed shell height, and rejects sky-room overlap.
@@ -870,6 +948,13 @@ The skybox model builder also exports optional `towers` entries: `<recipe>_t<N>`
 `skybox3d.skylineRadius` (24 cells) controls tower-only coverage independently of the detailed `neighbourRadius` (2). The room expands on the same 1024-unit block grid to contain this coverage, with a hard Source-coordinate check. Coverage is bounded, not automatically expanded to every cell in a larger production world. `maxTowerModels` (128 parts) bounds both distant model creation and draws: nearest cells win, with deterministic coordinate/path tie-breaks. Towers in the current/detailed cells are excluded from this pass. Distant models use a separate long-range fog pass before the translucent nearby horizon, so its graduated haze blends over the towers rather than cutting off geometry drawn afterward; visual occlusion and weather matching still require live acceptance. `zombiesim_skybox_status` reports candidates, budget, omissions, missing assets, placements and frame draws. Weather and lighting sampling clamp both X/Y bounds to the manifest's playable cell span, not the enlarged sky room. Run `.\bin\test_skyscraper_height.ps1 -Compile` for the room-coverage and coordinate-limit regression in addition to tower clearance; these checks do not establish live visibility.
 
 To prepare models without replacing a mounted manifest, pass `-OutputContentDirectory .\generated\skybox_preview\release_content` to `build_skybox_models.ps1`. Source material lookup still uses the installed content/mounted game assets; output models, wrappers and manifest go to the isolated directory. Validate that output with `.\bin\test_skybox_manifest.ps1 -WorldProfile preview -PlanData <matching-plan> -ContentDirectory .\generated\skybox_preview\release_content`. The check verifies exact recipe coverage, settings, nonempty model companions, tower presence and every preview viewpoint's distant-part budget. Once matching BSP compilation succeeds, copy the prepared models/materials to content and rerun the exporter with its default output to reuse the stamps, prune stale profile models and publish the manifest; never load a new camera manifest with old BSPs.
+
+For fully isolated model intermediates also pass `-BuildDirectory` (for example
+`.\generated\skybox_preview\model_build`). The builder uses the matching plan's
+`cellDirectory`, not an unrelated profile source directory. Cache hashes include
+the entire recursive VMF instance tree and footprint settings; missing nested
+sources fail explicitly, and missing/empty MDL, VVD or DX90 VTX companions
+invalidate base, snow and tower stamps.
 
 When distant tower placements exist, the horizon uses a skyline-specific alpha gradient around eye level instead of the legacy near-opaque upper rings. Opaque towers draw first, then the haze blends over their bases. Drawing towers afterward produces hard bottom cutoffs; keeping the legacy upper-ring opacity hides the skyline. Views without distant placements retain the original gradient. `skylineHorizon` in the diagnostics identifies the active blend; actual skyline appearance must still be reviewed in game.
 

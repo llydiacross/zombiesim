@@ -68,6 +68,7 @@ AddCSLuaFile( "cl_clothing_preview.lua" )
 AddCSLuaFile( "cl_quick_menu.lua" )
 AddCSLuaFile( "cl_afk.lua" )
 AddCSLuaFile( "utils/world.lua" )
+AddCSLuaFile( "utils/skybox_geometry.lua" )
 AddCSLuaFile( "utils/safezone.lua" )
 
 // These are server-only utilities; shared.lua loads code needed by both realms.
@@ -158,6 +159,8 @@ include( "sv_safezone_doors.lua" )
 include( "sv_atmosphere.lua" )
 include( "tests/sv_safezone_doors_tests.lua" )
 include( "tests/sv_atmosphere_tests.lua" )
+include( "tests/sv_world_bounds_tests.lua" )
+include("tests/sv_skybox_geometry_tests.lua")
 
 // Ensure the SQLite schema exists before any PlayerSpawn handler performs a lookup.
 local attributesReady, attributesError = ZM_CreatePlayerAttributesTable()

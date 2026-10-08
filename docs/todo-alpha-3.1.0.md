@@ -1,7 +1,35 @@
 # Alpha 3.1.0
 
-Status: **ACTIVE — authorized by user on 2026-10-05.**
-Current phase: **Phase H — optional user-selectable sky palettes; Phases F and G accepted by the user on 2026-10-05.**
+Status: **DEVELOPMENT COMPLETE — all phases accepted by the user; final Phase H and milestone acceptance on 2026-10-06.**
+Current phase: **None. Workshop publication is separately deferred, not an unfinished development phase.**
+
+## Final Acceptance
+
+- User chose one bounded final check rather than another feature pass. Fresh
+  preview launcher load passed sky renderer 8/8, catalogue/materials 78/78 and
+  browser/flight/fog/cleanup 15/15 (DATA reports `ranAt` 1791310236).
+- Human confirmed the automatic tour, replacement night, soundtrack/end fade,
+  full blackout/browser return and smooth operation, then explicitly accepted
+  Phase H and Alpha 3.1.0 development. Earlier accepted F/G checks were not
+  repeated; no maps were rebuilt during this close-out.
+- Instrumented screenshot `alpha310-h-closeout-after` captured an active
+  four-slot Coastal tour at 17.30 seconds, slot 4, 943 renders, render CPU mean
+  0.694 ms/max 4.183 ms. This is scoped operation evidence, not a matched
+  before/after or GPU benchmark, nor instrumented proof of the human's complete
+  Tropospheric tour review.
+- Human confirmation and instrumented evidence remain distinct. The subsequent
+  return capture was rejected because no connected preview admin was available;
+  user subsequently confirmed **Default restored and returned to their survivor**.
+  Final preference, inactive inspection/audio cleanup and exact gameplay-cell
+  state were not independently captured in this session.
+  Do not claim that an acknowledgement or the earlier active snapshot proves
+  those final states.
+- Preserve historical uncaptured checks as validation limits, not new phase
+  gates. Workshop rights/IDs, navmeshes, production export/skyline and clean
+  downloads/mounts remain deferred. Development acceptance does not authorize
+  production regeneration, uploading or a `released` version status.
+- The chronological notes below preserve the evidence and decisions at each
+  step; their older pending/active wording is superseded by this acceptance.
 
 ## Milestone Rules
 
@@ -238,7 +266,7 @@ Status: **ACCEPTED — user confirmed the workflow/zoo on 2026-10-05 and explici
 - Mesh generation, UVs and three-part collision are owned by `bin/sign_assets.psm1`. Reused the existing skybox builder's installed-compiler SMD axis compensation; corrected the initial collision warning before accepting the output.
 - The existing billboard detail-prop route carries model, origin, yaw and skin through tile instances. No new client rendering hook was added.
 - `zombiesim_dev_sign on|off` is an admin-preview-only bridge probe. It requires a deployed living survivor, creates one non-solid example facing the player, removes/replaces only that player's example and expires after 180 seconds; no player/world persistence is changed.
-- [Artist workflow](docs/sign_artist_workflow.md) documents source art, clean builds, opaque image constraints, placement/cardinal facing, packaging/provenance, skybox detail settings and remaining checks. The prototype replaces artwork globally on this one model; it is not yet a multi-sign or multi-skin catalogue.
+- [Artist workflow](sign_artist_workflow.md) documents source art, clean builds, opaque image constraints, placement/cardinal facing, packaging/provenance, skybox detail settings and remaining checks. The prototype replaces artwork globally on this one model; it is not yet a multi-sign or multi-skin catalogue.
 
 **Static/automated (2026-10-05):**
 - `bin/test_sign_assets.ps1`: **26/26 passed**, checking compiled package completeness, model axis/bounds, VTF dimensions and lit addon material paths, three convex collision parts without fallback, upright/non-mirrored artwork UVs, invalid size/transparency rejection and four cardinal tile-instance transformations through `CellModelBuilder.BuildDetail`.
@@ -544,7 +572,7 @@ Status: **ACCEPTED — user confirmed on 2026-10-05 that existing checks and vis
   clothing files408.13MiB remain untouched. Only this task's obsolete offline
   package baseline was cleaned after preserving its report. Compressed upload
   size and clean mounted/download/deployment acceptance remain unverified.
-  See [Workshop distribution planning](readme.md#workshop-distribution-planning).
+  See [Workshop distribution planning](../readme.md#workshop-distribution-planning).
 - **Launcher/ID follow-up:** user accepts engineering as sufficient to continue
   development; no immediate publication is required. Both launcher BSPs now
   belong to Core, allowing content diagnostics before entering city/sandbox.
@@ -613,7 +641,7 @@ No bugs have been confirmed for this milestone yet. Add verified findings here w
 
 ## Phase H — Optional User-Selectable Sky Palettes
 
-Status: **ACTIVE — expanded licensed catalogue and custom palettes implemented/user-reviewed; visual slot editor implemented. Broader palette/lifecycle/performance acceptance remains. No maps rebuilt for this work.**
+Status: **ACCEPTED — user confirmed the final sequence and accepted Phase H and Alpha 3.1.0 development on 2026-10-06. Both authored launchers were rebuilt earlier with explicit approval; no world-cell regeneration or publication is implied. See Final Acceptance for remaining validation limits.**
 
 **Additional automatic variants and Phase H continuation (2026-10-06):**
 - Added six profiles: Cloud prelude, Terrassee horizons, World's End horizons,

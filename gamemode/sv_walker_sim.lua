@@ -751,9 +751,24 @@ function WalkerSim:FindZombieSpawnPosition(ticket, relevancePosition, relevanceR
 
     local localU = math.max(0, math.min(65535, tonumber(ticket.LocalU) or 0))
     local localV = math.max(0, math.min(65535, tonumber(ticket.LocalV) or 0))
+    local bounds = ZM_World:GetCellBounds()
+    local half = bounds.coreHalfExtent
+    local coreOnly = bounds.revision == 2
+    if coreOnly then
+        local candidates = {}
+        for _, area in ipairs(areas) do
+            if area:IsValid() and ZM_World:IsCoreSpawnPosition(area:GetCenter()) then
+                table.insert(candidates, area)
+            end
+        end
+        areas = candidates
+        if #areas == 0 then
+            return nil, "no nav areas within the logical core"
+        end
+    end
     local target = Vector(
-        -1600 + localU / 65535 * 3200,
-        -1600 + localV / 65535 * 3200,
+        -half + localU / 65535 * half * 2,
+        -half + localV / 65535 * half * 2,
         0
     )
     table.sort(areas, function(left, right)

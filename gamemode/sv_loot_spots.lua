@@ -38,8 +38,9 @@ end
 // Returns loot candidates { key, rule, entity } for every map prop that matches an entity_loot rule.
 function Spots:FindCandidates()
     local candidates = {}
+    local coreOnly = ZM_World:GetCellBounds().revision == 2 and ZM_World:GetCellsForMap(game.GetMap()) ~= nil
     for _, entity in ipairs(ents.GetAll()) do
-        if IsValid(entity) then
+        if IsValid(entity) and (not coreOnly or ZM_World:IsCoreSpawnPosition(entity:GetPos())) then
             local rule = ZM_StaticData:GetEntityLootRule(entity:GetClass(), entity:GetModel())
             local key = rule and self.GetSpotKey(entity)
             if key then

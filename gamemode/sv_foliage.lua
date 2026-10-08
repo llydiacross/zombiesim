@@ -263,7 +263,7 @@ local function getWorldBounds()
     if IsValid(skyCamera) and skyCamera:GetPos().z - 128 < maximum.z then
         maximum = Vector(maximum.x, maximum.y, skyCamera:GetPos().z - 128)
     end
-    local half = Foliage.PlayableHalfExtent
+    local half = math.min(Foliage.PlayableHalfExtent, ZM_World:GetCellBounds().coreHalfExtent)
     if half and half > 0 then
         minimum = Vector(math.max(minimum.x, -half), math.max(minimum.y, -half), minimum.z)
         maximum = Vector(math.min(maximum.x, half), math.min(maximum.y, half), maximum.z)

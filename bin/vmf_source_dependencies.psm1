@@ -47,6 +47,23 @@ function Get-VmfSourceWriteTimeUtc {
     return Get-InstanceTreeWriteTimeUtc -VmfPath ([System.IO.Path]::GetFullPath($VmfPath))
 }
 
+function Get-VmfSourceHashes {
+    param([Parameter(Mandatory)][string]$VmfPath)
+
+    $hashes = [System.Collections.Generic.List[string]]::new()
+    $seen = @{}
+    function Add-DependencyHash([string]$Path) {
+        $fullPath = [System.IO.Path]::GetFullPath($Path)
+        if ($seen.ContainsKey($fullPath)) { return }
+        if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) { throw "Missing VMF source dependency: $fullPath" }
+        $seen[$fullPath] = $true
+        $hashes.Add((Get-FileHash -LiteralPath $fullPath -Algorithm SHA256).Hash)
+        foreach ($instancePath in (Get-VmfInstancePaths $fullPath | Sort-Object)) { Add-DependencyHash $instancePath }
+    }
+    Add-DependencyHash $VmfPath
+    return $hashes.ToArray()
+}
+
 function Write-TextFileIfChanged {
     param(
         [Parameter(Mandatory)][string]$Path,
@@ -78,4 +95,4 @@ function Copy-FileIfChanged {
     return $true
 }
 
-Export-ModuleMember -Function Get-VmfSourceWriteTimeUtc, Write-TextFileIfChanged, Copy-FileIfChanged
+Export-ModuleMember -Function Get-VmfSourceWriteTimeUtc, Get-VmfSourceHashes, Write-TextFileIfChanged, Copy-FileIfChanged

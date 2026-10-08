@@ -1,5 +1,22 @@
 # Z-Nation
 
+## Development status
+
+Alpha 3.1.0 development, including final Phase H, was accepted by the user on
+2026-10-06. The [archived tracker](docs/todo-alpha-3.1.0.md) records static,
+live and human acceptance separately, including remaining validation limits.
+Alpha 3.1.5 implementation was authorized on 2026-10-06. Its
+[active phased tracker](todo-alpha.3.1.5.md) records accepted Phase 0 baseline/
+inventory with explicit limits carried forward. Phase A outer edge geometry
+passes isolated structural checks; land/coast Hammer and isolated Sandbox
+geometry reviews are accepted. Phase A is accepted; Phase B is in progress.
+Phase B's isolated skyline builds and geometry/compatibility regressions pass;
+fresh expanded renderer review and matched performance remain acceptance gates.
+Outer edges remain disabled in normal settings and no expanded maps have been
+staged. Workshop publication is still
+deferred; `version.json` reports `in development`, not `released`. Production
+city rebuilds require separate approval.
+
 ## Workshop distribution planning
 
 The working `content` tree is **not a release package**. A read-only audit on
@@ -1196,6 +1213,21 @@ The .vmf files for the cells of the city, should match a map file in the content
 # Generator Settings
 
 Generation is controlled from [generator-settings.json](generator-settings.json). Start with the plain-language guide in [docs.md](docs.md); it explains every setting, shows the preview workflow, and marks settings that are safe to experiment with.
+
+### Isolated Alpha 3.1.5 outer-edge checks
+
+```powershell
+.\bin\test_outer_edges.ps1
+.\bin\test_outer_edge_bsps.ps1
+```
+
+The first command generates matching preview-only settings, plans, layout
+metadata and VMFs under `generated\outer_edges`; it does not stage maps or
+replace installed runtime data. The second checks previously compiled fixture
+BSPs, so run the focused VBSP workflow against the generated fixture lists
+first (see [the active tracker](todo-alpha.3.1.5.md#phase-a---shared-bounds-and-outer-edge-geometry)).
+`zn_test_world_bounds` runs six isolated in-engine cases without changing
+characters, loot or equipment. These checks do not establish visual acceptance.
 
 For future multi-tile prefab support, see [docs/two_by_two_tile_templates_plan.md](docs/two_by_two_tile_templates_plan.md).
 

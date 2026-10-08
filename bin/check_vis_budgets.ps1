@@ -226,6 +226,7 @@ if ($RefreshPortalData) {
     if ($portalRefreshVmfFiles.Count -gt 0) {
         Write-Output "Refreshing portal data for $($portalRefreshVmfFiles.Count) of $($requiredVmfFiles.Count) required maps."
         $compileArguments = @{
+            SourceDirectory = $CellDirectory
             BuildDirectory = $BuildDirectory
             MapFilename = @($portalRefreshVmfFiles)
             WorldProfile = $worldGenerationProfile.Name

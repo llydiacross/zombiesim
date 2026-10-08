@@ -530,6 +530,25 @@
       "roofFireMinHeight": 192,
       "groundMaterial": "CS_HAVANA/SWAMPDIRT01"
     },
+    "outerEdges": {
+      "enabled": false,
+      "wallVariationTemplates": [
+        "edges/tile_edge_wall_1a.vmf",
+        "edges/tile_edge_wall_1aa.vmf"
+      ],
+      "cornerTemplate": "edges/tile_edge_wall_corner.vmf",
+      "profileTemplates": {
+        "radioactive": {
+          "wallVariationTemplates": ["edges/tile_edge_ra_none.vmf", "edges/tile_edge_ra_wall_1a.vmf", "edges/tile_edge_ra_wall_1aa.vmf"]
+        },
+        "military": {
+          "wallVariationTemplates": ["edges/tile_edge_army_none.vmf", "edges/tile_edge_army_wall_1a.vmf", "edges/tile_edge_army_wall_1aa.vmf"]
+        },
+        "fortified": {
+          "wallVariationTemplates": ["edges/tile_edge_army_none.vmf", "edges/tile_edge_army_wall_1a.vmf", "edges/tile_edge_army_wall_1aa.vmf"]
+        }
+      }
+    },
     "border": {
       "enabled": true,
       "transitionGateRoadTemplates": [
