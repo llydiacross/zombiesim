@@ -17,6 +17,24 @@ staged. Workshop publication is still
 deferred; `version.json` reports `in development`, not `released`. Production
 city rebuilds require separate approval.
 
+## Online services (future integration)
+
+The separate API server project is in [`api/`](api/README.md), tracked as a
+Git submodule so its source and release lifecycle remain independent of the
+ZombieSim gamemode. It currently provides account authentication, Steam OpenID
+sign-in/linking, and API sessions. It is groundwork for future online features;
+it is **not yet integrated with the live gamemode**.
+
+The submodule URL configured in this checkout is
+`git@gitlab.com:gcnet-uk/games/zombiesim-api` (GitLab). This differs from the
+GitHub hosting described in the request; check `.gitmodules` before changing
+repository links or remotes.
+
+Steam OpenID confirms account ownership in a browser, not current presence on
+a Garry's Mod server. The API project documents that live presence will require
+a separate server credential and a server-authenticated report of the Steam ID
+provided by GMod. Do not treat browser sign-in as proof that a player is in-game.
+
 ## Workshop distribution planning
 
 The working `content` tree is **not a release package**. A read-only audit on

@@ -256,6 +256,18 @@ wording is superseded by the final acceptance above, not a current task list.
 - Work that runs behind the loading screen reports progress through `ZM_Loading` (`gamemode/sh_loading.lua`): `Step`, `Begin`/`Finish` (pending then `ok`/`warn`/`fail`/`info`), and `Reset`. Server calls take a player target; client calls are local. Use it for new load-time work, including future online services, instead of custom loading text.
 - `sh_music.lua` must load before `sh_static_data.lua`, which builds its registry during include. Music uses the engine `snd_musicvolume` control; Source effects retain native `volume_sfx`/master scaling. Do not multiply master/SFX volume again on Source audio calls.
 - Register network strings on the server before sending. Keep player persistence server-only through the SQL helpers and retain profile scoping.
+- The future online-services API is maintained separately in the root `api/`
+  Git submodule; see [`api/README.md`](api/README.md) for its current project
+  behavior. It is not yet integrated with live gamemode features. Before any
+  API integration, inspect that README and its repository instructions, define
+  the client/server trust boundary and request contract, and keep secrets out of
+  the client and source control. Steam OpenID proves browser account ownership,
+  not live GMod presence; the API README requires a separate server credential
+  for presence reports. Preserve the API submodule's independent history and
+  any pre-existing changes; do not modify or commit API implementation work
+  unless the task explicitly includes that repository. The submodule's current
+  remote is GitLab (`git@gitlab.com:gcnet-uk/games/zombiesim-api`); verify
+  `.gitmodules` rather than assuming a hosting provider.
 - Treat raw grid coordinates as diagnostics only. Display and manipulate logical world coordinates through `ZM_World`; for a cross-map change, verify persisted `CellX`/`CellY`, safe-zone id, and resolved map path with `zombiesim_player_status` after the destination loads.
 - Before changing a request involving a “map,” identify the intended surface: the world-map window, HUD minimap, satellite/level view, or Garry's Mod level transition. Locate its owning module and input binding; ask a focused question when the request does not distinguish them.
 - Before adding client-side GLua or Derma calls, confirm the API signature from a compatible local call site or current Garry's Mod documentation. Validate new client scripts for syntax and exercise prompt first-run, decline/reset, and reopening paths.
