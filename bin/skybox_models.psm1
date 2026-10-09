@@ -572,7 +572,8 @@ namespace ZombieSim.Skybox {
                 }
                 if (roof != null) {
                     var local = new Vec3((roof.MinX + roof.MaxX) * 0.5, (roof.MinY + roof.MaxY) * 0.5, roof.Z);
-                    detail.Fires.Add(new SkyFire { Origin = Rotate(local, placement.Angles) + placement.Origin, Kind = 2 });
+                    detail.Fires.Add(new SkyFire { Origin = Rotate(local, placement.Angles) + placement.Origin, Kind = 2,
+                        EdgeBuilding = string.Equals(Path.GetFileName(Path.GetDirectoryName(placement.File)), "edges", StringComparison.OrdinalIgnoreCase) });
                 }
             }
             return detail;
@@ -580,7 +581,7 @@ namespace ZombieSim.Skybox {
     }
 
     public sealed class SkyProp { public string Model; public Vec3 Origin; public Vec3 Angles; public int Skin; public int Kind; }
-    public sealed class SkyFire { public Vec3 Origin; public int Kind; }
+    public sealed class SkyFire { public Vec3 Origin; public int Kind; public bool EdgeBuilding; }
     public sealed class RecipeDetail {
         public readonly List<SkyProp> Props = new List<SkyProp>();
         public readonly List<SkyFire> Fires = new List<SkyFire>();

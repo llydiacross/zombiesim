@@ -301,6 +301,16 @@ Work in progress
 
 ## Camera aiming and HUD size
 
+Expanded cells also draw up to six stable fires on their actual outer-edge
+building rooftops. Anchors come only from authored edge instances, never core
+buildings, wrecks or an omitted ocean edge. Flames and smoke share the existing
+skybox presentation, converted to full world size; there is no damage, sound,
+dynamic light or gameplay entity. The existing **Skybox fires, smoke and distant
+combat** toggle controls these too, independently of neighbour-detail radius.
+`zombiesim_skybox_status` includes separate `currentEdgeFires` candidate,
+selection, frame-quad and draw-time diagnostics. Adding the anchors requires
+regenerating the matching skyline manifest, not recompiling BSPs.
+
 Skybox background activity adds orange explosion flashes, rising blast smoke, muzzle flashes and moving tracer bursts. Persistent skyscraper fires are anchored to actual vertical wall triangles, including stepped upper floors, rather than model bounds. Activity is cosmetic and silent: it causes no damage, spawns no gameplay entities, and changes no city lighting. The **Skybox fires, smoke and distant combat** toggle controls all of these effects. Limits are 24 activity sites, at most 2 simultaneous explosions and 2 gunfire bursts, and 8 additional facade fires within 8 cells. Heavy fog and map captures suppress combat activity. Preview admins can use `zombiesim_dev_skybox_activity` for a 12-second accelerated visual check; `zombiesim_skybox_status` reports sites, active effects, facade fires and tracer counts. No BSP rebuild is needed.
 
 Beyond the world grid, the skybox coast renders a rock embankment at each city edge. Below it, a noise-shaped sand beach with rocky outcrops descends into shallow turquoise water that deepens with distance. Additive ripple layers drift across the water, and foam crests roll toward the shore along depth contours. Ripple and foam textures are procedural 256² render targets generated once at startup. The geometry is built only when the sky placement changes, in chunked static meshes (about 40 ms at a shore cell), and is drawn in the fogged sky pass, so it does not touch collision, puddles, snowfall or map captures. Snow cover lightens the beach and rocks. `zombiesim_skybox_status` reports coast quad, mesh, build-time and texture readiness. For preview self-review, `zombiesim_dev_capture <label> [pitch yaw [x y z]]` saves a PNG plus skybox/clothing diagnostics under `data/zombiesim/screenshots/`. With pitch and yaw, it renders an eye-height view in that direction; optional coordinates move only the capture camera, never the survivor. At most eight requests queue for successive rendered frames, so a bridge dispatch acknowledgement is not proof the PNG has been written.
@@ -760,9 +770,100 @@ For launcher testing, the bridge also supports `zombiesim_dev_character_slots` (
 
 For a live preview atmosphere snapshot, submit `zombiesim_dev_atmosphere_status` through the bridge. The admin-only request asks the local client for its active/expected profile, fog, and render-hook diagnostic and writes the response to `garrysmod/data/zombiesim/atmosphere_status.json`. This is separate from the server bridge acknowledgement and is only available in the preview profile.
 
+For bridge-driven preview review, `zombiesim_dev_preview_teleport <logicalX> <logicalY>` sends the single connected preview admin to that logical cell through the same operator, cooldown, staged-map and transition guards as the world-map teleport. Its acknowledgement only means the transition was queued; confirm the destination with `zombiesim_player_status` after the map loads.
+
 For a client frame-cost profile, run `zombiesim_dev_profile_hooks [seconds]` (default 10, maximum 120; also reachable through the bridge). It temporarily wraps named render, Think and HUD hooks, including `PostDraw2DSkyBox` for palette drawing, records frame times and Lua allocation, restores the original hooks, prints the top entries and writes `garrysmod/data/zombiesim/hook_profile.json`. Hook timings are CPU-side call measurements, not isolated GPU cost; record camera, weather, quality and population/render counts before making comparisons.
 
 Weather follows a seasonal schedule driven by the server's clock (northern hemisphere): every 8–25 minutes the server rolls clear, rain or snow from the current month's chances. Snow is rare, most likely in December, guaranteed all of Christmas Day (25 December) and never falls in June–August; out-of-season snow is replaced at once. The schedule state is archived (`zombiesim_weather_until`, `zombiesim_weather_manual`), so level changes do not reroll it. From the server console or an admin client, `zombiesim_weather clear`, `zombiesim_weather rain` or `zombiesim_weather snow` (and the preview cheat buttons) override the weather for one spell, after which the schedule resumes; `zombiesim_weather auto` resumes it immediately, `zombiesim_weather` with no argument reports the mode and time to the next change, and `zombiesim_weather_auto 0` keeps the weather steady. Rain and snow effects are limited to outdoor city cells; sheltered interiors and dens remain dry. Puddle footsteps retain the textured ground footprint/ring and throw five short-lived upward water-splash particles, with a mounted slosh sound when available. The footprint material is rebound after rain crowns so they cannot change its appearance. In multiplayer, puddle steps replace the ordinary footstep sound; singleplayer retains the distance-based layered fallback because its client does not receive `PlayerFootstep`. Wet-ground and lying-snow footsteps still use the existing distance-based effects. Rain impacts are bounded to 240 single-quad rings and 40 crowns, rather than expanded procedural ripple meshes. Rain also forms client-local puddles at fixed map locations; off-screen puddles remain in world space and are rendered only when visible. Their irregular, feathered water meshes grow while forming and shrink/fade as they dry, with bounded cluster and per-frame render limits. Puddles that stay wet slowly spread, and some become large pools where the surrounding ground is level. The launcher and in-game Options panels include **Rain density** (0.5-2.0, default 1.5), **Puddle opacity** (0.05-0.45, default 0.15), and **Puddle amount** (0.5-3.0, default 1.0). All three are saved locally. Lower puddle opacity shows more ground through the water, and higher puddle amounts form more puddles at some extra frame cost. Snow cools the colour grade and fog, adds breath, a frost edge, and wind, and gradually lays a snow blanket over exposed outdoor ground (built client-side per map, no recompile). The cover settles in drifting patches over about three minutes of snowfall before joining up and thickening. The server owns the lying-snow amount (`zombiesim_snow_cover`, archived), so it carries over level changes. When snow is lying, a newly loaded map keeps the loading screen up until the cover is built (normally 1–2 s, capped at 12 s). Walking through the snow carves a trail, which fresh snowfall fills back in. The cover melts when the weather clears or turns to rain. Weather does not change movement. The options menu's “Subtle film grain” toggle is off by default.
+
+Client atmosphere code is split under [`gamemode/atmosphere/`](gamemode/atmosphere/).
+[`cl_atmosphere.lua`](gamemode/cl_atmosphere.lua) remains the `ZM_Atmosphere`
+entry point. `cl_core.lua` owns profile/weather messages, pending world-data
+application and coordinated cleanup; it initializes every module synchronously
+before registering any engine callbacks.
+
+| Module | Owner |
+| --- | --- |
+| `cl_environment.lua` | Shared bounds/site sampling, shelter checks and the single snow/puddle frame deadline |
+| `cl_weather.lua` | Precipitation, breath, rain/wind audio, boundary mist and draining emitters |
+| `cl_puddles.lua` | Puddle growth/drying, pooled wet meshes and rain impacts |
+| `cl_snow.lua` | Settled cover, chunk meshes, trails, preload and snow culling |
+| `cl_footsteps.lua` | Distance/prediction rules, approved sounds and splash rendering |
+| `cl_screen_effects.lua` | Colour/radiation composition, grain and frost borders |
+| `cl_fog.lua` | Per-frame fog cache, world/sky fog and launcher preview fog |
+| `cl_diagnostics.lua` | Existing status snapshot and console reporting |
+
+Hook identifiers, render phases, public state tables and diagnostic fields are
+retained. Frost still draws in the original screenspace composition, not a new
+HUD pass. Sampling uses one shared deadline, not one budget per module. Module
+definitions do not assume separate `Think` hooks run in registration order.
+
+Run `zombiesim_dev_test_atmosphere_client` from a preview admin console or the
+development bridge. It runs isolated `ZM_TestHarness` fixtures plus read-only
+live ownership/material checks and writes `data/zombiesim/atmosphere_client_tests.json`.
+A forwarded bridge acknowledgement is not the result; verify that file is fresh.
+The fixtures do not change live weather, preferences, player data or render
+resources. Their module factories are preloaded from `cl_init.lua`; fixture
+execution never resolves relative engine include paths or invokes live modules.
+Offline, the same isolated cases use the shared runner below:
+
+```powershell
+python .\tests\atmosphere\test_client_atmosphere.py
+.\bin\test_glua_syntax.ps1
+```
+
+The Python runner also accepts `--baseline <retained-pre-refactor-script>` for
+old/new diagnostic comparisons under forward and reverse update orders.
+Mocked checks are not visual or GPU performance acceptance; inspect a fresh
+client load for the live review.
+
+### Shared offline Lua fixture harness
+
+[`tests/glua/harness.py`](tests/glua/harness.py) provides LuaJIT loading, exact
+source-file allowlisting, `ZM_TestHarness` result reporting and field-level
+baseline comparisons. Atmosphere is its first consumer; this is not a general
+GMod emulator or a security sandbox. Use Python 3.10+ and the optional pinned
+`lupa` dependency in a development environment, not a game dependency:
+
+```powershell
+python -m pip install -r .\tests\glua\requirements.txt
+python -m unittest discover -s .\tests -p test_harness.py
+python .\tests\atmosphere\test_client_atmosphere.py
+```
+
+For another subsystem:
+
+1. Keep its offline entry point under `tests/<feature>/`, reuse
+   `glua.harness.FixtureRunner` via the `tests` import path, and pass the
+   `gamemode` source root plus an exact allowlist of module, suite, fixture and
+   `utils/test_harness.lua` paths. Lua include names use `/`, independently of
+   Windows filesystem command paths.
+2. Add feature-specific engine fixtures under `gamemode/tests/fixtures/` only
+   when they also run in-game; keep offline-only fixtures under `tests/`.
+   Reuse `ZM_TestHarness` cases under `gamemode/tests/` rather than maintaining
+   separate offline/live assertion bodies. `runner.register(suite, fixture)`
+   expects a suite factory accepting `(createEngine, loadFactory)`.
+3. Execute real production code against explicit deterministic inputs.
+   Model only the APIs the feature needs; document simplifications. Do not
+   inherit live `_G`, invent a catch-all no-op, or silently supply success for
+   an unsupported API. Optional dependencies and failure paths need deliberate
+   fixture states and assertions. The atmosphere fixture demonstrates explicit
+   global/particle-method rejection; its flat-ground traces, material availability,
+   particle setters and audio mocks do not reproduce real engine behavior.
+4. Cover initialization/messages before dependencies are ready, cleanup,
+   invalid input and relevant lifecycle/order cases. If comparing a refactor,
+   retain the original source outside the distributable tree and use identical
+   inputs; comparisons cover recorded behavior, not complete engine equivalence.
+5. Run the focused offline suite and GLua syntax check. Keep actual-client
+   integration, persistence, rendering and human visual acceptance separate.
+   Do not migrate every service or expand mocks speculatively.
+
+The source adapter translates `//` line comments while preserving quoted/long
+strings and Lua comments. It does **not** translate `continue`, `!=`, `&&` or
+other GLua-only syntax. Unsupported syntax must fail; use the real GLua parser
+and in-game suites rather than broadening this into a guessed engine/compiler.
+Harness regressions cover source translation, load boundaries, runtime isolation,
+error reporting and rejection of failed/empty/inconsistent suite results.
 
 Player-step splash particles use the mounted `effects/splash2` material (`UnlitGeneric`), while ground footprints retain `effects/select_ring`. The former `particle/water/watersplash_001a` asset uses `SpriteCard` and produced a bright streak in this emitter path. Client atmosphere diagnostics include both splash-material shader/availability values and the rain-impact quad count and maximum index budget.
 
@@ -916,6 +1017,8 @@ zn_test_static_data zn_test_weapon_catalog zn_test_inventory zn_test_loot zn_tes
 zn_test_bosses zn_test_crafting zn_test_implants zn_test_professions zn_test_mastercraft zn_test_bank zn_test_trading zn_test_foliage
 zn_test_atmosphere zn_test_gore zn_test_afk zn_test_damage_feedback
 ```
+
+Standalone GLua suites live in `gamemode/tests/`, including client suites. Keep realm prefixes and register client suites through both `AddCSLuaFile` and client `include` after their dependencies. Root `tests/` holds static-data fixtures; `bin/` holds offline PowerShell checks.
 
 New suites use `ZM_TestHarness` (`gamemode/utils/test_harness.lua`): `NewSuite()`, `suite:Add(name, function(check) ... end)`, `suite:Run({ before, after })`, and `ZM_TestHarness.Register({ command, label, file, report, help, run })`. Shared server helpers for command runners (first human, profile, whole-number checks, replies, admin gates, command registration) are in `ZM_Util` (`gamemode/utils/server.lua`).
 

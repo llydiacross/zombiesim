@@ -500,12 +500,15 @@ if ($detailEnabled) {
             if ($prop.Kind -eq 2) { $totalGeneratedCars++ }
         }
         $fires = [System.Collections.Generic.List[object]]::new()
+        $edgeFires = [System.Collections.Generic.List[object]]::new()
         foreach ($fire in $detail.Fires) {
-            $fires.Add(@((Format-SkyNumber $fire.Origin.X), (Format-SkyNumber $fire.Origin.Y), (Format-SkyNumber $fire.Origin.Z), $fire.Kind))
+            $row = @((Format-SkyNumber $fire.Origin.X), (Format-SkyNumber $fire.Origin.Y), (Format-SkyNumber $fire.Origin.Z), $fire.Kind)
+            $fires.Add($row)
+            if ($fire.EdgeBuilding) { $edgeFires.Add($row) }
         }
         $totalDetailProps += $props.Count
         $totalFireCandidates += $fires.Count
-        $detailRecipes[[System.IO.Path]::GetFileNameWithoutExtension($recipePath).ToLowerInvariant()] = [ordered]@{ props = $props.ToArray(); fires = $fires.ToArray() }
+        $detailRecipes[[System.IO.Path]::GetFileNameWithoutExtension($recipePath).ToLowerInvariant()] = [ordered]@{ props = $props.ToArray(); fires = $fires.ToArray(); edgeFires = $edgeFires.ToArray() }
     }
 }
 $manifest = [ordered]@{

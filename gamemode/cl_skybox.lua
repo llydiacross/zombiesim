@@ -324,6 +324,8 @@ function Skybox:RemoveModels()
     self.FacadeAnchors = {}
     self.ActivitySites = {}
     self.ActivityVisible = {}
+    self.EdgeFires = {}
+    self.EdgeFireKey = nil
 end
 
 local function createSkyModel(modelPath, origin)
@@ -1940,14 +1942,14 @@ function Skybox:DrawActivity(manifest, skyEye, skyFog, fogColor)
 end
 
 // Burning wrecks and rooftops: rising, spreading smoke plumes drifting with the clouds, flickering flames at the base.
-function Skybox:DrawFires(skyEye, facade)
-    local stats = self.Stats
+function Skybox:DrawFires(skyEye, facade, currentEdges)
+    local stats = currentEdges and self.EdgeFireStats or self.Stats
     if not facade then
         stats.frameFires = 0
         stats.smokeQuads = 0
         stats.fireQuads = 0
     end
-    local fires = facade and self.FacadeFires or self.Fires
+    local fires = currentEdges and self.EdgeFires or (facade and self.FacadeFires or self.Fires)
     local right, up = self.ViewRight, self.ViewUp
     if getConVarNumber("zombiesim_sky_fires", 1) <= 0 or not fires or #fires == 0 or not right or not up then return end
     local now = CurTime()
@@ -2017,6 +2019,52 @@ function Skybox:DrawFires(skyEye, facade)
         emitBillboard(entry.x, entry.y, entry.z, entry.size, entry.cosine, entry.sine, right, up, shade, shade * 0.97, shade * 0.94, entry.alpha)
     end
     mesh.End()
+end
+
+function Skybox:DrawCurrentEdgeFires()
+    self.EdgeFireStats = self.EdgeFireStats or {}
+    local stats = self.EdgeFireStats
+    stats.frameFires, stats.smokeQuads, stats.fireQuads = 0, 0, 0
+    stats.enabled = getConVarNumber("zombiesim_sky_fires", 1) > 0
+    if getConVarNumber("zombiesim_sky_fires", 1) <= 0 then return end
+    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    local manifest = self:GetManifest()
+    local cell, _, gridX, gridY = resolveCurrentCell()
+    if not manifest or manifest.schemaVersion ~= 2 or not cell then
+        self.EdgeFires, self.EdgeFireKey = {}, nil
+        stats.candidates, stats.selected = 0, 0
+        stats.error = nil
+        return
+    end
+    local key = manifest.templatePlanSha256 .. ":" .. gridX .. ":" .. gridY
+    if key ~= self.EdgeFireKey then
+        self.EdgeFireKey = key
+        self.EdgeFires = {}
+        local detail = manifest.detail and manifest.detail.recipes and manifest.detail.recipes[mapBasename(cell.map)]
+        if not detail or type(detail.edgeFires) ~= "table" then
+            stats.candidates, stats.selected = 0, 0
+            stats.error = "current-edge fire anchors missing; rebuild the skyline manifest"
+            ErrorNoHalt("[ZombieSim] " .. stats.error .. "\n")
+            return
+        end
+        stats.error = nil
+        stats.candidates = #detail.edgeFires
+        local sourceStyle = fireStyles[2]
+        local style = { cycle = sourceStyle.cycle }
+        for _, field in ipairs({"lift", "rise", "drift", "size", "grow", "flame"}) do
+            style[field] = sourceStyle[field] * manifest.scale
+        end
+        for index, row in ipairs(ZM_SkyboxGeometry.SelectEdgeFireAnchors(detail.edgeFires, gridX, gridY)) do
+            self.EdgeFires[#self.EdgeFires + 1] = {
+                position = Vector(row[1], row[2], row[3] + style.lift),
+                style = style, phase = fireHash(gridX, gridY, index, 19)
+            }
+        end
+        stats.selected = #self.EdgeFires
+    end
+    local started = SysTime()
+    self:DrawFires(self.ViewOrigin, false, true)
+    stats.drawMilliseconds = (SysTime() - started) * 1000
 end
 
 function Skybox:Draw()
@@ -2165,6 +2213,7 @@ function Skybox:GetDiagnosticSnapshot()
     local manifest = self.Manifest
     return {
         state = stats.state,
+        currentEdgeFires = self.EdgeFireStats,
         profile = self.ManifestProfile,
         manifestError = self.ManifestError,
         recipes = manifest and manifest.recipeCount,
@@ -2302,12 +2351,18 @@ hook.Add("ShutDown", "ZM.Skybox.Cleanup", function()
     Skybox:DestroyEdgeTerrain()
 end)
 
+hook.Add("PostDrawTranslucentRenderables", "ZM.Skybox.CurrentEdgeFires", function(drawingDepth, drawingSkybox)
+    if drawingDepth or drawingSkybox then return end
+    Skybox:DrawCurrentEdgeFires()
+end)
+
 concommand.Add("zombiesim_skybox_status", function()
     local snapshot = Skybox:GetDiagnosticSnapshot()
     local keys = table.GetKeys(snapshot)
     table.sort(keys)
     for _, key in ipairs(keys) do
-        print(string.format("[ZombieSim] Skybox %s = %s", key, tostring(snapshot[key])))
+        local value = key == "currentEdgeFires" and util.TableToJSON(snapshot[key]) or tostring(snapshot[key])
+        print(string.format("[ZombieSim] Skybox %s = %s", key, value))
     end
 end)
 

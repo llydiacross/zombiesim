@@ -59,6 +59,18 @@ foreach ($cell in $plan.cells) {
     if ($cell.x -eq 0) {
         Assert (@($layout.outerPlacements | Where-Object { $_.tileX -eq -2 -and $_.targetname -notlike 'zm_outer_corridor_*' }).Count -eq 0) 'West ocean omits the outer scenery and both adjacent outer corners.'
     }
+    $shell = [ZombieSim.Skybox.KeyValuesParser]::Parse((Get-Content -Raw -LiteralPath $path))
+    foreach ($solid in $shell.Child('world').Children | Where-Object Name -eq 'solid') {
+        $material = ($solid.Children | Where-Object Name -eq 'side' | Select-Object -First 1).Get('material').ToUpperInvariant()
+        if ($material -notin @('HALFLIFE/BLACK', 'TOOLS/TOOLSSKYBOX')) { continue }
+        $xCoordinates = @($solid.Children | Where-Object Name -eq 'side' | ForEach-Object { $_.Child('vertices_plus').GetAll('v') } |
+            ForEach-Object { [double]($_ -split '\s+')[0] } | Sort-Object -Unique)
+        $westCoordinates = if ($cell.x -eq 0) { @(-2240, -2304) } else { @(-3072, -3136) }
+        Assert (@($xCoordinates | Where-Object { $_ -lt 0 -and $_ -notin $westCoordinates }).Count -eq 0) 'Actual recipe floor and sky seal match the west ocean attachment or expanded inland clearance.'
+        if ($material -eq 'HALFLIFE/BLACK') {
+            Assert (($xCoordinates -join ',') -eq $(if ($cell.x -eq 0) { '-2240,3072' } else { '-3072,3072' })) 'No black floor extends into the omitted west skybox band.'
+        }
+    }
     $instances = [ZombieSim.Skybox.CellModelBuilder]::ReadInstances($path)
     foreach ($placement in $layout.outerPlacements) {
         $expectedPath = [IO.Path]::GetFullPath((Join-Path $plan.chunkTemplateDirectory $placement.template))
@@ -70,6 +82,17 @@ foreach ($cell in $plan.cells) {
         Assert ($found.Count -eq 1) "Edge $($placement.targetname) appears once at $expectedX,$expectedY with yaw $($placement.rotationYaw)."
     }
     $parts = $builder.BuildParts($path, 1.0 / 16, $materials, 30000, 60)
+    $detail = $builder.BuildDetail($path, 'trees', 'props_vehicles/', 'CONCRETE/CONCRETEFLOOR037A', [string[]]@(), 320, 0, 192)
+    $edgeFires = @($detail.Fires | Where-Object EdgeBuilding)
+    Assert ($edgeFires.Count -gt 6 -and $edgeFires.Count -le @($layout.outerPlacements).Count) 'Actual edge sources provide enough distinct rooftop anchors for six current-cell fires.'
+    Assert (@($edgeFires | Where-Object Kind -ne 2).Count -eq 0) 'Nearby edge fires exclude wrecks.'
+    Assert (@($detail.Fires | Where-Object { -not $_.EdgeBuilding -and $_.Kind -eq 2 }).Count -gt 0) 'Core and old-border rooftop candidates remain separate from physical edge fires.'
+    foreach ($fire in $edgeFires) {
+        Assert ([math]::Max([math]::Abs($fire.Origin.X), [math]::Abs($fire.Origin.Y)) -gt 2240) 'Generated edge rooftop coordinates are already transformed into physical world space.'
+        if ($cell.x -eq 0) {
+            Assert ($fire.Origin.X -ge -2240) 'Omitted west-ocean edge has no nearby fire anchors.'
+        }
+    }
     $snow = $builder.BuildSnowParts($path, 1.0 / 16, $materials, 30000, 'snow', 0.7, 8, 256)
     $towers = $builder.BuildTowerParts($path, 1.0 / 16, $materials, 30000, 60)
     Assert ($parts.Count -gt 0 -and $snow.Count -gt 0) 'Expanded source produces base and snow geometry.'

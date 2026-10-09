@@ -881,9 +881,20 @@ Safe-zone suppression takes precedence.
 Authored north-facing straights use inward N180/E90/S0/W270. The separately
 inspected NW-opening corner uses NW180/NE90/SE0/SW270. Do not rotate or trim
 the source VMFs. The generator widens only the recognised source base shell:
-sky seals at +/-3072 contain the approved brush overhangs; perimeter clips begin
-at +/-2240 and stop access to scenery. The original shell ceiling is retained.
-Gate positions and transition-road clip/barrier migration remain Phase C work.
+land-facing sky seals at +/-3072 contain the approved brush overhangs; perimeter
+clips begin at +/-2240 and stop access to scenery. On skybox-ocean sides, the
+sky seal and black sealing floor retain the original 2240 boundary instead of
+expanding into the rendered beach/ocean. The original shell ceiling is retained.
+Phase C source generation places expanded road gates32 units inside this border
+boundary (+/-2208), with corresponding inward arrival landmarks. Legacy ground
+gate coordinates are retained. `bin/transition_gates.psm1` measures the continuous
+central road deck from authored face windings: bridge196 versus ordinary road36
+produces a160-unit lift for the trigger, barricades and arrival. Unsupported
+source geometry fails explicitly. Expanded border gate slots use ordinary road
+continuations instead of the old blocking transition-road variants; elevated
+bridge corridors retain their bridge source. This is isolated source/structural
+validation, not permission to stage a partial Phase C runtime closure. Ground
+arrows and integrated travel acceptance remain Phase C work.
 
 Expanded recipe names end in `-edge2.vmf`, preventing reuse of old map-revision
 BSPs. West-ocean recipes additionally use `-oceanw-edge2.vmf`, so an otherwise
@@ -904,6 +915,9 @@ pieces and west entrance suppression. Its new western edge layer is omitted,
 not its old border. The renderer's west land rectangle ends at `x = -2240`
 world units relative to the cell centre, not `-2880`. The additional 640-unit
 band joins that border to the adjacent skybox ocean; no exposed gap is intended.
+The physical west sky wall and floor must also stop at `x = -2240`: renderer
+coordinates alone cannot conceal an expanded black floor. Inland sides retain
+their 3072 shell clearance, and original border/core instances remain unchanged.
 
 On omitted sides the client retains the original procedural beach beyond 2240
 (explicitly approved 2026-10-06), with water filling the remaining space.

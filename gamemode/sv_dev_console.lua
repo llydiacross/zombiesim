@@ -135,6 +135,27 @@ DevConsole.DirectCommands.zombiesim_dev_profile_client = function(argumentString
     return true
 end
 
+// Bridge-only: travels the single preview admin to a logical cell through the world-map teleport guards.
+DevConsole.DirectCommands.zombiesim_dev_preview_teleport = function(argumentString)
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() then
+        return false, "preview teleport requires a connected admin"
+    end
+    if ZM_World.ActiveProfile ~= "preview" then
+        return false, "preview teleport is restricted to the preview profile"
+    end
+    local worldX, worldY = string.match(argumentString or "", "^(%-?%d+)%s+(%-?%d+)$")
+    if not worldX then
+        return false, "usage: zombiesim_dev_preview_teleport <logicalX> <logicalY>"
+    end
+    local gridX, gridY = ZM_World:GetGridCoordinates(tonumber(worldX), tonumber(worldY))
+    local cell = gridX and ZM_World:GetCell(gridX, gridY) or nil
+    if not cell then
+        return false, "logical cell is outside the preview world"
+    end
+    return ZM_Preview:RequestCellTeleport(target, cell.id)
+end
+
 DevConsole.DirectCommands.zombiesim_dev_test_clothing_pool = function()
     local target = ZM_Util.FirstHuman()
     if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
@@ -142,6 +163,15 @@ DevConsole.DirectCommands.zombiesim_dev_test_clothing_pool = function()
     end
 
     target:ConCommand("zombiesim_dev_test_clothing_pool")
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_test_atmosphere_client = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        return false, "Client atmosphere tests require a connected preview admin"
+    end
+    target:ConCommand("zombiesim_dev_test_atmosphere_client")
     return true
 end
 

@@ -39,6 +39,7 @@ Import-Module (Join-Path $PSScriptRoot 'carpark_endcaps.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'vmf_source_dependencies.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'cell_bounds.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'outer_edges.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'transition_gates.psm1') -Force
 
 # Writes the shared 3D skybox room (sealed sky shell, ground plane, sky_camera) above the playable cell volume and
 # returns its repository-relative path. It holds no props: cl_skybox.lua draws each cell's neighbour models at runtime.
@@ -754,7 +755,7 @@ function Get-BorderPlacements {
             $transitionGateRoadTemplate = $null
             if ($usesTransitionGateRoad) {
                 $sideIndex = @{ N = 0; E = 1; S = 2; W = 3 }[$side]
-                $transitionGateRoadTemplate = $transitionGateRoadTemplates[($placementSeed + $sideIndex) % $transitionGateRoadTemplates.Count]
+                $transitionGateRoadTemplate = if ($outerEdgesEnabled) { $rampRoadTemplate } else { $transitionGateRoadTemplates[($placementSeed + $sideIndex) % $transitionGateRoadTemplates.Count] }
             }
             $carparkEndcap = $carparkEndcapsByBorderSlot["$tileX,$tileY"]
             $isBridgeSide = $usesRoad -and ($side -in $bridgeSides)
@@ -791,24 +792,29 @@ function Get-TransitionGatePlacements {
     } else {
         @((Get-RecipeEdgeConnections $Recipe) + @($Recipe.rampExits))
     }
-    $gateCenters = @{
-        N = @{ x = 0; y = 1568; yaw = 90 }
-        E = @{ x = 1568; y = 0; yaw = 0 }
-        S = @{ x = 0; y = -1568; yaw = 270 }
-        W = @{ x = -1568; y = 0; yaw = 180 }
-    }
+    $bounds = Get-ZMCellBounds $plan.cellTileGridSize $TileSize $outerEdgesEnabled
+    $transportFeature = [string]$Recipe.transportFeature
+    $bridgeSides = if ($transportFeature -eq 'bridge-vertical') { @('N', 'S') } elseif ($transportFeature -eq 'bridge-horizontal') { @('E', 'W') } elseif ($transportFeature -like 'bridge-ramp-*') { @($transportFeature.Substring('bridge-ramp-'.Length, 1).ToUpperInvariant()) } else { @() }
+    $elevationOffset = if (@($bridgeSides).Count -gt 0) {
+        (Get-ZMTransitionDeckHeight (Join-Path $TileDirectory ([string]$transportTemplates.bridgeRoad)) $TileSize) -
+            (Get-ZMTransitionDeckHeight (Join-Path $TileDirectory ([string]$topologyTemplates['road-straight'])) $TileSize)
+    } else { 0 }
 
     return @($directions |
         Where-Object { $_ -in @('N', 'E', 'S', 'W') } |
         Sort-Object -Unique |
         ForEach-Object {
-            $center = $gateCenters[$_]
+            $center = Get-ZMTransitionGateCoordinates $bounds $_ $(if ($_ -in $bridgeSides) { $elevationOffset } else { 0 })
             [ordered]@{
                 direction = $_
                 directionName = @{ N = 'north'; E = 'east'; S = 'south'; W = 'west' }[$_]
                 x = [int]$center.x
                 y = [int]$center.y
                 yaw = [int]$center.yaw
+                zOffset = [double]$center.zOffset
+                arrivalX = [double]$center.arrivalX
+                arrivalY = [double]$center.arrivalY
+                arrivalZ = [double]$center.arrivalZ
             }
         })
 }
@@ -882,8 +888,9 @@ function New-CellVmf {
 
     $baseVmf = Get-Content -Raw $BaseTemplatePath
     if ($outerEdgesEnabled) {
-        $baseVmf = Expand-ZMOuterEdgeShell $baseVmf (Get-ZMCellBounds $TileGridSize $TileWidth $true)
+        $baseVmf = Expand-ZMOuterEdgeShell $baseVmf (Get-ZMCellBounds $TileGridSize $TileWidth $true) (Get-SkyboxOceanPlan $Recipe)
     }
+    $baseVmf = Set-ZMTransitionArrivalLandmarks $baseVmf @(Get-TransitionGatePlacements $Recipe)
     $baseVmf = Remove-TemplateCubemaps $baseVmf
     $baseVmf = Set-VmfLightingProfile $baseVmf (Get-RecipeLightingProfile $Recipe)
     $baseVmf = Set-CellPlayerStart $baseVmf $Recipe $TileGridSize $TileWidth
@@ -982,8 +989,8 @@ function New-CellVmf {
         $maxX = $gate.x + $halfWidth
         $minY = $gate.y - $halfDepth
         $maxY = $gate.y + $halfDepth
-        $minZ = 0
-        $maxZ = 112
+        $minZ = $gate.zOffset
+        $maxZ = 112 + $gate.zOffset
         $solidId = $entityId + 1
         $sideId = $solidId + 1
         $planes = @(
@@ -999,7 +1006,7 @@ function New-CellVmf {
             '{',
             ('    "id" "{0}"' -f $entityId),
             '    "classname" "trigger_multiple"',
-            ('    "origin" "{0} {1} 56"' -f $gate.x, $gate.y),
+            ('    "origin" "{0} {1} {2}"' -f $gate.x, $gate.y, (56 + $gate.zOffset)),
             ('    "angles" "0 {0} 0"' -f $gate.yaw),
             ('    "targetname" "zm_transition_gate_{0}"' -f $gate.direction),
             '    "zm_transition_gate" "1"',
@@ -1055,7 +1062,7 @@ function New-CellVmf {
                 ('    "model" "{0}"' -f $prop.model),
                 '    "skin" "0"',
                 '    "solid" "6"',
-                ('    "origin" "{0} {1} {2}"' -f $placement.x, $placement.y, $prop.z),
+                ('    "origin" "{0} {1} {2}"' -f $placement.x, $placement.y, ($prop.z + $gate.zOffset)),
                 '}'
             ))
             $entityId++
@@ -1161,14 +1168,7 @@ foreach ($recipe in $recipes) {
     $borderPlacements = Get-BorderPlacements $recipe $plan.cellTileGridSize
     $outerPlacements = @()
     if ($outerEdgesEnabled) {
-        $roadTemplates = @{}
-        $routeSources = @([string]$topologyTemplates['road-straight'], [string]$topologyTemplates['motorway-straight'], [string]$transportTemplates.bridgeRoad)
-        foreach ($placement in $borderPlacements) {
-            if ($placement.targetname -like 'zm_transition_road_*' -or $placement.template -in $routeSources) {
-                $side = if ($placement.tileY -eq -1) { 'N' } elseif ($placement.tileY -eq $plan.cellTileGridSize) { 'S' } elseif ($placement.tileX -eq -1) { 'W' } else { 'E' }
-                $roadTemplates[$side] = if ($placement.targetname -like 'zm_transition_road_*') { [string]$topologyTemplates['road-straight'] } else { [string]$placement.template }
-            }
-        }
+        $roadTemplates = Get-ZMOuterEdgeRoadTemplates $borderPlacements $plan.cellTileGridSize ([string]$topologyTemplates['road-straight']) ([string]$topologyTemplates['motorway-straight']) ([string]$transportTemplates.bridgeRoad)
         $outerPlacements = @(Get-ZMOuterEdgePlacements $recipe $plan.cellTileGridSize $outerEdgeSettings $borderPlacements (Get-SkyboxOceanPlan $recipe) $roadTemplates)
         foreach ($placement in $outerPlacements) {
             if (-not (Test-Path -LiteralPath (Join-Path $TileDirectory $placement.template) -PathType Leaf)) {

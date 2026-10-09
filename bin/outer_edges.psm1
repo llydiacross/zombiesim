@@ -1,6 +1,28 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function Get-ZMOuterEdgeRoadTemplates {
+    param(
+        [object[]]$BorderPlacements,
+        [int]$TileGridSize,
+        [string]$RoadStraightTemplate,
+        [string]$MotorwayStraightTemplate,
+        [string]$BridgeRoadTemplate
+    )
+
+    $roadTemplates = @{}
+    $routeSources = @($RoadStraightTemplate, $MotorwayStraightTemplate, $BridgeRoadTemplate)
+    foreach ($placement in $BorderPlacements) {
+        $isTransitionRoad = [string]$placement.targetname -like 'zm_transition_road_*'
+        if (-not ($isTransitionRoad -or [string]$placement.template -in $routeSources)) { continue }
+        $side = if ($placement.tileY -eq -1) { 'N' } elseif ($placement.tileY -eq $TileGridSize) { 'S' } elseif ($placement.tileX -eq -1) { 'W' } else { 'E' }
+        # A bridge deck must continue at deck height even when its slot also carries a ramp/transition name;
+        # only gate-road variants are flattened to the plain straight road.
+        $roadTemplates[$side] = if ([string]$placement.template -eq $BridgeRoadTemplate) { $BridgeRoadTemplate } elseif ($isTransitionRoad) { $RoadStraightTemplate } else { [string]$placement.template }
+    }
+    return $roadTemplates
+}
+
 function Get-ZMOuterEdgePlacements {
     param(
         [object]$Recipe,
@@ -68,9 +90,12 @@ function Get-ZMOuterEdgePlacements {
 }
 
 function Expand-ZMOuterEdgeShell {
-    param([string]$Vmf, [System.Collections.IDictionary]$Bounds)
+    param([string]$Vmf, [System.Collections.IDictionary]$Bounds, [hashtable]$OceanSides = @{})
 
     Import-Module (Join-Path $PSScriptRoot 'skybox_models.psm1') -Force
+    foreach ($side in $OceanSides.Keys) {
+        if ($side -notin @('N', 'E', 'S', 'W')) { throw "Invalid shell ocean side: $side" }
+    }
     $root = [ZombieSim.Skybox.KeyValuesParser]::Parse($Vmf)
     $world = $root.Child('world')
     if ($null -eq $world -or $Bounds.tileSize -ne 640 -or $Bounds.coreHalfExtent -ne 1600) {
@@ -81,25 +106,28 @@ function Expand-ZMOuterEdgeShell {
     foreach ($solid in $world.Children | Where-Object Name -eq 'solid') {
         $materials = @($solid.Children | Where-Object Name -eq 'side' | ForEach-Object { $_.Get('material').ToUpperInvariant() } | Sort-Object -Unique)
         $mapping = @{}
+        $preservedSides = @{}
         if ($materials.Count -eq 1 -and $materials[0] -eq 'TOOLS/TOOLSSKYBOX') {
             $mapping = @{ '2240' = 3072; '2304' = 3136 }
+            $preservedSides = $OceanSides
             $skyCount++
         } elseif ($materials.Count -eq 1 -and $materials[0] -eq 'TOOLS/TOOLSCLIP') {
             $mapping = @{ '1984' = 2240; '2048' = 2304 }
             $clipCount++
         } elseif ($materials.Count -eq 1 -and $materials[0] -eq 'HALFLIFE/BLACK') {
             $mapping = @{ '2240' = 3072; '2304' = 3136 }
+            $preservedSides = $OceanSides
         } else {
             throw "Unexpected base shell solid $($solid.Get('id')); inspect its geometry before expanding it."
         }
-        Set-ZMShellCoordinates $solid $mapping
+        Set-ZMShellCoordinates $solid $mapping $preservedSides
     }
     if ($skyCount -ne 5 -or $clipCount -ne 4) { throw 'Outer-edge base must contain five sky seals and four perimeter clips.' }
     return Convert-ZMVmfNodeToText $root ''
 }
 
 function Set-ZMShellCoordinates {
-    param([object]$Node, [hashtable]$Mapping)
+    param([object]$Node, [hashtable]$Mapping, [hashtable]$PreservedSides)
 
     for ($i = 0; $i -lt $Node.Keys.Count; $i++) {
         $entry = $Node.Keys[$i]
@@ -109,6 +137,8 @@ function Set-ZMShellCoordinates {
             $parts = $match.Value -split '\s+'
             for ($axis = 0; $axis -lt 2; $axis++) {
                 $number = [double]::Parse($parts[$axis], [Globalization.CultureInfo]::InvariantCulture)
+                $side = if ($axis -eq 0) { if ($number -lt 0) { 'W' } else { 'E' } } else { if ($number -lt 0) { 'S' } else { 'N' } }
+                if ($PreservedSides.ContainsKey($side)) { continue }
                 $key = [Math]::Abs($number).ToString([Globalization.CultureInfo]::InvariantCulture)
                 if ($Mapping.ContainsKey($key)) { $parts[$axis] = ([Math]::Sign($number) * $Mapping[$key]).ToString([Globalization.CultureInfo]::InvariantCulture) }
             }
@@ -116,7 +146,7 @@ function Set-ZMShellCoordinates {
         })
         $Node.Keys[$i] = [System.Collections.Generic.KeyValuePair[string,string]]::new($entry.Key, $value)
     }
-    foreach ($child in $Node.Children) { Set-ZMShellCoordinates $child $Mapping }
+    foreach ($child in $Node.Children) { Set-ZMShellCoordinates $child $Mapping $PreservedSides }
 }
 
 function Convert-ZMVmfNodeToText {
@@ -134,4 +164,4 @@ function Convert-ZMVmfNodeToText {
     return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
 }
 
-Export-ModuleMember -Function Get-ZMOuterEdgePlacements, Expand-ZMOuterEdgeShell
+Export-ModuleMember -Function Get-ZMOuterEdgeRoadTemplates, Get-ZMOuterEdgePlacements, Expand-ZMOuterEdgeShell

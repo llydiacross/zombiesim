@@ -51,6 +51,17 @@ if ($expanded) {
         $recipePath = Join-Path $plan.cellDirectory "$name.vmf"
         $layout = Get-Content -Raw -LiteralPath ([IO.Path]::ChangeExtension($recipePath, '.layout.json')) | ConvertFrom-Json
         $footprint = $manifest.geometry.$name
+        $detail = $manifest.detail.recipes.$name
+        if (-not $detail.PSObject.Properties['edgeFires']) { throw "Missing current-edge fire anchors: $name" }
+        foreach ($row in $detail.edgeFires) {
+            if (@($row).Count -ne 4 -or $row[3] -ne 2 -or
+                @($row[0..2] | Where-Object { [double]::IsNaN([double]$_) -or [double]::IsInfinity([double]$_) }).Count -gt 0) {
+                throw "Invalid current-edge rooftop anchor: $name"
+            }
+            if (@($footprint.waterSides) -contains 'W' -and [double]$row[0] -lt -2240) {
+                throw "Current-edge fire intrudes into omitted west ocean: $name"
+            }
+        }
         if ($footprint.vmfSha256 -ne (Get-FileHash -LiteralPath $recipePath -Algorithm SHA256).Hash.ToLowerInvariant() -or
             $footprint.visualHalfExtent -ne $bounds.visualHalfExtent -or $footprint.coastHalfExtent -ne $bounds.coastContactHalfExtent -or
             (@($footprint.waterSides) -join ',') -cne (@($layout.waterSides) -join ',')) {

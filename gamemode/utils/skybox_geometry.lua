@@ -58,6 +58,29 @@ function Geometry.GetFogBoundary(manifest)
 	return manifest.schemaVersion == 2 and manifest.cellBounds.coastContactHalfExtent or manifest.cellSpan * 0.5
 end
 
+function Geometry.SelectEdgeFireAnchors(rows, gridX, gridY)
+	local candidates = {}
+	for index, row in ipairs(rows) do
+		local score = math.sin(gridX * 12.9898 + gridY * 78.233 + index * 37.719) * 43758.5453
+		candidates[#candidates + 1] = { row = row, index = index, score = score - math.floor(score) }
+	end
+	table.sort(candidates, function(a, b)
+		if a.score ~= b.score then return a.score < b.score end
+		return a.index < b.index
+	end)
+	local selected = {}
+	for _, candidate in ipairs(candidates) do
+		local separated = true
+		for _, row in ipairs(selected) do
+			local dx, dy = row[1] - candidate.row[1], row[2] - candidate.row[2]
+			if dx * dx + dy * dy < 640 * 640 then separated = false break end
+		end
+		if separated then selected[#selected + 1] = candidate.row end
+		if #selected == 6 then break end
+	end
+	return selected
+end
+
 function Geometry.GetLandRectangle(manifest, recipe, x, y)
 	local half = manifest.cellSpan / manifest.scale * 0.5
 	local rectangle = { x0 = x - half, y0 = y - half, x1 = x + half, y1 = y + half }

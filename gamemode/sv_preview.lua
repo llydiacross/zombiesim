@@ -206,40 +206,35 @@ local function getPreviewTeleportTarget(cellId)
     return { cell = cell, mapPath = mapPath }
 end
 
-net.Receive("ZM.RequestPreviewTeleport", function(_, playerEntity)
-    local cellId = net.ReadUInt(16)
+// Shared by the world-map request and the development bridge; both pass the same operator/transition guards.
+function Preview:RequestCellTeleport(playerEntity, cellId)
     local requestId = nextTeleportRequestId()
     local function reject(message)
         sendTeleportStatus(playerEntity, requestId, false, message, cellId)
+        return false, message
     end
 
     if not Preview:HasServerCapability(playerEntity, Preview.Capabilities.operator) then
-        reject("Preview teleport is unavailable")
-        return
+        return reject("Preview teleport is unavailable")
     end
     if getHumanPlayerCount() ~= 1 then
-        reject("Preview teleport requires exactly one human player")
-        return
+        return reject("Preview teleport requires exactly one human player")
     end
     if ZM_MapBatch and ZM_MapBatch:IsActive() then
-        reject("Map maintenance is active")
-        return
+        return reject("Map maintenance is active")
     end
     if Preview.TransitionLocked then
-        reject("A preview transition is already pending")
-        return
+        return reject("A preview transition is already pending")
     end
 
     local lastRequestAt = Preview.TeleportCooldowns[playerEntity:SteamID()] or 0
     if CurTime() - lastRequestAt < 1 then
-        reject("Preview teleport is cooling down")
-        return
+        return reject("Preview teleport is cooling down")
     end
 
     local target, targetError = getPreviewTeleportTarget(cellId)
     if not target then
-        reject(targetError)
-        return
+        return reject(targetError)
     end
 
     local profileConVar = GetConVar("zombiesim_world_profile")
@@ -250,8 +245,7 @@ net.Receive("ZM.RequestPreviewTeleport", function(_, playerEntity)
     local worldX, worldY = ZM_World:GetWorldCoordinates(target.cell)
     local positioned, positionError = playerEntity:SetWorldCell(worldX, worldY)
     if not positioned then
-        reject(positionError or "Could not update player world position")
-        return
+        return reject(positionError or "Could not update player world position")
     end
 
     local targetMapName = string.lower(string.match(target.mapPath, "([^/]+)$") or target.mapPath)
@@ -259,7 +253,7 @@ net.Receive("ZM.RequestPreviewTeleport", function(_, playerEntity)
     if targetMapName == currentMapName then
         Preview.TeleportCooldowns[playerEntity:SteamID()] = CurTime()
         sendTeleportStatus(playerEntity, requestId, true, "Selected current preview cell", target.cell.id, target.mapPath)
-        return
+        return true, "Selected current preview cell"
     end
 
     Preview.TeleportCooldowns[playerEntity:SteamID()] = CurTime()
@@ -267,12 +261,16 @@ net.Receive("ZM.RequestPreviewTeleport", function(_, playerEntity)
     local transitionQueued = GAMEMODE and GAMEMODE.EnsurePlayerWorldMap and GAMEMODE:EnsurePlayerWorldMap(playerEntity)
     if not transitionQueued then
         Preview.TransitionLocked = false
-        reject("Core world transition could not be queued")
-        return
+        return reject("Core world transition could not be queued")
     end
 
     sendTeleportStatus(playerEntity, requestId, true, "Loading selected preview cell", target.cell.id, target.mapPath)
     print(string.format("[ZombieSim] Preview teleport: %s -> %d,%d (%s)", playerEntity:SteamID(), worldX, worldY, target.mapPath))
+    return true, "Loading selected preview cell"
+end
+
+net.Receive("ZM.RequestPreviewTeleport", function(_, playerEntity)
+    Preview:RequestCellTeleport(playerEntity, net.ReadUInt(16))
 end)
 
 hook.Add("InitPostEntity", "ZM.Preview.ReleaseTransitionLock", function()

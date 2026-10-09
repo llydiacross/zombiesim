@@ -21,7 +21,7 @@ ZM_Quality.ConVars = {
     skyProps = CreateClientConVar("zombiesim_sky_props", "1", true, false,
         "Draws scaled tile props and road wrecks in the 3D skybox (0 off; 0.1 to 1 scales the per-frame prop budget)."),
     skyFires = CreateClientConVar("zombiesim_sky_fires", "1", true, false,
-        "Draws burning wrecks, rooftop fires, and their smoke plumes in the 3D skybox.")
+        "Draws skybox fires and nearby outer-edge building fires with their smoke plumes.")
 }
 
 ZM_Quality.PresetOrder = { "low", "medium", "high" }

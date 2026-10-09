@@ -1,6 +1,10 @@
 # JavaScript dependencies
 node_modules/
 
+# Offline Python fixture caches
+__pycache__/
+*.pyc
+
 # DAW
 
 *.flp

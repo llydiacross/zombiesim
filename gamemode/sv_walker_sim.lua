@@ -33,8 +33,11 @@ WalkerSim.Checkpoint = WalkerSim.Checkpoint or {}
 WalkerSim.NextCheckpointAt = WalkerSim.NextCheckpointAt or 0
 WalkerSim.RestoreReconciliation = WalkerSim.RestoreReconciliation or nil
 WalkerSim.CheckpointExportPending = WalkerSim.CheckpointExportPending or false
+// Horde snapshots carry every horde (~15 bytes each), so only clients viewing the world map receive them.
+WalkerSim.SnapshotSubscribers = WalkerSim.SnapshotSubscribers or {}
 
 util.AddNetworkString("ZM.WalkerSnapshot")
+util.AddNetworkString("ZM.WalkerSnapshotSubscribe")
 util.AddNetworkString("ZM.WalkerPopulation")
 
 local function getNative()
@@ -550,8 +553,24 @@ function WalkerSim:GetTicketSummaries()
     return tickets
 end
 
-function WalkerSim:BroadcastPreviewSnapshot()
+function WalkerSim:GetSnapshotRecipients()
+    local recipients = {}
+    for subscriber in pairs(self.SnapshotSubscribers) do
+        if IsValid(subscriber) and subscriber:IsPlayer() then
+            recipients[#recipients + 1] = subscriber
+        else
+            self.SnapshotSubscribers[subscriber] = nil
+        end
+    end
+    return recipients
+end
+
+function WalkerSim:BroadcastPreviewSnapshot(recipients)
     if not ZM_Preview or not ZM_Preview:IsActive() then
+        return
+    end
+    recipients = recipients or self:GetSnapshotRecipients()
+    if #recipients == 0 then
         return
     end
 
@@ -590,8 +609,33 @@ function WalkerSim:BroadcastPreviewSnapshot()
             net.WriteUInt(math.max(0, tonumber(horde.Count) or 0), 16)
             net.WriteUInt(math.max(0, tonumber(horde.ProgressPermille) or 0), 10)
         end
-    net.Broadcast()
+    net.Send(recipients)
 end
+
+net.Receive("ZM.WalkerSnapshotSubscribe", function(_, playerEntity)
+    if not IsValid(playerEntity) then
+        return
+    end
+    local subscribe = net.ReadBool()
+    if not subscribe then
+        WalkerSim.SnapshotSubscribers[playerEntity] = nil
+        return
+    end
+    if WalkerSim.SnapshotSubscribers[playerEntity] then
+        return
+    end
+    WalkerSim.SnapshotSubscribers[playerEntity] = true
+    // Send the first snapshot now so the map does not wait a full interval; repeat opens are throttled.
+    local now = CurTime()
+    if (playerEntity.ZM_NextWalkerSnapshotAt or 0) <= now then
+        playerEntity.ZM_NextWalkerSnapshotAt = now + WalkerSim.SnapshotInterval
+        WalkerSim:BroadcastPreviewSnapshot({ playerEntity })
+    end
+end)
+
+hook.Add("PlayerDisconnected", "ZombieSim.WalkerSim.SnapshotSubscribers", function(playerEntity)
+    WalkerSim.SnapshotSubscribers[playerEntity] = nil
+end)
 
 function WalkerSim:BroadcastPopulation()
     local native = getNative()

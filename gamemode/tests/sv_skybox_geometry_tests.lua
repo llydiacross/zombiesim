@@ -161,6 +161,22 @@ suite:Add("coast_grid_has_no_mixed_corner_t_junctions", function(check)
     end
 end)
 
+suite:Add("current_edge_fire_cap_and_stability", function(check)
+    local rows = {}
+    for index = 1, 12 do rows[index] = {index * 640, 2560, 384, 2} end
+    local selected = Geometry.SelectEdgeFireAnchors(rows, 0, 12)
+    local repeated = Geometry.SelectEdgeFireAnchors(rows, 0, 12)
+    check(#selected == 6, "six spaced edge buildings burn when available")
+    check(#rows == 12, "selection does not mutate generated anchors")
+    for index, row in ipairs(selected) do
+        check(row == repeated[index], "the same cell keeps the same building burning")
+    end
+    check(#Geometry.SelectEdgeFireAnchors({}, 0, 12) == 0, "empty edges produce no fires")
+    check(#Geometry.SelectEdgeFireAnchors({rows[1]}, 0, 12) == 1, "scarce eligible buildings are not duplicated")
+    check(#Geometry.SelectEdgeFireAnchors({rows[1], rows[1], {rows[1][1] + 100, 2560, 384, 2}}, 0, 12) == 1,
+        "duplicate and adjacent rooftop anchors cannot stack fires")
+end)
+
 Harness.Register({
     command = "zn_test_skybox_geometry",
     label = "Skybox geometry",

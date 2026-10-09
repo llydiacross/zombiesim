@@ -6,7 +6,7 @@
       "title": "Expanded City Edges and Launcher Presentation",
       "status": "in development",
       "date": "2026-10-06",
-      "summary": "Phase A accepted. Phase B shared skyline spacing, coast attachment and compatibility pass isolated builds/regressions; fresh expanded client visuals and matched performance remain pending.",
+      "summary": "Phases A/B accepted on accumulated preview review. Phase C gate relocation, arrival consistency and road arrows are in progress; production rollout remains gated.",
       "highlights": [
         "? Phase 0 accepted: authored edge inventory, verified restoration copies and focused launcher baseline; remaining baseline limits carried forward.",
         "+ Gated deterministic outer-edge generation, tagged pools, coast omissions and shared core/traversal/visual bounds.",
@@ -16,8 +16,13 @@
         "+ Phase A accepted; integrated gameplay limits carried into later phases.",
         "+ Shared 5760 skyline pitch and versioned plan/coast compatibility; original beach and 2240 omitted-side attachment retained.",
         "+ Corrected Storm Drain/west-ocean omission: existing border tiles retained, only western outer scenery omitted; skyline shoreline meets the old border without an intended gap.",
+        "- Fixed expanded black floor/sky enclosure beyond the west-ocean border; physical shell now follows the original 2240 shoreline attachment.",
+        "+ Up to six stable cosmetic fires and smoke plumes on current-cell outer-edge building rooftops; existing fire toggle and distant effects retained.",
         "+ Isolated skyline, snow, tower, recursive-cache, mesh-seam and packaging checks pass without replacing installed assets.",
-        "? Fresh expanded skyline visuals, matched performance and Phase C gate migration remain pending; expanded maps are not deployed.",
+        "+ Phase B accepted on accumulated expanded-preview review, including corrected west coast, bridge continuation and current-cell edge fires.",
+        "? Uncaptured individual visual cases and matched performance remain validation limits, not pending Phase B gates; expanded preview is temporarily staged with restoration backups.",
+        "? Phase C gate relocation, arrival consistency and static road arrows are in progress.",
+        "- Corrected generated bridge-deck gate height together with barricades and arrival landmarks; isolated structural checks pass, not yet staged.",
         "? Planned border-aware map previews, slower movement and rarer spaced searchable loot.",
         "? Planned distressed Earth-to-city launcher and read-only character outfit thumbnails.",
         "? Production rebuilds and Workshop publication remain separately gated."

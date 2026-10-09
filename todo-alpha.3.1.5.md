@@ -1,6 +1,6 @@
 # Alpha 3.1.5 - Phased Implementation Plan
 
-**Status: ACTIVE - PHASE A ACCEPTED; PHASE B IN PROGRESS.**
+**Status: ACTIVE - PHASES A/B ACCEPTED; PHASE C IN PROGRESS.**
 
 Planning requested and the decisions below confirmed by the user on 2026-10-06.
 This document replaces the initial feature sketch, not the accepted Alpha 3.1.0
@@ -583,6 +583,55 @@ Checks / acceptance:
   the planned Phase C migration; do not stage a partially migrated travel system.
 - **Phase accepted:** both Hammer and isolated Sandbox geometry reviews are accepted;
   proceed with Phase B. Gameplay exclusions/access clips
+
+  **2026-10-09 live preparation authorized:** user approved temporary staging of
+  a matching isolated expanded preview, with backups and verified restoration.
+  Complete 576-cell/187-recipe preparation is running under
+  `generated/phase_b_live_preview`; normal settings are not modified.
+  Preview world/skyline JSON, city world JSON and generator settings have
+  hash-verified restoration copies under its `baseline` directory.
+  Preparation runs generation, all-map VBSP/portal gates, matching skyline
+  models/manifest, VVIS/VRAD and compiled runtime export before staging.
+  At authorization/preparation start GMod was not running. Nothing installed,
+  launched or accepted by starting this build. Survivor persistence capture and
+  review-session isolation still need verification before survivor deployment.
+
+  **Preparation/staging completed:** all 190 maps completed VBSP and VVIS/VRAD,
+  zero failed/incomplete stages. All portal budgets pass (maximum511 clusters/
+  1648 portals). Skyline manifest passes187 recipes/576 viewpoints/28 tower
+  cells, worst28 distant parts against128 cap, no truncated views. Matching
+  compiled runtime export has576 cells and the same plan hash as the skyline.
+  Temporarily staged2074 changed paths:2066 additions and8 backed-up replacements,
+  with a per-file hash/restoration ledger. Engine preview map copies are included
+  so old engine den BSPs cannot shadow the matching staged versions. No existing
+  shared skyline material changed; city world and normal settings hashes unchanged.
+  GMod was closed throughout staging. Live review/persistence capture not yet run.
+  Restoration script and ledger retained under session files and
+  `generated/phase_b_live_preview`; this is temporary staging, not publication
+  or Phase B acceptance. Gameplay exclusions/access clips
+
+  **2026-10-09 fresh visual review:** user approved the expanded view at Jim's
+  saved logical `(22,2)` / grid `(22,14)` cell: outer scenery/neighbour joins
+  look correct. Separate diagnostics confirmed schema2/pitch5760, renderer
+  ready and zero missing recipes/models. User authorized deployment/travel and
+  return to that original location. Normal travel then independently confirmed
+  Storm Drain logical `(0,0)` / grid `(0,12)` on the corrected ocean recipe.
+  User confirmed the west beach/ocean joins correctly without the black strip,
+  gap or unwanted western outer scenery. Fresh live geometry suite9/9 passes.
+  This accepts those two visual cases only, not all Phase B cases. Dense skyline,
+  bridge and snow/weather seams remain unreviewed. Matched performance remains
+  unverified; user explicitly stopped the lag investigation after recovery.
+  Jim is currently at Storm Drain; return to logical `(22,2)` / grid `(22,14)`
+  and temporary asset restoration remain outstanding. Gameplay exclusions/access clips
+
+  User subsequently reported "Everything looks perfect" and asked to ensure
+  skybox fires include edge tiles. This is not a captured dense/bridge/snow tour
+  or explicit Phase B acceptance. Existing BuildDetail iterates all recipe
+  instances, including outer edges; staged manifest inspection confirms fire
+  candidates beyond2240 in all187 recipes. Storm Drain has22 outer-ring
+  candidates (20 rooftops,2 wrecks). Existing stable fire selection and draw
+  budgets apply equally; no new density, always-burning policy or renderer
+  change is needed. Actual edge-fire visibility has not been separately reviewed. Gameplay exclusions/access clips
   have static/API/geometry evidence; integrated gameplay remains a retained
   validation limit for later integration. No broad preview regeneration, skyline rebuild, promotion,
   production rebuild or Workshop upload has been performed.
@@ -608,6 +657,49 @@ Coverage VMFs and matching layouts are under `generated/outer_edges/coverage`.
 
 **Objective:** actual regenerated skyline matches new geometry without overlaps,
 missing water or pushing the ocean backwards.
+
+**Accepted 2026-10-09:** the user confirmed the edge changes worked perfectly,
+accepted the outstanding Phase B live/review gates based on the accumulated
+in-game review, and requested continuation. Do not repeat dense/coast/bridge/
+snow/tower/fire checks merely to fill historical gaps. This is human acceptance,
+not instrumented proof of every orientation or a matched performance verdict.
+Uncaptured cases and unmatched/cold-warm/GPU measurements remain validation
+limits. Temporary expanded preview assets remain ledger-owned and installed
+for Phase C; original-location return and verified restoration remain obligations.
+Production rebuilds and Workshop publication are not authorized.
+
+**2026-10-09 nearby edge-fire follow-up:** user chose stable fires throughout
+the visit and raised the cap to six. New `detail.recipes[].edgeFires` rows mark
+only rooftop candidates from actual authored `edges` instances. Current-cell
+selection is deterministic, avoids stacked nearby anchors, and never alters
+existing distant fire selection. Flames/smoke reuse existing materials and
+animation at full world scale in the normal translucent pass; no damage,
+sound, lights or gameplay entities. The existing fire toggle gates this path,
+independently of neighbour detail. Separate `currentEdgeFires` diagnostics
+report anchors, selected/drawn fires, quads and scoped draw time. Legacy cells,
+launcher and dens do not receive these fires.
+
+Static evidence: GLua186/0; focused skyline612 assertions/eight recipes,
+including rooftop-only ownership, transformed coordinates and west-ocean
+exclusion; full matching187-recipe manifest passes. All prior manifest fields
+compare exactly unchanged; generated edge roof counts range12-32 per recipe.
+Matching metadata prepared without rebuilding BSPs or touching city assets.
+User authorized closed-game manifest staging and reopening Storm Drain for
+visual review. Only that manifest was staged; its original backup and updated
+ledger hashes verify, and the installed187-recipe manifest passes.
+Fresh client status at logical0,0/grid0,12 confirms20 edge roof candidates,
+six selected/drawn fires,24 flame/glow quads and52 smoke quads. User confirmed
+the fires/smoke look good after loading and unpausing. Live geometry suite
+passes10/10, including the new deterministic cap/spacing case; no new
+`cl_skybox.lua`, mesh or Lua error was found in the fresh console capture.
+A bounded three-second current-effect hook sample reports0.620ms/frame,
+0.394ms maximum invocation and0.135KiB/frame allocation, with four hook
+invocations/frame including skipped passes. This is scoped CPU operation
+evidence only, not GPU/matched performance or a diagnosis of earlier stutter.
+Independent toggle, repeated reload and cross-cell lifecycle checks remain
+unverified. This accepts the requested Storm Drain fire appearance only,
+not Phase B. Jim remains at Storm Drain; original-location return and temporary
+asset restoration remain outstanding.
 
 Implementation notes:
 
@@ -638,15 +730,48 @@ Implementation notes:
 Checks / acceptance:
 
 - [x] Skyline manifest/tower/height regressions and new pitch/coast seam assertions.
-- [ ] No intersecting duplicate cell models, disconnected route visuals, old snow
-  overlays, missing materials or changed source/core positions.
-- [ ] Four coast orientations and mixed corners at unchanged border attachment.
-- [ ] Fresh client review: enlarged dense city, land-to-neighbour joins, ocean,
-  bridge corridor, snow/weather seam and distant tower visibility.
-- [ ] Matched before/after samples record actual model/triangle/draw/memory counts
-  and frame scope; hook timings alone are not a performance verdict.
+- [x] Model/route/snow/material/source-position gate accepted by user; uncaptured
+  individual cases retained as limits, not additional test evidence.
+- [x] Coast/mixed-corner gate accepted by user; four-side static evidence retained.
+- [x] Expanded client review gate accepted on accumulated human review.
+- [x] User waived further matched measurement as a Phase B gate; no comparative
+  performance conclusion claimed from unmatched samples or hook timings.
 
 ### Phase B implementation evidence (2026-10-06; not accepted)
+
+**2026-10-09 live fixes:** (1) Walker horde snapshots (~15 B/horde, ~20 KB per
+0.5 s at 1364 hordes) were broadcast to every client; they are now sent only to
+world-map subscribers. The user confirmed smooth play and walker dots on the map.
+(2) Live review at logical `(15,5)` found the outer ring flattening bridge
+corridors to ground `tile_road`: bridge sides that are also `rampExits`
+carry `zm_transition_road_*` names. `Get-ZMOuterEdgeRoadTemplates` now
+prefers the border bridge template; outer suite 1804 assertions pass. Rebuilt
+18 expanded recipes (VBSP/portals 0 over budget, VVIS/VRAD 0 failed, skyline
+187 recipes/576 views pass) and restaged them under the existing ledger, with all
+2074 entries hash-verified. The in-game bridge re-review is pending.
+
+**2026-10-09 physical coast-shell correction:** the reported Hammer black strip
+exposed a missing part of the earlier coast correction. Ocean omission and
+renderer attachment were wired, but the physical sky enclosure and black floor
+still expanded uniformly from 2240 to 3072. The shell writer now receives the
+same validated `skyboxOceanSides` policy: west floor/sky stop at the original
+2240 border, while land-facing shell clearance, clips, ceiling, authored
+core/border transforms and procedural beach remain unchanged. Regression
+coverage checks floor/sky coordinates across all 16 side masks and the actual
+generated Storm Drain and skyline recipes. Fresh outer regression passes
+**1796 assertions**; skyline source/model/cache/manifest passes **331 assertions
+/ eight recipes**. All eight VBSP/portal fixtures pass with zero failed or
+incomplete stages and no leak files; maximum **474 clusters / 1517 portals**,
+Storm Drain **363 / 1109**. The `sky_day01_01` texture-size/flags diagnostic
+also occurs in the retained pre-fix Storm Drain log; it is not a new geometry
+failure and has not been changed. PowerShell parsing, editor diagnostics and
+diff whitespace checks pass. Corrected exact Storm Drain fixture opened in a
+separate Hammer++ window under `generated/coast_shell_fix/skyline/src`;
+the original window and generated baseline remain untouched.
+No maps, models or runtime world exports staged; no client or full VVIS/VRAD
+check performed. User confirmed the black strip is gone in the newly opened
+Hammer fixture. This accepts the physical strip correction, not the integrated
+beach/ocean renderer appearance or Phase B.
 
 **2026-10-07 coast correction supersedes the omission-policy evidence below:**
 the requested coast is the Storm Drain at grid `(0,12)`, logical `(0,0)`,
@@ -724,6 +849,36 @@ not permission to omit east/north/south outer scenery.
   separate Hammer++ launches. Opening is not human or phase acceptance.
 
 ## Phase C - Gate relocation, arrival consistency and road-arrow rendering
+
+**In progress 2026-10-09** following explicit Phase B acceptance and continuation.
+Phase B acceptance does not pre-accept these new gate/arrow/travel changes.
+
+### First source boundary - gate geometry and elevated arrivals
+
+The user reported ground-height gates buried beneath elevated road/bridge decks.
+`bin/transition_gates.psm1` now owns bounds-driven placement and reads continuous
+central-lane faces from the canonical authored sources. Ordinary road deck is
+36 units; bridge deck is196, so elevated triggers, their original four barricade
+props and the corresponding arrival landmark receive a160-unit lift. No rail,
+parapet or transverse support is mistaken for the road. Missing windings or a
+missing supported deck fail explicitly instead of falling back to ground.
+
+Expanded gate centres move from+/-1568 to+/-2208 with the original32-unit inset
+and trigger dimensions. Arrival landmarks move with the same boundary shift
+and retain their authored inward offsets (north128, other sides64). Legacy
+ground-road positions remain unchanged. Expanded transition-road border slots
+use ordinary straight roads instead of the old blocking variants; bridge slots,
+core instances, non-transition border pieces, coast and den suppression remain
+protected. Existing runtime pending-entry/arrival ownership remains unchanged.
+
+Isolated `generated/phase_c_gates` fixtures cover all four bridge-ramp directions,
+horizontal/vertical bridges and exact reported logical15,5, plus coast/entrances/
+tagged borders. Outer regression passes2306 assertions; original border showcase
+and safe-zone entrance suites pass. All13 selected VMFs pass VBSP/portal budgets
+with zero failed/incomplete stages, over-budget or invalid portal files.
+No new Phase C maps/models/runtime exports are staged; the running preview still
+uses accepted Phase B assets. Road arrows, their diagnostics and integrated
+N/E/S/W/same-BSP/den travel checks remain next. Phase C is not accepted.
 
 Implementation notes:
 
@@ -1169,9 +1324,9 @@ a repository document. Do not accumulate ambiguous "looks fine" completion notes
 | Phase | Implementation | Static/automated evidence | Live/human acceptance |
 | --- | --- | --- | --- |
 | 0 | Complete | Source/fixture/backup evidence above | Accepted 2026-10-06; coast/gate/quality/cold-warm limits explicitly carried to A/B/G |
-| A | Not started | Not run | Not run |
-| B | Not started | Not run | Not run |
-| C | Not started | Not run | Not run |
+| A | Complete | Bounds/outer geometry/compile/persistence evidence above | Accepted 2026-10-06; integrated gameplay limits carried forward |
+| B | Complete | Skyline/coast/bridge/fire regression and preview compile evidence above | Accepted 2026-10-09 on accumulated review; uncaptured cases and matched performance retained as limits |
+| C | In progress | Pending gate/arrival/arrow migration checks | Not accepted |
 | D | Not started | Not run | Not run |
 | E | Not started | Not run | Not run |
 | F | Not started | Not run | Not run |

@@ -7,12 +7,13 @@
     {"id": "cityB", "name": "City B", "file": "sounds/music/city 2.mp3", "duration": 31.080},
     {"id": "cityC", "name": "City C", "file": "sounds/music/city 3.mp3", "duration": 64.464},
     {"id": "cityD", "name": "City D", "file": "sounds/music/city 4.mp3", "duration": 85.032},
+	{"id": "cityE", "name": "City E", "file": "sounds/music/city 5.mp3", "duration": 184.2},
     {"id": "sewerA", "name": "Sewer A", "file": "sounds/music/sewer 1.mp3", "duration": 458.304},
     {"id": "sewerB", "name": "Sewer B", "file": "sounds/music/sewer 2.mp3", "duration": 250.656},
     {"id": "sewerC", "name": "Sewer C", "file": "sounds/music/sewer 3.mp3", "duration": 102.912}
   ],
   "sets": {
-    "city": ["cityA", "cityB", "cityC", "cityD"],
+    "city": ["cityA", "cityB", "cityC", "cityD", "cityE"],
     "sewer": ["sewerA", "sewerB", "sewerC"]
   },
   "safeZones": {"origin": "sewer"},

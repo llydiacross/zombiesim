@@ -16,7 +16,7 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
   restoration copies retained, focused launcher baseline captured. User carried
   coast/gate photographs and full quality/cold-warm baseline into A/B/G; do not
   reopen Phase 0 for those limits. Preserve approved source overhangs.
-  **Phase B is in progress**, then follow Phases C-I in order. Shared bounds,
+  **Phases A/B are accepted; Phase C is in progress**, then follow Phases D-I in order. Shared bounds,
   deterministic outer-ring generation and layout metadata are implemented but
   disabled in normal settings. Isolated checks: outer edges 519 assertions,
   GLua 184/0, border showcase/entrances pass, ten VBSP/portal fixtures pass,
@@ -50,6 +50,23 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
   `generated/skybox_edges` contains models/room/VMFs/reports; none staged.
   Fresh expanded renderer visuals and matched performance remain Phase B
   gates. Launcher reloads verified logic only, not renderer appearance.
+- **Phase B accepted 2026-10-09:** user confirmed the edges worked perfectly and
+  accepted remaining live/review gates on accumulated in-game review. Do not
+  reopen historical dense/coast/bridge/snow/tower/fire checks or matched
+  performance merely to fill gaps. Uncaptured cases are retained limits, not
+  fabricated test evidence or a performance verdict. Proceed with Phase C
+  gate/arrival/road-arrow migration; it is not pre-accepted. Temporary expanded
+  preview assets remain ledger-owned for continuation; return/restoration
+  obligations and production/publication gates remain unchanged. This acceptance
+  supersedes the earlier Phase B pending/unaccepted notes below.
+- **Phase C first source boundary 2026-10-09:** bounds-driven expanded gates now
+  use+/-2208, with corresponding inward arrival landmarks. Canonical road/bridge
+  deck extraction yields36/196 and lifts elevated triggers/barricades/arrivals
+  by160; no authored tile edits. Expanded old blocking transition-road variants
+  become ordinary straight roads; bridge/core/coast/other-border transforms are
+  protected. Isolated outer2306, original border/entrance suites and13 VBSP/portal
+  fixtures pass. Nothing newly staged; arrows and integrated travel remain next.
+  Phase C is not accepted. Running assets still belong to the Phase B ledger.
 - **Coast clarification 2026-10-07:** the requested fixture is the Storm Drain
   grid `(0,12)` / logical `(0,0)`, not the SE authored water-corner fixture.
   Omit new outer scenery only along the west 3D-skybox ocean; preserve all old
@@ -63,6 +80,42 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
   suites and VBSP/portals474/1517 pass. New no-gap live case not run
   because game closed; expanded visual review remains pending. Do not stage
   or treat earlier SE-corner review as approval of this corrected coast.
+- **Physical coast shell correction 2026-10-09:** the Hammer black strip was
+  traced to uniform shell expansion: the floor and sky wall still reached 3072
+  past the west border even though outer tiles were omitted. The shell now
+  consumes `skyboxOceanSides` and retains the original 2240 ocean boundary.
+  Land-facing clearance, clips, ceiling, old border/core instances and beach
+  remain unchanged. Earlier renderer-coordinate checks did not prove the
+  physical connection. Fresh outer regression1796/skyline331 assertions and
+  eight VBSP/portal fixtures pass (max474/1517; Storm Drain363/1109).
+  Existing sky_day01_01 texture-size/flags diagnostic is unchanged from the
+  retained baseline. Corrected fixture opened separately in Hammer++ under
+  `generated/coast_shell_fix/skyline/src`; original window preserved.
+  User confirmed the black strip is gone in the corrected Hammer fixture.
+  Integrated beach/ocean renderer appearance remains unverified.
+- **Phase B live review 2026-10-09:** full matching576-cell/187-recipe preview
+  temporarily staged with verified backups/ledger under
+  `generated/phase_b_live_preview`. All190 maps VBSP/VVIS/VRAD and portal
+  budgets pass. User approved saved-cell outer/neighbour appearance at logical
+  `(22,2)` and the actual corrected Storm Drain west beach/ocean join at
+  `(0,0)`. Fresh bounds6/6 and geometry9/9 pass; dense/bridge/snow and matched
+  performance remain gates. Lag investigation explicitly stopped by user;
+  do not resume it unsolicited or claim a root cause. Jim currently at Storm
+  Drain; authorized return target logical22,2/grid22,14, no safe zone.
+  Temporary assets must be restored/verified after review; production unchanged.
+- **Current-cell edge fires 2026-10-09:** user chose six stable cosmetic fires
+  on actual outer-edge buildings, not only neighbouring sky models. Extraction
+  now marks rooftop anchors by authored `edges` provenance; core/border roofs
+  and wrecks remain separate. Normal-world rendering reuses existing flames
+  and smoke at full size under the existing fire toggle, with no damage, sound
+  or dynamic lights. GLua186/0, skyline612 assertions/eight recipes and full
+  manifest187 recipes pass; old manifest fields are exactly unchanged.
+  Only the regenerated preview skyline manifest was staged with GMod closed;
+  original backup and ledger hashes verified. Fresh Storm Drain client draws
+  six fires from20 edge roofs (24 flame/glow quads,52 smoke quads in capture);
+  geometry10/10 and user flame/smoke appearance approval pass. Toggle and
+  cross-cell lifecycle checks remain unverified. Phase B remains in progress;
+  Jim is still at Storm Drain and temporary restoration remains outstanding.
 - Alpha 3.1.0 development is complete: the user
   accepted final Phase H and the milestone on 2026-10-06 after a bounded fresh
   launcher check. [docs/todo-alpha-3.1.0.md](docs/todo-alpha-3.1.0.md) archives
@@ -253,6 +306,8 @@ wording is superseded by the final acceptance above, not a current task list.
 - Preserve the existing Lua style: `//` comments, spaced function calls, four-space indentation in server files, and tabs where an existing shared/client file already uses tabs.
 - World data is accessed through `ZM_World`; safe-zone lookup is owned by `ZM_SafeZones`. Use their APIs rather than duplicating coordinate, map-path, or profile resolution logic.
 - Server services share small helpers through `ZM_Util` (`gamemode/utils/server.lua`: first human, profile, whole-number checks, console replies, admin gates, command registration). New `zn_test_*` suites use `ZM_TestHarness` (`gamemode/utils/test_harness.lua`). Alias these instead of redefining local copies.
+- `cl_atmosphere.lua` is the client facade; `gamemode/atmosphere/cl_core.lua` initializes the environment, weather, puddle, snow, footstep, screen-effect, fog and diagnostic owners before registering callbacks. Preserve the shared snow/puddle deadline, public table identities, emitter ownership and existing render phases. Do not rely on separate `Think` hook ordering. `zombiesim_dev_test_atmosphere_client` runs isolated fixtures and read-only live checks; visual acceptance still requires a fresh client review. See the README's client atmosphere module reference.
+- For Lua logic that can run against explicit engine fixtures, reuse `tests/glua/harness.py` and `ZM_TestHarness`; follow the README's **Shared offline Lua fixture harness** workflow. Add a focused regression alongside behavior changes when applicable. Keep mocks feature-specific and deterministic, reject unsupported calls, and never inherit live globals or use catch-all no-ops. Report offline logic, GLua syntax and actual-engine/visual results separately; LuaJIT fixtures are neither a full GLua interpreter nor proof of engine behavior.
 - Work that runs behind the loading screen reports progress through `ZM_Loading` (`gamemode/sh_loading.lua`): `Step`, `Begin`/`Finish` (pending then `ok`/`warn`/`fail`/`info`), and `Reset`. Server calls take a player target; client calls are local. Use it for new load-time work, including future online services, instead of custom loading text.
 - `sh_music.lua` must load before `sh_static_data.lua`, which builds its registry during include. Music uses the engine `snd_musicvolume` control; Source effects retain native `volume_sfx`/master scaling. Do not multiply master/SFX volume again on Source audio calls.
 - Register network strings on the server before sending. Keep player persistence server-only through the SQL helpers and retain profile scoping.
@@ -288,6 +343,12 @@ wording is superseded by the final acceptance above, not a current task list.
 - Treat generated plans, VMFs, BSPs, navmesh outputs, and runtime exports as potentially stale until the current matching input is resolved and the affected output is regenerated. Validate the exact artifact that was produced, not a similarly named or previously inspected file.
 
 ## Focused Validation
+
+Keep standalone GLua test suites in `gamemode/tests/`, with their realm prefixes
+(`cl_`, `sv_`, or `sh_`). Update `include` and `AddCSLuaFile` paths when adding or
+moving suites; retain dependency load order. Shared test-runner utilities stay
+in `gamemode/utils/`, offline PowerShell checks in `bin/`, and static-data
+fixtures in the root `tests/` folder.
 
 Run PowerShell commands from the repository root. For changes to planning or VMF generation, use the preview pipeline and start with the fast structural check:
 

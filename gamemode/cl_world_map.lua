@@ -2031,7 +2031,16 @@ function WorldMap:Open()
     frame:Center()
     frame:MakePopup()
     self.Frame = frame
-
+    if ZM_Preview and ZM_Preview:IsActive() then
+        net.Start("ZM.WalkerSnapshotSubscribe")
+            net.WriteBool(true)
+        net.SendToServer()
+        frame.OnRemove = function()
+            net.Start("ZM.WalkerSnapshotSubscribe")
+                net.WriteBool(false)
+            net.SendToServer()
+        end
+    end
     local sidebar = vgui.Create("DPanel", frame)
     sidebar:Dock(LEFT)
     sidebar:SetWide(math.Clamp(math.floor(frameWidth * 0.22), 190, 250))
@@ -2603,7 +2612,9 @@ function WorldMap:Open()
         WorldMap:SetRenderMode("default")
     end
     local walkerAvailable = satelliteAvailable and WorldMap:HasWalkerSnapshot()
-    if WorldMap.RenderMode == "walker" and not walkerAvailable then
+    // The first snapshot arrives just after opening, so keep a saved WALKERS view while it is requested.
+    local walkerPossible = satelliteAvailable and ZM_Preview and ZM_Preview:IsActive() and ZM_World.ActiveProfile == "preview"
+    if WorldMap.RenderMode == "walker" and not walkerPossible then
         WorldMap:SetRenderMode(satelliteAvailable and "satellite" or "default")
     end
     addRenderModeButton("default", "ATLAS", 68, true, "Map View")

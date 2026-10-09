@@ -35,6 +35,11 @@ After any Lua change, run:
 
 This is a syntax check using Garry's Mod's GLua parser; it does not verify realms, Garry's Mod API behavior, or runtime flows.
 
+For fixture-compatible Lua changes, reuse the shared offline harness rather than
+duplicating a runner. Follow [AGENTS.md](../AGENTS.md) and the README's
+**Shared offline Lua fixture harness** workflow; run the relevant focused cases,
+model APIs explicitly and keep offline results separate from live acceptance.
+
 ### Focused world-generation regressions
 
 Use only the relevant focused scripts for the change. For example, building frontage changes require both:
@@ -87,8 +92,8 @@ For bridge-driven checks, use `.\bin\invoke_dev_bridge.ps1 -Command '<cmd>'`; it
 - Register server network strings before sending messages. Keep client inputs untrusted and validate requests in the owning server service.
 - Before adding client GLua or Derma calls, verify the API signature against a compatible local call site or current Garry's Mod documentation.
 - When styling a `DNumSlider`, do not hide or re-dock its stock label or `Scratch` child; the `Scratch` control synchronises the convar. Suppress visuals by overriding `Paint` only. Set `decimals` to at least the precision of every preset or default value, because the slider rounds the displayed value and writes it back to the convar.
-- Some Lua files, notably `cl_atmosphere.lua`, mix CRLF and LF line endings. If an exact-match edit fails, edit with Python using `newline=''` and `\r?\n`-tolerant patterns. Do not normalise the file's line endings.
-- The main chunk of `cl_atmosphere.lua` is at Lua's 200-local limit. Put new top-level state in an existing table or on `Atmosphere` instead of declaring new file-scope locals.
+- Preserve existing Lua file line endings, including mixed CRLF/LF. If an exact-match edit fails, inspect the actual endings rather than normalising the file.
+- `cl_atmosphere.lua` is now a facade over `gamemode/atmosphere/`; put new behaviour in its owning module, not back into a monolith. Preserve synchronous initialization before callbacks, the shared snow/puddle frame budget, public table identities and render phases. Run the client atmosphere suite and a fresh-load visual check for related refactors.
 - When hiding severed or dismembered bones, scale them to `0.001`, never `0`. A zero-scale bone makes its hitbox degenerate, and traces against it return NaN. Guard camera, aim and crosshair values with finite-number checks before smoothing, because a NaN never recovers once it enters a smoothed value. Aim snapping must fall back to the next valid bone when its target bone is severed.
 - Use the [Garry's Mod Wiki](https://wiki.facepunch.com/gmod/) routinely for GLua hooks/functions, realms, prediction, signatures, and caveats, and the [Valve Developer Community](https://developer.valvesoftware.com/wiki/Main_Page) for Source entities, keyvalues/inputs, Hammer, materials, and compilers. Consult the relevant pages before relying on an unfamiliar or uncertain behavior; do not guess.
 - When the wikis do not settle an engine question, inspect relevant public [Source SDK 2013](https://github.com/ValveSoftware/source-sdk-2013) HL2/HL2:DM/TF2 game or tool source. This is not the full engine source or the exact GMod branch. For `light_environment`, distinguish runtime entity code, lighting compiler processing, and baked lighting. Cite the page or SDK file/revision, note branch differences or inaccessible sources, and use a focused GMod probe only for the remaining uncertainty. Do not copy Valve source/assets into the addon or install an SDK just for routine reference.

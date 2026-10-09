@@ -29,8 +29,26 @@ include( "cl_clothing_preview.lua" )
 include( "cl_clothing.lua" )
 include( "cl_wardrobe.lua" )
 include( "utils/test_harness.lua" )
-include( "cl_clothing_tests.lua" )
-include( "cl_sky_catalogue_tests.lua" )
+local atmosphereTestFactories = {
+    ["atmosphere/cl_core.lua"] = include( "atmosphere/cl_core.lua" ),
+    ["atmosphere/cl_environment.lua"] = include( "atmosphere/cl_environment.lua" ),
+    ["atmosphere/cl_weather.lua"] = include( "atmosphere/cl_weather.lua" ),
+    ["atmosphere/cl_puddles.lua"] = include( "atmosphere/cl_puddles.lua" ),
+    ["atmosphere/cl_snow.lua"] = include( "atmosphere/cl_snow.lua" ),
+    ["atmosphere/cl_footsteps.lua"] = include( "atmosphere/cl_footsteps.lua" ),
+    ["atmosphere/cl_screen_effects.lua"] = include( "atmosphere/cl_screen_effects.lua" ),
+    ["atmosphere/cl_fog.lua"] = include( "atmosphere/cl_fog.lua" ),
+    ["atmosphere/cl_diagnostics.lua"] = include( "atmosphere/cl_diagnostics.lua" )
+}
+include( "tests/cl_atmosphere_tests.lua" )(
+    include( "tests/fixtures/cl_atmosphere_engine.lua" ),
+    function(path)
+        assert( atmosphereTestFactories[path], "Unknown atmosphere test module: " .. path )
+        return atmosphereTestFactories[path]
+    end
+)
+include( "tests/cl_clothing_tests.lua" )
+include( "tests/cl_sky_catalogue_tests.lua" )
 include( "cl_scoreboard.lua" )
 include( "cl_foliage.lua" )
 include( "cl_gore.lua" )
