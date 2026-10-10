@@ -671,7 +671,91 @@ concommand.Add("zombiesim_dev_test_launcher_tools", function()
         menu.Page = page
         menu:Render()
     end)
+    suite:Add("third_party_notices_button_content_and_all_close_paths", function(check)
+        local options = vgui.Create("DPanel")
+        options:SetVisible(false)
+        ZM_Options:BuildPanel(options)
+        local button = options.ZM_ThirdPartyLicensesButton
+        check(IsValid(button) and button:GetParent() == options, "Options has a Third Party Licenses button")
+        check(table.KeyFromValue(options:GetChildren(), options.ZM_ChangelogButton) <
+            table.KeyFromValue(options:GetChildren(), button), "licenses button is below Changelog")
+        local function checkBottomPadding(panel, context)
+            panel:Think()
+            panel:InvalidateLayout(true)
+            local height = 8
+            for _, child in ipairs(panel:GetChildren()) do
+                local _, top, _, bottom = child:GetDockMargin()
+                height = height + child:GetTall() + top + bottom
+            end
+            local last = panel.ZM_ThirdPartyLicensesButton
+            local _, y = last:GetPos()
+            local _, _, _, bottom = last:GetDockMargin()
+            check(panel:GetTall() == height, context .. " scroll height includes every section and both buttons")
+            check(y + last:GetTall() + bottom <= panel:GetTall() - 8,
+                context .. " licenses button is fully inside the scroll content with bottom padding")
+        end
+        checkBottomPadding(options, "in-game Options")
+        button:DoClick()
+        local frame = ZM_ThirdPartyLicenses.Frame
+        check(IsValid(frame) and IsValid(frame.ZM_LicenseScroll), "notices open in a scrollable window")
+        check(#frame.ZM_LicenseErrors == 0, "every shipped notice loads without errors")
+        local sky = util.JSONToTable(file.Read("data_static/sky_catalogue.json", "GAME"))
+        local assets = util.JSONToTable(file.Read("data_static/imported_assets.json", "GAME"))
+        check(#frame.ZM_LicenseRecords == #sky.entries + #assets.sources, "all sky and imported asset records are shown")
+        local shown = {}
+        for _, record in ipairs(frame.ZM_LicenseRecords) do shown[record.title] = record end
+        for _, source in ipairs(assets.sources) do
+            local record = shown[source.title]
+            check(record and record.permission == source.permission, "creator permission is retained: " .. source.package)
+            for _, path in ipairs(source.creditFiles) do
+                check(record and string.find(record.text, file.Read(path, "GAME"), 1, true) ~= nil,
+                    "original credit text is shown verbatim: " .. path)
+            end
+            if #source.creditFiles == 0 then
+                check(record and string.find(record.text, "not original license text", 1, true) ~= nil,
+                    "permission-only sources are clearly labelled: " .. source.package)
+            end
+        end
+        for _, entry in ipairs(sky.entries) do
+            local record = shown["Sky: " .. tostring(entry.label or entry.id)]
+            check(record and record.text == file.Read(entry.licenceFile, "GAME"), "original sky notice is shown verbatim: " .. entry.id)
+        end
+        check(#frame.ZM_LicenseScroll:GetCanvas():GetChildren() > #frame.ZM_LicenseRecords * 2,
+            "the scroll canvas contains notice headings and full text")
+        check(ZM_ThirdPartyLicenses:Open(options) == frame, "reopening reuses the notice window")
+        frame:OnKeyCodePressed(KEY_ESCAPE)
+        check(not IsValid(ZM_ThirdPartyLicenses.Frame) and IsValid(options), "Escape closes only notices")
+        button:DoClick()
+        ZM_ThirdPartyLicenses.Frame:Close()
+        check(not IsValid(ZM_ThirdPartyLicenses.Frame) and IsValid(options), "X closes only notices")
+        button:DoClick()
+        frame = ZM_ThirdPartyLicenses.Frame
+        options:Remove()
+        frame:Think()
+        check(not IsValid(ZM_ThirdPartyLicenses.Frame), "notices close when their parent is removed")
+
+        local menu = ZM_LauncherMenu
+        local page = menu.Page
+        menu.Page = "options"
+        menu:Render()
+        local launcherButton
+        local function find(panel)
+            if launcherButton or not IsValid(panel) then return end
+            if IsValid(panel.ZM_ThirdPartyLicensesButton) then launcherButton = panel.ZM_ThirdPartyLicensesButton return end
+            for _, child in ipairs(panel:GetChildren()) do find(child) end
+        end
+        find(menu.Content)
+        check(IsValid(launcherButton), "launcher Options also has the notices button")
+        checkBottomPadding(launcherButton:GetParent(), "launcher Options")
+        launcherButton:DoClick()
+        check(IsValid(ZM_ThirdPartyLicenses.Frame), "launcher opens the requested notice window")
+        ZM_ThirdPartyLicenses.Frame:Close()
+        check(menu.Page == "options" and IsValid(menu.Frame), "closing notices retains launcher Options")
+        menu.Page = page
+        menu:Render()
+    end)
     local summary = suite:Run()
+    if IsValid(ZM_ThirdPartyLicenses.Frame) then ZM_ThirdPartyLicenses.Frame:Remove() end
     if IsValid(ZM_Changelog.Frame) then ZM_Changelog.Frame:Remove() end
     ZM_Changelog:ClosePanel()
     if IsValid(ZM_Wardrobe.Frame) then ZM_Wardrobe.Frame:Close() end

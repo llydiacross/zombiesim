@@ -1,0 +1,25 @@
+AddCSLuaFile()
+SWEP.Base = "weapon_zn_base_cs16"
+SWEP.PrintName = "CS 1.6 XM1014"
+SWEP.ViewModel = "models/weapons/cs16/c_xm1014.mdl"
+SWEP.WorldModel = "models/weapons/cs16/player/p_xm1014.mdl"
+SWEP.IdleSequence = "idle"
+SWEP.ReloadSequence = "insert"
+SWEP.HoldType = "shotgun"
+SWEP.Slot = 3
+SWEP.FirePresentation = "shotgun"
+SWEP.Primary.Automatic = true
+SWEP.BulletCount = 7
+SWEP.BulletDamage = 8
+SWEP.BulletRange = 1600
+SWEP.BulletSpread = 0.08
+SWEP.FireDelay = 0.3
+SWEP.BaseClipSize = 7
+SWEP.ReloadTime = 2.8
+SWEP.GoreSeverFactor = 2
+SWEP.BulletForce = 3
+SWEP.RecoilPitch = 1.6
+SWEP.MuzzleBlastSpeed = 110
+SWEP.FireSound = "zombiesim/cs16/weapons/xm1014-1.wav"
+SWEP.ReloadSound = "zombiesim/cs16/weapons/m3_insertshell.wav"
+SWEP.ReloadFinishSound = "zombiesim/cs16/weapons/m3_pump.wav"

@@ -1,0 +1,7 @@
+"VertexLitGeneric"
+{
+	"$baseTexture" "zombiesim/imported/hev/models/humans/gordon/gordon_beardbits01"
+	"$nodecal" "1"
+	"$model" "1"
+	"$translucent" "1"
+}

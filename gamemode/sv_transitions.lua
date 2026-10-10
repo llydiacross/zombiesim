@@ -62,6 +62,10 @@ local directions = {
 }
 local directionByCode = { N = "north", E = "east", S = "south", W = "west" }
 local gateUseRange = 96
+local gateForward = {
+    N = Vector(0, 1, 0), E = Vector(1, 0, 0),
+    S = Vector(0, -1, 0), W = Vector(-1, 0, 0)
+}
 
 local function getHumanPlayerCount()
     local count = 0
@@ -103,13 +107,56 @@ end
 // (ZMTransitionGate_<code>_<index>, count in ZMTransitionGateCount_<code>) for the minimap waypoint marker.
 function Transitions:InitializeGates()
     local centres = {}
+    local mapCells = ZM_World:GetCellsForMap(game.GetMap()) or {}
+    self.GateMarkers = {}
     for _, entity in ipairs(ents.FindByClass("trigger_multiple")) do
-        local directionName, direction = getGateDetails(entity)
+        local directionName, direction, mode = getGateDetails(entity)
         if directionName then
             entity:SetNWBool("ZMTransitionGate", true)
             entity:SetNWString("ZMTransitionDirection", directionName)
             centres[direction.code] = centres[direction.code] or {}
-            table.insert(centres[direction.code], entity:WorldSpaceCenter())
+            local centre = entity:WorldSpaceCenter()
+            table.insert(centres[direction.code], centre)
+            local index = #centres[direction.code]
+            local key = "ZMTransitionGate_" .. direction.code .. "_" .. index
+            local motorway = mode == "highway"
+            for _, cell in ipairs(mapCells) do
+                if ZM_World:GetTravelMode(ZM_World:GetExit(cell, direction.code), "highway", true) then
+                    motorway = true
+                    break
+                end
+            end
+            local forward = gateForward[direction.code]
+            local right = forward:Cross(Vector(0, 0, 1))
+            local marker = { key = key, direction = direction.code, mode = mode, surfaces = {} }
+            local arrowCount = motorway and 2 or 1
+            for lane = 1, 2 do
+                local suffix = lane == 1 and "" or "_Lane2"
+                local arrowKey = key .. suffix
+                local ready = false
+                if lane <= arrowCount then
+                    local sample = centre - forward * (motorway and 256 or 96)
+                        + right * (motorway and (lane == 1 and -160 or 160) or 0)
+                    local trace = util.TraceLine({
+                        start = sample + Vector(0, 0, 256),
+                        endpos = sample - Vector(0, 0, 256),
+                        mask = MASK_SOLID_BRUSHONLY,
+                        filter = entity
+                    })
+                    ready = trace.Hit and not trace.HitSky and not trace.StartSolid and trace.HitNormal.z >= 0.7
+                    if ready then
+                        SetGlobal2Vector(arrowKey .. "_Surface", trace.HitPos + trace.HitNormal * 2)
+                        SetGlobal2Vector(arrowKey .. "_Normal", trace.HitNormal)
+                        marker.surfaces[lane] = trace.HitPos
+                    else
+                        ErrorNoHalt("[ZombieSim] No supported road surface for transition arrow " .. arrowKey .. ".\n")
+                    end
+                end
+                SetGlobal2Bool(arrowKey .. "_SurfaceReady", ready)
+                if lane == 1 then marker.surfaceReady, marker.surface = ready, marker.surfaces[lane] end
+            end
+            SetGlobal2Int(key .. "_ArrowCount", arrowCount)
+            self.GateMarkers[#self.GateMarkers + 1] = marker
         end
     end
     for _, direction in pairs(directions) do
@@ -520,6 +567,16 @@ function Transitions:TryUseGate(playerEntity, entity)
 end
 
 hook.Add("InitPostEntity", "ZM.InitializeTransitionGates", function()
+    // InitPostEntity hooks run before GM:InitPostEntity loads the authoritative world profile.
+    timer.Simple(0, function()
+        if not ZM_World:IsLoaded() then
+            ErrorNoHalt("[ZombieSim] Cannot initialize transition arrows without loaded world data.\n")
+            return
+        end
+        Transitions:InitializeGates()
+    end)
+end)
+hook.Add("PostCleanupMap", "ZM.InitializeTransitionGates", function()
     Transitions:InitializeGates()
 end)
 
@@ -539,6 +596,10 @@ timer.Create("ZM.PublishNearbyTransitionGate", 0.2, 0, function()
         end
         playerEntity:SetNWString("ZMNearbyTransitionGate", directionName)
         playerEntity:SetNWBool("ZMNearbyTransitionGateBlocked", blocked)
+        for _, marker in ipairs(Transitions.GateMarkers or {}) do
+            playerEntity:SetNWBool(marker.key .. "_Blocked",
+                not playerEntity:CanTravelToNeighbour(marker.direction, marker.mode, false))
+        end
     end
 end)
 

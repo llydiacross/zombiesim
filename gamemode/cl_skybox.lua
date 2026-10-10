@@ -888,14 +888,15 @@ end
 
 // Coast colours follow the atmosphere's brightness; the sky-pass fog supplies distance haze, so the water keeps its
 // own hue instead of being pre-mixed toward the fog colour.
-function Skybox:DrawCoast(fogColor)
+function Skybox:DrawCoast(fogColor, modelMatrix)
     local meshes = self.CoastMeshes
     if not meshes then return end
+    fogColor = fogColor or defaultFogColor
     local red, green, blue = (fogColor[1] or 128) / 255, (fogColor[2] or 128) / 255, (fogColor[3] or 128) / 255
     local brightness = math.Clamp((red * 0.3 + green * 0.59 + blue * 0.11) * 1.6, 0.25, 1)
     local snow = self.Stats.snowAlpha or 0
     local now = CurTime()
-    cam.PushModelMatrix(identityMatrix)
+    cam.PushModelMatrix(modelMatrix or identityMatrix)
     coastColor:SetUnpacked(Lerp(0.12, brightness, red), Lerp(0.12, brightness, green), Lerp(0.12, brightness, blue))
     seaMaterial:SetVector("$color", coastColor)
     render.SetMaterial(seaMaterial)
@@ -1842,6 +1843,7 @@ local function emitBillboard(x, y, z, size, cosine, sine, right, up, red, green,
 end
 
 function Skybox:DrawActivity(manifest, skyEye, skyFog, fogColor)
+    if ZM_WorldCapture and ZM_WorldCapture.Rendering then return end
     local stats = self.Stats
     stats.activityExplosions, stats.activityBursts, stats.activityBeams = 0, 0, 0
     stats.activityPreview = false
@@ -1943,6 +1945,7 @@ end
 
 // Burning wrecks and rooftops: rising, spreading smoke plumes drifting with the clouds, flickering flames at the base.
 function Skybox:DrawFires(skyEye, facade, currentEdges)
+    if ZM_WorldCapture and ZM_WorldCapture.Rendering then return end
     local stats = currentEdges and self.EdgeFireStats or self.Stats
     if not facade then
         stats.frameFires = 0

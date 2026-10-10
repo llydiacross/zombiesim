@@ -12,8 +12,10 @@ AddCSLuaFile( "sh_clothing.lua" )
 AddCSLuaFile( "cl_clothing.lua" )
 AddCSLuaFile( "cl_wardrobe.lua" )
 AddCSLuaFile( "cl_changelog.lua" )
+AddCSLuaFile( "cl_third_party_licenses.lua" )
 AddCSLuaFile( "cl_launcher_tools.lua" )
 AddCSLuaFile( "tests/cl_clothing_tests.lua" )
+AddCSLuaFile( "tests/cl_imported_assets_tests.lua" )
 AddCSLuaFile( "tests/cl_atmosphere_tests.lua" )
 AddCSLuaFile( "tests/fixtures/cl_atmosphere_engine.lua" )
 AddCSLuaFile( "utils/test_harness.lua" )
@@ -39,6 +41,9 @@ AddCSLuaFile( "cl_quality.lua" )
 AddCSLuaFile( "cl_player.lua" )
 AddCSLuaFile( "cl_thirdpersoncamera.lua" )
 AddCSLuaFile( "cl_transitions.lua" )
+AddCSLuaFile( "cl_transition_markers.lua" )
+AddCSLuaFile( "tests/cl_transition_markers_tests.lua" )
+AddCSLuaFile( "tests/fixtures/cl_transition_markers_engine.lua" )
 AddCSLuaFile( "cl_hud.lua" )
 AddCSLuaFile( "cl_damage_feedback.lua" )
 AddCSLuaFile( "sh_radiation_feedback.lua" )
@@ -66,7 +71,9 @@ AddCSLuaFile( "cl_gore.lua" )
 AddCSLuaFile( "sh_gore_effects.lua" )
 AddCSLuaFile( "sh_music.lua" )
 AddCSLuaFile( "cl_music.lua" )
-AddCSLuaFile( "cl_world_map.lua" )
+AddCSLuaFile("cl_world_map_catalog.lua")
+AddCSLuaFile("cl_world_map.lua")
+AddCSLuaFile("cl_world_capture.lua")
 AddCSLuaFile( "cl_scoreboard.lua" )
 AddCSLuaFile( "cl_map_batch.lua" )
 AddCSLuaFile( "cl_preview.lua" )
@@ -134,6 +141,7 @@ include( "sv_mastercraft.lua" )
 include( "sv_den_npcs.lua" )
 include( "sv_trading.lua" )
 include( "tests/sv_inventory_tests.lua" )
+include( "tests/sv_imported_assets_tests.lua" )
 include( "tests/sv_crafting_tests.lua" )
 include( "tests/sv_professions_tests.lua" )
 include( "tests/sv_implants_tests.lua" )
@@ -159,6 +167,7 @@ include( "sv_loot_bodies.lua" )
 include( "sv_map_batch.lua" )
 include( "sv_preview.lua" )
 include( "sv_dev_console.lua" )
+include( "sv_world_capture.lua" )
 include( "sv_dependency_prompts.lua" )
 include( "sv_launcher.lua" )
 include( "sv_walker_sim.lua" )
@@ -505,15 +514,31 @@ function GM:PlayerSetModel(ply)
         playerColour = util.JSONToTable(character.playerColour or "") or { 1, 1, 1 }
     })
     if not appearance then return end
-    ply:SetModel(appearance.model)
-    ply:SetSkin(appearance.skin)
-    for group, value in pairs(appearance.bodygroups) do ply:SetBodygroup(tonumber(group), value) end
+    local protected = ply:HasRadiationProtection()
+    local model = protected and "models/zombiesim/imported/hev/motorhead/hevscientist.mdl" or appearance.model
+    if not util.IsValidModel(model) then
+        ErrorNoHalt("[ZombieSim] Player appearance model is unavailable: " .. model .. "\n")
+        return
+    end
+    ply:SetModel(model)
+    ply:SetSkin(protected and 0 or appearance.skin)
+    for _, group in ipairs(ply:GetBodyGroups()) do ply:SetBodygroup(group.id, 0) end
+    if not protected then
+        for group, value in pairs(appearance.bodygroups) do ply:SetBodygroup(tonumber(group), value) end
+    end
+    ply.ZM_HEVAppearance = protected
     ply:SetPlayerColor(Vector(appearance.playerColour[1], appearance.playerColour[2], appearance.playerColour[3]))
     local hands = ply:GetHands()
     if IsValid(hands) then self:PlayerSetHandsModel(ply, hands) end
 end
 
 function GM:PlayerSetHandsModel(ply, hands)
+    if ply:GetModel() == "models/zombiesim/imported/hev/motorhead/hevscientist.mdl" then
+        hands:SetModel("models/zombiesim/imported/hev/armhead/v_hand.mdl")
+        hands:SetSkin(0)
+        hands:SetBodyGroups("00000000")
+        return
+    end
     local modelName = player_manager.TranslateToPlayerModelName(ply:GetModel())
     local info = player_manager.TranslatePlayerHands(modelName)
     if not info then return end

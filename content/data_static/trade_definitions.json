@@ -46,7 +46,26 @@
         { "item": "weaponHandgun9mm", "mastercraft": true, "credits": 30, "minStock": 0, "maxStock": 1, "maxDanger": 0.5 },
         { "item": "weaponMp5", "mastercraft": true, "credits": 45, "minStock": 0, "maxStock": 1, "minDanger": 0.4 },
         { "item": "weaponAk47", "mastercraft": true, "credits": 60, "minStock": 0, "maxStock": 1, "minDanger": 0.7 },
-        { "item": "itemRadiationSuit", "minStock": 1, "maxStock": 2 }
+        { "item": "itemRadiationSuit", "minStock": 1, "maxStock": 2 },
+        { "item": "weaponElite", "minStock": 0, "maxStock": 1, "minDanger": 0.2 },
+        { "item": "weaponDeagle", "minStock": 0, "maxStock": 1, "minDanger": 0.2 },
+        { "item": "weaponP228", "minStock": 0, "maxStock": 1, "maxDanger": 0.5 },
+        { "item": "weaponFiveseven", "minStock": 0, "maxStock": 1, "maxDanger": 0.5 },
+        { "item": "weaponAug", "minStock": 0, "maxStock": 1, "minDanger": 0.5 },
+        { "item": "weaponFamas", "minStock": 0, "maxStock": 1, "minDanger": 0.5 },
+        { "item": "weaponGalil", "minStock": 0, "maxStock": 1, "minDanger": 0.5 },
+        { "item": "weaponP90", "minStock": 0, "maxStock": 1, "minDanger": 0.4 },
+        { "item": "weaponM249", "minStock": 0, "maxStock": 1, "minDanger": 0.7 },
+        { "item": "weaponXm1014", "minStock": 0, "maxStock": 1, "minDanger": 0.6 },
+        { "item": "weaponHl2Magnum", "minStock": 0, "maxStock": 1, "minDanger": 0.3 },
+        { "item": "weaponHl2Smg", "minStock": 0, "maxStock": 1, "minDanger": 0.3 },
+        { "item": "weaponHl2Shotgun", "minStock": 0, "maxStock": 1, "minDanger": 0.2 },
+        { "item": "weaponHl2Crossbow", "minStock": 0, "maxStock": 1, "minDanger": 0.6 },
+        { "item": "weaponHl2Pulse", "minStock": 0, "maxStock": 1, "minDanger": 0.7 },
+        { "item": "ammo357", "bundle": 12, "minStock": 1, "maxStock": 3 },
+        { "item": "ammoPulse", "bundle": 30, "minStock": 0, "maxStock": 3, "minDanger": 0.5 },
+        { "item": "ammoBolts", "bundle": 5, "minStock": 1, "maxStock": 3 },
+        { "item": "weaponMeleeSpanner", "minStock": 1, "maxStock": 2 }
       ]
     },
     "clinic": {

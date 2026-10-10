@@ -1,0 +1,19 @@
+AddCSLuaFile()
+SWEP.Base = "weapon_zn_base_hitscan"
+SWEP.PrintName = "Pulse Rifle"
+SWEP.ViewModel = "models/weapons/c_irifle.mdl"
+SWEP.WorldModel = "models/weapons/w_irifle.mdl"
+SWEP.HoldType = "ar2"
+SWEP.Slot = 2
+SWEP.FirePresentation = "pulse"
+SWEP.Primary.Automatic = true
+SWEP.BulletDamage = 25
+SWEP.BulletDamageType = DMG_ENERGYBEAM
+SWEP.BulletSpread = 0.025
+SWEP.FireDelay = 0.12
+SWEP.BaseClipSize = 30
+SWEP.ReloadTime = 2.5
+SWEP.GoreSeverFactor = 1.3
+SWEP.FireSound = "weapons/ar2/fire1.wav"
+SWEP.ReloadSound = "weapons/ar2/ar2_reload.wav"
+SWEP.ReloadFinishSound = "weapons/ar2/ar2_reload_push.wav"

@@ -7,6 +7,9 @@ include( "cl_quality.lua" )
 include( "cl_player.lua" )
 include( "cl_thirdpersoncamera.lua" )
 include( "cl_transitions.lua" )
+local initializeTransitionMarkers = include( "cl_transition_markers.lua" )
+ZM_TransitionMarkers = ZM_TransitionMarkers or {}
+initializeTransitionMarkers(ZM_TransitionMarkers)
 include( "cl_hud.lua" )
 include( "cl_damage_feedback.lua" )
 include( "cl_radiation_feedback.lua" )
@@ -29,6 +32,13 @@ include( "cl_clothing_preview.lua" )
 include( "cl_clothing.lua" )
 include( "cl_wardrobe.lua" )
 include( "utils/test_harness.lua" )
+include( "tests/cl_transition_markers_tests.lua" )(
+    include( "tests/fixtures/cl_transition_markers_engine.lua" ),
+    function(path)
+        assert(path == "cl_transition_markers.lua", "Unknown transition marker test module: " .. tostring(path))
+        return initializeTransitionMarkers
+    end
+)
 local atmosphereTestFactories = {
     ["atmosphere/cl_core.lua"] = include( "atmosphere/cl_core.lua" ),
     ["atmosphere/cl_environment.lua"] = include( "atmosphere/cl_environment.lua" ),
@@ -48,17 +58,20 @@ include( "tests/cl_atmosphere_tests.lua" )(
     end
 )
 include( "tests/cl_clothing_tests.lua" )
+include( "tests/cl_imported_assets_tests.lua" )
 include( "tests/cl_sky_catalogue_tests.lua" )
 include( "cl_scoreboard.lua" )
 include( "cl_foliage.lua" )
 include( "cl_gore.lua" )
 include( "cl_music.lua" )
 include( "cl_world_map.lua" )
+include( "cl_world_capture.lua" )
 include( "cl_map_batch.lua" )
 include( "cl_quick_menu.lua" )
 include( "cl_afk.lua" )
 include( "cl_item_icons.lua" )
 include( "cl_changelog.lua" )
+include( "cl_third_party_licenses.lua" )
 include( "cl_launcher_tools.lua" )
 include( "cl_inventory.lua" )
 include( "cl_crafting.lua" )

@@ -31,3 +31,6 @@ bin/*_seed_*_template_plan.json
 bin/*_seed_*_template_plan_filename_key.txt
 bin/*_fixture_template_plan.json
 bin/*_fixture_required_cell_vmfs.txt
+
+# Non needed model assets
+/assets/models/*

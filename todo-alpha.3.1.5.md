@@ -12,6 +12,107 @@ This is now the active tracker in [AGENTS.md](AGENTS.md); version/changelog repo
 Alpha 3.1.5 in development. Alpha 3.1.0 remains accepted historical development.
 No phases below are accepted merely because their design is agreed.
 
+### Next milestone - Alpha 3.2 CSM
+
+On 2026-10-10 the user designated **Alpha 3.2** as the next milestone after
+Alpha 3.1.5, using [the CSM implementation tracker](docs/csm-implementation.md).
+Complete the current milestone in its existing phase order first; do not begin
+CSM implementation during Alpha 3.1.5. Alpha 3.2 starts with the documented
+one-projector feasibility and lighting-policy gates, not a production rebuild
+or automatic adoption of the upstream addon.
+
+### CS 1.6 weapon side task - 2026-10-10
+
+The user authorized asset extraction and 24-firearm integration from Workshop
+`2657591603` revision `1637211535`, reporting creator permission covering all
+included assets for non-commercial ZombieSim. Original credits and this scoped,
+user-confirmed permission are retained; this is not a blanket Valve licence.
+Knife, grenades and C4 gameplay are explicitly deferred.
+
+The 24 independent item/SWEP mappings reuse ZombieSim ammo, hitscan, scaling,
+holstering and effects. All are in the weapon loot pool; 18 optional
+quartermaster offers preserve the existing 32-offer limit and original offers.
+Archive Lua/HUD/decal/particle systems are excluded and audio is namespaced.
+Reimport/validation commands are in [readme.md](readme.md).
+
+Static: asset/material/animation/ownership and adapter fixtures 5/5; GLua
+233/0; packaging fixtures 59/59 and report-only installed inventory pass.
+Fresh preview runtime: static 18/18, weapon catalogue 32 mappings/0 failures
+(24 new plus eight existing explicit mappings), inventory 51/51, loot 12/12,
+trading 14/14. Actual human weapon/hand/animation/audio appearance and manual
+firing remain unverified. Fresh weapon-effects fixtures pass 15/15, including
+all 24 new firing paths, ammo/presentation contracts and den holstering with
+isolated owners (not live survivor firing). Effective SWEP fixtures use
+`weapons.Get`, since `weapons.GetStored` omits inherited fields. These checks
+do not accept Phase C or authorize upload.
+
+The subsequent approved expansion supersedes the 18 CS 1.6 trader offers:
+all 24 variants are loot-only at exactly 1/100 of their normal counterpart's
+weight, including interpolated danger levels. Fixed bonuses are +25% damage,
++20% range, 15% faster firing/reloads and +20% capacity, composed with existing
+random/mastercraft scales. Baseline damage/range/delay/reload/capacity match
+their counterparts. Added 16 remaining CSS firearms (including dual Berettas)
+and HL2 .357/SMG/pulse/shotgun/crossbow, plus three ammo types. The total is
+54 ranged weapons; the quartermaster has 31 offers, retaining original offers.
+The crossbow uses a server-owned swept projectile with collision/range/lifetime
+cleanup, no instant hitscan or brass. Explosives, alternate fire, gravity gun
+and recoverable/embedded bolts remain excluded.
+
+Expansion static: weapon fixtures 6/6 (all 24 exact weight ratios at five danger
+levels, attribute composition, asset closure and animation adapter), GLua
+257/0, packaging 59/59 and diff whitespace checks pass.
+Fresh preview runtime: catalogue 54/0 and effects 20/20, including all 24
+counterpart bonus comparisons, 29 normal hitscan paths, pulse energy damage,
+failed-shot ammo retention and actual isolated crossbow projectile movement,
+damage attribution, duplicate-hit prevention, range and lifetime cleanup.
+Static-data 18/18, inventory 51/51, loot 12/12 and trading 14/14 passed on the
+initial expanded fresh load. Tests use isolated entities/owners, not the live
+survivor's inventory or cheats. Mounted model/audio checks pass after correcting
+the nonexistent XM1014 bolt audio. Wiki access for DispatchTraceAttack failed;
+its used signature was exercised by the isolated in-engine damage test.
+Human weapon/hands/audio appearance and manual survivor firing remain
+unverified. No production maps, publication or Phase C acceptance is implied.
+
+### Imported equipment and Third Party Licenses side task - 2026-10-10
+
+User-confirmed creator permission covers `chapstic_hammer.zip`, `_3418-.rar`,
+`spanner.7z`, `m249_lewis.rar` and `hev_gordon_fixed_.rar`; no independent
+license document was supplied. Added balanced hammer/machete/spanner/Lewis
+inventory/SWEP/loot mappings, with spanner as the final quartermaster offer.
+Current total55 ranged/four melee/32 offers. Equipping radiation protection
+selects HEV Gordon/hands; carrying/removing it retains/restores saved survivor
+appearance. Hammer-only world derivation and mounted CSS sleeve substitution
+were explicitly approved.
+
+Consolidated imports into `bin/import_assets.py` and generated ownership in
+`content/data_static/imported_assets.json`: six sources/1768 files. Removed
+separate CS 1.6/GameBanana importers/manifests while preserving original credits
+and all CS 1.6 payloads. When its ZIP is absent, the importer verifies retained
+hash ownership rather than claiming fresh source-archive integrity.
+
+Options Third Party Licenses opens a scrollable window below Changelog in
+gameplay and launcher, showing35 original sky notices and six asset records.
+CS 1.6/machete text is retained verbatim; no-document sources are explicitly
+permission records, not original license text. Root scroll sizing now includes
+both footer buttons, margins and bottom clearance; the first launcher review
+identified and corrected clipping of the newly added button.
+
+Static: GLua265/0; offline weapons9 pass/one missing-source archive skip;
+editor diagnostics and whitespace checks pass. Fresh preview engine:
+imported server3/3, client5/5, catalogue55/0, effects20/20, static18/18,
+inventory51/51, loot12/12, trading14/14. Fresh actual-client notice case passes
+all source counts/text/permission labels, duplicate open, Escape/X/reopen,
+parent cleanup and measured gameplay/launcher bottom-padding assertions.
+Overall launcher suite6/7 retains a pre-existing source highlight-order
+assertion failure for 3.1.5/3.1.0; it is not a notice-content failure.
+User confirmed the corrected launcher button is fully visible with bottom
+clearance. Packaging61/61; report-only installed audit8367 files/six packages/
+707 existing release blockers. User approved notice-window readability,
+scrolling and closing back to launcher Options.
+Human weapon/animation/audio/manual firing review remains unverified.
+No survivor grants/cheat changes, Phase C acceptance,
+production rebuilds or publication.
+
 ### Follow-up decision - recipe count and authoring pause
 
 On 2026-10-06 the user confirmed that any necessary coast/edge recipe-count
@@ -877,8 +978,49 @@ tagged borders. Outer regression passes2306 assertions; original border showcase
 and safe-zone entrance suites pass. All13 selected VMFs pass VBSP/portal budgets
 with zero failed/incomplete stages, over-budget or invalid portal files.
 No new Phase C maps/models/runtime exports are staged; the running preview still
-uses accepted Phase B assets. Road arrows, their diagnostics and integrated
-N/E/S/W/same-BSP/den travel checks remain next. Phase C is not accepted.
+uses accepted Phase B assets. Integrated N/E/S/W/same-BSP/den travel checks
+remain next. Phase C is not accepted.
+
+### Runtime arrows and motorway carriageways - 2026-10-10
+
+Static 192x128 arrows now follow server brush-traced surface anchors, lifted
+two units along the normal, with a1280-unit draw range. Existing waypoint yellow,
+eligible green, blocked red, E prompt and travel ownership remain unchanged.
+Meshes are retained until geometry or colour changes and destroyed on cleanup;
+depth/skybox/loading/launcher/den/atlas/sky-inspection guards are covered.
+
+The first live arrow was invisible despite draw submissions. Material-aware
+mesh construction alone did not resolve it. A controlled two-sided material
+comparison made it visible while retaining foliage/road depth occlusion; the
+user confirmed the single arrow and requested a motorway adjustment.
+
+Per the supplied annotated image, motorway exits replace the median arrow with
+two outward arrows, centred160 units left/right and256 units inward from the
+gate. Ordinary roads retain one centred arrow96 units inward. Each carriageway
+has its own bounded surface trace and both inherit the same gate eligibility and
+waypoint colour. Classification uses authored highway mode or authoritative
+world exits even when compiled gates lose custom keyvalues. Initialization waits
+one tick for GM:InitPostEntity to load world data; PostCleanupMap republishes.
+
+Offline client8/8, server6/6 and GLua200/0 pass. Fresh actual-client suite8/8
+passes at preview logical15,5 (`zz_preview_b22153623d41-edge2`): six meshes,
+N/S motorway pairs at lateral+/-160/deck36.03125 and E/W single bridge arrows
+at deck196.03125. Camera-only capture shows both north arrows below the cars,
+off the median, pointing outward. User approved the revised motorway arrows;
+actual yellow/red, range and travel/arrival checks remain unverified.
+No new Phase C BSPs or generated data were staged.
+
+HUD minimap (live and cell-texture modes) and satellite/Level view now draw
+dynamic projected arrow overlays from the same authoritative anchors and colour
+owner. Both carriageways remain separate; polygons clip to view bounds and use
+the existing pan/zoom transforms. World-mesh capture exclusion remains intact:
+arrows are not baked into cached captures and do not retain stale waypoint or
+blocked colours. World-map window and waypoint diamond are unchanged.
+Offline and fresh actual-client tests10/10, GLua200/0 and editor diagnostics pass.
+User confirmed both minimap and Level view appearance after fresh reload;
+snapshot records six meshes, two world draws and two map-overlay draws. No new
+transition Lua errors appeared in the bounded recent console check. This review
+does not establish actual blocked/yellow travel state or integrated gate travel.
 
 Implementation notes:
 
@@ -909,7 +1051,8 @@ Implementation notes:
 
 Checks / acceptance:
 
-- [ ] Static four-direction positions/angles and exact 192x128 marker dimensions.
+- [x] Static four-direction positions/angles and exact 192x128 marker dimensions,
+  including motorway pairs, independent surface anchors and shared gate state.
 - [ ] Live normal/yellow/blocked-red, 1280 range, road occlusion, bridge height.
 - [ ] Live N/E/S/W travel, arrival facing/walk, saved logical coordinates, same-BSP
   neighbour travel and den entrance/exit regressions.
@@ -918,6 +1061,51 @@ Checks / acceptance:
 - [ ] Human approves readability and gate distance; no movement into blocked edge.
 
 ## Phase D - Full-footprint minimap, world artwork and satellite capture
+
+### Authorized capture work and view naming - 2026-10-10
+
+User authorized implementation of the captured-world pipeline as a side task
+before resuming Alpha 3.1.5, including GMod state changes without repeated
+permission prompts. Existing illustrated Satellite becomes **Atlas**; old
+layered Atlas is retired from the player selector but source assets remain.
+New **Satellite** is reserved for complete revision-matching in-engine cell
+captures with clear/atmospheric variants. Map/Level, Walkers, Wireframe and
+launcher Map Atlas remain separate. Schema-2 saved preferences migrate old
+Atlas/Satellite to Atlas and retain old Satellite layer preferences.
+
+The captured-world queue/importer is documented in `docs/world-capture.md`.
+Composite maintenance sequences navmesh generation/save/reload verification
+before capture for each loaded map; screenshot rendering must never overlap
+native nav generation. Full collection and new Satellite availability depend on
+successful real orthographic pilots; constant buffers fail explicitly and no
+partial collection is represented as a complete world.
+
+Cubemap automation is separate: `buildcubemaps` is explicitly blocked from
+Lua-issued console calls by Garry's Mod. Do not attempt alias/exec/RCON bypasses.
+Native console entry or a separately validated external native-console driver
+is required before promising unattended cubemap builds.
+
+Capture capability is now verified after matching the existing skyline-owner
+camera height4992 (the initial4592 camera captured the skyroom/black buffer).
+Revision4 preserves native sky passes and capture-scoped coast projection.
+Live seven-cell pilot/extension completed14 PNGs with verified survivor return;
+separate Storm Drain2/2 and composite nav/capture succeeded. Composite generated,
+saved and reloaded1313 mounted NAV areas before both screenshots, then restored
+the survivor at preview logical15,5. Partial display imports total1.81MB encoded/
+75.5MiB estimated RGBA; new Satellite correctly remains disabled until576-cell
+coverage. Client6/6, server6/6, importer5/5, atmosphere17/17 and GLua208/0 pass.
+Actual UI shows Atlas/Satellite/Walkers/Map/Wireframe and schema2 migration.
+User approved pilot imagery and authorized full preview collection. Full
+collection remains pending;
+do not claim the new complete Satellite map is ready. Existing temporary Phase B
+restoration obligations remain unchanged.
+
+Full576-cell/two-variant capture-only run `preview_1791594152_2873992855`
+is active with attached `watch_world_capture.ps1` monitor. It validates all1152
+results and survivor restoration before importing/staging the complete manifest.
+Do not interrupt/reload the game during this run. Composite full-world nav mode
+is available separately; the capture pass does not regenerate every navmesh.
+Completion and final Satellite/fog checks must still be recorded.
 
 Implementation notes:
 

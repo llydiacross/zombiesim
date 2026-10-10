@@ -1,0 +1,54 @@
+--------------------------------------
+Boba Fett's FC2 Machete
+--------------------------------------
+
+Here i give you the FC2 Machete model created by Syncing, textured by me.
+This pack got also a new animation set from DMG and contains 3 variable skin chooses.
+
+Hope you like this second release of this awesome Machete model.
+
+
+In this pack contains:
+
+- 2 Animations "Syncings and dmg's"
+- 3 Textured "Clean, rusty, bloody"
+- World Model "Also now with shaders applied"
+- Fancy source shaders 
+
+Hope you like this release.
+
+--------------------------------------
+Credits
+--------------------------------------
+
+Boba Fett - Texturing, Shader Mapping, VMT, Rendering
+Syncing - Modeling, Uv-mapping, Animating, Normal Baking
+DMG - Animation
+
+--------------------------------
+Installation Instructions:
+--------------------------------
+
+Required:
+
+First of all open the Required folder and Select/Copy All folders to your Cstrike folder
+Located here: C:\Program Files\Steam\steamapps\USERLOGIN\counter-strike source\cstrike
+If it ask to overwrite the Files/Folders press yes to All.
+
+Texture Choose:
+
+Now go back the the root folder and go in to the Texture Choose folder.
+Here you can choose between 3 different textures "clean, rusty, bloody" Choose witch one you want and open the folder.
+
+Than Select/Copy the material folders and also paste it in your Cstrike folder, same location as before.
+Again if it ask to overwrite the Files/Folders press yes to All.
+
+Animation Choose:
+
+Again go back the the root folder and go in to the Animations Choose folder.
+Here you can choose between Syncings or DMG's Animation, Choose witch one you want and open the folder.
+
+Than Select/Copy All folders and also paste it in your Cstrike folder, same location as before.
+Again if it ask to overwrite the Files/Folders press yes to All.
+
+Now you are done, hope you like my version of the FC2 Machete.

@@ -172,6 +172,14 @@ function ZM_Options:BuildPanel(panel, options)
         end
     end
     root.ZM_ChangelogButton = changelog
+    local licenses = vgui.Create("DButton", root)
+    licenses:Dock(TOP)
+    licenses:DockMargin(4, 0, 4, 8)
+    licenses:SetTall(32)
+    licenses:SetText("THIRD PARTY LICENSES")
+    licenses:SetTooltip("Read shipped license texts, original credits and creator-permission records.")
+    licenses.DoClick = function() ZM_ThirdPartyLicenses:Open(root) end
+    root.ZM_ThirdPartyLicensesButton = licenses
     panel = interface
     local labels = vgui.Create("DCheckBoxLabel", panel)
     labels:Dock(TOP)
@@ -497,7 +505,10 @@ function ZM_Options:BuildPanel(panel, options)
     root.Think = function()
         local height = 8
         for _, group in ipairs(sections) do height = height + group.category:GetTall() + 8 end
-        height = height + changelog:GetTall() + 12
+        for _, button in ipairs({ changelog, licenses }) do
+            local _, top, _, bottom = button:GetDockMargin()
+            height = height + button:GetTall() + top + bottom
+        end
         if root:GetTall() ~= height then root:SetTall(height) end
         if qualityPreset and ZM_Quality then
             local preset = ZM_Quality:GetPreset()

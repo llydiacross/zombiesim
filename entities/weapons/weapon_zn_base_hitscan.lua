@@ -159,13 +159,21 @@ function SWEP:GetBulletData(owner, source, direction, impacts)
         Damage = self:GetScaledDamage(self.BulletDamage),
         Distance = self.BulletRange * self:GetScale("RangeScale"),
         Attacker = owner,
-        Callback = impacts and function(_, trace)
+        Callback = impacts and function(_, trace, damage)
+            if self.BulletDamageType and damage then damage:SetDamageType(self.BulletDamageType) end
             impacts[#impacts + 1] = {
                 position = trace.HitPos, normal = trace.HitNormal,
                 material = trace.MatType, hit = trace.Hit and not trace.HitSky
             }
         end or nil
     }
+end
+
+function SWEP:FireRound(owner, source, direction, impacts)
+    owner:LagCompensation(true)
+    owner:FireBullets(self:GetBulletData(owner, source, direction, impacts))
+    owner:LagCompensation(false)
+    return true
 end
 
 function SWEP:PrimaryAttack()
@@ -180,19 +188,22 @@ function SWEP:PrimaryAttack()
         return
     end
 
+    local source, direction = owner:GetLevelAim()
+    local impacts = SERVER and {} or nil
+    local previousClip = self:Clip1()
     self:SetNextPrimaryFire(CurTime() + self:GetScaledDelay(self.FireDelay))
-    self:SetClip1(self:Clip1() - 1)
+    self:SetClip1(previousClip - 1)
+    if not self:FireRound(owner, source, direction, impacts) then
+        self:SetClip1(previousClip)
+        self:SetNextPrimaryFire(CurTime() + 0.3)
+        return
+    end
     self:SendWeaponAnim(ACT_VM_PRIMARYATTACK)
     owner:SetAnimation(PLAYER_ATTACK1)
     self:PlaySound(self.FireSound)
 
-    local source, direction = owner:GetLevelAim()
-    local impacts = SERVER and {} or nil
-    owner:LagCompensation(true)
-    owner:FireBullets(self:GetBulletData(owner, source, direction, impacts))
-    owner:LagCompensation(false)
     self:AddAimRecoil()
-    if SERVER then
+    if SERVER and self.PresentsShot ~= false then
         if self.CycleSound then self.NextCycleSoundAt = CurTime() + self.CycleSoundDelay end
         ZM_WeaponEffects.ApplyMuzzleBlast(self, source)
         ZM_WeaponEffects.SendShot(self, source, direction, impacts)

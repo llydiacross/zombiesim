@@ -80,7 +80,8 @@ class FixtureRunner:
         self.allowed_files = frozenset(allowed_files)
         self.lua = LuaRuntime(unpack_returned_tuples=True)
 
-    def load(self, name):
+    def compile(self, name):
+        """Compile an allowlisted chunk for explicit fixture-environment injection."""
         relative = PurePosixPath(name)
         if (
             name not in self.allowed_files
@@ -93,7 +94,12 @@ class FixtureRunner:
         path = (self.source_root / name).resolve()
         if not path.is_relative_to(self.source_root):
             raise ValueError(f"Fixture source escapes root: {name}")
-        return self.lua.execute(lua_source(path), name=f"@{name}")
+        return self.lua.eval("function(source, name) return assert(loadstring(source, name)) end")(
+            lua_source(path), f"@{name}"
+        )
+
+    def load(self, name):
+        return self.compile(name)()
 
     def register(self, suite_file, engine_file):
         self.load("utils/test_harness.lua")

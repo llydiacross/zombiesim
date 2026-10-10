@@ -4,6 +4,46 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Active Task Tracker
 
+- **Imported assets and notices side task, 2026-10-10:** user-confirmed creator
+  permission covers the five exact supplied GameBanana archives; no independent
+  license text was supplied. Added hammer/machete/spanner/Lewis and radiation-suit
+  HEV Gordon/hands, preserving saved appearance. Approved hammer-only world
+  derivation and mounted CSS sleeve substitution; no archive Lua installed.
+  `bin/import_assets.py` now owns all six imported sources and 1768 files through
+  `content/data_static/imported_assets.json`; original CS 1.6/machete credits
+  remain. Missing CS 1.6 ZIP uses verified retained ownership, not a fresh archive
+  validation. Arsenal55 ranged/four melee; quartermaster32 offers.
+  Options Third Party Licenses follows Changelog and displays35 sky/six asset
+  records with original text and explicit permission-only notices. Shared scroll
+  sizing includes both footer buttons and bottom padding in launcher/gameplay.
+  GLua265/0, offline9 pass/one missing-source skip; fresh imported server3/3,
+  client5/5, catalogue55/0, effects20/20, static18/18, inventory51/51, loot12/12,
+  trading14/14. Fresh notice content/lifecycle/measured padding case passes;
+  whole launcher suite6/7 retains an unrelated changelog source-order assertion
+  failure (3.1.5/3.1.0 highlights). User confirmed corrected launcher footer
+  fully visible. Packaging61/61; report-only audit8367 files/six packages/
+  707 existing release blockers. User also approved notice readability,
+  scrolling and closing back to launcher Options. Human weapon
+  appearance/manual firing remain unverified. No Phase C acceptance or upload.
+
+- **Weapon side task, 2026-10-10:** the approved arsenal now contains 24 CSS
+  firearms, 24 CS 1.6 variants and six HL2 ranged weapons. CS 1.6 is loot-only
+  at exactly 1/100 counterpart weight; fixed +25% damage/+20% range and
+  capacity/15% faster firing and reloads compose with random/mastercraft
+  scales. Keep these independent item IDs and existing offers intact.
+  Offline weapons6/6, GLua257/0, packaging59/59; fresh preview catalogue54/0,
+  effects20/20, static18/18, inventory51/51, loot12/12 and trading14/14 pass.
+  Actual isolated crossbow projectile damage/lifetime tests pass; human
+  weapon/hands/audio appearance and survivor firing remain unverified.
+  Explosives, alternate fire, gravity gun and recoverable bolts are excluded.
+  This side task does not accept Phase C or authorize publication.
+
+- **Next milestone: Alpha 3.2 CSM**, designated by the user on 2026-10-10.
+  Follow [the CSM implementation tracker](docs/csm-implementation.md) after
+  completing Alpha 3.1.5. Do not start CSM during the current milestone or skip
+  its projector/lighting feasibility gates. Production rebuilds and publication
+  remain separately gated.
+
 - **Fixture-review preference:** when the user chooses to inspect fixtures,
   open the exact requested VMFs in the installed Hammer++ for them; do not
   merely provide paths or ask them to find the files. Identify which opened
@@ -59,6 +99,41 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
   preview assets remain ledger-owned for continuation; return/restoration
   obligations and production/publication gates remain unchanged. This acceptance
   supersedes the earlier Phase B pending/unaccepted notes below.
+- **Phase C runtime arrows 2026-10-10:** single arrows are visible after a
+  controlled two-sided/depth-tested material correction. User requested two
+  motorway arrows at the annotated carriageways rather than the median.
+  Each motorway arrow has its own server surface trace at+/-160 lateral,
+  256 inward; ordinary roads retain one96 inward. World-data classification
+  waits for GM profile initialization and cleanup republishes. Offline client8/8,
+  server6/6, GLua200/0 and fresh actual-client8/8 pass. Preview15,5 capture shows
+  N/S pairs on deck36 and E/W singles on bridge196. User approved revised-pair
+  placement; live colours/range and integrated travel remain gates. No new Phase C maps or
+  generated runtime exports staged; temporary Phase B restoration remains due.
+- **Phase C map-arrow integration 2026-10-10:** HUD minimap (live/texture) and
+  satellite/Level view use dynamic clipped projections of the same gate anchors
+  and colours, not baked capture arrows. World-map window/waypoint diamond are
+  unchanged. Offline/fresh actual-client10/10, GLua200/0, editor diagnostics and
+  human review of both views pass. Actual yellow/red state and integrated travel
+  remain unverified; Phase C is not accepted.
+- **Captured-world side task 2026-10-10:** user authorized the resumable preview
+  capture/import pipeline and combined navmesh/capture maintenance before
+  returning to Alpha 3.1.5. See `docs/world-capture.md`. Player Atlas now refers
+  to existing illustrated Satellite assets; old layered Atlas is retired only
+  from the selector. New Satellite is complete captured imagery, never a partial
+  or stale collection. Map/Level, Walkers, Wireframe and launcher Map Atlas stay
+  separate. Cubemap native command is Lua-blocked; do not bypass via aliases,
+  exec or RCON. Actual capture capability/adjacency/restoration and composite
+  nav checks remain gates, not accepted merely by fixture tests.
+- **Capture pilot verified 2026-10-10:** revision4 now uses skyline-owner camera
+  height4992 with native sky/capture-scoped coast; prior black buffers rejected.
+  Seven logical cells/14 outputs plus separate Storm Drain2/2 pass; composite
+  generated/saved/reloaded1313 NAV areas before two captures. Survivor restoration
+  verified at preview15,5. Partial256px tiles/3072px overview staged with explicit
+  incomplete manifest,1.81MB encoded/75.5MiB estimated RGBA; Satellite remains
+  disabled. Client6/6,server6/6,importer5/5,atmosphere17/17,GLua208/0.
+  User approved pilot imagery and authorized full preview capture rollout;
+  full-world completion/import remains pending.
+  active Alpha3.1.5 Phase C remains unaccepted.
 - **Phase C first source boundary 2026-10-09:** bounds-driven expanded gates now
   use+/-2208, with corresponding inward arrival landmarks. Canonical road/bridge
   deck extraction yields36/196 and lifts elevated triggers/barricades/arrivals
@@ -328,6 +403,15 @@ wording is superseded by the final acceptance above, not a current task list.
 - Before adding client-side GLua or Derma calls, confirm the API signature from a compatible local call site or current Garry's Mod documentation. Validate new client scripts for syntax and exercise prompt first-run, decline/reset, and reopening paths.
 
 ## Generator And Asset Boundaries
+
+- **CS 1.6 addon permission, 2026-10-10:** the user reports explicit creator
+  permission to extract and bundle all assets from Workshop addon `2657591603`
+  (archived revision `1637211535`), including its underlying Valve assets, in
+  this non-commercial ZombieSim project. Retain the source credits and record
+  this as user-confirmed permission, not independently verified licence text.
+  Do not repeat the permission question for this exact integration unless the
+  scope changes or contradictory evidence appears. This is not a blanket
+  public-domain claim about Archive.org or a licence for unrelated Valve assets.
 
 - Hand-authored tile VMFs live in `tiletemplates`; base maps, launcher VMFs (`celltemplates/launchers`), and standalone safe rooms live in `celltemplates`. Edit these source assets, not generated files in `generated/src*`.
 - `content/` is distributable addon content only. Keep compiler logs/reports/intermediate BSPs and other developer outputs under `generated/`; launcher compiler output belongs in `generated/launcher_build`, while required packaged BSPs/materials remain under `content/`.

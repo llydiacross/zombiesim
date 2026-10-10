@@ -87,8 +87,8 @@ function Music:Save()
     if not self.State or not self.Profile then return end
     if IsValid(self.Channel) then
         self.State.position = self.Channel:GetTime()
-        local track = registry() and registry().tracks[self.State.trackId]
-        if track and self.State.position >= track.duration then
+        local length = self.Channel:GetLength()
+        if self.DurationMatches(length, nil) and self.State.position >= length then
             self.State.trackId, self.State.position = nil, nil
             self.State.nextAt = os.time() + self.IdleDelay(registry())
         end
@@ -181,6 +181,12 @@ function Music:Start(trackId, position, fallbackUsed)
             channel:Stop()
             self.Mode = "paused"
             ZM_Loading:Finish(step, "info", "Music paused")
+            return
+        end
+        if (position or 0) >= length then
+            channel:Stop()
+            ZM_Loading:Finish(step, "info", "Saved music track has ended")
+            self:Schedule()
             return
         end
         channel:SetVolume(0)

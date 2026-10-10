@@ -9,13 +9,106 @@ Alpha 3.1.5 implementation was authorized on 2026-10-06. Its
 [active phased tracker](todo-alpha.3.1.5.md) records accepted Phase 0 baseline/
 inventory with explicit limits carried forward. Phase A outer edge geometry
 passes isolated structural checks; land/coast Hammer and isolated Sandbox
-geometry reviews are accepted. Phase A is accepted; Phase B is in progress.
-Phase B's isolated skyline builds and geometry/compatibility regressions pass;
-fresh expanded renderer review and matched performance remain acceptance gates.
-Outer edges remain disabled in normal settings and no expanded maps have been
-staged. Workshop publication is still
+geometry reviews are accepted. Phases A/B are accepted on accumulated preview
+review; Phase C gate/arrival migration is in progress. Expanded preview assets
+are temporarily staged with a restoration ledger; normal production settings
+remain unchanged. Uncaptured individual reviews and matched performance are
+retained validation limits, not new Phase B gates. Workshop publication is still
 deferred; `version.json` reports `in development`, not `released`. Production
 city rebuilds require separate approval.
+
+## CS 1.6 weapon assets
+
+The user-cleared Workshop `2657591603` revision `1637211535` supplies 24
+additional firearms, with independent `weaponCs16*` inventory IDs. Existing
+weapons and saved items are unchanged. They use ZombieSim's hitscan, inventory
+ammo, item scaling, safe-zone holstering and effects, not the Sandbox addon Lua.
+All 24 are in the generic weapon loot pool, marked very rare, with exactly
+1/100 of their normal counterpart's loot weight at every danger level. This is
+a relative weight, not an absolute 1% drop chance. No CS 1.6 weapons are sold by
+the quartermaster.
+
+Each CS 1.6 variant has its counterpart's baseline damage, range, fire delay,
+reload time and capacity, then applies +25% damage, +20% range, 15% faster firing
+and reloads, and +20% magazine capacity (rounded to whole rounds). These fixed
+bonuses multiply existing instance attribute/mastercraft scales; rolls and
+saved item identities are unchanged.
+
+The normal arsenal now includes all 24 CSS firearms, including dual Berettas,
+plus the existing HL2 pistol and new .357, SMG, pulse rifle, shotgun and crossbow:
+55 ranged weapons including the 24 CS 1.6 variants and imported Lewis. The crossbow launches a
+server-owned swept bolt rather than an instant hitscan; it snapshots item
+damage/range, stops on collision, and expires at its range or ten seconds.
+There are no recoverable/embedded bolts, alternate fire, explosives or gravity
+gun in this batch. New .357, pulse charge and bolt ammo appears in loot and
+quartermaster stock. Mounted CSS/HL2 models and audio are referenced in place,
+not extracted. The quartermaster retains all original offers and has 32 total
+offers, including the imported spanner.
+
+Ammo is deliberately mapped to existing gameplay families: pistols/SMGs use
+9mm, rifles use 5.56/7.62, shotguns use shells, and AWP uses the existing .50
+family. These are game balance categories, not claims of original calibres.
+Glock/FAMAS use fixed automatic modes; scope, burst and silencer
+toggles are not imported. Shotguns retain the existing timed magazine reload
+contract. Knife, grenade and C4 models are retained but are not playable/loot
+items in this batch.
+
+### Consolidated asset import and equipment
+
+`bin/import_assets.py` is the single importer for the approved CS 1.6 archive
+and five supplied archives in `assets/models`: `chapstic_hammer.zip`,
+`_3418-.rar`, `spanner.7z`, `m249_lewis.rar` and `hev_gordon_fixed_.rar`.
+These add a hammer, machete, spanner, Lewis machine gun and HEV Gordon model.
+There are four playable melee weapons including the existing crowbar.
+The hammer-only world model is derived from the supplied first-person mesh
+with the user's approval. The Lewis sleeve references mounted CSS hands using
+the approved material substitution. Archive weapon scripts and global
+replacement manifests are not installed.
+
+Equipping the radiation suit selects HEV Gordon and its hands; merely carrying
+it does not. Removing it restores saved survivor appearance without changing
+the character's saved model, skin or bodygroups.
+
+Run the consolidated importer from the repository root:
+
+```powershell
+python .\bin\import_assets.py
+python -m unittest discover -s .\tests\weapons -p "test_*.py" -v
+.\bin\test_glua_syntax.ps1
+.\bin\test_workshop_packages.ps1
+```
+
+If the original CS 1.6 archive is absent, the importer verifies and retains
+its existing hash-owned payloads and original credits. Supplying the exact
+approved ZIP again enables full reimport; the source-GMA fixture is skipped
+while that archive is absent, not reported as verified.
+
+The offline animation test uses the optional fixture dependency from
+`tests/glua/requirements.txt`. In game, run `zn_test_weapon_catalog` together with
+`zn_test_weapon_effects` and the relevant static-data, inventory, loot and
+trading suites. New asset checks are `zn_test_imported_assets` and the read-only
+client command `zombiesim_dev_test_imported_assets_client`. These cover
+engine models/materials, melee contracts and radiation-suit appearance;
+they do not replace human weapon/animation/audio review or survivor firing.
+Weapon fixtures must use `weapons.Get` when they need effective
+inherited fields; `weapons.GetStored` returns the unmerged definition.
+
+The importer verifies the exact GMA and per-file CRCs, refuses conflicting
+loose files, namespaces sounds under `sound/zombiesim/cs16`, and excludes
+addon Lua, HUD/decal materials and particle effects. It writes hash ownership
+to `content/data_static/imported_assets.json`; packaging checks those hashes and
+retains the archived credits. Imported GameBanana assets are namespaced under
+`zombiesim/imported`. Permission is user-confirmed for these exact supplied
+archives and the
+non-commercial integration, not an independently verified licence or a
+blanket Archive.org public-domain claim. See [AGENTS.md](AGENTS.md).
+
+Options includes **Third Party Licenses** directly below Changelog. Its
+scrollable window displays all shipped sky notices and imported-asset source
+records, including original CS 1.6 and machete credits. Where no license text
+was supplied, it explicitly labels the user-confirmed creator permission as
+a permission record, not original license text. Escape/X returns to Options;
+the same window is available from launcher Options.
 
 ## Online services (future integration)
 
@@ -687,6 +780,18 @@ To refresh only generated map materials after a visual renderer change, while ke
 .\bin\build_world_satellite_material.ps1 -WorldProfile preview
 ```
 
+The player-facing **Atlas** view uses this existing generated satellite artwork;
+the old layered Atlas presentation is no longer offered. **Satellite** is reserved
+for captured in-engine world imagery. It remains disabled until a complete
+capture manifest matching the active map and plan revisions is installed.
+Complete Clear/Atmospheric sets expose a saved **FOG: OFF/ON** selector. Map/Level,
+Walkers, Wireframe, waypoint selection and the launcher Map Atlas remain separate.
+Old Atlas and Satellite selections migrate once to the new Atlas; existing
+Satellite layer preferences migrate with the artwork. Captured-world originals
+and game display tiles must have separate resolution budgets.
+`zombiesim_world_map_view_status` reports the mode, migration schema and capture
+availability/reason without changing the view.
+
 When the map manifest or template plan has changed, also refresh the matching runtime index after the required BSPs exist:
 
 ```powershell
@@ -734,6 +839,8 @@ Run this from an in-game admin console to print your saved raw grid cell, logica
 ```
 zombiesim_player_status
 ```
+
+City exit arrows point outward on the traced road surface: ordinary roads have one arrow, motorways have one on each carriageway rather than the median. They retain green/yellow/red eligibility/waypoint colours, depth occlusion and a1280-unit world range; E travel and nearby prompts are unchanged. The HUD minimap (live and cell-texture modes) and satellite/Level view draw live arrow overlays using their existing pan/zoom transforms, clipped to the map bounds. These overlays are not baked into cached captures and do not use the world camera's distance limit. The world-map window and waypoint diamond are unchanged. `zombiesim_transition_arrows_status` reports meshes, material/shader and texture availability. Preview admins can run `zombiesim_dev_test_transition_markers_client` for isolated client tests; `zombiesim_dev_gate_report` through the bridge reports independently traced gate arrow surfaces. Offline regressions are `tests/transitions/test_client_transition_markers.py` and `tests/transitions/test_server_transition_markers.py`, using the optional shared GLua harness. These fixtures do not prove rendered appearance or actual travel.
 
 The den camera selects first-person when the loaded map matches a den in the active world profile, including the brief exit interval when the saved safe-zone ID has already been cleared; outside dens it retains the top-down/orbit controls. The weapon HUD reads clip capacity from the active weapon and reserve rounds from the server-synchronized inventory snapshot. An unavailable inventory snapshot displays `--` rather than pretending the reserve is empty. Hammer `npc_name` takes precedence for den NPC display names; if absent, the entity's `targetname` is used.
 
@@ -818,6 +925,20 @@ Mocked checks are not visual or GPU performance acceptance; inspect a fresh
 client load for the live review.
 
 ### Shared offline Lua fixture harness
+
+For bounded preview screenshot collection and sequential nav/capture maintenance,
+see [Resumable preview world captures](docs/world-capture.md). Start with
+`zombiesim_world_capture_start current`, or
+`zombiesim_world_maintenance_start current` to validate/generate/reload nav first.
+The pipeline restores the original survivor, validates both world revision hashes,
+keeps original PNGs in DATA and imports small display tiles plus an explicitly
+partial/complete captured manifest. Following approved pilot review, explicitly
+run `zombiesim_world_capture_full preview 576` for fresh capture-only collection;
+`zombiesim_world_maintenance_full preview 576` separately enables nav sequencing.
+Monitor/import a known complete run with
+`.\bin\watch_world_capture.ps1 -RunId "<run-id>" -StagePreview`.
+Bounded selections retain their eight-cell cap; no command invokes blocked
+cubemap commands or production builds.
 
 [`tests/glua/harness.py`](tests/glua/harness.py) provides LuaJIT loading, exact
 source-file allowlisting, `ZM_TestHarness` result reporting and field-level
@@ -1301,7 +1422,7 @@ For controlled preview profiling, `zn_gore_quality_probe 0|1|2` temporarily sele
 
 ## Environment music and game audio settings
 
-`content/data_static/music_definitions.json` registers seven existing recordings under stable city A-D and sewer A-C IDs, independently of their filenames in `content/sounds/music`. Durations were measured with the installed `ffprobe` and are checked against GMod's actual decoded lengths. City/default dens use city variations; the origin Storm Drain den and `metro_station`/`metro_route` environments use sewer variations. Explicit safe-zone IDs can override the origin/default mapping. Environment priority is authored, not dependent on tag iteration order; unknown tags, routes, IDs, missing files, duplicates and invalid durations reject the static load.
+`content/data_static/music_definitions.json` registers eight recordings under stable city A-E and sewer A-C IDs, independently of their filenames in `content/sounds/music`. Duration is optional: omit it to play the full decoded track, including replacement recordings with a different length. An explicitly supplied positive duration retains the one-second decoder/catalogue validation tolerance; it is not a playback cutoff. Resume positions for durationless tracks are validated against the decoded channel before playback; already-ended tracks return to the normal silent interval. City/default dens use city variations; the origin Storm Drain den and `metro_station`/`metro_route` environments use sewer variations. Explicit safe-zone IDs can override the origin/default mapping. Environment priority is authored, not dependent on tag iteration order; unknown tags, routes, IDs, missing files, duplicates and invalid durations reject the static load.
 
 Playback is environment-driven, not combat-triggered. It starts after a random 8-12-minute silent interval and schedules another interval after a track ends; it never cuts a song off on an idle timer. One BASS channel is owned at a time, with stale asynchronous callbacks stopped. Departure fades follow the transition fade. Cell-to-cell travel within the same track set resumes the saved position; travel into a different set fades in a destination track immediately after loading. Den entry starts a destination track if music was playing. Leaving a safe zone while its track is playing ends that track and starts a fresh 8-12-minute silent interval, even if the entrance cell uses the same set. Travel during an existing silent interval preserves its deadline. Local presentation state, track routing context and the pending idle deadline persist under `DATA/zombiesim/music_<profile>.json`; loading/launcher holds, disabled music and zero music volume pause playback. A failed playback reports its decoder/duration error and tries a different available default variation once, then schedules silence rather than retrying forever.
 

@@ -1,0 +1,115 @@
+return function(createEngine, loadChunk)
+    local Tests = {}
+    ZM_WorldCaptureServerTests = Tests
+    local function fixture()
+        local contract = loadChunk("world_capture/sh_contract.lua")()
+        local env, state = createEngine(contract)
+        local function load()
+            local chunk = loadChunk("sv_world_capture.lua")
+            setfenv(chunk, env); chunk()
+        end
+        load()
+        local function reload()
+            state:Reload(loadChunk("sv_world_capture.lua"))
+            state:Advance(); state:Advance(6)
+        end
+        return env, state, contract, reload
+    end
+    function Tests.Run()
+        local suite = ZM_TestHarness.NewSuite()
+        suite:Add("full_rollout_requires_explicit_scope_count_and_never_deduplicates_recipes", function(check)
+            local _, state = fixture()
+            check(not state.commands.zombiesim_world_capture_full({"city", "4"}), "production scope rejected")
+            check(not state.commands.zombiesim_world_capture_full({"preview", "3"}), "wrong authoritative count rejected")
+            check(state.commands.zombiesim_world_capture_full({"preview", "4"}), "explicit full scope starts")
+            local saved = state.files["zombiesim/world_capture_state.json"]
+            check(saved.fullWorld and not saved.withNav and #saved.queue == 4 and saved.completedResults == 0,
+                "fresh full capture-only all logical cells")
+            check(saved.queue[1].map == saved.queue[2].map and saved.queue[1].id ~= saved.queue[2].id,
+                "shared recipes retained as distinct cells")
+            local _, combined = fixture()
+            check(combined.commands.zombiesim_world_maintenance_full({"preview", "4"}), "separate combined rollout")
+            check(combined.files["zombiesim/world_capture_state.json"].withNav, "combined explicitly enables nav")
+        end)
+        suite:Add("two_logical_cells_sharing_recipe_reload_and_restore_exact_core", function(check)
+            local env, state, contract, reload = fixture()
+            check(state.commands.zombiesim_world_capture_start({"0,0", "1,0"}), "bounded queue starts")
+            reload()
+            check(state.request.cell.id == 0 and state.request.variant == "clear", "first ready request")
+            state:Result(contract); state:Advance()
+            check(state.request.variant == "atmospheric", "second variant without map travel")
+            state:Result(contract); state:Advance()
+            check(state.changelevel == "recipe_0" and state.player.CellX == 1, "same BSP distinct logical cell reloads")
+            reload()
+            check(state.request.cell.id == 1, "logical identity retained across reload")
+            state:Result(contract); state:Advance(); state:Result(contract); state:Advance()
+            check(state.changelevel == "recipe_0", "return map queued")
+            reload()
+            local saved = state.files["zombiesim/world_capture_state.json"]
+            check(not saved.active and saved.phase == "complete" and saved.restorationVerified, "restoration acknowledged")
+            check(saved.completedResults == 4 and not state.player.frozen, "results retained/unfrozen")
+            for key, value in pairs(state.originalRow) do check(tostring(state.row[key]) == value, key .. " restored") end
+            check(state.player.position.x == 20 and state.player.position.y == 30, "original local position restored")
+        end)
+        suite:Add("failed_png_restores_then_retry_keeps_completed_clear_result", function(check)
+            local _, state, contract, reload = fixture()
+            state.commands.zombiesim_world_capture_start({"current"}); reload()
+            state:Result(contract); state:Advance()
+            state:Result(contract, {sha256 = "wrong"})
+            check(state.changelevel == "recipe_0", "invalid output restores before retry")
+            reload()
+            check(state.commands.zombiesim_world_capture_retry({}), "same run retries after restoration")
+            reload()
+            check(state.request.variant == "atmospheric", "completed clear result is not repeated")
+        end)
+        suite:Add("explicit_extension_keeps_results_and_snapshots_intervening_gameplay", function(check)
+            local _, state, contract, reload = fixture()
+            state.commands.zombiesim_world_capture_start({"current"}); reload()
+            state:Result(contract); state:Advance(); state:Result(contract); state:Advance(); reload()
+            local runId = state.files["zombiesim/world_capture_state.json"].runId
+            state.player.Hunger, state.row.Hunger = 20, "30"
+            check(state.commands.zombiesim_world_capture_extend({"1,0"}), "bounded explicit extension accepted")
+            local saved = state.files["zombiesim/world_capture_state.json"]
+            check(saved.runId == runId and saved.results.clear["0"] ~= nil, "same run retains completed logical result")
+            check(saved.original.runtimeCore.Hunger == 20 and saved.original.core.Hunger == "30",
+                "fresh gameplay/persistence restoration baseline")
+            check(#saved.queue == 2 and saved.index == 2, "only new logical cell queued")
+        end)
+        suite:Add("revision_drift_and_competing_batch_are_fail_closed", function(check)
+            local _, state, _, reload = fixture()
+            state.navBatchActive = true
+            check(not state.commands.zombiesim_world_capture_start({"current"}), "nav-only batch cannot overlap")
+            state.navBatchActive = false
+            state.commands.zombiesim_world_capture_start({"current"})
+            state.world.templatePlanSha256 = string.rep("c", 64)
+            reload()
+            check(state.files["zombiesim/world_capture_state.json"].phase == "restoring", "revision drift routes to restoration")
+        end)
+        suite:Add("nav_generation_save_reload_validation_precedes_capture", function(check)
+            local _, state, _, reload = fixture()
+            state.commands.zombiesim_world_maintenance_start({"current"}); reload()
+            check(state.navStarts == 1 and not state.request, "nav starts before any capture")
+            state:Advance()
+            state.navGenerating, state.navAreas = false, 42
+            state:Advance(4)
+            check(state.navSaves == 1 and not state.request, "native nav saved before capture")
+            state:Advance(3)
+            check(state.changelevel == "recipe_0", "fresh persistence reload required")
+            reload()
+            local saved = state.files["zombiesim/world_capture_state.json"]
+            check(saved.navmeshes.recipe_0.reloadValidated and state.request.variant == "clear", "capture follows loaded nav proof")
+            check(state.navSaves == 1, "existing nav-only state never touched")
+        end)
+        suite:Add("nav_cancel_waits_for_safe_boundary_and_timeout_is_bounded", function(check)
+            local _, state, _, reload = fixture()
+            state.commands.zombiesim_world_maintenance_start({"current"}); reload()
+            state:Advance()
+            state.commands.zombiesim_world_capture_cancel({})
+            check(not state.changelevel, "cannot changelevel during native generation")
+            state.navGenerating, state.navAreas = false, 10
+            state:Advance(4); state:Advance(3); reload()
+            check(state.changelevel == "recipe_0" and not state.request, "cancellation restores after nav reload")
+        end)
+        return suite:Run()
+    end
+end

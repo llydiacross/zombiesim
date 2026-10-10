@@ -1,0 +1,23 @@
+AddCSLuaFile()
+SWEP.Base = "weapon_zn_base_cs16"
+SWEP.PrintName = "CS 1.6 M4A1"
+SWEP.ViewModel = "models/weapons/cs16/c_m4a1.mdl"
+SWEP.WorldModel = "models/weapons/cs16/player/p_m4a1.mdl"
+SWEP.IdleSequence = "idle_unsil"
+SWEP.DrawSequence = "draw_unsil"
+SWEP.FireSequence = "shoot1_unsil"
+SWEP.ReloadSequence = "reload_unsil"
+SWEP.HoldType = "ar2"
+SWEP.Slot = 2
+SWEP.FirePresentation = "rifle556"
+SWEP.Primary.Automatic = true
+SWEP.BulletDamage = 19
+SWEP.BulletSpread = 0.019
+SWEP.FireDelay = 0.095
+SWEP.BaseClipSize = 30
+SWEP.ReloadTime = 2.3
+SWEP.GoreSeverFactor = 1.1
+SWEP.BulletForce = 4
+SWEP.FireSound = "zombiesim/cs16/weapons/m4a1_unsil-1.wav"
+SWEP.ReloadSound = "zombiesim/cs16/weapons/m4a1_clipout.wav"
+SWEP.ReloadFinishSound = "zombiesim/cs16/weapons/m4a1_boltpull.wav"

@@ -22,10 +22,25 @@
         "+ Phase B accepted on accumulated expanded-preview review, including corrected west coast, bridge continuation and current-cell edge fires.",
         "? Uncaptured individual visual cases and matched performance remain validation limits, not pending Phase B gates; expanded preview is temporarily staged with restoration backups.",
         "? Phase C gate relocation, arrival consistency and static road arrows are in progress.",
+        "+ Static depth-tested exit arrows follow road and bridge decks; motorway exits have paired carriageway arrows instead of a median arrow.",
+        "+ Live exit-arrow overlays in the HUD minimap and satellite/Level view retain carriageway placement and current route colours without baking arrows into captures.",
+        "+ Existing illustrated Satellite artwork is now Atlas; old Atlas presentation retired from the selector, with saved selections migrated.",
+        "+ Captured-world Satellite mode supports revision-gated complete imagery and saved clear/atmospheric variants; incomplete captures are not presented as a complete map.",
+        "- Music duration is optional; City E now uses its full decoded replacement track instead of rejecting the stale 184.2-second duration.",
+        "+ Added 24 CS 1.6 firearms to the weapon loot pool using ZombieSim ammo, item scaling, holstering and effects; existing weapons retained.",
+        "+ User-confirmed non-commercial CS 1.6 asset permission, original credits, checksum-owned packaging and isolated audio paths; knife/grenades/C4 gameplay deferred.",
+        "+ Completed the 24-firearm CSS arsenal, including dual Berettas; added HL2 .357, SMG, pulse rifle, shotgun and projectile crossbow with inventory ammunition.",
+        "+ CS 1.6 variants now gain 25% damage, 20% range/capacity and 15% faster firing/reloads, multiplying existing random/mastercraft attributes.",
+        "- Made all CS 1.6 variants loot-only at one-hundredth of their normal counterpart's weight; removed their quartermaster stock while retaining original offers.",
+        "+ Added imported hammer, machete, spanner and Lewis weapons; equipping the radiation suit uses HEV Gordon and hands without altering saved survivor appearance.",
+        "+ Options Third Party Licenses opens a scrollable collection of shipped original notices and clearly labelled creator-permission records.",
+        "? Options scroll height includes both footer buttons and bottom padding so Third Party Licenses remains fully reachable in the launcher.",
+        "? Consolidated approved archive imports and hash-owned packaging into import_assets.py and imported_assets.json; original CS 1.6 and machete credits retained.",
         "- Corrected generated bridge-deck gate height together with barricades and arrival landmarks; isolated structural checks pass, not yet staged.",
         "? Planned border-aware map previews, slower movement and rarer spaced searchable loot.",
         "? Planned distressed Earth-to-city launcher and read-only character outfit thumbnails.",
-        "? Production rebuilds and Workshop publication remain separately gated."
+        "? Production rebuilds and Workshop publication remain separately gated.",
+        "? Alpha 3.2 CSM implementation is scheduled next, after Alpha 3.1.5 completion; projector and lighting feasibility gates retained."
       ]
     },
     {

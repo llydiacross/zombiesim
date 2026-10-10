@@ -365,12 +365,19 @@ function Service:LoadDenStash(target)
     return true
 end
 
+function Service:RefreshWearableAppearance(target)
+    if target.ZM_PersistentStateLoaded and target.ZM_HEVAppearance ~= target:HasRadiationProtection() then
+        hook.Run("PlayerSetModel", target)
+    end
+end
+
 function Service:Send(target)
     if not IsValid(target) or not target:IsPlayer() or not target.ZM_Inventory then
         return
     end
     self:NormalizeWeaponSlots(target)
     target:SetNWBool("ZM_RadiationProtected", target:HasRadiationProtection())
+    self:RefreshWearableAppearance(target)
     for garment in pairs(ZM_Clothing.Slots) do
         target:SetNWString("ZM_Clothing_" .. garment, ZM_Clothing:GetEquipped(target.ZM_Inventory, garment))
     end

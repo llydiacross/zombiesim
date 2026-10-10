@@ -1,0 +1,21 @@
+AddCSLuaFile()
+SWEP.Base = "weapon_zn_base_hitscan"
+SWEP.PrintName = "SG 550"
+SWEP.ViewModel = "models/weapons/cstrike/c_snip_sg550.mdl"
+SWEP.WorldModel = "models/weapons/w_snip_sg550.mdl"
+SWEP.HoldType = "ar2"
+SWEP.Slot = 4
+SWEP.FirePresentation = "rifle556"
+SWEP.Primary.Automatic = true
+SWEP.BulletDamage = 34
+SWEP.BulletRange = 6144
+SWEP.BulletSpread = 0.008
+SWEP.FireDelay = 0.3
+SWEP.BaseClipSize = 30
+SWEP.ReloadTime = 3
+SWEP.GoreSeverFactor = 1.5
+SWEP.BulletForce = 5
+SWEP.RecoilPitch = 1.2
+SWEP.FireSound = "weapons/sg550/sg550-1.wav"
+SWEP.ReloadSound = "weapons/sg550/sg550_clipout.wav"
+SWEP.ReloadFinishSound = "weapons/sg550/sg550_boltpull.wav"

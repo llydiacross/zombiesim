@@ -95,6 +95,20 @@ function SWEP:GetScaledDamage(damage)
     return damage * self:GetScale("DamageScale")
 end
 
+function SWEP:PlayNamedWeaponAnimation(name)
+    local owner = self:GetOwner()
+    if not IsValid(owner) then return end
+    local model = owner:GetViewModel()
+    if not IsValid(model) then return end
+    local sequence = model:LookupSequence(name)
+    if sequence < 0 then
+        ErrorNoHalt("[ZombieSim] Missing weapon sequence " .. name .. " on " .. self.ViewModel .. "\n")
+        return
+    end
+    model:SendViewModelMatchingSequence(sequence)
+    self.NextIdleAt = CurTime() + model:SequenceDuration(sequence)
+end
+
 // SpeedScale multiplies a delay, so values below 1 attack faster.
 function SWEP:GetScaledDelay(delay)
     return delay * self:GetScale("SpeedScale")

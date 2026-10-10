@@ -1,0 +1,21 @@
+AddCSLuaFile()
+SWEP.Base = "weapon_zn_base_hitscan"
+SWEP.PrintName = "M249"
+SWEP.ViewModel = "models/weapons/cstrike/c_mach_m249para.mdl"
+SWEP.WorldModel = "models/weapons/w_mach_m249para.mdl"
+SWEP.HoldType = "ar2"
+SWEP.Slot = 2
+SWEP.FirePresentation = "rifle556"
+SWEP.Primary.Automatic = true
+SWEP.Primary.ClipSize = 256
+SWEP.BulletDamage = 18
+SWEP.BulletSpread = 0.04
+SWEP.FireDelay = 0.1
+SWEP.BaseClipSize = 100
+SWEP.ReloadTime = 4.5
+SWEP.GoreSeverFactor = 1.1
+SWEP.BulletForce = 4
+SWEP.RecoilPitch = 1
+SWEP.FireSound = "weapons/m249/m249-1.wav"
+SWEP.ReloadSound = "weapons/m249/m249_coverup.wav"
+SWEP.ReloadFinishSound = "weapons/m249/m249_coverdown.wav"

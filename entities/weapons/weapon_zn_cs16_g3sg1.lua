@@ -1,0 +1,22 @@
+AddCSLuaFile()
+SWEP.Base = "weapon_zn_base_cs16"
+SWEP.PrintName = "CS 1.6 G3SG1"
+SWEP.ViewModel = "models/weapons/cs16/c_g3sg1.mdl"
+SWEP.WorldModel = "models/weapons/cs16/player/p_g3sg1.mdl"
+SWEP.FireSequence = "shoot"
+SWEP.HoldType = "ar2"
+SWEP.Slot = 4
+SWEP.FirePresentation = "sniper762"
+SWEP.Primary.Automatic = true
+SWEP.BulletDamage = 40
+SWEP.BulletRange = 6144
+SWEP.BulletSpread = 0.008
+SWEP.FireDelay = 0.3
+SWEP.BaseClipSize = 20
+SWEP.ReloadTime = 3
+SWEP.GoreSeverFactor = 1.8
+SWEP.BulletForce = 6
+SWEP.RecoilPitch = 1.4
+SWEP.FireSound = "zombiesim/cs16/weapons/g3sg1-1.wav"
+SWEP.ReloadSound = "zombiesim/cs16/weapons/g3sg1_clipout.wav"
+SWEP.ReloadFinishSound = "zombiesim/cs16/weapons/g3sg1_slide.wav"

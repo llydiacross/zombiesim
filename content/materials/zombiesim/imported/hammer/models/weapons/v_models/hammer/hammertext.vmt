@@ -1,0 +1,6 @@
+VertexLitGeneric
+{
+	"$baseTexture" "zombiesim/imported/hammer/models/weapons/v_models/hammer/hammertext"
+	"$bumpmap" "zombiesim/imported/hammer/models/weapons/v_models/hammer/hammertextn"
+
+}

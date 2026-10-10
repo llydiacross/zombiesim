@@ -1,0 +1,23 @@
+AddCSLuaFile()
+SWEP.Base = "weapon_zn_base_cs16"
+SWEP.PrintName = "CS 1.6 AWP"
+SWEP.ViewModel = "models/weapons/cs16/c_awp.mdl"
+SWEP.WorldModel = "models/weapons/cs16/player/p_awp.mdl"
+SWEP.HoldType = "ar2"
+SWEP.Slot = 4
+SWEP.FirePresentation = "sniper50"
+SWEP.BulletDamage = 90
+SWEP.BulletRange = 8192
+SWEP.BulletSpread = 0.003
+SWEP.FireDelay = 1.25
+SWEP.BaseClipSize = 10
+SWEP.ReloadTime = 3.2
+SWEP.GoreSeverFactor = 2.5
+SWEP.BulletForce = 8
+SWEP.RecoilPitch = 2.3
+SWEP.MuzzleBlastSpeed = 120
+SWEP.FireSound = "zombiesim/cs16/weapons/awp1.wav"
+SWEP.ReloadSound = "zombiesim/cs16/weapons/awp_clipout.wav"
+SWEP.ReloadFinishSound = "zombiesim/cs16/weapons/boltpull1.wav"
+SWEP.CycleSound = "zombiesim/cs16/weapons/boltpull1.wav"
+SWEP.CycleSoundDelay = 0.4

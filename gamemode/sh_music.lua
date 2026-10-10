@@ -45,7 +45,9 @@ function Music.Validate(data, exists, knownTags, knownZones)
             else
                 if tracks[track.id] then fail(path .. ".id", "duplicate track id") end
                 if type(track.name) ~= "string" or track.name == "" then fail(path .. ".name", "is required") end
-                if not finite(track.duration) or track.duration <= 0 then fail(path .. ".duration", "must be a positive duration") end
+                if track.duration ~= nil and (not finite(track.duration) or track.duration <= 0) then
+                    fail(path .. ".duration", "must be omitted or a positive duration")
+                end
                 if type(track.file) ~= "string" or not string.match(track.file, "^sounds?/music/[%w _%-]+%.mp3$") then
                     fail(path .. ".file", "must be a packaged ASCII music MP3 path")
                 elseif not exists(track.file) then
@@ -141,14 +143,16 @@ end
 function Music.ValidResume(saved, registry)
     return type(saved) == "table" and saved.version == 1 and (saved.trackId == nil
         or type(saved.trackId) == "string" and registry.tracks[saved.trackId] ~= nil
-        and finite(saved.position) and saved.position >= 0 and saved.position < registry.tracks[saved.trackId].duration)
+        and finite(saved.position) and saved.position >= 0
+        and (registry.tracks[saved.trackId].duration == nil or saved.position < registry.tracks[saved.trackId].duration))
         and finite(saved.nextAt) and saved.nextAt >= 0
         and (saved.routeSet == nil or type(saved.routeSet) == "string" and registry.sets[saved.routeSet] ~= nil)
         and (saved.safeZoneId == nil or type(saved.safeZoneId) == "string" and saved.safeZoneId ~= "")
 end
 
 function Music.DurationMatches(actual, expected)
-    return finite(actual) and actual > 0 and finite(expected) and math.abs(actual - expected) <= 1
+    return finite(actual) and actual > 0
+        and (expected == nil or finite(expected) and math.abs(actual - expected) <= 1)
 end
 
 function Music.OutputGain(musicVolume, intensity)

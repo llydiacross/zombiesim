@@ -14,10 +14,11 @@ test("shipped_music_has_all_valid_files_and_measured_durations", function(check)
     local data, issues = validate(source())
     check(data ~= nil and #issues == 0, "the shipped music registry validates")
     if not data then return end
-    check(table.Count(data.tracks) == 7 and #data.sets.city == 4 and #data.sets.sewer == 3,
-        "all seven authored city/sewer variations are registered")
+    check(table.Count(data.tracks) == 8 and #data.sets.city == 5 and #data.sets.sewer == 3,
+        "all eight authored city/sewer variations are registered")
     for _, track in pairs(data.tracks) do
-        check(track.duration > 0 and file.Exists(track.file, "GAME"), track.id .. " has a positive duration and real packaged file")
+        check((track.duration == nil or track.duration > 0) and file.Exists(track.file, "GAME"),
+            track.id .. " has optional valid duration and real packaged file")
     end
 end)
 
@@ -132,6 +133,12 @@ test("resume_records_require_a_known_track_and_finite_in_range_position", functi
 end)
 
 test("actual_channel_durations_are_finite_and_match_the_catalogue", function(check)
+    check(Music.DurationMatches(187.62097916667, nil), "omitted duration accepts the full decoded replacement track")
+    check(not Music.DurationMatches(0, nil) and not Music.DurationMatches(math.huge, nil),
+        "omitted duration does not accept invalid decoder results")
+    local data = registry()
+    check(Music.ValidResume({ version = 1, trackId = "cityE", position = 185, nextAt = 0 }, data),
+        "optional-duration resume is checked against the decoded channel when loaded")
     check(Music.DurationMatches(116.328, 116.328), "measured MP3 duration matches exactly")
     check(not Music.DurationMatches(0, 116.328) and not Music.DurationMatches(math.huge, 116.328),
         "empty/invalid decoder results are not successful playback")

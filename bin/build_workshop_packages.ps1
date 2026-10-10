@@ -84,6 +84,24 @@ foreach ($track in $music.tracks) {
 Add-WorkshopFile $inventory $musicPath 'data_static/music_definitions.json' 'core' 'registries' ($music | ConvertTo-Json -Depth 8)
 Add-WorkshopFile $inventory (Join-Path $content 'sounds\music\preview skybox 1.mp3') 'sound/music/preview skybox 1.mp3' 'common' 'audio:launcher-sky-preview'
 
+$assetsPath = Join-Path $content 'data_static\imported_assets.json'
+$assets = Read-PackageJson $assetsPath
+if ($assets.schemaVersion -ne 1 -or $assets.files.Count -eq 0) {
+    throw 'Invalid imported asset ownership manifest.'
+}
+Add-Content 'data_static/imported_assets.json' 'core' 'registries'
+foreach ($asset in $assets.files) {
+    if ($asset.path -notmatch '^(models/(weapons/)?cs16/[\w/.-]+\.(mdl|vvd|vtx)|materials/weapons/cs16/[\w/.-]+\.(vmt|vtf|png)|sound/zombiesim/cs16/[\w/.-]+\.wav|models/zombiesim/imported/[\w/.-]+\.(mdl|vvd|vtx|phy)|materials/zombiesim/imported/[\w/.-]+\.(vmt|vtf)|sound/zombiesim/imported/[\w/.-]+\.wav|data_static/asset_credits/(cs16_original|gamebanana_[a-z]+)\.txt)$') {
+        throw "Invalid imported asset ownership path: $($asset.path)"
+    }
+    $path = Join-Path $content $asset.path.Replace('/', '\')
+    if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $asset.sha256 -or
+        (Get-Item -LiteralPath $path).Length -ne $asset.bytes) {
+        throw "Imported asset content does not match its ownership manifest: $($asset.path)"
+    }
+    Add-Content $asset.path 'common' 'imported-assets'
+}
+
 $cataloguePath = Join-Path $content 'data_static\clothing_catalogue.json'
 $catalogue = Read-PackageJson $cataloguePath
 if ($catalogue.schemaVersion -ne 1 -or $catalogue.files.Count -eq 0) { throw 'Invalid or unpublished clothing catalogue.' }
@@ -107,6 +125,7 @@ foreach ($directory in $settings.commonMaterialDirectories) {
     foreach ($file in Get-ChildItem -LiteralPath (Join-Path $content $directory) -Recurse -File) {
         if ($file.Extension -in $settings.commonMaterialExtensions) {
             $relative = $file.FullName.Substring($content.Length + 1)
+            if ($relative -match '^materials\\zombiesim\\imported\\') { continue }
             if ($relative -match '^materials\\zombiesim\\skies\\imported_' -and
                 $settings.coreStaticFiles -contains 'sky_catalogue.json' -and
                 $relative -notin $skyCatalogue.ownedFiles) { continue }

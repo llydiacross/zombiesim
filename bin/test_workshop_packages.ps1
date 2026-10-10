@@ -106,6 +106,27 @@ try {
     Write-Fixture 'content\data_static\clothing_catalogue.json' '{"schemaVersion":1,"releaseEligible":false,"files":["catalog_0000000000000000_shirt_male.vtf","catalog_0000000000000000_shirt_male.vmt"]}'
     Write-Fixture 'content\data_static\zombiesim_signs_preview.json' '{"variants":{}}'
     Write-Fixture 'content\data_static\music_definitions.json' '{"tracks":[{"id":"a","file":"sounds/music/a.mp3"}]}'
+    $cs16Files = @(
+        'models/weapons/cs16/c_fixture.mdl',
+        'materials/weapons/cs16/fixture.vmt',
+        'sound/zombiesim/cs16/weapons/fixture.wav',
+        'data_static/asset_credits/cs16_original.txt'
+    )
+    $cs16Entries = foreach ($path in $cs16Files) {
+        Write-Fixture ("content\" + $path.Replace('/', '\')) 'cs16 fixture'
+        $source = Join-Path $fixtureRoot ("content\" + $path.Replace('/', '\'))
+        @{ path = $path; bytes = (Get-Item -LiteralPath $source).Length; sha256 = (Get-FileHash -LiteralPath $source).Hash }
+    }
+    $importedFiles = @('models/zombiesim/imported/hev/fixture.mdl',
+        'materials/zombiesim/imported/lewis/fixture.vmt', 'sound/zombiesim/imported/lewis/fixture.wav')
+    $importedEntries = foreach ($path in $importedFiles) {
+        Write-Fixture ("content\" + $path.Replace('/', '\')) 'imported fixture'
+        $source = Join-Path $fixtureRoot ("content\" + $path.Replace('/', '\'))
+        @{ path = $path; bytes = (Get-Item -LiteralPath $source).Length; sha256 = (Get-FileHash -LiteralPath $source).Hash }
+    }
+    Write-WorkshopJson (Join-Path $fixtureRoot 'content\data_static\imported_assets.json') @{
+        schemaVersion = 1; sources = @(@{ package = 'cs16'; workshopId = '2657591603'; revision = '1637211535' }); files = @($cs16Entries) + @($importedEntries)
+    }
     Write-Fixture 'content\data_static\version.json' '{"schemaVersion":1,"product":"Z-Nation","stage":"Alpha","version":"9.8.7","status":"in development"}'
     Write-Fixture 'content\data_static\sky_catalogue.json' '{"schemaVersion":1,"ownedFiles":["materials\\zombiesim\\skies\\imported_fixtureft.vmt"],"ownedLicenceFiles":["data_static\\sky_licences\\imported_fixture\\README.txt"]}'
     Write-Fixture 'content\materials\zombiesim\skies\imported_fixtureft.vmt' 'owned sky material'
@@ -152,6 +173,19 @@ try {
     Assert-Package 'full builder stages and round-trip packs both sandbox and city' (
         $fixtureReport.staged -and $fixtureReport.packed -and @($fixtureReport.profiles).Count -eq 2 -and
         @($fixtureReport.packages | Where-Object { -not $_.extractionVerified }).Count -eq 0)
+    Assert-Package 'CS 1.6 manifest ships in core and hash-owned assets with original credits ship in common' (
+        @($fixtureReport.packages | Where-Object id -eq 'core').files.path -contains 'data_static/imported_assets.json' -and
+        @($fixtureReport.packages | Where-Object id -like 'common-*').files.path -contains 'data_static/asset_credits/cs16_original.txt' -and
+        @($fixtureReport.packages.files | Where-Object { $_.path -in $cs16Files }).Count -eq 4)
+    Write-Fixture 'content\sound\zombiesim\cs16\weapons\fixture.wav' 'modified cs16 fixture'
+    Assert-Rejected 'CS 1.6 hash mismatches block packaging' { & $builder -ProjectRoot $fixtureRoot -SettingsPath $fixtureSettings }
+    Write-Fixture 'content\sound\zombiesim\cs16\weapons\fixture.wav' 'cs16 fixture'
+    Assert-Package 'unified ownership includes imported models, materials and sounds in common' (
+        @($fixtureReport.packages | Where-Object id -like 'common-*').files.path -contains 'models/zombiesim/imported/hev/fixture.mdl' -and
+        @($fixtureReport.packages.files | Where-Object { $_.path -in $importedFiles }).Count -eq 3)
+    Write-Fixture 'content\sound\zombiesim\imported\lewis\fixture.wav' 'modified imported fixture'
+    Assert-Rejected 'imported asset hash mismatches block packaging' { & $builder -ProjectRoot $fixtureRoot -SettingsPath $fixtureSettings }
+    Write-Fixture 'content\sound\zombiesim\imported\lewis\fixture.wav' 'imported fixture'
     $bloodFiles = @($fixtureReport.packages.files | Where-Object path -like 'materials/models/zombiesim/clothing/prototype_blood_*')
     $bloodPacks = @($fixtureReport.packages | Where-Object {
         @($_.files | Where-Object path -like 'materials/models/zombiesim/clothing/prototype_blood_*').Count -gt 0

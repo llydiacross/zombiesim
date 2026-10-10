@@ -52,6 +52,43 @@
       "value": 200,
       "maxStack": 1
     },
+    "weaponMeleeHammer": {
+      "name": "Hammer", "entityClass": "weapon", "type": "melee_weapon",
+      "weaponClass": "weapon_zn_hammer", "thumbnail": "weaponMeleeHammer",
+      "viewModel": "models/zombiesim/imported/hammer/weapons/v_knife_t.mdl",
+      "worldModel": "models/zombiesim/imported/hammer/w_hammer.mdl",
+      "iconModel": "models/zombiesim/imported/hammer/w_hammer.mdl",
+      "statRequirements": { "Strength": 5 }, "minLevel": 8, "maxLevel": 30,
+      "rarity": "uncommon", "value": 240, "maxStack": 1
+    },
+    "weaponMeleeMachete": {
+      "name": "Machete", "entityClass": "weapon", "type": "melee_weapon",
+      "weaponClass": "weapon_zn_machete", "thumbnail": "weaponMeleeMachete",
+      "viewModel": "models/zombiesim/imported/machete/weapons/v_knife_t.mdl",
+      "worldModel": "models/zombiesim/imported/machete/weapons/w_knife_t.mdl",
+      "iconModel": "models/zombiesim/imported/machete/weapons/w_knife_t.mdl",
+      "statRequirements": { "Strength": 6 }, "minLevel": 12, "maxLevel": 35,
+      "rarity": "uncommon", "value": 320, "maxStack": 1
+    },
+    "weaponMeleeSpanner": {
+      "name": "Spanner", "entityClass": "weapon", "type": "melee_weapon",
+      "weaponClass": "weapon_zn_spanner", "thumbnail": "weaponMeleeSpanner",
+      "viewModel": "models/zombiesim/imported/spanner/weapons/v_knife_t.mdl",
+      "worldModel": "models/zombiesim/imported/spanner/weapons/w_knife_t.mdl",
+      "iconModel": "models/zombiesim/imported/spanner/weapons/w_knife_t.mdl",
+      "statRequirements": { "Strength": 3 }, "minLevel": 5, "maxLevel": 25,
+      "rarity": "common", "value": 180, "maxStack": 1
+    },
+    "weaponLewis": {
+      "name": "Lewis Gun", "entityClass": "weapon", "type": "bullet_weapon",
+      "weaponClass": "weapon_zn_lewis", "thumbnail": "weaponLewis", "cssFamily": "lewis",
+      "viewModel": "models/zombiesim/imported/lewis/weapons/v_lewis.mdl",
+      "worldModel": "models/zombiesim/imported/lewis/weapons/w_mach_m249para.mdl",
+      "iconModel": "models/zombiesim/imported/lewis/weapons/w_mach_m249para.mdl",
+      "ammoId": "ammo762", "firingMode": "automatic", "rarity": "rare",
+      "statRequirements": { "Strength": 12 }, "minLevel": 25, "maxLevel": 60,
+      "value": 1500, "maxStack": 1
+    },
     "weaponHandgun9mm": {
       "name": "9mm Handgun",
       "entityClass": "weapon",
@@ -200,6 +237,333 @@
       "maxLevel": 35,
       "value": 980,
       "maxStack": 1
+    },
+    "weaponAug": {
+      "name": "AUG", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponAug",
+      "weaponClass": "weapon_zn_aug", "cssFamily": "aug", "viewModel": "models/weapons/cstrike/c_rif_aug.mdl",
+      "worldModel": "models/weapons/w_rif_aug.mdl", "iconModel": "models/weapons/w_rif_aug.mdl",
+      "ammoId": "ammo556", "firingMode": "automatic", "rarity": "uncommon",
+      "minLevel": 10, "maxLevel": 26, "value": 580, "maxStack": 1
+    },
+    "weaponDeagle": {
+      "name": "Desert Eagle", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponDeagle",
+      "weaponClass": "weapon_zn_deagle", "cssFamily": "deagle", "viewModel": "models/weapons/cstrike/c_pist_deagle.mdl",
+      "worldModel": "models/weapons/w_pist_deagle.mdl", "iconModel": "models/weapons/w_pist_deagle.mdl",
+      "ammoId": "ammo9mm", "firingMode": "semi_auto", "rarity": "uncommon",
+      "minLevel": 5, "maxLevel": 20, "value": 320, "maxStack": 1
+    },
+    "weaponElite": {
+      "name": "Dual Berettas", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponElite",
+      "weaponClass": "weapon_zn_elite", "cssFamily": "elite", "viewModel": "models/weapons/cstrike/c_pist_elite.mdl",
+      "worldModel": "models/weapons/w_pist_elite.mdl", "iconModel": "models/weapons/w_pist_elite.mdl",
+      "ammoId": "ammo9mm", "firingMode": "semi_auto", "rarity": "uncommon",
+      "minLevel": 5, "maxLevel": 20, "value": 300, "maxStack": 1
+    },
+    "weaponFamas": {
+      "name": "FAMAS", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponFamas",
+      "weaponClass": "weapon_zn_famas", "cssFamily": "famas", "viewModel": "models/weapons/cstrike/c_rif_famas.mdl",
+      "worldModel": "models/weapons/w_rif_famas.mdl", "iconModel": "models/weapons/w_rif_famas.mdl",
+      "ammoId": "ammo556", "firingMode": "automatic", "rarity": "uncommon",
+      "minLevel": 8, "maxLevel": 24, "value": 480, "maxStack": 1
+    },
+    "weaponFiveseven": {
+      "name": "Five-seveN", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponFiveseven",
+      "weaponClass": "weapon_zn_fiveseven", "cssFamily": "fiveseven", "viewModel": "models/weapons/cstrike/c_pist_fiveseven.mdl",
+      "worldModel": "models/weapons/w_pist_fiveseven.mdl", "iconModel": "models/weapons/w_pist_fiveseven.mdl",
+      "ammoId": "ammo9mm", "firingMode": "semi_auto", "rarity": "common",
+      "minLevel": 2, "maxLevel": 16, "value": 220, "maxStack": 1
+    },
+    "weaponG3sg1": {
+      "name": "G3SG1", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponG3sg1",
+      "weaponClass": "weapon_zn_g3sg1", "cssFamily": "g3sg1", "viewModel": "models/weapons/cstrike/c_snip_g3sg1.mdl",
+      "worldModel": "models/weapons/w_snip_g3sg1.mdl", "iconModel": "models/weapons/w_snip_g3sg1.mdl",
+      "ammoId": "ammo762", "firingMode": "automatic", "rarity": "rare",
+      "minLevel": 16, "maxLevel": 32, "value": 850, "maxStack": 1
+    },
+    "weaponGalil": {
+      "name": "Galil", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponGalil",
+      "weaponClass": "weapon_zn_galil", "cssFamily": "galil", "viewModel": "models/weapons/cstrike/c_rif_galil.mdl",
+      "worldModel": "models/weapons/w_rif_galil.mdl", "iconModel": "models/weapons/w_rif_galil.mdl",
+      "ammoId": "ammo556", "firingMode": "automatic", "rarity": "uncommon",
+      "minLevel": 8, "maxLevel": 24, "value": 480, "maxStack": 1
+    },
+    "weaponM249": {
+      "name": "M249", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponM249",
+      "weaponClass": "weapon_zn_m249", "cssFamily": "m249", "viewModel": "models/weapons/cstrike/c_mach_m249para.mdl",
+      "worldModel": "models/weapons/w_mach_m249para.mdl", "iconModel": "models/weapons/w_mach_m249para.mdl",
+      "ammoId": "ammo556", "firingMode": "automatic", "rarity": "rare",
+      "minLevel": 16, "maxLevel": 32, "value": 900, "maxStack": 1
+    },
+    "weaponMac10": {
+      "name": "MAC-10", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponMac10",
+      "weaponClass": "weapon_zn_mac10", "cssFamily": "mac10", "viewModel": "models/weapons/cstrike/c_smg_mac10.mdl",
+      "worldModel": "models/weapons/w_smg_mac10.mdl", "iconModel": "models/weapons/w_smg_mac10.mdl",
+      "ammoId": "ammo9mm", "firingMode": "automatic", "rarity": "uncommon",
+      "minLevel": 5, "maxLevel": 18, "value": 300, "maxStack": 1
+    },
+    "weaponP228": {
+      "name": "P228", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponP228",
+      "weaponClass": "weapon_zn_p228", "cssFamily": "p228", "viewModel": "models/weapons/cstrike/c_pist_p228.mdl",
+      "worldModel": "models/weapons/w_pist_p228.mdl", "iconModel": "models/weapons/w_pist_p228.mdl",
+      "ammoId": "ammo9mm", "firingMode": "semi_auto", "rarity": "common",
+      "minLevel": 1, "maxLevel": 14, "value": 200, "maxStack": 1
+    },
+    "weaponP90": {
+      "name": "P90", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponP90",
+      "weaponClass": "weapon_zn_p90", "cssFamily": "p90", "viewModel": "models/weapons/cstrike/c_smg_p90.mdl",
+      "worldModel": "models/weapons/w_smg_p90.mdl", "iconModel": "models/weapons/w_smg_p90.mdl",
+      "ammoId": "ammo9mm", "firingMode": "automatic", "rarity": "uncommon",
+      "minLevel": 8, "maxLevel": 22, "value": 420, "maxStack": 1
+    },
+    "weaponSg550": {
+      "name": "SG 550", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponSg550",
+      "weaponClass": "weapon_zn_sg550", "cssFamily": "sg550", "viewModel": "models/weapons/cstrike/c_snip_sg550.mdl",
+      "worldModel": "models/weapons/w_snip_sg550.mdl", "iconModel": "models/weapons/w_snip_sg550.mdl",
+      "ammoId": "ammo556", "firingMode": "automatic", "rarity": "rare",
+      "minLevel": 16, "maxLevel": 32, "value": 800, "maxStack": 1
+    },
+    "weaponSg552": {
+      "name": "SG 552", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponSg552",
+      "weaponClass": "weapon_zn_sg552", "cssFamily": "sg552", "viewModel": "models/weapons/cstrike/c_rif_sg552.mdl",
+      "worldModel": "models/weapons/w_rif_sg552.mdl", "iconModel": "models/weapons/w_rif_sg552.mdl",
+      "ammoId": "ammo556", "firingMode": "automatic", "rarity": "uncommon",
+      "minLevel": 10, "maxLevel": 26, "value": 560, "maxStack": 1
+    },
+    "weaponTmp": {
+      "name": "TMP", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponTmp",
+      "weaponClass": "weapon_zn_tmp", "cssFamily": "tmp", "viewModel": "models/weapons/cstrike/c_smg_tmp.mdl",
+      "worldModel": "models/weapons/w_smg_tmp.mdl", "iconModel": "models/weapons/w_smg_tmp.mdl",
+      "ammoId": "ammo9mm", "firingMode": "automatic", "rarity": "uncommon",
+      "minLevel": 5, "maxLevel": 18, "value": 300, "maxStack": 1
+    },
+    "weaponUmp45": {
+      "name": "UMP45", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponUmp45",
+      "weaponClass": "weapon_zn_ump45", "cssFamily": "ump45", "viewModel": "models/weapons/cstrike/c_smg_ump45.mdl",
+      "worldModel": "models/weapons/w_smg_ump45.mdl", "iconModel": "models/weapons/w_smg_ump45.mdl",
+      "ammoId": "ammo9mm", "firingMode": "automatic", "rarity": "uncommon",
+      "minLevel": 6, "maxLevel": 20, "value": 360, "maxStack": 1
+    },
+    "weaponXm1014": {
+      "name": "XM1014", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponXm1014",
+      "weaponClass": "weapon_zn_xm1014", "cssFamily": "xm1014", "viewModel": "models/weapons/cstrike/c_shot_xm1014.mdl",
+      "worldModel": "models/weapons/w_shot_xm1014.mdl", "iconModel": "models/weapons/w_shot_xm1014.mdl",
+      "ammoId": "ammoShells", "firingMode": "automatic", "rarity": "rare",
+      "minLevel": 12, "maxLevel": 28, "value": 600, "maxStack": 1
+    },
+    "weaponHl2Magnum": {
+      "name": ".357 Magnum", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponHl2Magnum",
+      "weaponClass": "weapon_zn_hl2_357", "cssFamily": "hl2_357", "viewModel": "models/weapons/c_357.mdl",
+      "worldModel": "models/weapons/w_357.mdl", "iconModel": "models/weapons/w_357.mdl",
+      "ammoId": "ammo357", "firingMode": "semi_auto", "rarity": "uncommon",
+      "minLevel": 6, "maxLevel": 22, "value": 380, "maxStack": 1
+    },
+    "weaponHl2Smg": {
+      "name": "HL2 SMG", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponHl2Smg",
+      "weaponClass": "weapon_zn_hl2_smg", "cssFamily": "hl2_smg", "viewModel": "models/weapons/c_smg1.mdl",
+      "worldModel": "models/weapons/w_smg1.mdl", "iconModel": "models/weapons/w_smg1.mdl",
+      "ammoId": "ammo9mm", "firingMode": "automatic", "rarity": "uncommon",
+      "minLevel": 5, "maxLevel": 18, "value": 340, "maxStack": 1
+    },
+    "weaponHl2Pulse": {
+      "name": "Pulse Rifle", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponHl2Pulse",
+      "weaponClass": "weapon_zn_hl2_pulse", "cssFamily": "hl2_pulse", "viewModel": "models/weapons/c_irifle.mdl",
+      "worldModel": "models/weapons/w_irifle.mdl", "iconModel": "models/weapons/w_irifle.mdl",
+      "ammoId": "ammoPulse", "firingMode": "automatic", "rarity": "rare",
+      "minLevel": 14, "maxLevel": 30, "value": 800, "maxStack": 1
+    },
+    "weaponHl2Shotgun": {
+      "name": "HL2 Shotgun", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponHl2Shotgun",
+      "weaponClass": "weapon_zn_hl2_shotgun", "cssFamily": "hl2_shotgun", "viewModel": "models/weapons/c_shotgun.mdl",
+      "worldModel": "models/weapons/w_shotgun.mdl", "iconModel": "models/weapons/w_shotgun.mdl",
+      "ammoId": "ammoShells", "firingMode": "semi_auto", "rarity": "common",
+      "minLevel": 4, "maxLevel": 16, "value": 300, "maxStack": 1
+    },
+    "weaponHl2Crossbow": {
+      "name": "Crossbow", "entityClass": "weapon", "type": "bullet_weapon", "thumbnail": "weaponHl2Crossbow",
+      "weaponClass": "weapon_zn_hl2_crossbow", "cssFamily": "hl2_crossbow", "viewModel": "models/weapons/c_crossbow.mdl",
+      "worldModel": "models/weapons/w_crossbow.mdl", "iconModel": "models/weapons/w_crossbow.mdl",
+      "ammoId": "ammoBolts", "firingMode": "semi_auto", "rarity": "rare",
+      "minLevel": 12, "maxLevel": 28, "value": 650, "maxStack": 1
+    },
+    "weaponCs16Ak47": {
+      "name": "CS 1.6 AK-47", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Ak47", "weaponClass": "weapon_zn_cs16_ak47", "cssFamily": "cs16_ak47",
+      "viewModel": "models/weapons/cs16/c_ak47.mdl", "worldModel": "models/weapons/cs16/player/p_ak47.mdl",
+      "iconModel": "models/cs16/w_ak47.mdl", "ammoId": "ammo762", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 8, "maxLevel": 24, "value": 540, "maxStack": 1
+    },
+    "weaponCs16Aug": {
+      "name": "CS 1.6 AUG", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Aug", "weaponClass": "weapon_zn_cs16_aug", "cssFamily": "cs16_aug",
+      "viewModel": "models/weapons/cs16/c_aug.mdl", "worldModel": "models/weapons/cs16/player/p_aug.mdl",
+      "iconModel": "models/cs16/w_aug.mdl", "ammoId": "ammo556", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 10, "maxLevel": 26, "value": 580, "maxStack": 1
+    },
+    "weaponCs16Awp": {
+      "name": "CS 1.6 AWP", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Awp", "weaponClass": "weapon_zn_cs16_awp", "cssFamily": "cs16_awp",
+      "viewModel": "models/weapons/cs16/c_awp.mdl", "worldModel": "models/weapons/cs16/player/p_awp.mdl",
+      "iconModel": "models/cs16/w_awp.mdl", "ammoId": "ammo50Bmg", "firingMode": "semi_auto",
+      "rarity": "very_rare", "minLevel": 18, "maxLevel": 35, "value": 980, "maxStack": 1
+    },
+    "weaponCs16Deagle": {
+      "name": "CS 1.6 Desert Eagle", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Deagle", "weaponClass": "weapon_zn_cs16_deagle", "cssFamily": "cs16_deagle",
+      "viewModel": "models/weapons/cs16/c_deagle.mdl", "worldModel": "models/weapons/cs16/player/p_deagle.mdl",
+      "iconModel": "models/cs16/w_deagle.mdl", "ammoId": "ammo9mm", "firingMode": "semi_auto",
+      "rarity": "very_rare", "minLevel": 5, "maxLevel": 20, "value": 320, "maxStack": 1
+    },
+    "weaponCs16Elite": {
+      "name": "CS 1.6 Dual Berettas", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Elite", "weaponClass": "weapon_zn_cs16_elite", "cssFamily": "cs16_elite",
+      "viewModel": "models/weapons/cs16/c_elites.mdl", "worldModel": "models/weapons/cs16/player/p_elite.mdl",
+      "iconModel": "models/cs16/w_elite.mdl", "ammoId": "ammo9mm", "firingMode": "semi_auto",
+      "rarity": "very_rare", "minLevel": 5, "maxLevel": 20, "value": 300, "maxStack": 1
+    },
+    "weaponCs16Famas": {
+      "name": "CS 1.6 FAMAS", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Famas", "weaponClass": "weapon_zn_cs16_famas", "cssFamily": "cs16_famas",
+      "viewModel": "models/weapons/cs16/c_famas.mdl", "worldModel": "models/weapons/cs16/player/p_famas.mdl",
+      "iconModel": "models/cs16/w_famas.mdl", "ammoId": "ammo556", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 8, "maxLevel": 24, "value": 480, "maxStack": 1
+    },
+    "weaponCs16Fiveseven": {
+      "name": "CS 1.6 Five-seveN", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Fiveseven", "weaponClass": "weapon_zn_cs16_fiveseven", "cssFamily": "cs16_fiveseven",
+      "viewModel": "models/weapons/cs16/c_fiveseven.mdl", "worldModel": "models/weapons/cs16/player/p_fiveseven.mdl",
+      "iconModel": "models/cs16/w_fiveseven.mdl", "ammoId": "ammo9mm", "firingMode": "semi_auto",
+      "rarity": "very_rare", "minLevel": 2, "maxLevel": 16, "value": 220, "maxStack": 1
+    },
+    "weaponCs16G3sg1": {
+      "name": "CS 1.6 G3SG1", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16G3sg1", "weaponClass": "weapon_zn_cs16_g3sg1", "cssFamily": "cs16_g3sg1",
+      "viewModel": "models/weapons/cs16/c_g3sg1.mdl", "worldModel": "models/weapons/cs16/player/p_g3sg1.mdl",
+      "iconModel": "models/cs16/w_g3sg1.mdl", "ammoId": "ammo762", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 16, "maxLevel": 32, "value": 850, "maxStack": 1
+    },
+    "weaponCs16Galil": {
+      "name": "CS 1.6 Galil", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Galil", "weaponClass": "weapon_zn_cs16_galil", "cssFamily": "cs16_galil",
+      "viewModel": "models/weapons/cs16/c_galil.mdl", "worldModel": "models/weapons/cs16/player/p_galil.mdl",
+      "iconModel": "models/cs16/w_galil.mdl", "ammoId": "ammo556", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 8, "maxLevel": 24, "value": 480, "maxStack": 1
+    },
+    "weaponCs16Glock18": {
+      "name": "CS 1.6 Glock 18", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Glock18", "weaponClass": "weapon_zn_cs16_glock18", "cssFamily": "cs16_glock18",
+      "viewModel": "models/weapons/cs16/c_glock18.mdl", "worldModel": "models/weapons/cs16/player/p_glock18.mdl",
+      "iconModel": "models/cs16/w_glock18.mdl", "ammoId": "ammo9mm", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 1, "maxLevel": 12, "value": 180, "maxStack": 1
+    },
+    "weaponCs16M249": {
+      "name": "CS 1.6 M249", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16M249", "weaponClass": "weapon_zn_cs16_m249", "cssFamily": "cs16_m249",
+      "viewModel": "models/weapons/cs16/c_m249.mdl", "worldModel": "models/weapons/cs16/player/p_m249.mdl",
+      "iconModel": "models/cs16/w_m249.mdl", "ammoId": "ammo556", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 16, "maxLevel": 32, "value": 900, "maxStack": 1
+    },
+    "weaponCs16M3": {
+      "name": "CS 1.6 M3", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16M3", "weaponClass": "weapon_zn_cs16_m3", "cssFamily": "cs16_m3",
+      "viewModel": "models/weapons/cs16/c_m3.mdl", "worldModel": "models/weapons/cs16/player/p_m3.mdl",
+      "iconModel": "models/cs16/w_m3.mdl", "ammoId": "ammoShells", "firingMode": "semi_auto",
+      "rarity": "very_rare", "minLevel": 4, "maxLevel": 16, "value": 300, "maxStack": 1
+    },
+    "weaponCs16M4a1": {
+      "name": "CS 1.6 M4A1", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16M4a1", "weaponClass": "weapon_zn_cs16_m4a1", "cssFamily": "cs16_m4a1",
+      "viewModel": "models/weapons/cs16/c_m4a1.mdl", "worldModel": "models/weapons/cs16/player/p_m4a1.mdl",
+      "iconModel": "models/cs16/w_m4a1.mdl", "ammoId": "ammo556", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 8, "maxLevel": 24, "value": 520, "maxStack": 1
+    },
+    "weaponCs16Mac10": {
+      "name": "CS 1.6 MAC-10", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Mac10", "weaponClass": "weapon_zn_cs16_mac10", "cssFamily": "cs16_mac10",
+      "viewModel": "models/weapons/cs16/c_mac10.mdl", "worldModel": "models/weapons/cs16/player/p_mac10.mdl",
+      "iconModel": "models/cs16/w_mac10.mdl", "ammoId": "ammo9mm", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 5, "maxLevel": 18, "value": 300, "maxStack": 1
+    },
+    "weaponCs16Mp5": {
+      "name": "CS 1.6 MP5", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Mp5", "weaponClass": "weapon_zn_cs16_mp5", "cssFamily": "cs16_mp5",
+      "viewModel": "models/weapons/cs16/c_mp5.mdl", "worldModel": "models/weapons/cs16/player/p_mp5.mdl",
+      "iconModel": "models/cs16/w_mp3.mdl", "ammoId": "ammo9mm", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 5, "maxLevel": 18, "value": 340, "maxStack": 1
+    },
+    "weaponCs16P228": {
+      "name": "CS 1.6 P228", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16P228", "weaponClass": "weapon_zn_cs16_p228", "cssFamily": "cs16_p228",
+      "viewModel": "models/weapons/cs16/c_p228.mdl", "worldModel": "models/weapons/cs16/player/p_p228.mdl",
+      "iconModel": "models/cs16/w_p228.mdl", "ammoId": "ammo9mm", "firingMode": "semi_auto",
+      "rarity": "very_rare", "minLevel": 1, "maxLevel": 14, "value": 200, "maxStack": 1
+    },
+    "weaponCs16P90": {
+      "name": "CS 1.6 P90", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16P90", "weaponClass": "weapon_zn_cs16_p90", "cssFamily": "cs16_p90",
+      "viewModel": "models/weapons/cs16/c_p90.mdl", "worldModel": "models/weapons/cs16/player/p_p90.mdl",
+      "iconModel": "models/cs16/w_p90.mdl", "ammoId": "ammo9mm", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 8, "maxLevel": 22, "value": 420, "maxStack": 1
+    },
+    "weaponCs16Scout": {
+      "name": "CS 1.6 Scout", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Scout", "weaponClass": "weapon_zn_cs16_scout", "cssFamily": "cs16_scout",
+      "viewModel": "models/weapons/cs16/c_scout.mdl", "worldModel": "models/weapons/cs16/player/p_scout.mdl",
+      "iconModel": "models/cs16/w_scout.mdl", "ammoId": "ammo762", "firingMode": "semi_auto",
+      "rarity": "very_rare", "minLevel": 10, "maxLevel": 28, "value": 620, "maxStack": 1
+    },
+    "weaponCs16Sg550": {
+      "name": "CS 1.6 SG 550", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Sg550", "weaponClass": "weapon_zn_cs16_sg550", "cssFamily": "cs16_sg550",
+      "viewModel": "models/weapons/cs16/c_sg550.mdl", "worldModel": "models/weapons/cs16/player/p_sg550.mdl",
+      "iconModel": "models/cs16/w_sg550.mdl", "ammoId": "ammo556", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 16, "maxLevel": 32, "value": 800, "maxStack": 1
+    },
+    "weaponCs16Sg552": {
+      "name": "CS 1.6 SG 552", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Sg552", "weaponClass": "weapon_zn_cs16_sg552", "cssFamily": "cs16_sg552",
+      "viewModel": "models/weapons/cs16/c_sg552.mdl", "worldModel": "models/weapons/cs16/player/p_sg552.mdl",
+      "iconModel": "models/cs16/w_sg552.mdl", "ammoId": "ammo556", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 10, "maxLevel": 26, "value": 560, "maxStack": 1
+    },
+    "weaponCs16Tmp": {
+      "name": "CS 1.6 TMP", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Tmp", "weaponClass": "weapon_zn_cs16_tmp", "cssFamily": "cs16_tmp",
+      "viewModel": "models/weapons/cs16/c_tmp.mdl", "worldModel": "models/weapons/cs16/player/p_tmp.mdl",
+      "iconModel": "models/cs16/w_tmp.mdl", "ammoId": "ammo9mm", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 5, "maxLevel": 18, "value": 300, "maxStack": 1
+    },
+    "weaponCs16Ump45": {
+      "name": "CS 1.6 UMP45", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Ump45", "weaponClass": "weapon_zn_cs16_ump45", "cssFamily": "cs16_ump45",
+      "viewModel": "models/weapons/cs16/c_ump45.mdl", "worldModel": "models/weapons/cs16/player/p_ump45.mdl",
+      "iconModel": "models/cs16/w_ump45.mdl", "ammoId": "ammo9mm", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 6, "maxLevel": 20, "value": 360, "maxStack": 1
+    },
+    "weaponCs16Usp": {
+      "name": "CS 1.6 USP", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Usp", "weaponClass": "weapon_zn_cs16_usp", "cssFamily": "cs16_usp",
+      "viewModel": "models/weapons/cs16/c_usp.mdl", "worldModel": "models/weapons/cs16/player/p_usp.mdl",
+      "iconModel": "models/cs16/w_usp.mdl", "ammoId": "ammo9mm", "firingMode": "semi_auto",
+      "rarity": "very_rare", "minLevel": 1, "maxLevel": 12, "value": 180, "maxStack": 1
+    },
+    "weaponCs16Xm1014": {
+      "name": "CS 1.6 XM1014", "entityClass": "weapon", "type": "bullet_weapon",
+      "thumbnail": "weaponCs16Xm1014", "weaponClass": "weapon_zn_cs16_xm1014", "cssFamily": "cs16_xm1014",
+      "viewModel": "models/weapons/cs16/c_xm1014.mdl", "worldModel": "models/weapons/cs16/player/p_xm1014.mdl",
+      "iconModel": "models/cs16/w_xm1014.mdl", "ammoId": "ammoShells", "firingMode": "automatic",
+      "rarity": "very_rare", "minLevel": 12, "maxLevel": 28, "value": 600, "maxStack": 1
+    },
+    "ammo357": {
+      "name": ".357 Rounds", "entityClass": "generic", "thumbnail": "ammo357",
+      "iconModel": "models/items/357ammo.mdl", "value": 3, "maxStack": 100
+    },
+    "ammoPulse": {
+      "name": "Pulse Charges", "entityClass": "generic", "thumbnail": "ammoPulse",
+      "iconModel": "models/items/combine_rifle_cartridge01.mdl", "value": 4, "maxStack": 150
+    },
+    "ammoBolts": {
+      "name": "Crossbow Bolts", "entityClass": "generic", "thumbnail": "ammoBolts",
+      "iconModel": "models/items/crossbowrounds.mdl", "value": 4, "maxStack": 50
     },
     "ammo9mm": {
       "name": "9mm Rounds",

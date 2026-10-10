@@ -455,11 +455,13 @@ local function validateItem(context, itemId, raw)
         item.rarity = readString(context, raw, "rarity", path, {})
 
         if raw.weaponClass ~= nil then
-            if not item.cssFamily then context:Error(joinPath(path, "cssFamily"), "is required for an explicit weapon mapping") end
+            if item.type == "bullet_weapon" then
+                if not item.cssFamily then context:Error(joinPath(path, "cssFamily"), "is required for an explicit weapon mapping") end
+                if not item.ammoId then context:Error(joinPath(path, "ammoId"), "is required for an explicit weapon mapping") end
+                if not item.firingMode then context:Error(joinPath(path, "firingMode"), "is required for an explicit weapon mapping") end
+            end
             if not item.viewModel then context:Error(joinPath(path, "viewModel"), "is required for an explicit weapon mapping") end
             if not item.worldModel then context:Error(joinPath(path, "worldModel"), "is required for an explicit weapon mapping") end
-            if not item.ammoId then context:Error(joinPath(path, "ammoId"), "is required for an explicit weapon mapping") end
-            if not item.firingMode then context:Error(joinPath(path, "firingMode"), "is required for an explicit weapon mapping") end
             if not item.rarity then context:Error(joinPath(path, "rarity"), "is required for an explicit weapon mapping") end
         end
         if item.viewModel and not string.match(item.viewModel, "^models/[%w_/%-]+%.mdl$") then

@@ -1,0 +1,16 @@
+hi guys, I made a new addon, or rather a rework of CS 1.6, I made them because it's boring (:
+
+I advise you to use the addon [url=https://steamcommunity.com/sharedfiles/filedetails/?id=1290525688&searchtext=goldsrc+HUD] goldsrc HUD[/url] to display the ammo, good luck!
+don't just add to me as a friend, okay? Write all questions in the comments under the add-on
+
+[h1] credits [/h1]
+
+Schwarz - porting models, code, materials and C_hands
+Valve - original textures, models and sounds
+
+these weapons are exclusively for the sandbox!
+
+[h1] original [/h1]
+
+[url=https://steamcommunity.com/sharedfiles/filedetails/?id=1644220315&searchtext=counter+strike] counter-stirke 1.6 SWEPs[/url]
+[b]Join my discord server discord.gg⟋SFzbagvqW3[/b]

@@ -5,6 +5,7 @@
   "version": "3.1.5",
   "status": "in development",
   "currentPhase": "Phase B accepted - Phase C gate and road-arrow migration in progress",
+  "nextMilestone": "Alpha 3.2 - CSM implementation",
   "started": "2026-10-06",
   "released": null,
   "previousRelease": "3.0"

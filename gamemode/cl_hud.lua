@@ -1118,6 +1118,20 @@ local function drawPlayerMinimap()
         drewMap, cellTextureTransform = drawCellTextureMinimap(mapX, mapY, mapWidth, mapHeight, cell, position, zoom)
     end
     if drewMap then
+        if not isInDen and ZM_TransitionMarkers then
+            local project
+            if minimapViewMode == "map" and ZM_WorldMap and ZM_WorldMap.ProjectLocalMapPosition then
+                project = function(point)
+                    return ZM_WorldMap:ProjectLocalMapPosition(mapX, mapY, mapWidth, mapHeight,
+                        position, localMapViewHeight, point)
+                end
+            elseif cellTextureTransform then
+                project = function(point)
+                    return projectCellTexturePosition(mapX, mapY, mapWidth, mapHeight, point, cellTextureTransform)
+                end
+            end
+            if project then ZM_TransitionMarkers:DrawMap(project, mapX, mapY, mapWidth, mapHeight) end
+        end
         if minimapViewMode == "map" and ZM_WorldMap and ZM_WorldMap.ProjectLocalMapPosition then
             refreshCompassEntities()
             for _, npc in ipairs(compassDenNpcs) do

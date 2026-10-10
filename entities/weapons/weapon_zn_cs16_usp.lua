@@ -1,0 +1,19 @@
+AddCSLuaFile()
+SWEP.Base = "weapon_zn_base_cs16"
+SWEP.PrintName = "CS 1.6 USP"
+SWEP.ViewModel = "models/weapons/cs16/c_usp.mdl"
+SWEP.WorldModel = "models/weapons/cs16/player/p_usp.mdl"
+SWEP.IdleSequence = "idle_unsil"
+SWEP.DrawSequence = "draw_unsil"
+SWEP.FireSequence = "shoot1_unsil"
+SWEP.ReloadSequence = "reload_unsil"
+SWEP.Slot = 1
+SWEP.BulletDamage = 16
+SWEP.BulletRange = 3000
+SWEP.BulletSpread = 0.014
+SWEP.FireDelay = 0.22
+SWEP.BaseClipSize = 12
+SWEP.ReloadTime = 1.6
+SWEP.FireSound = "zombiesim/cs16/weapons/usp_unsil-1.wav"
+SWEP.ReloadSound = "zombiesim/cs16/weapons/usp_clipout.wav"
+SWEP.ReloadFinishSound = "zombiesim/cs16/weapons/usp_sliderelease.wav"

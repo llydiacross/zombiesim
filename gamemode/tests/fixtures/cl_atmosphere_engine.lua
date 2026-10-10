@@ -80,6 +80,7 @@ return function()
     env.NULL = {}
     env.IsValid = function(value) return type(value) == "table" and value.valid == true end
     env.MASK_SOLID_BRUSHONLY, env.MATERIAL_FOG_LINEAR = 1, 1
+    env.MATERIAL_FOG_NONE = 0
     env.MATERIAL_TRIANGLES, env.MATERIAL_QUADS, env.MOVETYPE_NOCLIP = 1, 2, 8
     local angles = {
         Forward = function() return env.Vector(1, 0, 0) end,

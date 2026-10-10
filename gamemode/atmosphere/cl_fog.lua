@@ -13,6 +13,18 @@ return function(Atmosphere, Modules)
     local fogSettingsFrame = -1
     local fogSettingsResult
 
+    // Scoped to the secondary capture view; never changes fog convars, weather or profile caches.
+    function Atmosphere:BeginWorldCaptureFog(variant)
+        local previous = self.WorldCaptureFogVariant
+        self.WorldCaptureFogVariant = variant
+        return {previous = previous, cullDistance = Snow.FogCullDistance}
+    end
+
+    function Atmosphere:EndWorldCaptureFog(token)
+        self.WorldCaptureFogVariant = token.previous
+        Snow.FogCullDistance = token.cullDistance
+    end
+
     function Atmosphere:GetFogSettings()
         local frame = FrameNumber()
         if frame == fogSettingsFrame then
@@ -73,6 +85,11 @@ return function(Atmosphere, Modules)
 
     function Modules.Fog.RegisterHooks()
         hook.Add("SetupWorldFog", "ZM.Atmosphere.WorldFog", function()
+            if Atmosphere.WorldCaptureFogVariant == "clear" then
+                render.FogMode(MATERIAL_FOG_NONE)
+                Snow.FogCullDistance = nil
+                return true
+            end
             if ZM_LauncherMenu and ZM_LauncherMenu.Active then
                 local preview = ZM_SkyInspection and ZM_SkyInspection.GetLauncherFogSettings and
                     ZM_SkyInspection:GetLauncherFogSettings()
@@ -95,6 +112,10 @@ return function(Atmosphere, Modules)
         end)
 
         hook.Add("SetupSkyboxFog", "ZM.Atmosphere.SkyboxFog", function(scale)
+            if Atmosphere.WorldCaptureFogVariant == "clear" then
+                render.FogMode(MATERIAL_FOG_NONE)
+                return true
+            end
             if ZM_LauncherMenu and ZM_LauncherMenu.Active then
                 local preview = ZM_SkyInspection and ZM_SkyInspection.GetLauncherFogSettings and
                     ZM_SkyInspection:GetLauncherFogSettings()

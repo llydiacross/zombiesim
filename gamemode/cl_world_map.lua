@@ -1,5 +1,6 @@
 ZM_WorldMap = ZM_WorldMap or {}
 local WorldMap = ZM_WorldMap
+local CaptureCatalog = include("cl_world_map_catalog.lua")()
 local MapColors = ZM_DermaSkin.Palette
 local getAllPlayers = player.GetAll
 local localMapCameraHeight = 3600
@@ -31,11 +32,11 @@ WorldMap.Layers = {
     { id = "tables", label = "Map Keys", enabled = true }
 }
 
-// Layers each render mode can draw. The satellite image already bakes in terrain, buildings,
-// roads, and motorways, so those atlas-only layers are not offered there. The wireframe view
+// Atlas uses the existing generated satellite artwork; Satellite uses captured world imagery.
+// Both bake in terrain, buildings, roads and motorways. The wireframe view
 // draws no layers at all; it shows only the player, waypoint, selected cell, and safe zones.
 WorldMap.RenderModeLayers = {
-    default = {
+    retired = {
         terrain = true,
         districts = true,
         buildings = true,
@@ -48,7 +49,7 @@ WorldMap.RenderModeLayers = {
         danger = true,
         tables = true
     },
-    satellite = {
+    atlas = {
         districts = true,
         metro = true,
         safe_zones = true,
@@ -56,6 +57,10 @@ WorldMap.RenderModeLayers = {
         radiation = true,
         danger = true,
         tables = true
+    },
+    satellite = {
+        districts = true, metro = true, safe_zones = true, landmarks = true,
+        radiation = true, danger = true, tables = true
     },
     walker = {
         districts = true,
@@ -72,6 +77,7 @@ WorldMap.RenderModeLayers = {
 
 // Enabled-by-default layers for modes that do not use the atlas defaults.
 WorldMap.RenderModeLayerDefaults = {
+    atlas = { safe_zones = true, landmarks = true, tables = true },
     satellite = { safe_zones = true, landmarks = true, tables = true },
     walker = { safe_zones = true, landmarks = true, tables = true }
 }
@@ -87,8 +93,9 @@ WorldMap.WaypointProfile = WorldMap.WaypointProfile or nil
 WorldMap.WaypointPath = WorldMap.WaypointPath or nil
 WorldMap.Viewport = WorldMap.Viewport or { zoom = 1, panX = 0, panY = 0 }
 WorldMap.LocalViewport = WorldMap.LocalViewport or { zoom = localMapDefaultZoom, panX = 0, panY = 0 }
-WorldMap.RenderModes = { default = true, wireframe = true, satellite = true, walker = true, map = true }
-WorldMap.RenderMode = WorldMap.RenderModes[WorldMap.RenderMode] and WorldMap.RenderMode or "default"
+WorldMap.RenderModes = { atlas = true, wireframe = true, satellite = true, walker = true, map = true }
+WorldMap.RenderMode = WorldMap.RenderModes[WorldMap.RenderMode] and WorldMap.RenderMode or "atlas"
+WorldMap.CaptureVariant = WorldMap.CaptureVariant or "clear"
 WorldMap.WalkerSnapshot = WorldMap.WalkerSnapshot or nil
 WorldMap.LivePopulation = WorldMap.LivePopulation or nil
 WorldMap.BossSnapshot = WorldMap.BossSnapshot or nil
@@ -242,6 +249,12 @@ function WorldMap:LoadPersistentState()
     end
 
     self.StateProfile = profile
+    CaptureCatalog.MigratePreferences(cookie, "zombiesim_world_map_" .. profile .. "_", self.Layers)
+    for mode in pairs(self.RenderModes) do
+        for _, layer in ipairs(self.Layers) do
+            self.EnabledLayers[mode][layer.id] = self:IsLayerSupported(layer.id, mode) and getLayerPreference(mode, layer) or false
+        end
+    end
     self.Viewport = {
         zoom = math.Clamp(tonumber(cookie.GetString(getMapStateKey("zoom"), "")) or 1, 0.1, 32),
         panX = tonumber(cookie.GetString(getMapStateKey("pan_x"), "")) or 0,
@@ -256,14 +269,16 @@ function WorldMap:LoadPersistentState()
     self.WaypointCell = getSavedCell("waypoint_cell")
     self.WaypointProfile = self.WaypointCell and profile or nil
     self.WaypointPath = nil
-    local renderMode = cookie.GetString(getMapStateKey("render_mode"), "default")
+    local renderMode = cookie.GetString(getMapStateKey("render_mode"), "atlas")
     if renderMode == "wireframe" and profile ~= "preview" then
-        renderMode = "default"
+        renderMode = "atlas"
     end
     if renderMode == "walker" and profile ~= "preview" then
-        renderMode = "default"
+        renderMode = "atlas"
     end
-    self.RenderMode = self.RenderModes[renderMode] and renderMode or "default"
+    self.RenderMode = self.RenderModes[renderMode] and renderMode or "atlas"
+    local variant = cookie.GetString(getMapStateKey("capture_variant"), "clear")
+    self.CaptureVariant = CaptureCatalog.Variants[variant] and variant or "clear"
 end
 
 function WorldMap:SaveViewportState()
@@ -283,10 +298,15 @@ function WorldMap:SaveCellState(name, cell)
 end
 
 function WorldMap:SetRenderMode(renderMode)
+    if renderMode == "default" then renderMode = "atlas" end
     if not self.RenderModes[renderMode] then
         return false
     end
     if renderMode == "wireframe" and (not ZM_World or ZM_World.ActiveProfile ~= "preview") then
+        return false
+    end
+    if renderMode == "satellite" and not self:GetCapturedVariant() then
+        ErrorNoHalt("[ZombieSim] Satellite unavailable: " .. tostring(self.CaptureUnavailableReason) .. "\n")
         return false
     end
 
@@ -322,12 +342,49 @@ local function getMaterial(layerId)
     return WorldMap.Materials[materialKey]
 end
 
+function WorldMap:ReloadCapturedWorld()
+    local profile = ZM_World.ActiveProfile
+    local source = file.Read("data_static/world_captures_" .. profile .. ".json", "GAME")
+    local manifest = source and util.JSONToTable(source)
+    self.CapturedVariants, self.CaptureUnavailableReason = CaptureCatalog.Validate(manifest, profile, ZM_World:GetData())
+    if self.CapturedVariants then
+        for _, variant in pairs(self.CapturedVariants) do
+            local paths = { variant.atlas }
+            for _, path in pairs(variant.cells) do paths[#paths + 1] = path end
+            for _, path in ipairs(paths) do
+                if not file.Exists("materials/" .. path, "GAME") then
+                    self.CapturedVariants = nil
+                    self.CaptureUnavailableReason = "Captured-world image is not mounted: " .. path
+                    return
+                end
+            end
+        end
+    end
+    if self.CapturedVariants and not self.CapturedVariants[self.CaptureVariant] then
+        self.CaptureVariant = self.CapturedVariants.clear and "clear" or "atmospheric"
+    end
+end
+
+function WorldMap:GetCapturedVariant()
+    return self.CapturedVariants and self.CapturedVariants[self.CaptureVariant]
+end
+
+local function getCapturedMaterial(path)
+    if not path then return nil end
+    if not WorldMap.CellMaterials[path] then WorldMap.CellMaterials[path] = Material(path, "smooth") end
+    return WorldMap.CellMaterials[path]
+end
+
 local function getRenderModeMaterial(renderMode)
     if renderMode == "wireframe" then
         return getMaterial("wireframe")
     end
-    if renderMode == "satellite" or renderMode == "walker" then
+    if renderMode == "atlas" or renderMode == "walker" then
         return getMaterial("satellite")
+    end
+    if renderMode == "satellite" then
+        local variant = WorldMap:GetCapturedVariant()
+        return variant and getCapturedMaterial(variant.atlas)
     end
     return nil
 end
@@ -664,6 +721,10 @@ local function getCellZoomMaterial(cell, renderMode)
     if not cell or type(cell.map) ~= "string" or cell.map == "" then
         return nil
     end
+    if renderMode == "satellite" then
+        local variant = WorldMap:GetCapturedVariant()
+        return variant and getCapturedMaterial(variant.cells[tostring(cell.id)])
+    end
 
     local directory = renderMode == "wireframe" and "cells_wireframe" or "cells"
     local profile = ZM_World and ZM_World.ActiveProfile or "city"
@@ -676,11 +737,11 @@ local function getCellZoomMaterial(cell, renderMode)
 end
 
 local function getCellRenderMaterial(cell)
-    return getCellZoomMaterial(cell, "satellite")
+    return getCellZoomMaterial(cell, "atlas")
 end
 
 function WorldMap:GetCellAtlasMaterial(cell, wireframe)
-    return getCellZoomMaterial(cell, wireframe and "wireframe" or "satellite")
+    return getCellZoomMaterial(cell, wireframe and "wireframe" or "atlas")
 end
 
 local function getCellGridCoordinates(cell)
@@ -1369,6 +1430,12 @@ local function createMapCanvas(parent, onSelect)
             if hasCapture then
                 local player = LocalPlayer()
                 if IsValid(player) then
+                    if ZM_TransitionMarkers then
+                        ZM_TransitionMarkers:DrawMap(function(point)
+                            return mapX + mapSize * 0.5 + point.x / getLocalMapSpan() * mapSize,
+                                mapY + mapSize * 0.5 - point.y / getLocalMapSpan() * mapSize
+                        end, 0, 0, width, height)
+                    end
                     local position = player:GetPos()
                     local playerX = mapX + mapSize * 0.5 + position.x / getLocalMapSpan() * mapSize
                     local playerY = mapY + mapSize * 0.5 - position.y / getLocalMapSpan() * mapSize
@@ -1501,7 +1568,7 @@ local function createMapCanvas(parent, onSelect)
         local cellWidth = mapSize / gridWidth
         local cellHeight = mapSize / gridHeight
 
-        if renderMode == "satellite" or renderMode == "walker" then
+        if renderMode == "atlas" or renderMode == "satellite" or renderMode == "walker" then
             drawSatelliteBlockades(worldData, mapX, mapY, cellWidth, cellHeight)
         end
         if renderMode == "walker" then
@@ -1543,7 +1610,7 @@ local function createMapCanvas(parent, onSelect)
             end
         end
 
-        if renderMode == "default" or renderMode == "satellite" or renderMode == "walker" then
+        if renderMode == "atlas" or renderMode == "satellite" or renderMode == "walker" then
             drawFixedMapOverlays(worldData, width, height)
         end
         if mapDebugConVar:GetBool() then
@@ -2012,6 +2079,7 @@ end
 function WorldMap:Open()
     if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
     self:LoadPersistentState()
+    self:ReloadCapturedWorld()
     if IsValid(self.Frame) then
         self.Frame:MakePopup()
         return
@@ -2176,7 +2244,7 @@ function WorldMap:Open()
         panel:SetText(population and "POPULATION " .. string.Comma(population) or "POPULATION --")
     end
     local function refreshWorldHeader()
-        local visible = WorldMap.RenderMode == "default" or WorldMap.RenderMode == "satellite" or WorldMap.RenderMode == "walker"
+        local visible = WorldMap.RenderMode == "atlas" or WorldMap.RenderMode == "satellite" or WorldMap.RenderMode == "walker"
         cityLabel:SetText(cityName)
         worldHeader:SetVisible(visible)
         if visible then
@@ -2192,7 +2260,7 @@ function WorldMap:Open()
         local availableWidth = math.max(220, frame:GetWide() - sidebar:GetWide() - 24)
         panel:SetSize(math.min(availableWidth, math.max(220, cityWidth + 16, populationWidth + 16)), 60)
         panel:SetPos(sidebar:GetWide() + 8, 48)
-        panel:SetVisible(WorldMap.RenderMode == "default" or WorldMap.RenderMode == "satellite" or WorldMap.RenderMode == "walker")
+        panel:SetVisible(WorldMap.RenderMode == "atlas" or WorldMap.RenderMode == "satellite" or WorldMap.RenderMode == "walker")
     end
 
     resetButton.DoClick = function()
@@ -2345,7 +2413,7 @@ function WorldMap:Open()
     // The cell inspector describes rendered tiles, so it only belongs to the satellite and walker views.
     local function refreshCellInspectorVisibility()
         local renderMode = WorldMap.RenderMode
-        local visible = sidebarView ~= "preview" and (renderMode == "satellite" or renderMode == "walker")
+        local visible = sidebarView ~= "preview" and (renderMode == "atlas" or renderMode == "satellite" or renderMode == "walker")
         if cellInspector:IsVisible() ~= visible then
             cellInspector:SetVisible(visible)
             sidebar:InvalidateLayout(true)
@@ -2590,7 +2658,7 @@ function WorldMap:Open()
                 end
             end
             if WorldMap:SetRenderMode(renderMode) then
-                local showWorldOverlays = renderMode == "default" or renderMode == "satellite" or renderMode == "walker"
+                local showWorldOverlays = renderMode == "atlas" or renderMode == "satellite" or renderMode == "walker"
                 worldHeader:SetVisible(showWorldOverlays)
                 focusControls:SetVisible(showWorldOverlays)
                 refreshWorldHeader()
@@ -2601,6 +2669,8 @@ function WorldMap:Open()
         return button
     end
 
+    local atlasMaterial = getRenderModeMaterial("atlas")
+    local atlasAvailable = atlasMaterial and not atlasMaterial:IsError()
     local satelliteMaterial = getRenderModeMaterial("satellite")
     local satelliteAvailable = satelliteMaterial and not satelliteMaterial:IsError()
     local wireframeMaterial = getRenderModeMaterial("wireframe")
@@ -2609,21 +2679,38 @@ function WorldMap:Open()
         WorldMap:SetRenderMode("default")
     end
     if WorldMap.RenderMode == "satellite" and not satelliteAvailable then
+        ErrorNoHalt("[ZombieSim] Saved Satellite view unavailable: "
+            .. tostring(self.CaptureUnavailableReason or "captured material failed to resolve") .. "; returning to Atlas.\n")
         WorldMap:SetRenderMode("default")
     end
-    local walkerAvailable = satelliteAvailable and WorldMap:HasWalkerSnapshot()
+    local walkerAvailable = atlasAvailable and WorldMap:HasWalkerSnapshot()
     // The first snapshot arrives just after opening, so keep a saved WALKERS view while it is requested.
-    local walkerPossible = satelliteAvailable and ZM_Preview and ZM_Preview:IsActive() and ZM_World.ActiveProfile == "preview"
+    local walkerPossible = atlasAvailable and ZM_Preview and ZM_Preview:IsActive() and ZM_World.ActiveProfile == "preview"
     if WorldMap.RenderMode == "walker" and not walkerPossible then
-        WorldMap:SetRenderMode(satelliteAvailable and "satellite" or "default")
+        WorldMap:SetRenderMode("atlas")
     end
-    addRenderModeButton("default", "ATLAS", 68, true, "Map View")
-    addRenderModeButton("satellite", "SATELLITE", 84, satelliteAvailable, "Satellite View")
+    addRenderModeButton("atlas", "ATLAS", 68, atlasAvailable, "Illustrated world atlas")
+    addRenderModeButton("satellite", "SATELLITE", 84, satelliteAvailable,
+        satelliteAvailable and "Captured world satellite view" or self.CaptureUnavailableReason or "Captured-world material unavailable")
     local walkerButton = addRenderModeButton("walker", "WALKERS", 70, walkerAvailable, "Walker Simulation View")
     walkerButton.Think = function(panel)
-        panel:SetEnabled(satelliteAvailable and WorldMap:HasWalkerSnapshot())
+        panel:SetEnabled(atlasAvailable and WorldMap:HasWalkerSnapshot())
     end
     addRenderModeButton("map", "MAP", 66, true, "Level View")
+    local fogButton = vgui.Create("DButton", renderModeControls)
+    fogButton:Dock(LEFT)
+    fogButton:SetWide(90)
+    fogButton:SetText("")
+    fogButton.Think = function(panel)
+        panel:SetVisible(WorldMap.RenderMode == "satellite")
+        panel:SetText(WorldMap.CaptureVariant == "clear" and "FOG: OFF" or "FOG: ON")
+        panel:SetEnabled(WorldMap.CapturedVariants and WorldMap.CapturedVariants.clear ~= nil
+            and WorldMap.CapturedVariants.atmospheric ~= nil or false)
+    end
+    fogButton.DoClick = function()
+        WorldMap.CaptureVariant = WorldMap.CaptureVariant == "clear" and "atmospheric" or "clear"
+        cookie.Set(getMapStateKey("capture_variant"), WorldMap.CaptureVariant)
+    end
     if ZM_World.ActiveProfile == "preview" then
         addRenderModeButton("wireframe", "WIREFRAME", 84, wireframeAvailable, "Wireframe View")
     end
@@ -2654,6 +2741,21 @@ end
 
 concommand.Add("zombiesim_map", function()
     WorldMap:Toggle()
+end)
+
+concommand.Add("zombiesim_world_map_view_status", function()
+    WorldMap:LoadPersistentState()
+    WorldMap:ReloadCapturedWorld()
+    local snapshot = {
+        mode = WorldMap.RenderMode, profile = ZM_World.ActiveProfile,
+        variant = WorldMap.CaptureVariant, satelliteAvailable = WorldMap:GetCapturedVariant() ~= nil,
+        satelliteUnavailableReason = WorldMap.CaptureUnavailableReason,
+        schema = cookie.GetString(getMapStateKey("view_schema"), ""),
+        modes = { "atlas", "satellite", "walker", "map", "wireframe" }
+    }
+    print("[ZombieSim] World map views: " .. util.TableToJSON(snapshot))
+    file.CreateDir("zombiesim")
+    file.Write("zombiesim/world_map_view_status.json", util.TableToJSON(snapshot, true))
 end)
 
 concommand.Add("zombiesim_waypoint_status", function()
@@ -2695,7 +2797,7 @@ hook.Add("Think", "ZM.WorldMap.M", function()
     local hasKeyboardFocus = IsValid(vgui.GetKeyboardFocus())
     if isDown and not isControlDown and not WorldMap.MDown and not gui.IsGameUIVisible() and (isMapOpen or not hasKeyboardFocus) then
         if isControlDown then
-            local targetMode = WorldMap.RenderMode == "map" and "satellite" or "map"
+            local targetMode = WorldMap.RenderMode == "map" and "atlas" or "map"
             if targetMode ~= "map" or WorldMap:EnsureLocalMapCapture() then
                 WorldMap:SetRenderMode(targetMode)
                 if isMapOpen then

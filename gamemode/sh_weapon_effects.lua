@@ -10,6 +10,9 @@ Effects.Limits = {
 }
 
 Effects.Profiles = {
+    magnum = { ammo = "ammo357", casing = "models/weapons/shell.mdl", flash = 20, smoke = 8, scale = 1 },
+    pulse = { ammo = "ammoPulse", casing = false, flash = 22, smoke = 9, scale = 1 },
+    crossbow = { ammo = "ammoBolts", casing = false, projectile = true },
     pistol = { ammo = "ammo9mm", casing = "models/weapons/shell.mdl", flash = 12, smoke = 6, scale = 1 },
     smg = { ammo = "ammo9mm", casing = "models/weapons/shell.mdl", flash = 16, smoke = 7, scale = 1 },
     rifle556 = { ammo = "ammo556", casing = "models/weapons/rifleshell.mdl", flash = 22, smoke = 9, scale = 0.85 },

@@ -351,6 +351,13 @@ local function previewAdmin()
     return target
 end
 
+DevConsole.DirectCommands.zombiesim_dev_test_imported_assets_client = function()
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    target:ConCommand("zombiesim_dev_test_imported_assets_client")
+    return true, "requested read-only imported asset client tests"
+end
+
 DevConsole.DirectCommands.zombiesim_dev_sign = function(argumentString)
     local target, targetError = previewAdmin()
     if not target then return false, targetError end
@@ -359,6 +366,7 @@ DevConsole.DirectCommands.zombiesim_dev_sign = function(argumentString)
     if (action ~= "on" and action ~= "off") or #arguments > 2 then
         return false, "usage: zombiesim_dev_sign on [freestanding|panel|illuminated|wall|print|poster] or off"
     end
+
     if action == "off" then
         if IsValid(target.ZM_DevSign) then target.ZM_DevSign:Remove() end
         target.ZM_DevSign = nil
@@ -715,7 +723,8 @@ DevConsole.DirectCommands.zombiesim_dev_gate_report = function()
         nearbyGate = IsValid(nearest) and nearest:GetNWString("ZMTransitionDirection", "") or nil,
         neighbours = {},
         neighbourMaps = {},
-        gates = {}
+        gates = {},
+        arrows = {}
     }
     for _, code in ipairs({ "N", "E", "S", "W" }) do
         for _, mode in ipairs({ "any", "road", "highway" }) do
@@ -742,6 +751,15 @@ DevConsole.DirectCommands.zombiesim_dev_gate_report = function()
                 distance = target:GetPos():Distance(entity:NearestPoint(target:GetPos()))
             })
         end
+    end
+    for _, marker in ipairs(ZM_Transitions.GateMarkers or {}) do
+        report.arrows[#report.arrows + 1] = {
+            key = marker.key, direction = marker.direction, mode = marker.mode,
+            surfaceReady = marker.surfaceReady, surface = marker.surface and vectorTable(marker.surface),
+            arrowCount = GetGlobal2Int(marker.key .. "_ArrowCount", 0),
+            secondSurface = marker.surfaces[2] and vectorTable(marker.surfaces[2]),
+            blocked = target:GetNWBool(marker.key .. "_Blocked", true)
+        }
     end
     DevConsole:Report("gateReport", report)
     return true

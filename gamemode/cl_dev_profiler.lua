@@ -102,6 +102,7 @@ local function captureFrame(afterVGUI)
     local visibleUI = (ZM_Inventory and IsValid(ZM_Inventory.Frame)) or
         (ZM_Scoreboard and IsValid(ZM_Scoreboard.Frame)) or (ZM_Wardrobe and IsValid(ZM_Wardrobe.Frame)) or
         (ZM_Options and IsValid(ZM_Options.Frame)) or (ZM_SkyBrowser and IsValid(ZM_SkyBrowser.Frame)) or
+        (ZM_WorldMap and IsValid(ZM_WorldMap.Frame)) or
         (ZM_LauncherMenu and ZM_LauncherMenu.Page == "tools" and IsValid(ZM_LauncherMenu.Frame))
     local needsVGUI = not request.angles and visibleUI == true
     if needsVGUI ~= afterVGUI then return end

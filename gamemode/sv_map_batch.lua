@@ -613,6 +613,10 @@ function MapBatch:GoToCurrent(state, forceReload)
 end
 
 function MapBatch:Start(operation, requestedMap)
+    if ZM_WorldCapture and ZM_WorldCapture:IsActive() then
+        self:Notify("[ZombieSim] Restore/cancel the active world capture maintenance run before starting a nav-only batch.")
+        return
+    end
     local queue, queueError = self:BuildQueue(operation ~= "navmeshes" and operation ~= "wireframes")
     if not queue then
         print("[ZombieSim] Could not start map batch: " .. queueError)

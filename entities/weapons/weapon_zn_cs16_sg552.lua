@@ -1,0 +1,19 @@
+AddCSLuaFile()
+SWEP.Base = "weapon_zn_base_cs16"
+SWEP.PrintName = "CS 1.6 SG 552"
+SWEP.ViewModel = "models/weapons/cs16/c_sg552.mdl"
+SWEP.WorldModel = "models/weapons/cs16/player/p_sg552.mdl"
+SWEP.IdleSequence = "idle"
+SWEP.HoldType = "ar2"
+SWEP.Slot = 2
+SWEP.FirePresentation = "rifle556"
+SWEP.Primary.Automatic = true
+SWEP.BulletDamage = 20
+SWEP.BulletSpread = 0.025
+SWEP.FireDelay = 0.1
+SWEP.BaseClipSize = 30
+SWEP.ReloadTime = 2.6
+SWEP.GoreSeverFactor = 1.1
+SWEP.FireSound = "zombiesim/cs16/weapons/sg552-1.wav"
+SWEP.ReloadSound = "zombiesim/cs16/weapons/sg552_clipout.wav"
+SWEP.ReloadFinishSound = "zombiesim/cs16/weapons/sg552_boltpull.wav"

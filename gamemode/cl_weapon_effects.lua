@@ -2,6 +2,12 @@ local Effects = ZM_WeaponEffects
 local limits = Effects.Limits
 local shots = {}
 local casings = {}
+
+function Effects:GetWorldCaptureEntities()
+    local entities = {}
+    for _, casing in ipairs(casings) do entities[#entities + 1] = casing.entity end
+    return entities
+end
 local flashTexture = Material("effects/muzzleflash1"):GetTexture("$basetexture")
 local flashMaterial
 if flashTexture then
@@ -188,6 +194,7 @@ local function drawSmoke(shot, now)
 end
 
 hook.Add("PostDrawTranslucentRenderables", "ZM.WeaponEffects", function(depth, skybox)
+    if ZM_WorldCapture and ZM_WorldCapture.Rendering then return end
     if depth or skybox then return end
     local now = CurTime()
     for _, shot in ipairs(shots) do
@@ -205,7 +212,7 @@ hook.Add("PostDrawTranslucentRenderables", "ZM.WeaponEffects", function(depth, s
             if not shot.position then
                 shot.position = muzzle
                 shot.detailed = distanceSquared <= limits.detailDistance ^ 2
-                if shot.detailed then ejectCasing(shot.profile, ejectPosition, angles, velocity) end
+                if shot.detailed and shot.profile.casing then ejectCasing(shot.profile, ejectPosition, angles, velocity) end
             end
             if emitSmoke then
                 table.insert(shot.smoke, { position = muzzle, started = now })

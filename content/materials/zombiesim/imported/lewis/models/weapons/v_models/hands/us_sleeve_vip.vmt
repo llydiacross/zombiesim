@@ -1,0 +1,4 @@
+"Patch"
+{
+ "include" "materials/models/weapons/v_models/hands/v_hands.vmt"
+}

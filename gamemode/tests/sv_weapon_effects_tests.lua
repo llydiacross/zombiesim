@@ -10,33 +10,36 @@ suite:Add("firearm_profiles_match_inventory_ammunition_and_mounted_casings", fun
     local registry = ZM_StaticData:GetRegistry()
     local checked = 0
     for id, item in pairs(registry.items) do
-        local weapon = item.weaponClass and weapons.GetStored(item.weaponClass)
-        if weapon and weapon.Base == "weapon_zn_base_hitscan" then
-            local base = weapons.GetStored(weapon.Base)
-            local profile = Effects.Profiles[weapon.FirePresentation or base.FirePresentation]
+        local weapon = item.weaponClass and weapons.Get(item.weaponClass)
+        if weapon and item.type == "bullet_weapon" then
+            local profile = Effects.Profiles[weapon.FirePresentation]
             check(profile ~= nil, id .. ": missing effect profile")
             if profile then
                 check(profile.ammo == item.ammoId, id .. ": casing profile disagrees with ammunition")
-                check(util.IsValidModel(profile.casing), id .. ": casing model is not mounted")
-                check(profile.flash > 0 and profile.smoke > 0 and profile.scale > 0, id .. ": invalid effect sizes")
+                if profile.casing then check(util.IsValidModel(profile.casing), id .. ": casing model is not mounted") end
+                if not profile.projectile then
+                    check(profile.flash > 0 and profile.smoke > 0 and profile.scale > 0, id .. ": invalid effect sizes")
+                end
             end
-            check((weapon.BulletCount or base.BulletCount) <= Effects.Limits.pellets, id .. ": pellet budget exceeded")
+            check(weapon.BulletCount <= Effects.Limits.pellets, id .. ": pellet budget exceeded")
             if item.weaponClass ~= "weapon_zn_handgun_9mm" then
                 for _, field in ipairs({ "FireSound", "ReloadSound", "ReloadFinishSound" }) do
                     local path = weapon[field]
-                    check(type(path) == "string" and string.StartWith(path, "weapons/")
+                    local prefix = weapon.Base == "weapon_zn_base_cs16" and "zombiesim/cs16/weapons/" or "weapons/"
+                    if item.weaponClass == "weapon_zn_lewis" then prefix = "zombiesim/imported/lewis/" end
+                    check(type(path) == "string" and string.StartWith(path, prefix)
                         and file.Exists("sound/" .. path, "GAME"), id .. ": missing mounted firearm audio " .. field)
                 end
             end
             checked = checked + 1
         end
     end
-    check(checked >= 9, "all nine supported firearms must be checked")
+    check(checked == 55, "all 55 supported ranged weapons must be checked")
     check(weapons.GetStored("weapon_zn_base_melee").FirePresentation == nil, "melee must not inherit firearm effects")
 end)
 
-local function fixture()
-    local base = weapons.GetStored("weapon_zn_base_hitscan")
+local function fixture(class)
+    local base = weapons.Get(class or "weapon_zn_base_hitscan")
     local weapon = setmetatable({ rounds = 3, firingCalls = 0 }, { __index = base })
     weapon.IsSafeZoneHolstered = weapons.GetStored("weapon_zn_base").IsSafeZoneHolstered
     weapon.GetScale = function() return 1 end
@@ -102,6 +105,112 @@ suite:Add("bullet_data_preserves_ballistics_and_records_actual_spread_endpoints"
 end)
 
 local sentShots
+suite:Add("failed_round_retains_ammo_without_presentation", function(check)
+    local weapon = fixture("weapon_zn_hl2_crossbow")
+    local attempts = 0
+    weapon.FireRound = function(self)
+        attempts = attempts + 1
+        check(self.rounds == 2, "round must be reserved before damage can reenter firing")
+        return false
+    end
+    sentShots = {}
+    weapon:PrimaryAttack()
+    check(attempts == 1 and weapon.rounds == 3, "failed round must restore its clip")
+    check(#sentShots == 0 and not weapon.blastCalls, "failed projectile must not present a hitscan shot")
+    weapon.reloading = true
+    weapon:PrimaryAttack()
+    check(attempts == 1, "reloading must block projectiles")
+end)
+
+suite:Add("rare_cs16_bonuses_stack_with_instance_attributes", function(check)
+    local mappings = { usp = "weaponUsp9mm", glock18 = "weaponAutoPistol9mm", m3 = "weaponShotgunM3" }
+    local registry = ZM_StaticData:GetRegistry()
+    local checked = 0
+    for id, item in pairs(registry.items) do
+        if string.StartWith(id, "weaponCs16") then
+            local family = string.sub(item.cssFamily, 6)
+            local counterpartId = mappings[family]
+            if not counterpartId then
+                for candidateId, candidate in pairs(registry.items) do
+                    if candidate.cssFamily == family then counterpartId = candidateId break end
+                end
+            end
+            local counterpart = counterpartId and registry.items[counterpartId]
+            check(counterpart ~= nil, id .. ": missing normal counterpart")
+            if counterpart then
+                local rare = setmetatable({}, { __index = weapons.Get(item.weaponClass) })
+                local normal = setmetatable({}, { __index = weapons.Get(counterpart.weaponClass) })
+                for _, weapon in ipairs({ rare, normal }) do
+                    for _, name in ipairs({ "DamageScale", "RangeScale", "SpeedScale", "ReloadScale", "ClipScale" }) do
+                        weapon["Get" .. name] = function() return 1.5 end
+                    end
+                end
+                local function near(a, b) return math.abs(a - b) < 0.00001 end
+                check(near(rare:GetScaledDamage(rare.BulletDamage), normal:GetScaledDamage(normal.BulletDamage) * 1.25), id .. ": damage bonus")
+                check(near(rare.BulletRange * rare:GetScale("RangeScale"), normal.BulletRange * normal:GetScale("RangeScale") * 1.2), id .. ": range bonus")
+                check(near(rare:GetScaledDelay(rare.FireDelay), normal:GetScaledDelay(normal.FireDelay) / 1.15), id .. ": firing speed bonus")
+                check(near(rare.ReloadTime * rare:GetScale("ReloadScale"), normal.ReloadTime * normal:GetScale("ReloadScale") / 1.15), id .. ": reload bonus")
+                check(rare:GetMaxClip() == math.Round(normal.BaseClipSize * 1.5 * 1.2), id .. ": clip bonus")
+                check(rare.Primary.Automatic == normal.Primary.Automatic, id .. ": firing mode mismatch")
+            end
+            checked = checked + 1
+        end
+    end
+    check(checked == 24, "all 24 rare variants must be compared")
+end)
+
+suite:Add("new_css_and_hl2_hitscan_weapons_fire_once_and_holster", function(check)
+    local count = 0
+    for id, item in pairs(ZM_StaticData:GetRegistry().items) do
+        if item.type == "bullet_weapon" and not string.StartWith(id, "weaponCs16")
+            and item.weaponClass ~= "weapon_zn_hl2_crossbow" then
+            local weapon, owner = fixture(item.weaponClass)
+            sentShots = {}
+            weapon:PrimaryAttack()
+            check(weapon.rounds == 2 and weapon.firingCalls == 1, id .. ": one round per shot")
+            check(#sentShots == 1 and #sentShots[1].impacts == weapon.BulletCount, id .. ": pellet count")
+            check(weapon.lastBullet.Damage == weapon.BulletDamage, id .. ": damage")
+            check(weapon.lastBullet.Distance == weapon.BulletRange, id .. ": range")
+            owner.CurrentSafeZoneId = "test-den"
+            weapon:PrimaryAttack()
+            check(weapon.rounds == 2 and weapon.firingCalls == 1, id .. ": den holster")
+            count = count + 1
+        end
+    end
+    check(count == 30, "all 30 normal hitscan weapons must fire")
+end)
+
+suite:Add("pulse_damage_is_energy_and_does_not_eject_brass", function(check)
+    local weapon, owner = fixture("weapon_zn_hl2_pulse")
+    local bullet = weapon:GetBulletData(owner, vector_origin, Vector(1, 0, 0), {})
+    local damage = DamageInfo()
+    bullet.Callback(owner, { HitPos = vector_origin, HitNormal = vector_up, MatType = MAT_METAL, Hit = true }, damage)
+    check(damage:GetDamageType() == DMG_ENERGYBEAM, "pulse damage type")
+    check(Effects.Profiles.pulse.casing == false, "pulse must not eject conventional brass")
+end)
+
+suite:Add("all_cs16_firearms_use_scaled_hitscan_and_den_holstering", function(check)
+    local checked = 0
+    for id, item in pairs(ZM_StaticData:GetRegistry().items) do
+        if string.StartWith(id, "weaponCs16") then
+            local weapon, owner = fixture(item.weaponClass)
+            sentShots = {}
+            weapon:PrimaryAttack()
+            check(weapon.rounds == 2 and weapon.firingCalls == 1, id .. ": shot must consume exactly one round")
+            check(#sentShots == 1 and #sentShots[1].impacts == weapon.BulletCount, id .. ": wrong pellet presentation")
+            check(weapon.lastBullet.Damage == weapon.BulletDamage, id .. ": mapped damage lost")
+            check(weapon.lastBullet.Distance == weapon.BulletRange, id .. ": mapped range lost")
+            check(owner.lagCompensation == false, id .. ": lag compensation left open")
+            check(Effects.Profiles[weapon.FirePresentation].ammo == item.ammoId, id .. ": effect/ammo mismatch")
+            owner.CurrentSafeZoneId = "test-den"
+            weapon:PrimaryAttack()
+            check(weapon.rounds == 2 and weapon.firingCalls == 1, id .. ": fired inside a den")
+            checked = checked + 1
+        end
+    end
+    check(checked == 24, "all 24 CS 1.6 firearms must exercise the firing path")
+end)
+
 suite:Add("one_presentation_and_one_round_per_successful_shot", function(check)
     local weapon, owner = fixture()
     weapon.BulletCount = 9
@@ -209,6 +318,84 @@ suite:Add("muzzle_blast_only_moves_loose_light_nonloot_props", function(check)
 end)
 
 local blastTrace
+local boltTrace
+local boltEntities = {}
+suite:Add("crossbow_projectile_moves_hits_once_and_has_bounded_lifetime", function(check)
+    local weapon = ents.Create("weapon_zn_hl2_crossbow")
+    local attacker = ents.Create("prop_dynamic")
+    local target = ents.Create("npc_citizen")
+    for _, entity in ipairs({ weapon, attacker, target }) do boltEntities[#boltEntities + 1] = entity end
+    check(IsValid(weapon) and IsValid(attacker) and IsValid(target), "crossbow fixture entities")
+    if not IsValid(weapon) or not IsValid(attacker) or not IsValid(target) then return end
+    attacker:SetModel("models/props_junk/PopCan01a.mdl")
+    attacker:SetPos(Vector(0, 0, 12000))
+    attacker:Spawn()
+    target:SetModel("models/Humans/Group01/male_07.mdl")
+    target:SetPos(Vector(256, 0, 12000))
+    target:Spawn()
+    weapon:SetPos(attacker:GetPos())
+    weapon:Spawn()
+    weapon:SetDamageScale(1.5)
+    weapon:SetRangeScale(1.5)
+    check(weapon:FireRound(attacker, attacker:GetPos(), Vector(1, 0, 0)), "crossbow projectile creation")
+    local bolt
+    for _, candidate in ipairs(ents.FindByClass("zn_crossbow_bolt")) do
+        if candidate.Weapon == weapon then bolt = candidate break end
+    end
+    check(IsValid(bolt), "projectile not found")
+    if not IsValid(bolt) then return end
+    boltEntities[#boltEntities + 1] = bolt
+    check(bolt.Damage == 112.5 and bolt.Range == 12288, "projectile snapshots item scaling")
+    bolt.LastTick = CurTime() - 0.01
+    local start = bolt:GetPos()
+    boltTrace = { Hit = false, StartSolid = false, HitPos = start + Vector(25, 0, 0) }
+    bolt:Think()
+    check(bolt:GetPos().x > start.x and bolt.Travelled > 0, "bolt does not move")
+    local damageCount = 0
+    local captured
+    hook.Add("EntityTakeDamage", "ZM.CrossbowFixture", function(entity, damage)
+        if entity ~= target then return end
+        damageCount = damageCount + 1
+        captured = {
+            amount = damage:GetDamage(), attacker = damage:GetAttacker(),
+            inflictor = damage:GetInflictor(), position = damage:GetDamagePosition()
+        }
+        return true
+    end)
+    boltTrace = {
+        Hit = true, StartSolid = false, HitSky = false, Entity = target,
+        HitPos = target:GetPos(), HitNormal = Vector(-1, 0, 0), HitGroup = HITGROUP_CHEST,
+        HitBox = 0, PhysicsBone = 0
+    }
+    bolt.LastTick = CurTime() - 0.01
+    bolt:Think()
+    check(damageCount == 1, "one projectile must dispatch one damage event")
+    check(captured and captured.amount == 112.5 and captured.attacker == attacker and captured.inflictor == weapon, "projectile damage attribution/scaling")
+    check(bolt:IsMarkedForDeletion(), "projectile must be removed on impact")
+    bolt:Think()
+    check(damageCount == 1, "deferred removal must not dispatch damage twice")
+    hook.Remove("EntityTakeDamage", "ZM.CrossbowFixture")
+    boltTrace = nil
+    check(weapon:FireRound(attacker, attacker:GetPos(), Vector(1, 0, 0)), "lifetime fixture creation")
+    for _, candidate in ipairs(ents.FindByClass("zn_crossbow_bolt")) do
+        if candidate.Weapon == weapon and not candidate:IsMarkedForDeletion() then
+            boltEntities[#boltEntities + 1] = candidate
+            candidate.Started = CurTime() - 11
+            candidate:Think()
+            check(candidate:IsMarkedForDeletion(), "projectile lifetime must be bounded")
+        end
+    end
+    check(weapon:FireRound(attacker, attacker:GetPos(), Vector(1, 0, 0)), "range fixture creation")
+    for _, candidate in ipairs(ents.FindByClass("zn_crossbow_bolt")) do
+        if candidate.Weapon == weapon and not candidate:IsMarkedForDeletion() then
+            boltEntities[#boltEntities + 1] = candidate
+            candidate.Travelled = candidate.Range
+            candidate:Think()
+            check(candidate:IsMarkedForDeletion(), "projectile range must be bounded")
+        end
+    end
+end)
+
 suite:Add("muzzle_blast_checks_walls_radius_cooldown_and_speed_budget", function(check)
     local entity, physics, weapon = blastFixture()
     blastTrace = { Hit = false, StartSolid = false }
@@ -324,12 +511,19 @@ ZM_TestHarness.Register({
                     return originalConstraints(entity)
                 end
                 util.TraceLine = function(data)
+                    if boltTrace then return boltTrace end
                     if blastTrace then return blastTrace end
                     return originalTrace(data)
                 end
             end,
             before = function() blastTrace = nil end,
             after = function()
+                hook.Remove("EntityTakeDamage", "ZM.CrossbowFixture")
+                for _, entity in ipairs(boltEntities) do
+                    if IsValid(entity) then entity:Remove() end
+                end
+                boltEntities = {}
+                boltTrace = nil
                 if IsValid(recoilTestWeapon) then recoilTestWeapon:Remove() end
                 recoilTestWeapon = nil
             end,

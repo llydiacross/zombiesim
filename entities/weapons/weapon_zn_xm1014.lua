@@ -1,0 +1,22 @@
+AddCSLuaFile()
+SWEP.Base = "weapon_zn_base_hitscan"
+SWEP.PrintName = "XM1014"
+SWEP.ViewModel = "models/weapons/cstrike/c_shot_xm1014.mdl"
+SWEP.WorldModel = "models/weapons/w_shot_xm1014.mdl"
+SWEP.HoldType = "shotgun"
+SWEP.Slot = 3
+SWEP.FirePresentation = "shotgun"
+SWEP.Primary.Automatic = true
+SWEP.BulletCount = 7
+SWEP.BulletDamage = 8
+SWEP.BulletRange = 1600
+SWEP.BulletSpread = 0.08
+SWEP.FireDelay = 0.3
+SWEP.BaseClipSize = 7
+SWEP.ReloadTime = 2.8
+SWEP.GoreSeverFactor = 2
+SWEP.BulletForce = 3
+SWEP.RecoilPitch = 1.6
+SWEP.FireSound = "weapons/xm1014/xm1014-1.wav"
+SWEP.ReloadSound = "weapons/xm1014/xm1014_insertshell.wav"
+SWEP.ReloadFinishSound = "weapons/xm1014/xm1014_insertshell.wav"
