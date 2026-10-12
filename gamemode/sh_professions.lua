@@ -9,6 +9,14 @@ function Professions:Get(job)
     return StaticData:GetProfession(job)
 end
 
+// Input validation must not use Get(), because stored unknown names intentionally resolve to Civilian.
+function Professions:GetKnown(job)
+    local registry = StaticData:GetRegistry()
+    if not registry or type(job) ~= "string" then return nil end
+    local id = registry.professions[job] and job or registry.professionAliases[job]
+    return id and registry.professions[id] or nil
+end
+
 // Canonical profession id for a stored job name.
 function Professions:Resolve(job)
     local profession = self:Get(job)

@@ -163,6 +163,10 @@ $cells = @($plan.cells)
 if ($plan.schemaVersion -lt 4 -or $cells.Count -lt 1) {
     throw 'The template plan must use schema version 4 or later and contain city cells.'
 }
+$bounds = $plan.cellBounds
+if ($null -eq $bounds -or [double]$bounds.neighbourPitch -le 0 -or [double]$bounds.neighbourPitch -ge 16384) {
+    throw 'The template plan must provide a valid authoritative neighbour pitch.'
+}
 
 $gridWidth = 1 + [int](($cells | Measure-Object -Property x -Maximum).Maximum)
 $gridHeight = 1 + [int](($cells | Measure-Object -Property y -Maximum).Maximum)
@@ -174,15 +178,15 @@ $tileSize = [int][Math]::Floor(4096 / [Math]::Max($gridWidth, $gridHeight))
 if ($tileSize -lt 1) {
     throw "The $gridWidth by $gridHeight city grid exceeds the 4096px wireframe material limit."
 }
-$cellHalfExtent = 1640.0
+$cellHalfExtent = [double]$bounds.neighbourPitch * 0.5
 
 if (-not (Test-Path -LiteralPath $NavmeshDirectory -PathType Container)) {
     throw "The runtime navmesh directory does not exist: $NavmeshDirectory"
 }
 
 if ($WhatIf) {
-    Write-Output "WhatIf: parse Source navmesh version $navVersion files from $NavmeshDirectory and render $($cells.Count) cell wireframes into $($gridWidth * $tileSize)x$($gridHeight * $tileSize): $OutputPath"
-    Write-Output "WhatIf: render per-recipe ${CellImageSize}px wireframes into: $CellDestinationDirectory"
+    Write-Output "WhatIf: parse Source navmesh version $navVersion files from $NavmeshDirectory and render $($cells.Count) cell wireframes over the $([int]$bounds.neighbourPitch)-unit cell span into $($gridWidth * $tileSize)x$($gridHeight * $tileSize): $OutputPath"
+    Write-Output "WhatIf: render per-recipe ${CellImageSize}px wireframes over the same authoritative span into: $CellDestinationDirectory"
     return
 }
 

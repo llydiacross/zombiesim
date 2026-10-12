@@ -21,6 +21,11 @@ Transitions.EngineInputLockSeconds = 3
 // Matches the old den arrival walk (110 u/s for 1.1 s); the fade is twice the standard 1.1 s arrival fade.
 Transitions.DenArrivalDistance = 120
 Transitions.DenArrivalFade = 2.2
+// Motorway gates straddle a concrete central reservation, so the authored arrival landmark sits on the cell
+// axis inside it. Motorway arrivals move onto the right-hand carriageway, matching the lane-one travel arrow,
+// and stand further inside the cell than the arrows so the player faces them on the way back out.
+Transitions.MotorwayArrivalInset = 384
+Transitions.MotorwayArrivalLateral = 160
 
 function Transitions:GetEngineInputLockRemaining()
     return math.max(0, self.EngineInputLockSeconds - CurTime())
@@ -61,6 +66,10 @@ local directions = {
     west = { code = "W", opposite = "EAST", yaw = 180 }
 }
 local directionByCode = { N = "north", E = "east", S = "south", W = "west" }
+local function arrivalSideCode(landmark)
+    local direction = directions[string.lower(string.match(tostring(landmark or ""), "^(%a+)_ENTRANCE$") or "")]
+    return direction and direction.code or nil
+end
 local gateUseRange = 96
 local gateForward = {
     N = Vector(0, 1, 0), E = Vector(1, 0, 0),
@@ -128,7 +137,8 @@ function Transitions:InitializeGates()
             end
             local forward = gateForward[direction.code]
             local right = forward:Cross(Vector(0, 0, 1))
-            local marker = { key = key, direction = direction.code, mode = mode, surfaces = {} }
+            local marker = { key = key, direction = direction.code, mode = mode, motorway = motorway,
+                centre = centre, surfaces = {} }
             local arrowCount = motorway and 2 or 1
             for lane = 1, 2 do
                 local suffix = lane == 1 and "" or "_Lane2"
@@ -273,6 +283,38 @@ function Transitions:FindPendingEntryAnchor(entry)
     return nil
 end
 
+// Resolves a motorway arrival onto the right-hand carriageway, past the travel arrows. Returns nil for
+// ordinary roads and whenever the traced carriageway is unsupported or obstructed, so callers keep the
+// authored landmark.
+function Transitions:ResolveGateArrivalPosition(playerEntity, sideCode)
+    local marker
+    for _, candidate in ipairs(self.GateMarkers or {}) do
+        if candidate.direction == sideCode and candidate.motorway and candidate.centre then
+            marker = candidate
+            break
+        end
+    end
+    if not marker then
+        return nil
+    end
+    local forward = gateForward[sideCode]
+    local right = forward:Cross(Vector(0, 0, 1))
+    local sample = marker.centre - forward * self.MotorwayArrivalInset - right * self.MotorwayArrivalLateral
+    local trace = util.TraceLine({
+        start = sample + Vector(0, 0, 256),
+        endpos = sample - Vector(0, 0, 256),
+        mask = MASK_SOLID_BRUSHONLY
+    })
+    if not trace.Hit or trace.HitSky or trace.StartSolid or trace.HitNormal.z < 0.7 then
+        return nil
+    end
+    local position = trace.HitPos + Vector(0, 0, 1)
+    if not self:IsPlayerHullClear(playerEntity, position) then
+        return nil
+    end
+    return position
+end
+
 function Transitions:IsPlayerHullClear(playerEntity, position)
     if not playerEntity.GetHull then
         return true
@@ -319,7 +361,9 @@ function Transitions:ApplyPendingEntry(playerEntity)
     if position then
         playerEntity:SetPos(position)
     elseif IsValid(entryAnchor) then
-        playerEntity:SetPos(entryAnchor:GetPos())
+        local sideCode = entry.anchorClass ~= "zn_safezone_arrival" and arrivalSideCode(entry.landmark) or nil
+        local carriageway = sideCode and self:ResolveGateArrivalPosition(playerEntity, sideCode) or nil
+        playerEntity:SetPos(carriageway or entryAnchor:GetPos())
     elseif type(entry.anchorClass) == "string" then
         ErrorNoHalt("[ZombieSim] Could not find pending transition anchor class '" .. entry.anchorClass .. "'.\n")
     end
@@ -331,7 +375,6 @@ function Transitions:ApplyPendingEntry(playerEntity)
         return false
     end
     playerEntity:SetEyeAngles(Angle(0, yaw, 0))
-    local hold = self:GetEngineInputLockRemaining()
     local inDen = entry.anchorClass == "zn_safezone_arrival"
         and type(playerEntity.CurrentSafeZoneId) == "string" and playerEntity.CurrentSafeZoneId ~= ""
     if inDen then
@@ -353,36 +396,42 @@ function Transitions:ApplyPendingEntry(playerEntity)
         playerEntity.ZM_TransitionEntry = nil
         ZM_Loading:Step(playerEntity, "Entered safe zone " .. playerEntity.CurrentSafeZoneId)
 
-        net.Start("ZM.PlayerTransitionEntry")
-        net.WriteFloat(yaw)
-        net.WriteFloat(0)
-        net.WriteFloat(0)
-        net.WriteFloat(hold)
-        net.Send(playerEntity)
-        self:FadeInFromBlack(playerEntity, Transitions.DenArrivalFade, hold)
+        ZM_WalkerPreload:HoldPlayer(playerEntity, function()
+            local hold = self:GetEngineInputLockRemaining()
+            net.Start("ZM.PlayerTransitionEntry")
+            net.WriteFloat(yaw)
+            net.WriteFloat(0)
+            net.WriteFloat(0)
+            net.WriteFloat(hold)
+            net.Send(playerEntity)
+            self:FadeInFromBlack(playerEntity, Transitions.DenArrivalFade, hold)
+        end)
         return true
     end
 
     // Den exits take half a gate walk; gates keep the full walk. The walk starts once the engine input lock lifts.
     local walkSpeed = entry.anchorClass == "zn_safezone_arrival" and 80 or 160
-    local startTime = CurTime() + hold
-    playerEntity.ZM_TransitionEntry = {
-        startTime = startTime,
-        untilTime = startTime + 1.1,
-        yaw = yaw,
-        speed = walkSpeed
-    }
     local arrivalSide = string.lower(string.match(tostring(entry.landmark or ""), "^(%a+)_ENTRANCE$") or "arrival")
     ZM_Loading:Step(playerEntity, entry.anchorClass == "zn_safezone_arrival" and "Placed outside the safe-zone door"
         or "Placed at the " .. arrivalSide .. " gate")
 
-    net.Start("ZM.PlayerTransitionEntry")
-    net.WriteFloat(yaw)
-    net.WriteFloat(1.1)
-    net.WriteFloat(walkSpeed)
-    net.WriteFloat(hold)
-    net.Send(playerEntity)
-    self:FadeInFromBlack(playerEntity, 1.1, hold)
+    ZM_WalkerPreload:HoldPlayer(playerEntity, function()
+        local hold = self:GetEngineInputLockRemaining()
+        local startTime = CurTime() + hold
+        playerEntity.ZM_TransitionEntry = {
+            startTime = startTime,
+            untilTime = startTime + 1.1,
+            yaw = yaw,
+            speed = walkSpeed
+        }
+        net.Start("ZM.PlayerTransitionEntry")
+        net.WriteFloat(yaw)
+        net.WriteFloat(1.1)
+        net.WriteFloat(walkSpeed)
+        net.WriteFloat(hold)
+        net.Send(playerEntity)
+        self:FadeInFromBlack(playerEntity, 1.1, hold)
+    end)
     return true
 end
 
@@ -393,6 +442,7 @@ function Transitions.HasMovementInput(moveData)
 end
 
 hook.Add("SetupMove", "ZM.TransitionEntryWalk", function(playerEntity, moveData)
+    if playerEntity.ZM_WalkerPreloadWaiting then return end
     local exit = playerEntity.ZM_TransitionExit
     if exit then
         moveData:SetMoveAngles(Angle(0, exit.yaw, 0))

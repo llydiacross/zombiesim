@@ -333,6 +333,12 @@ function Characters:Create(target, slot, details)
     if game.GetMap() ~= "zn_city_start" and game.GetMap() ~= "zn_preview_start" then return false, "Characters can only be created in the launcher" end
     local rateAllowed, rateError = allowRequest(target, "create")
     if not rateAllowed then return false, rateError end
+    return self:CreateOwned(steamId, profile, slot, details)
+end
+
+function Characters:CreateOwned(steamId, profile, slot, details)
+    profile = normalizeProfile(profile)
+    if not validSteamId(steamId) or not profile then return false, "Invalid character owner or profile" end
     if not validSlot(slot) then return false, "Character slot must be an integer from 1 to 3" end
     if type(details) ~= "table" then return false, "Character details must be a table" end
     for key in pairs(details) do
@@ -344,7 +350,9 @@ function Characters:Create(target, slot, details)
     if not name then return false, nameError end
     local job = details.job
     if type(job) ~= "string" or #job > 32 or not string.match(job, "^%a+$") then return false, "Invalid profession name" end
-    if ZM_Professions and not ZM_Professions:Get(job) then return false, "Unknown profession" end
+    local profession = ZM_Professions and ZM_Professions:GetKnown(job)
+    if not profession then return false, "Unknown profession" end
+    job = profession.id
     local appearance, appearanceError = self.ValidateAppearance(details.appearance)
     if not appearance then return false, appearanceError end
     local attributes, pointsError = self.ValidateStartingAttributes(details.attributes)
@@ -643,6 +651,124 @@ function Characters:GetCharacterKeyForSteamID(steamId, profile)
     return result[1].characterId
 end
 
+local function decodeStoredTable(value, fallback)
+    if type(value) ~= "string" or value == "" then return fallback end
+    local decoded = util.JSONToTable(value)
+    return type(decoded) == "table" and decoded or fallback
+end
+
+local function snapshotLocation(profile, characterId, character)
+    local data, dataError = ZM_GetPlayerData(characterId, profile)
+    if dataError then return nil, dataError end
+    local cellX = tonumber(data and data.CellX or character.originCellX)
+    local cellY = tonumber(data and data.CellY or character.originCellY)
+    if not cellX or not cellY or cellX ~= math.floor(cellX) or cellY ~= math.floor(cellY) then
+        return { state = "unavailable", available = false, reason = "Saved location is missing or invalid" }
+    end
+    local cell = ZM_World:GetCell(cellX, cellY)
+    if not cell then
+        return { state = "unavailable", available = false, reason = "Saved city cell is unavailable" }
+    end
+    local safeZoneId = data and data.CurrentSafeZoneId
+    if type(safeZoneId) == "string" and safeZoneId ~= "" then
+        local safeZone = ZM_World:GetSafeZoneById(safeZoneId)
+        if not safeZone then
+            return { state = "unavailable", available = false, reason = "Saved den is unavailable" }
+        end
+        return {
+            state = "den", available = true, cellX = cellX, cellY = cellY,
+            cellId = cell.id, safeZoneId = safeZoneId, map = safeZone.map
+        }
+    end
+    return {
+        state = data and "city" or "start", available = true, cellX = cellX, cellY = cellY,
+        cellId = cell.id, map = cell.map
+    }
+end
+
+function Characters:BuildPresentationSnapshot(profile, character)
+    if type(character) ~= "table" or type(character.characterId) ~= "string" then
+        return nil, "Character snapshot requires an internal character row"
+    end
+    local items, itemError = ZM_GetPlayerItems(character.characterId, profile)
+    if not items then return nil, itemError end
+    local weaponSlots, weaponError = ZM_GetEquippedWeaponSlots(character.characterId, profile)
+    if not weaponSlots then return nil, weaponError end
+    local location, locationError = snapshotLocation(profile, character.characterId, character)
+    if not location then return nil, locationError end
+
+    local inventory = ZM_InventoryService.FromRows(items)
+    local itemsByInstance = {}
+    for _, item in ipairs(items) do itemsByInstance[item.instanceId] = item end
+    local equippedWeapons, selectedWeapon, weaponRevision = {}, nil, {}
+    for _, slot in ipairs(weaponSlots) do
+        local item = type(slot.instanceId) == "string" and itemsByInstance[slot.instanceId] or nil
+        if item then
+            local definition = ZM_Items:GetDefinition(item.itemId)
+            local weapon = {
+                slot = tonumber(slot.slot), itemId = item.itemId,
+                name = definition and definition.name or item.itemId,
+                worldModel = definition and (definition.worldModel or definition.iconModel) or nil,
+                selected = tonumber(slot.selected) == 1
+            }
+            equippedWeapons[#equippedWeapons + 1] = weapon
+            weaponRevision[#weaponRevision + 1] = tostring(weapon.slot) .. ":" .. weapon.itemId
+                .. (weapon.selected and "*" or "")
+            if weapon.selected and not selectedWeapon then selectedWeapon = weapon end
+        end
+    end
+
+    local appearance = {
+        model = character.model,
+        skin = tonumber(character.skin) or 0,
+        bodygroups = decodeStoredTable(character.bodygroups, {}),
+        playerColour = decodeStoredTable(character.playerColour, { 1, 1, 1 })
+    }
+    local outfit = {
+        shirt = ZM_Clothing:GetEquipped(inventory, "shirt"),
+        pants = ZM_Clothing:GetEquipped(inventory, "pants")
+    }
+    local revisionParts = {
+        tostring(character.slot), tostring(character.appearanceRequired), appearance.model or "",
+        tostring(character.skin or ""), character.bodygroups or "", character.playerColour or "",
+        outfit.shirt or "", outfit.pants or "", table.concat(weaponRevision, ","),
+        location.state or "", tostring(location.cellX or ""), tostring(location.cellY or ""),
+        location.safeZoneId or "", location.map or ""
+    }
+    return {
+        appearance = appearance,
+        outfit = outfit,
+        activeWeapon = selectedWeapon,
+        weapons = equippedWeapons,
+        location = location,
+        presentationRevision = util.CRC(table.concat(revisionParts, "\31"))
+    }
+end
+
+function Characters:ListOwned(steamId, profile, legacyNameTarget)
+    local result = sql.Query("SELECT c.characterId, c.slot, c.name, c.model, c.skin, c.bodygroups, c.playerColour, c.job, c.originCellX, c.originCellY, c.originLatitude, c.originLongitude, c.createdAt, c.lastPlayedAt, c.appearanceRequired, COALESCE(d.Level, 1) AS level, CASE WHEN a.slot = c.slot THEN 1 ELSE 0 END AS active FROM characters c LEFT JOIN player_data d ON d.steamid = c.characterId AND d.profile = c.profile LEFT JOIN active_characters a ON a.steamid = c.steamid AND a.profile = c.profile WHERE c.steamid = "
+        .. sql.SQLStr(steamId) .. " AND c.profile = " .. sql.SQLStr(profile) .. " ORDER BY c.slot")
+    if result == false then return nil, sql.LastError() or "Could not list characters" end
+    for _, character in ipairs(result or {}) do
+        if legacyNameTarget then
+            local named, nameError = self:EnsureLegacyDisplayName(legacyNameTarget, character)
+            if not named then return nil, nameError end
+        end
+        local presentation, presentationError = self:BuildPresentationSnapshot(profile, character)
+        if not presentation then return nil, presentationError end
+        character.appearance = presentation.appearance
+        character.outfit = presentation.outfit
+        character.activeWeapon = presentation.activeWeapon
+        character.weapons = presentation.weapons
+        character.location = presentation.location
+        character.presentationRevision = presentation.presentationRevision
+        character.bodygroups = nil
+        character.playerColour = nil
+        character.characterId = nil
+    end
+    return result or {}
+end
+
 function Characters:List(target, internal)
     local steamId, profile, ownerError = validOwner(target)
     if not steamId then return nil, ownerError end
@@ -650,15 +776,7 @@ function Characters:List(target, internal)
         local rateAllowed, rateError = allowRequest(target, "list")
         if not rateAllowed then return nil, rateError end
     end
-    local result = sql.Query("SELECT c.characterId, c.slot, c.name, c.model, c.skin, c.job, c.originCellX, c.originCellY, c.originLatitude, c.originLongitude, c.createdAt, c.lastPlayedAt, c.appearanceRequired, COALESCE(d.Level, 1) AS level FROM characters c LEFT JOIN player_data d ON d.steamid = c.characterId AND d.profile = c.profile WHERE c.steamid = "
-        .. sql.SQLStr(steamId) .. " AND c.profile = " .. sql.SQLStr(profile) .. " ORDER BY c.slot")
-    if result == false then return nil, sql.LastError() or "Could not list characters" end
-    for _, character in ipairs(result or {}) do
-        local named, nameError = self:EnsureLegacyDisplayName(target, character)
-        if not named then return nil, nameError end
-        character.characterId = nil
-    end
-    return result or {}
+    return self:ListOwned(steamId, profile, target)
 end
 
 function ply:GetCharacterKey()

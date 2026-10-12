@@ -92,4 +92,46 @@ function Contract.View(revision)
     }
 end
 
+function Contract.LocalMapSpan(bounds, inDen, denSpan)
+    if inDen then
+        if type(denSpan) ~= "number" or denSpan <= 0 or denSpan >= 16384 or denSpan ~= denSpan then
+            return nil, "invalid den capture span"
+        end
+        return denSpan
+    end
+    if type(bounds) ~= "table" or type(bounds.neighbourPitch) ~= "number"
+        or bounds.neighbourPitch <= 0 or bounds.neighbourPitch >= 16384
+        or bounds.neighbourPitch ~= bounds.neighbourPitch then
+        return nil, "missing authoritative cell capture span"
+    end
+    return bounds.neighbourPitch
+end
+
+function Contract.ProjectLocalMap(span, width, height, centerX, centerY, viewHeight, mapX, mapY)
+    if type(span) ~= "number" or span <= 0 or type(width) ~= "number" or width <= 0
+        or type(height) ~= "number" or height <= 0 then
+        return nil, nil, "invalid local map projection"
+    end
+    viewHeight = math.max(1, math.min(tonumber(viewHeight) or span * 0.46, span))
+    local viewWidth = viewHeight * width / height
+    local viewStartU = 0.5 + centerX / span - viewWidth / span * 0.5
+    local viewStartV = 0.5 - centerY / span - viewHeight / span * 0.5
+    local mapU = 0.5 + mapX / span
+    local mapV = 0.5 - mapY / span
+    return (mapU - viewStartU) / (viewWidth / span) * width,
+        (mapV - viewStartV) / (viewHeight / span) * height
+end
+
+function Contract.CellTextureCoordinates(span, x, y)
+    if type(span) ~= "number" or span <= 0 then return nil, nil end
+    return math.max(0, math.min(1, 0.5 + x / span)),
+        math.max(0, math.min(1, 0.5 - y / span))
+end
+
+function Contract.WorldCellOffset(pitch, playerWorldX, playerWorldY, targetWorldX, targetWorldY, localX, localY)
+    if type(pitch) ~= "number" or pitch <= 0 then return nil, nil end
+    return (targetWorldX - playerWorldX) * pitch - localX,
+        (playerWorldY - targetWorldY) * pitch - localY
+end
+
 return Contract

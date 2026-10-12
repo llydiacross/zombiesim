@@ -66,6 +66,22 @@ function Licenses:Load()
             end
         end
     end
+    local earth = catalog("data_static/launcher_earth.json")
+    if earth then
+        local source = earth.source
+        if not istable(source) then
+            fail("Launcher Earth catalogue has no source record")
+        else
+            local text = isstring(source.noticeFile) and read(source.noticeFile) or nil
+            if not isstring(source.noticeFile) then fail("Launcher Earth has no notice file") end
+            records[#records + 1] = {
+                title = tostring(source.title or "Launcher Earth"),
+                source = source.sourcePage,
+                permission = source.permission and tostring(source.permission),
+                text = text
+            }
+        end
+    end
     table.sort(records, function(a, b) return string.lower(a.title) < string.lower(b.title) end)
     return records, errors
 end

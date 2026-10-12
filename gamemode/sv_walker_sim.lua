@@ -798,32 +798,35 @@ function WalkerSim:FindZombieSpawnPosition(ticket, relevancePosition, relevanceR
     local bounds = ZM_World:GetCellBounds()
     local half = bounds.coreHalfExtent
     local coreOnly = bounds.revision == 2
-    if coreOnly then
-        local candidates = {}
-        for _, area in ipairs(areas) do
-            if area:IsValid() and ZM_World:IsCoreSpawnPosition(area:GetCenter()) then
-                table.insert(candidates, area)
-            end
-        end
-        areas = candidates
-        if #areas == 0 then
-            return nil, "no nav areas within the logical core"
-        end
-    end
     local target = Vector(
         -half + localU / 65535 * half * 2,
         -half + localV / 65535 * half * 2,
         0
     )
-    table.sort(areas, function(left, right)
-        return left:GetCenter():DistToSqr(target) < right:GetCenter():DistToSqr(target)
+    local candidates = {}
+    for index, area in ipairs(areas) do
+        if area:IsValid() then
+            local position = area:GetCenter()
+            if not coreOnly or ZM_World:IsCoreSpawnPosition(position) then
+                candidates[#candidates + 1] = {
+                    area = area, position = position, distance = position:DistToSqr(target), index = index
+                }
+            end
+        end
+    end
+    if #candidates == 0 then
+        return nil, coreOnly and "no nav areas within the logical core" or "no usable nav areas"
+    end
+    table.sort(candidates, function(left, right)
+        if left.distance == right.distance then return left.index < right.index end
+        return left.distance < right.distance
     end)
 
-    local attempts = math.min(#areas, self.MaterializationConfig.placementAttemptsPerTicket)
+    local attempts = math.min(#candidates, self.MaterializationConfig.placementAttemptsPerTicket)
     for index = 1, attempts do
-        local area = areas[index]
+        local area = candidates[index].area
         if area:IsValid() and not area:IsBlocked() and not area:IsUnderwater() then
-            local position = area:GetCenter()
+            local position = candidates[index].position
             local withinRelevance = not relevancePosition or not relevanceRadius or
                 position:DistToSqr(relevancePosition) <= relevanceRadius * relevanceRadius
             if withinRelevance and not isPlayerTooClose(position, self.MaterializationConfig.playerExclusionRadius) and

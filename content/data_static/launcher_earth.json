@@ -1,0 +1,73 @@
+{
+    "schemaVersion":  1,
+    "source":  {
+                   "title":  "Natural Earth I",
+                   "sourcePage":  "https://www.naturalearthdata.com/downloads/50m-raster-data/50m-natural-earth-1/",
+                   "terms":  "https://www.naturalearthdata.com/about/terms-of-use/",
+                   "permission":  "Public domain; use, modification and redistribution permitted without required credit.",
+                   "sourceSha256":  "55745a3b4ccad41db9ed42314de2bf6fce87b6d3990ede7db1730320e1aa2e04",
+                   "noticeFile":  "data_static/launcher_earth/NOTICE.txt"
+               },
+    "textures":  [
+                     {
+                         "id":  "earth_day",
+                         "width":  2048,
+                         "height":  1024,
+                         "sourceSha256":  "d4c2d6e997a66c0e67f7b7840f7996c499068c36d854e1bd78550f5f38319035",
+                         "vtfSha256":  "cc1afa814755f41b5a9f070bc110c9f39f51af6e39f17e2f673066008796e618",
+                         "compressedBytes":  1398288,
+                         "estimatedRgbaBytes":  8388608
+                     },
+                     {
+                         "id":  "earth_lights",
+                         "width":  2048,
+                         "height":  1024,
+                         "sourceSha256":  "f82e69d4d11861875c690af5ae057e65d6e86fce91a094debf0324522875f728",
+                         "vtfSha256":  "1df1734a525497d769a1c0fcc425e3d35521660e28ed023e7a57e45c4d234f84",
+                         "compressedBytes":  2796408,
+                         "estimatedRgbaBytes":  8388608
+                     },
+                     {
+                         "id":  "earth_clouds",
+                         "width":  2048,
+                         "height":  1024,
+                         "sourceSha256":  "d3fc38ab689e38c7d5c6f49eb881c0d2911757c8b19a823127d01429cb137d15",
+                         "vtfSha256":  "646dbe8be4e8823f480a86e3d3fab4e6e1c5029d78b8976d845417b99c20fea5",
+                         "compressedBytes":  2796408,
+                         "estimatedRgbaBytes":  8388608
+                     },
+                     {
+                         "id":  "earth_distress",
+                         "width":  2048,
+                         "height":  1024,
+                         "sourceSha256":  "74a5f71f9bdb76cdee4de546d779e54cf8ee76f038e4dd79f50f68221ce529f8",
+                         "vtfSha256":  "7dbbaf04d31ae0d7d292f651b79ed897f36e72a75d6d160cd005a0cdf27f6d1e",
+                         "compressedBytes":  2796408,
+                         "estimatedRgbaBytes":  8388608
+                     },
+                     {
+                         "id":  "earth_rim",
+                         "width":  256,
+                         "height":  256,
+                         "sourceSha256":  "7f9617c5d06bd6076513261514d1b3af61c3c8cc824ca316ec15e92b919db741",
+                         "vtfSha256":  "f637ca46465293855ee0d52a70728d4d672a4e19ff447dbb131e995c06e3641d",
+                         "compressedBytes":  87640,
+                         "estimatedRgbaBytes":  262144
+                     }
+                 ],
+    "ownedFiles":  [
+                       "materials\\zombiesim\\launcher\\earth_day.vtf",
+                       "materials\\zombiesim\\launcher\\earth_lights.vtf",
+                       "materials\\zombiesim\\launcher\\earth_clouds.vtf",
+                       "materials\\zombiesim\\launcher\\earth_distress.vtf",
+                       "materials\\zombiesim\\launcher\\earth_rim.vtf",
+                       "materials\\zombiesim\\launcher\\earth_day.vmt",
+                       "materials\\zombiesim\\launcher\\earth_lights.vmt",
+                       "materials\\zombiesim\\launcher\\earth_clouds.vmt",
+                       "materials\\zombiesim\\launcher\\earth_distress.vmt",
+                       "materials\\zombiesim\\launcher\\earth_rim.vmt"
+                   ],
+    "ownedNoticeFiles":  [
+                             "data_static\\launcher_earth\\NOTICE.txt"
+                         ]
+}

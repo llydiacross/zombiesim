@@ -794,7 +794,13 @@ function ZM_CreateLootSpotTables()
     if not cells then
         return false, cellsError
     end
-    return runQuery("CREATE TABLE IF NOT EXISTS loot_spots (profile TEXT NOT NULL, cellId INTEGER NOT NULL, spotKey TEXT NOT NULL, state TEXT NOT NULL, item TEXT, PRIMARY KEY (profile, cellId, spotKey))")
+    local columns, columnsError = getTableColumns("loot_cells")
+    if not columns then return false, columnsError end
+    local fingerprintAdded, fingerprintError = addColumnIfMissing("loot_cells", columns, "mapFingerprint TEXT NOT NULL DEFAULT ''")
+    if not fingerprintAdded then return false, fingerprintError end
+    local spots, spotsError = runQuery("CREATE TABLE IF NOT EXISTS loot_spots (profile TEXT NOT NULL, cellId INTEGER NOT NULL, spotKey TEXT NOT NULL, state TEXT NOT NULL, item TEXT, PRIMARY KEY (profile, cellId, spotKey))")
+    if not spots then return false, spotsError end
+    return runQuery("CREATE TABLE IF NOT EXISTS loot_cell_backups (profile TEXT NOT NULL, cellId INTEGER NOT NULL, mapFingerprint TEXT NOT NULL, generatedAt INTEGER NOT NULL, lastPresentAt INTEGER NOT NULL, spotData TEXT NOT NULL, backedUpAt INTEGER NOT NULL, PRIMARY KEY (profile, cellId, mapFingerprint))")
 end
 
 function ZM_CreateWorldDroppedItemTables()
@@ -909,7 +915,7 @@ local function lootItemValue(item)
 end
 
 // Replaces a cell's spots and timestamps in one transaction (used when a cell is generated or re-rolled).
-function ZM_ReplaceLootCell(profile, cellId, generatedAt, lastPresentAt, spots)
+function ZM_ReplaceLootCell(profile, cellId, generatedAt, lastPresentAt, spots, mapFingerprint)
     profile = getPlayerDataProfile(profile)
     if not profile then
         return false, "Invalid loot profile"
@@ -933,7 +939,8 @@ function ZM_ReplaceLootCell(profile, cellId, generatedAt, lastPresentAt, spots)
             return rollback(insertError)
         end
     end
-    local saved, saveError = runQuery("INSERT OR REPLACE INTO loot_cells (profile, cellId, generatedAt, lastPresentAt) VALUES (" .. sql.SQLStr(profile) .. ", " .. cell .. ", " .. integerValue(generatedAt) .. ", " .. integerValue(lastPresentAt) .. ")")
+    mapFingerprint = type(mapFingerprint) == "string" and mapFingerprint or ""
+    local saved, saveError = runQuery("INSERT OR REPLACE INTO loot_cells (profile, cellId, generatedAt, lastPresentAt, mapFingerprint) VALUES (" .. sql.SQLStr(profile) .. ", " .. cell .. ", " .. integerValue(generatedAt) .. ", " .. integerValue(lastPresentAt) .. ", " .. sql.SQLStr(mapFingerprint) .. ")")
     if not saved then
         return rollback(saveError)
     end
@@ -942,6 +949,81 @@ function ZM_ReplaceLootCell(profile, cellId, generatedAt, lastPresentAt, spots)
         return rollback(commitError)
     end
     return true
+end
+
+local function validMapFingerprint(value)
+    return type(value) == "string" and value ~= "" and string.match(value, "^[a-zA-Z0-9_-]+$") ~= nil
+end
+
+// Baselines legacy rows without resetting them. A known changed map is backed up and cleared atomically so the
+// caller's normal absence path creates one fresh generation.
+function ZM_PrepareLootCellMapRevision(profile, cellId, mapFingerprint, now)
+    profile = getPlayerDataProfile(profile)
+    if not profile or not validMapFingerprint(mapFingerprint) then
+        return nil, "Invalid loot map revision"
+    end
+    local cell = integerValue(cellId)
+    local row, rowError = ZM_GetLootCell(profile, cellId)
+    if rowError then return nil, rowError end
+    if not row then return false end
+    local previous = tostring(row.mapFingerprint or "")
+    if previous == mapFingerprint then return false end
+    if previous == "" then
+        local updated, updateError = runQuery("UPDATE loot_cells SET mapFingerprint = " .. sql.SQLStr(mapFingerprint)
+            .. " WHERE profile = " .. sql.SQLStr(profile) .. " AND cellId = " .. cell)
+        if not updated then return nil, updateError end
+        return false
+    end
+    local spots, spotsError = ZM_GetLootSpots(profile, cellId)
+    if not spots then return nil, spotsError end
+    local encoded = util.TableToJSON(spots, false)
+    if type(encoded) ~= "string" then return nil, "Could not encode loot backup" end
+    local started, startError = runQuery("BEGIN")
+    if not started then return nil, startError end
+    local function rollback(message)
+        sql.Query("ROLLBACK")
+        return nil, message
+    end
+    local backedUp, backupError = runQuery("INSERT OR REPLACE INTO loot_cell_backups (profile, cellId, mapFingerprint, generatedAt, lastPresentAt, spotData, backedUpAt) VALUES ("
+        .. sql.SQLStr(profile) .. ", " .. cell .. ", " .. sql.SQLStr(previous) .. ", "
+        .. integerValue(row.generatedAt) .. ", " .. integerValue(row.lastPresentAt) .. ", "
+        .. sql.SQLStr(encoded) .. ", " .. integerValue(now) .. ")")
+    if not backedUp then return rollback(backupError) end
+    local deletedSpots, deleteSpotsError = runQuery("DELETE FROM loot_spots WHERE profile = " .. sql.SQLStr(profile) .. " AND cellId = " .. cell)
+    if not deletedSpots then return rollback(deleteSpotsError) end
+    local deletedCell, deleteCellError = runQuery("DELETE FROM loot_cells WHERE profile = " .. sql.SQLStr(profile) .. " AND cellId = " .. cell)
+    if not deletedCell then return rollback(deleteCellError) end
+    local committed, commitError = runQuery("COMMIT")
+    if not committed then return rollback(commitError) end
+    return true
+end
+
+function ZM_GetLootCellBackups(profile, cellId)
+    profile = getPlayerDataProfile(profile)
+    if not profile then return nil, "Invalid loot profile" end
+    local result = sql.Query("SELECT * FROM loot_cell_backups WHERE profile = " .. sql.SQLStr(profile)
+        .. " AND cellId = " .. integerValue(cellId) .. " ORDER BY backedUpAt, mapFingerprint")
+    if result == false then return nil, sql.LastError() or "Could not read loot backups" end
+    return result or {}
+end
+
+function ZM_RestoreLootCellBackup(profile, cellId, mapFingerprint)
+    profile = getPlayerDataProfile(profile)
+    if not profile or not validMapFingerprint(mapFingerprint) then return false, "Invalid loot backup" end
+    local cell = integerValue(cellId)
+    local result = sql.Query("SELECT * FROM loot_cell_backups WHERE profile = " .. sql.SQLStr(profile)
+        .. " AND cellId = " .. cell .. " AND mapFingerprint = " .. sql.SQLStr(mapFingerprint))
+    if result == false then return false, sql.LastError() or "Could not read loot backup" end
+    local backup = result and result[1]
+    if not backup then return false, "Loot backup was not found" end
+    local spots = util.JSONToTable(backup.spotData)
+    if type(spots) ~= "table" then return false, "Loot backup is invalid" end
+    local rows = {}
+    for _, spot in ipairs(spots) do
+        local item = type(spot.item) == "string" and util.JSONToTable(spot.item) or nil
+        table.insert(rows, { key = spot.spotKey, state = spot.state, item = item })
+    end
+    return ZM_ReplaceLootCell(profile, cellId, tonumber(backup.generatedAt), tonumber(backup.lastPresentAt), rows, mapFingerprint)
 end
 
 function ZM_SetLootSpot(profile, cellId, spotKey, state, item)
@@ -969,7 +1051,9 @@ function ZM_DeleteLootCells(profile)
     if not spots then
         return false, spotsError
     end
-    return runQuery("DELETE FROM loot_cells WHERE profile = " .. sql.SQLStr(profile))
+    local cells, cellsError = runQuery("DELETE FROM loot_cells WHERE profile = " .. sql.SQLStr(profile))
+    if not cells then return false, cellsError end
+    return runQuery("DELETE FROM loot_cell_backups WHERE profile = " .. sql.SQLStr(profile))
 end
 
 // Harvest cooldowns are shared per world profile and logical cell, and survive server restarts.

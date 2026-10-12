@@ -7,18 +7,26 @@ local collisionMaxs = Vector(16, 16, 72)
 local corpseFadeDelay = 60
 local corpseFadeDuration = 5
 local corpseFadeInterval = 0.1
-local validModels
+local modelCandidates
+local modelValidity = {}
 
 local function pickModel(entity)
-    if not validModels then
-        validModels = {}
+    if not modelCandidates then
+        modelCandidates = {}
         for _, model in ipairs(entity.Models or {}) do
-            if util.IsValidModel(model) then
-                table.insert(validModels, model)
-            end
+            table.insert(modelCandidates, model)
         end
     end
-    return validModels[math.random(#validModels)] or entity.Model
+    // Validate only the drawn candidate, not the entire mounted catalogue on the first spawn.
+    while #modelCandidates > 0 do
+        local index = math.random(#modelCandidates)
+        local model = modelCandidates[index]
+        if modelValidity[model] == nil then modelValidity[model] = util.IsValidModel(model) end
+        if modelValidity[model] then return model end
+        table.remove(modelCandidates, index)
+    end
+    ErrorNoHalt("[ZombieSim] No valid Walker model candidates; using the default model.\n")
+    return entity.Model
 end
 
 function ENT:Initialize()
@@ -116,7 +124,8 @@ function ENT:ResolveWalkerTicket(killed)
 end
 
 function ENT:IsValidTarget(target)
-    if not IsValid(target) or not target:IsPlayer() or not target:Alive() or target:IsFlagSet(FL_NOTARGET) then
+    if not IsValid(target) or not target:IsPlayer() or not target:Alive() or target:IsFlagSet(FL_NOTARGET) or
+        target.ZM_WalkerPreloadWaiting then
         return false
     end
     if ZM_AFK and ZM_AFK:IsProtected(target) then

@@ -3,8 +3,30 @@ ZM_LauncherTools = ZM_LauncherTools or {}
 local Tools = ZM_LauncherTools
 local colours = ZM_DermaSkin.Palette
 
+function Tools:GetCapabilities(profile, mapName)
+    profile = profile or (ZM_World and ZM_World.ActiveProfile)
+    mapName = mapName or game.GetMap()
+    local preview = profile == "preview" and mapName == "zn_preview_start"
+    local city = profile == "city" and mapName == "zn_city_start"
+    local launcher = preview or city
+    return {
+        launcher = launcher,
+        itemAtlas = launcher,
+        mapAtlas = preview,
+        contentStatus = launcher,
+        wardrobe = preview,
+        skyBrowser = launcher,
+        profile = profile,
+        map = mapName
+    }
+end
+
 function Tools:IsAvailable()
-    return ZM_World and ZM_World.ActiveProfile == "preview" and game.GetMap() == "zn_preview_start"
+    return self:GetCapabilities().launcher
+end
+
+function Tools:IsPreviewAvailable()
+    return self:GetCapabilities().mapAtlas
 end
 
 function Tools:GetItems()
@@ -188,6 +210,7 @@ function Tools:Inspect(row, maps)
 end
 
 function Tools:Atlas(maps)
+    if maps and not self:GetCapabilities().mapAtlas then return false end
     if not self:EnsureWorkspace() then return end
     self.Body:Clear()
     self.Page = maps and "maps" or "items"
@@ -475,17 +498,23 @@ end
 
 // Called by the launcher while rendering its "tools" page.
 function Tools:BuildMenu(content, addButton, addLabelLine, refresh)
+    local capabilities = self:GetCapabilities()
     addLabelLine(content, "TOOLS", 36)
-    addLabelLine(content, "Preview launcher only. Browsing never grants items, changes equipment or teleports the survivor.", 54)
-    local function entry(text, page, action)
+    addLabelLine(content, "Read-only inspection. Browsing never grants items, changes equipment or teleports the survivor.", 54)
+    local function entry(text, page, action, enabled, reason)
         local item = addButton((self.Page == page and IsValid(self.Body) and "? " or "") .. text, function()
             action()
             refresh()
         end)
+        if enabled == false then
+            item:SetEnabled(false)
+            item:SetTooltip(reason)
+        end
         return item
     end
     entry("ITEM ATLAS", "items", function() self:Atlas(false) end):SetTooltip("Item artwork, definitions and registry usage.")
-    entry("MAP ATLAS", "maps", function() self:Atlas(true) end):SetTooltip("Staged satellite and wireframe cell artwork.")
+    entry("MAP ATLAS", "maps", function() self:Atlas(true) end, capabilities.mapAtlas,
+        "Map Atlas is preview-only until city artwork paths are profile-safe.")
     entry("CONTENT STATUS", "status", function() self:Status() end):SetTooltip("Loaded registries and content failures.")
     // Tools below the rule open their own windows instead of the right-hand view.
     local rule = vgui.Create("DPanel", content)
@@ -497,15 +526,20 @@ function Tools:BuildMenu(content, addButton, addLabelLine, refresh)
         surface.DrawRect(0, 0, width, height)
     end
     self.Rule = rule
-    local wardrobe = entry("WARDROBE", nil, function() ZM_Wardrobe:Open(self.Host) end)
-    wardrobe:SetEnabled(ZM_Wardrobe:IsAvailable())
-    wardrobe:SetTooltip("Opens a window: full citizen outfit, fabric and blood preview. Requires a preview admin.")
-    entry("SKY BROWSER", nil, function() ZM_SkyBrowser:Open(self.Host) end):SetTooltip("Opens a window: skies and automatic palette artwork.")
+    local wardrobe = entry("WARDROBE", nil, function() ZM_Wardrobe:Open(self.Host) end,
+        capabilities.wardrobe and ZM_Wardrobe:IsAvailable(),
+        "Wardrobe is available only to a preview launcher admin.")
+    if wardrobe:IsEnabled() then
+        wardrobe:SetTooltip("Opens a window: full citizen outfit, fabric and blood preview.")
+    end
+    entry("SKY BROWSER", nil, function() ZM_SkyBrowser:Open(self.Host) end,
+        capabilities.skyBrowser, "Sky Browser is unavailable outside a launcher.")
+        :SetTooltip("Opens a window: skies and automatic palette artwork.")
 end
 
 // Switches the launcher to the Tools tab (kept for the development UI bridge).
 function Tools:Open()
-    if not self:IsAvailable() then ErrorNoHalt("[ZombieSim] Tools are available only in the preview launcher.\n") return end
+    if not self:IsAvailable() then ErrorNoHalt("[ZombieSim] Tools are available only in a ZombieSim launcher.\n") return end
     local menu = ZM_LauncherMenu
     if not menu or not IsValid(menu.Frame) then return end
     menu.Page = "tools"
@@ -519,8 +553,41 @@ function Tools:GetDiagnosticSnapshot()
         items = #self:GetItems(), maps = #self:GetMaps(), readOnly = true }
 end
 
+concommand.Remove("zombiesim_dev_test_launcher_tools_profile")
+concommand.Add("zombiesim_dev_test_launcher_tools_profile", function()
+    if not Tools:IsAvailable() or not IsValid(LocalPlayer()) or not LocalPlayer():IsAdmin()
+        or not ZM_LauncherMenu or not IsValid(ZM_LauncherMenu.Frame) then
+        ErrorNoHalt("[ZombieSim] Tools profile test requires an active launcher admin.\n")
+        return
+    end
+    local menu = ZM_LauncherMenu
+    local originalPage = menu.Page
+    local suite = ZM_TestHarness.NewSuite()
+    suite:Add("active launcher exposes only profile-safe tools", function(check)
+        local capabilities = Tools:GetCapabilities()
+        menu:SetPage("tools")
+        menu:Render()
+        local buttons = {}
+        for _, button in ipairs(menu.Buttons or {}) do
+            buttons[string.gsub(button:GetText(), "^%? ", "")] = button
+        end
+        check(capabilities.launcher and buttons["ITEM ATLAS"]:IsEnabled()
+            and buttons["CONTENT STATUS"]:IsEnabled() and buttons["SKY BROWSER"]:IsEnabled(),
+            "profile-safe Tools actions are visible and enabled")
+        check(buttons["MAP ATLAS"]:IsEnabled() == capabilities.mapAtlas,
+            "Map Atlas enabled state follows profile-safe artwork capability")
+        check(buttons["WARDROBE"]:IsEnabled() == (capabilities.wardrobe and ZM_Wardrobe:IsAvailable()),
+            "Wardrobe enabled state retains its preview-admin guard")
+    end)
+    local summary = suite:Run()
+    menu:SetPage(originalPage)
+    menu:Render()
+    file.CreateDir("zombiesim")
+    file.Write("zombiesim/launcher-tools-profile-tests.json", util.TableToJSON(summary, true))
+end)
+
 concommand.Add("zombiesim_dev_test_launcher_tools", function()
-    if not Tools:IsAvailable() or not IsValid(LocalPlayer()) or not LocalPlayer():IsAdmin() then
+    if not Tools:IsPreviewAvailable() or not IsValid(LocalPlayer()) or not LocalPlayer():IsAdmin() then
         ErrorNoHalt("[ZombieSim] Tools tests require a preview launcher admin.\n")
         return
     end
@@ -533,6 +600,19 @@ concommand.Add("zombiesim_dev_test_launcher_tools", function()
     root:SetSize(640, 720)
     root:SetVisible(false)
     local suite = ZM_TestHarness.NewSuite()
+    suite:Add("profile_capabilities_keep_safe_tools_visible", function(check)
+        local preview = Tools:GetCapabilities("preview", "zn_preview_start")
+        local city = Tools:GetCapabilities("city", "zn_city_start")
+        check(preview.launcher and preview.itemAtlas and preview.mapAtlas and preview.contentStatus
+            and preview.wardrobe and preview.skyBrowser,
+            "preview launcher exposes every read-only development tool")
+        check(city.launcher and city.itemAtlas and city.contentStatus and city.skyBrowser,
+            "city launcher retains profile-safe read-only tools")
+        check(not city.mapAtlas and not city.wardrobe,
+            "city disables preview artwork and wardrobe actions instead of hiding Tools")
+        check(not Tools:GetCapabilities("preview", "zn_preview_0_0").launcher,
+            "deployed gameplay maps do not expose launcher Tools")
+    end)
     suite:Add("atlas_entries_cover_loaded_items_and_unique_maps", function(check)
         check(#Tools:GetItems() == table.Count(ZM_StaticData:GetRegistry().items), "every loaded item is represented")
         local ids = {}
@@ -701,7 +781,9 @@ concommand.Add("zombiesim_dev_test_launcher_tools", function()
         check(#frame.ZM_LicenseErrors == 0, "every shipped notice loads without errors")
         local sky = util.JSONToTable(file.Read("data_static/sky_catalogue.json", "GAME"))
         local assets = util.JSONToTable(file.Read("data_static/imported_assets.json", "GAME"))
-        check(#frame.ZM_LicenseRecords == #sky.entries + #assets.sources, "all sky and imported asset records are shown")
+        local earth = util.JSONToTable(file.Read("data_static/launcher_earth.json", "GAME"))
+        check(#frame.ZM_LicenseRecords == #sky.entries + #assets.sources + 1,
+            "all sky, imported asset and launcher Earth records are shown")
         local shown = {}
         for _, record in ipairs(frame.ZM_LicenseRecords) do shown[record.title] = record end
         for _, source in ipairs(assets.sources) do
@@ -720,6 +802,9 @@ concommand.Add("zombiesim_dev_test_launcher_tools", function()
             local record = shown["Sky: " .. tostring(entry.label or entry.id)]
             check(record and record.text == file.Read(entry.licenceFile, "GAME"), "original sky notice is shown verbatim: " .. entry.id)
         end
+        local earthRecord = shown[earth.source.title]
+        check(earthRecord and earthRecord.text == file.Read(earth.source.noticeFile, "GAME"),
+            "launcher Earth public-domain notice is shown verbatim")
         check(#frame.ZM_LicenseScroll:GetCanvas():GetChildren() > #frame.ZM_LicenseRecords * 2,
             "the scroll canvas contains notice headings and full text")
         check(ZM_ThirdPartyLicenses:Open(options) == frame, "reopening reuses the notice window")

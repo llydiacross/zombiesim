@@ -1,0 +1,20 @@
+Natural Earth I launcher texture
+
+Source: Natural Earth, 1:50m Natural Earth I with shaded relief and water
+Source page: https://www.naturalearthdata.com/downloads/50m-raster-data/50m-natural-earth-1/
+Source archive: https://naciscdn.org/naturalearth/50m/raster/NE1_50M_SR_W.zip
+Source archive SHA-256: 9e85417223414bbed425aea5dca0f0b4c5661fc94d4f14494140a21a08dfa450
+Imported source: natural_earth_1.png
+Imported source SHA-256: 55745a3b4ccad41db9ed42314de2bf6fce87b6d3990ede7db1730320e1aa2e04
+
+Natural Earth terms of use:
+https://www.naturalearthdata.com/about/terms-of-use/
+
+All versions of Natural Earth raster and vector map data on the Natural Earth
+website are in the public domain. Natural Earth permits use, modification and
+redistribution for personal, educational and commercial purposes without
+permission or required credit.
+
+ZombieSim resampled the source to 2048x1024. The night lights, cloud, distress
+and rim layers are original deterministic ZombieSim build outputs and are not
+copied from an external texture.

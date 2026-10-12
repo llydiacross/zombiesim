@@ -11,10 +11,15 @@ ENT.Model = "models/player/group01/male_01.mdl"
 ENT.Models = {}
 for _, group in ipairs({ "group01", "group02", "group03" }) do
     for index = 1, 9 do
-        table.insert(ENT.Models, string.format("models/player/%s/male_%02d.mdl", group, index))
+        // Mounted group02 supplies only the four even-numbered male refugees.
+        if group ~= "group02" or index % 2 == 0 then
+            table.insert(ENT.Models, string.format("models/player/%s/male_%02d.mdl", group, index))
+        end
     end
-    for index = 1, 6 do
-        table.insert(ENT.Models, string.format("models/player/%s/female_%02d.mdl", group, index))
+    if group ~= "group02" then
+        for index = 1, 6 do
+            table.insert(ENT.Models, string.format("models/player/%s/female_%02d.mdl", group, index))
+        end
     end
 end
 ENT.WalkActivities = { ACT_HL2MP_WALK_ZOMBIE_01, ACT_HL2MP_WALK_ZOMBIE_02, ACT_HL2MP_WALK_ZOMBIE_03,

@@ -17,6 +17,24 @@ retained validation limits, not new Phase B gates. Workshop publication is still
 deferred; `version.json` reports `in development`, not `released`. Production
 city rebuilds require separate approval.
 
+The future release city is configured as **48x48** (2304 logical cells);
+preview remains **24x24**. This does not resize the installed production world.
+Repeated recipes use an adaptive pool capped at four candidate layouts, with
+cardinal-neighbour checks against actual tile geometry. Less-used recipes
+retain their base layout unless an adjacent conflict needs an alternative;
+frequent recipes add a layout per 15 uses, up to the cap. Distant map reuse is
+intentional. Highest-density `aaa` border/edge walls
+are excluded directly beside road, motorway and bridge corridors; `aa` and
+corner assets remain eligible. Validate a regenerated plan with:
+
+```powershell
+.\bin\test_cell_variants.ps1 -PlanData <isolated-plan.json> -BaselinePlanData <previous-plan.json> -LayoutDirectory <isolated-src>
+```
+
+Warnings identify authored pools unable to supply a different adjacent layout.
+New BSPs, skyline and runtime exports must be staged together; old captured
+Satellite imagery remains compatibility-gated, not relabelled as current.
+
 ## CS 1.6 weapon assets
 
 The user-cleared Workshop `2657591603` revision `1637211535` supplies 24
@@ -380,13 +398,17 @@ was removed after validation; no source or installed asset was pruned.
 
 On `zn_preview_start` or `zn_city_start`, the optional Volt/Walker briefings precede the character menu. The launcher is not yet deployed gameplay: load an existing slot or create one of three profile-specific survivors, complete any required appearance, and deploy the character. Only after the server accepts deployment does play continue into the character's saved city cell or safe zone; for a gameplay test, then enter the intended den or cell. Choose a name, citizen model/appearance, profession, and spend exactly ten starting attribute points when creating a survivor. A migrated slot-1 survivor requires an appearance before deployment. Deleting a slot requires typing its name. Options in the launcher use the same settings controls as the in-game radial menu; Exit disconnects. Keyboard navigation supports Up/Down, Enter and Escape.
 
-The main menu draws an original procedural globe at the authored `menu_globe` marker. Each slot's origin dot uses the profile's geographic anchor in `content/data_static/launcher_scene.json`; selecting a slot turns the globe to that dot. The profile anchors are fictional presentation coordinates, **not** a real-world geolocation of generated cells. The globe defaults to low detail (`zombiesim_globe_quality 0`); enable **High-detail menu globe** in Options (or set the convar to `1`) for a finer mesh. No external imagery or copied textures are packaged.
+The main menu draws a textured Earth at the authored `menu_globe` marker. Its reviewed Natural Earth I base is public-domain map art; `.\bin\build_launcher_earth.ps1 -StageToGame` verifies the pinned source hash, generates original night-light/cloud/distress/rim layers, compiles their VTFs, stages one source notice and writes `launcher_earth.json` ownership/size diagnostics. Each slot's origin uses the profile's fictional geographic anchor in `content/data_static/launcher_scene.json`; it is presentation, **not** a real-world geolocation of generated cells. Low detail uses a 960-triangle static sphere and omits cloud/distress draws; high uses 3968 triangles and all five layers. Existing saved `zombiesim_globe_quality` choices are preserved, while new/reset and medium/high presets use high detail. The bounded Phase G prototype can show one revision-matched selected-cell skyline model without mutating the gameplay skybox owner.
 
 Credits uses the same maintained JSON file for its crawl. It hides the menu and cuts to `credits_camera`, then cycles through the four named dancers; Escape, Enter, Space, or click returns to the menu. The server supplies camera poses, dancer entity indexes, and credits-area visibility; credits fog is confined to the credits view. For camera tuning, `zombiesim_credits_shot gman` (or `alyx`, `barney`, `kleiner`; empty to unlock) and `zombiesim_credits_debug 1` expose the shot and obstruction trace. Admins can run `zombiesim_launcher_flexes` to inspect available model flex controllers. The dancing, flex replication, camera clearance, and presentation still require live-client verification.
 
 For admin development sessions, `zombiesim_dev_autoload_character 1` (or slot 2/3) attempts to deploy that existing, appearance-complete slot after the dependency briefings; `0` disables autoload. It does not create a character. Run `zn_test_characters` in an admin console for server-side character storage and validation checks. Player models/hands, menu camera framing, first-run briefings, and cross-map transitions still require verification in a running client.
 
 Character persistence uses a profile-specific three-slot roster. Existing per-profile player data is assigned to slot 1 at first startup, retaining the original player-owned table layouts while replacing the owner key with an immutable character ID. Garry's Mod blocks Lua from reading `sv.db`, so startup requires a verified logical SQLite export (every schema statement and row, checked by row count) at `garrysmod/data/zombiesim/backups/sv_db_alpha_2_8_5_backup.json`; if backup or migration fails, character spawning is blocked rather than saving under the wrong identity. Back up your installed database separately before testing this milestone, then check the server's migration row counts and verify an existing save in-game. The migration and suite have **not** yet been exercised against the installed database.
+
+Launcher slot listings are assembled read-only from the requesting owner's current profile. Each occupied row includes decoded model/skin/bodygroups/player colour, worn shirt and pants, the selected weapon's presentation model, a validated city/den/new-character location, and a presentation revision for thumbnail invalidation. Internal character IDs are removed before transmission. Collecting the same snapshot repeatedly does not select or load a character, equip items, create weapons, or rewrite character, progression, inventory, or weapon-slot rows.
+
+Occupied cards frame the complete saved model from its render bounds and the card's actual aspect ratio. Clothing composition runs from `PreRender` through the existing bounded pool: at most three visible cards and one in-flight build, with transient failures retried rather than cached as a successful native outfit. Active weapons use a separate read-only client model from the item world/icon model; no SWEP, ammunition, deployment, or gameplay animation is created. Leaving/rebuilding the page releases clothing ownership, client weapon models, panels, and queued work.
 
 Please read the [GDD](docs/gdd.md) for an overview of the game's design and mechanics.
 
@@ -842,6 +864,10 @@ zombiesim_player_status
 
 City exit arrows point outward on the traced road surface: ordinary roads have one arrow, motorways have one on each carriageway rather than the median. They retain green/yellow/red eligibility/waypoint colours, depth occlusion and a1280-unit world range; E travel and nearby prompts are unchanged. The HUD minimap (live and cell-texture modes) and satellite/Level view draw live arrow overlays using their existing pan/zoom transforms, clipped to the map bounds. These overlays are not baked into cached captures and do not use the world camera's distance limit. The world-map window and waypoint diamond are unchanged. `zombiesim_transition_arrows_status` reports meshes, material/shader and texture availability. Preview admins can run `zombiesim_dev_test_transition_markers_client` for isolated client tests; `zombiesim_dev_gate_report` through the bridge reports independently traced gate arrow surfaces. Offline regressions are `tests/transitions/test_client_transition_markers.py` and `tests/transitions/test_server_transition_markers.py`, using the optional shared GLua harness. These fixtures do not prove rendered appearance or actual travel.
 
+Motorway gate arrivals do not use the authored `<SIDE>_ENTRANCE` landmark, which sits on the cell axis inside the concrete central reservation. `ZM_Transitions:ResolveGateArrivalPosition` traces the right-hand carriageway (the same lane as the first travel arrow) 384 units inside the gate, 128 past the arrows, and validates the player hull before placing. Ordinary roads, den exits, unsupported surfaces and an obstructed carriageway keep the authored landmark unchanged. Arrow positions, arrival yaw, the 160 u/s arrival walk and the fade timing are unchanged.
+
+City Level/minimap captures use the active world's authoritative neighbour pitch, so expanded cells include the complete 5760-unit visual footprint and marker projection uses the exact span rendered into the texture. The capture cache version prevents older cropped textures from being reused. Den captures retain their separate legacy span.
+
 The den camera selects first-person when the loaded map matches a den in the active world profile, including the brief exit interval when the saved safe-zone ID has already been cleared; outside dens it retains the top-down/orbit controls. The weapon HUD reads clip capacity from the active weapon and reserve rounds from the server-synchronized inventory snapshot. An unavailable inventory snapshot displays `--` rather than pretending the reserve is empty. Hammer `npc_name` takes precedence for den NPC display names; if absent, the entity's `targetname` is used.
 
 In a generated safe-zone cell, approach an authored `zn_safezone_door` and press E to enter its den; use the exit point at the den's south entrance to return to the same city cell. The server checks loaded player state, the active map and safe zone, and the single-human transition guard before persisting a map change. Arrivals use the authored `zn_safezone_arrival` point when available, with `info_player_start` as a fallback. The client displays a nearby-door prompt, but the server owns the interaction. Run `zn_test_safezones` in an in-game admin console to exercise the safe-zone door and arrival suite; GLua syntax checks alone do not exercise a map transition.
@@ -880,6 +906,54 @@ For a live preview atmosphere snapshot, submit `zombiesim_dev_atmosphere_status`
 For bridge-driven preview review, `zombiesim_dev_preview_teleport <logicalX> <logicalY>` sends the single connected preview admin to that logical cell through the same operator, cooldown, staged-map and transition guards as the world-map teleport. Its acknowledgement only means the transition was queued; confirm the destination with `zombiesim_player_status` after the map loads.
 
 For a client frame-cost profile, run `zombiesim_dev_profile_hooks [seconds]` (default 10, maximum 120; also reachable through the bridge). It temporarily wraps named render, Think and HUD hooks, including `PostDraw2DSkyBox` for palette drawing, records frame times and Lua allocation, restores the original hooks, prints the top entries and writes `garrysmod/data/zombiesim/hook_profile.json`. Hook timings are CPU-side call measurements, not isolated GPU cost; record camera, weather, quality and population/render counts before making comparisons.
+
+For preview-admin game-thread Walker timing, send `zombiesim_dev_profile_walker 30`
+through the bridge. It temporarily times initialization, checkpoint saves/collection,
+zombie creation/spawn-position searches and materializer reconciliation, preserving method results and
+restoring the original methods afterward. `data/zombiesim/walker_profile.json`
+contains call totals/maxima, up to 128 calls taking at least 8 ms, and native worker
+stats before/after. Nested method times overlap; do not sum them. This is not a
+native heap measurement or a complete server profiler. SQLite queries, Base64
+encoding and DATA writes are also timed across the server during the window;
+their totals include non-Walker callers, and query contents are not recorded.
+Entity creation, Walker initialization/ticket assignment, model validation,
+bloody appearance and outfit assignment are timed separately to isolate first-spawn
+costs. Spawn placement reads each valid nav-area centre once per search and sorts
+precomputed distances; materialization uses a 2 ms soft batch budget and resumes
+pending reservations on subsequent server frames. Individual spawns remain atomic
+and can exceed that budget. Population targets, ticket authority and spawn guards
+are unchanged.
+Walker model selection validates only its randomly drawn candidate and caches
+the result instead of loading the whole catalogue on the first spawn. Invalid
+candidates are removed; selection remains uniform over the valid candidate pool.
+[`util.IsValidModel`](https://wiki.facepunch.com/gmod/util.IsValidModel) also
+precaches its model, so catalogue-wide validation loads models synchronously.
+Lazy selection removes that aggregate first-spawn load, not every individual
+uncached-model stall.
+Fresh-map startup now prepares the Walker model catalogue in both realms, one
+synchronous validation/precache per frame, under the existing `ZM_Loading` log.
+The client holds the existing arrival cover until its preparation and server
+preparation complete; the server delays arrival-walk/fade setup until local
+preparation and that client's acknowledgement finish. Materialization waits for
+server preparation. Departure titles/fades, den placement, arrival walk speeds,
+population targets and persistent character data are unchanged. Missing models
+and a 30-second timeout are explicitly reported as warnings/failures; a timed-out
+load may still encounter uncached models. This moves model-loading stalls behind
+the loading screen, not all engine, clothing-composition or driver startup work.
+`zombiesim_dev_walker_preload_status` reports server completion/counts; client and
+Walker profiler reports include their realm's preload diagnostics.
+The stock pool contains 34 mounted models: 15 group01 citizens, four group02
+male refugees (02/04/06/08), and 15 group03 rebels. The installed
+`garrysmod_dir.vpk` listing confirms group02 has no other player models; removing
+those nonexistent candidates preserves the previous valid pool.
+Run `python -m unittest tests.glua.test_walker_spawning tests.glua.test_walker_preload`
+for focused offline model-selection, nav-placement, batch-budget and loading
+handshake/timeout regressions.
+For an early post-load sample, reload the same preview map, then request both
+`zombiesim_dev_profile_walker 30` and `zombiesim_dev_profile_client 30` as soon
+as the bridge is responsive. Check report freshness independently; this does
+not capture work before the request, engine BSP/asset loading or a genuinely
+cold process launch. Map reloads retain process/OS caches.
 
 Weather follows a seasonal schedule driven by the server's clock (northern hemisphere): every 8–25 minutes the server rolls clear, rain or snow from the current month's chances. Snow is rare, most likely in December, guaranteed all of Christmas Day (25 December) and never falls in June–August; out-of-season snow is replaced at once. The schedule state is archived (`zombiesim_weather_until`, `zombiesim_weather_manual`), so level changes do not reroll it. From the server console or an admin client, `zombiesim_weather clear`, `zombiesim_weather rain` or `zombiesim_weather snow` (and the preview cheat buttons) override the weather for one spell, after which the schedule resumes; `zombiesim_weather auto` resumes it immediately, `zombiesim_weather` with no argument reports the mode and time to the next change, and `zombiesim_weather_auto 0` keeps the weather steady. Rain and snow effects are limited to outdoor city cells; sheltered interiors and dens remain dry. Puddle footsteps retain the textured ground footprint/ring and throw five short-lived upward water-splash particles, with a mounted slosh sound when available. The footprint material is rebound after rain crowns so they cannot change its appearance. In multiplayer, puddle steps replace the ordinary footstep sound; singleplayer retains the distance-based layered fallback because its client does not receive `PlayerFootstep`. Wet-ground and lying-snow footsteps still use the existing distance-based effects. Rain impacts are bounded to 240 single-quad rings and 40 crowns, rather than expanded procedural ripple meshes. Rain also forms client-local puddles at fixed map locations; off-screen puddles remain in world space and are rendered only when visible. Their irregular, feathered water meshes grow while forming and shrink/fade as they dry, with bounded cluster and per-frame render limits. Puddles that stay wet slowly spread, and some become large pools where the surrounding ground is level. The launcher and in-game Options panels include **Rain density** (0.5-2.0, default 1.5), **Puddle opacity** (0.05-0.45, default 0.15), and **Puddle amount** (0.5-3.0, default 1.0). All three are saved locally. Lower puddle opacity shows more ground through the water, and higher puddle amounts form more puddles at some extra frame cost. Snow cools the colour grade and fog, adds breath, a frost edge, and wind, and gradually lays a snow blanket over exposed outdoor ground (built client-side per map, no recompile). The cover settles in drifting patches over about three minutes of snowfall before joining up and thickening. The server owns the lying-snow amount (`zombiesim_snow_cover`, archived), so it carries over level changes. When snow is lying, a newly loaded map keeps the loading screen up until the cover is built (normally 1–2 s, capped at 12 s). Walking through the snow carves a trail, which fresh snowfall fills back in. The cover melts when the weather clears or turns to rain. Weather does not change movement. The options menu's “Subtle film grain” toggle is off by default.
 
@@ -1348,11 +1422,13 @@ Through the bridge these add `reports.enemySpawn`, `reports.enemyKills`, and `re
 
 # World Loot Spots
 
-`ZM_LootSpots` (server) turns matching map props from `entity_loot.json` into loot spots when a player loads into a city cell. Spot state is saved per profile and cell in SQLite; a cell re-rolls on the next load after 5 minutes with nobody in it. Press E to search the targeted spot, then accept or decline the offered item (declining keeps the same item on the spot). `ZM_LootTargeting` (`gamemode/sh_loot_targeting.lua`) runs the same rule in both realms: the spot under the aim trace (the crosshair in shoulder mode) wins when it is searchable, within 110 units and unobstructed; otherwise the nearest such spot is used. The client outlines that target (gold, or grey once declined) with an `[E] Search` hint; aiming at a spot that cannot be searched shows `Empty`, `Too far` or `Blocked`, and the server rejects Use with the matching message. Players, NextBots and ragdolls never count as obstructions; walls, doors and other props do.
+`ZM_LootSpots` (server) turns matching map props from `entity_loot.json` into loot spots when a player loads into a city cell. Searchable activation uses half of each rule's configured chance, then deterministically accepts active spots at least 320 units apart by their 3D search centres. Runtime enemy/player drops are not subject to that spacing. Spot state is saved per profile and cell in SQLite; a cell re-rolls on the next load after 5 minutes with nobody in it. Press E to search the targeted spot, then accept or decline the offered item (declining keeps the same item on the spot). `ZM_LootTargeting` (`gamemode/sh_loot_targeting.lua`) runs the same rule in both realms: the spot under the aim trace (the crosshair in shoulder mode) wins when it is searchable, within 110 units and unobstructed; otherwise the nearest such spot is used. The client outlines that target (gold, or grey once declined) with an `[E] Search` hint; aiming at a spot that cannot be searched shows `Empty`, `Too far` or `Blocked`, and the server rejects Use with the matching message. Players, NextBots and ragdolls never count as obstructions; walls, doors and other props do.
 
 Rules cover every whole, container-like mounted model (HL2, CSS, PHX): vehicles and train cars, barrels and fuel cans, vending units and coolers, crates and boxes, ammo cans and footlockers, lockers, cabinets, desks, fridges, kitchen units, shelving, laundry machines, trash cans and dumpsters, electrical boxes, and cash sources such as registers, luggage, and money pallets. Each rule maps to a semantic group: `lootCash` holds cash bundles and `lootMedicalSupplies` holds bandages and painkillers. Gibs, fragments, scenery, loose pickup-sized junk, and PHX building blocks are deliberately excluded. A rule only applies when a template places the model as `prop_physics`/`prop_dynamic` (or their `_override` variants); `prop_static` cannot be looted.
 
-Rules may also target `prop_ragdoll`. Map ragdolls match by model, and `ZM_LootBodies` (`gamemode/sv_loot_bodies.lua`) places 2?4 fallen bodies per city cell on walkable, nav-covered ground before the cell's spots are collected. Placement, models and spot keys (`b1_<attempt>`) come from the profile/cell/map seed, so a reloaded cell recreates the same bodies and keeps their searched state; they settle and freeze after 3 seconds. Body families are weighted civilian (`lootBodyCivilian`: cash, medical, food, a rare handgun), rebel (`lootBodyRebel`: weapons, ammunition, medical), birds, charred remains, police/Combine (`lootBodyMilitary`) and medics. Enemy corpses are never generic candidates (they only carry their one rolled kill reward), and severed limbs are client-only and cannot be searched. A cell that was already stored before bodies existed picks them up at its next re-roll (`zn_loot_spots_refresh` forces one).
+Rules may also target `prop_ragdoll`. Map ragdolls match by model, and `ZM_LootBodies` (`gamemode/sv_loot_bodies.lua`) places 1-2 fallen bodies per newly generated city cell on walkable, nav-covered ground before the cell's spots are collected. Unexpired legacy loot generations recreate their original 2-4-body plan until the normal refresh boundary so old body keys and searched state remain valid. Placement, models and spot keys (`b1_<attempt>`) come from the profile/cell/map seed; bodies settle and freeze after 3 seconds. Body families are weighted civilian (`lootBodyCivilian`: cash, medical, food, a rare handgun), rebel (`lootBodyRebel`: weapons, ammunition, medical), birds, charred remains, police/Combine (`lootBodyMilitary`) and medics. Enemy corpses are never generic candidates (they only carry their one rolled kill reward), and severed limbs are client-only and cannot be searched.
+
+Loot cells record their content-hashed map filename. Existing rows from before this metadata was introduced are baselined without losing state. If that logical cell later loads a different rebuilt map revision, ZombieSim atomically backs up its old cell and spot rows under the old map fingerprint, clears only that profile/cell, and generates the new layout once. Repeated loads of the same revision do not reset it; matching old map and loot backups can be restored together.
 
 ZombieSim disables Garry's Mod's default `+use` physics-prop pickup globally. Pressing E can still activate ZombieSim interactions, doors, buttons, and transition gates, but cannot carry barrels, crates, or other physics props. When a searchable loot spot is explicitly under the player's aim beside a cell gate, searching that spot takes priority; aiming away from nearby fallback loot keeps gate travel available.
 
@@ -1412,7 +1488,7 @@ Pools reuse the puddles' flat-ground checking, lifted world-space mesh and depth
 
 ## Movement balance
 
-`gamemode/sv_movement.lua` owns walk/sprint scaling (0.90/0.85 of the unmodified speeds) and stamina rates. Implant movement bonuses apply afterward through the existing modifier service without compounding on refresh or spawn. Sprint drain is `60 / (1 + Agility * 0.05 + Strength * 0.03)` per second; recovery is `5.5 * (1 + Agility * 0.05)` per second. Maximum stamina and the held-sprint input rule are unchanged. Exhaustion limits speed to walking and preserves other inputs.
+`gamemode/sv_movement.lua` owns walk/sprint scaling (0.675/0.765 of the unmodified speeds) and stamina rates. Implant movement bonuses apply afterward through the existing modifier service without compounding on refresh or spawn. Sprint drain is `60 / (1 + Agility * 0.05 + Strength * 0.03)` per second; recovery is `5.5 * (1 + Agility * 0.05)` per second. Maximum stamina and the held-sprint input rule are unchanged. Exhaustion limits speed to walking and preserves other inputs.
 
 Run `zn_test_movement` for exact old/new percentages, refresh/spawn/implant behavior, sustained/interrupted sprint, clamping and exhaustion input tests. The suite also checks any deployed players' actual speeds/rates without changing their state. `zombiesim_dev_persistence_report` includes `runtime.movement` with captured baseline/current speeds, implant bonus, stat-derived rates, stamina and horizontal velocity for live pace checks.
 
@@ -1470,6 +1546,27 @@ BSPs, so run the focused VBSP workflow against the generated fixture lists
 first (see [the active tracker](todo-alpha.3.1.5.md#phase-a---shared-bounds-and-outer-edge-geometry)).
 `zn_test_world_bounds` runs six isolated in-engine cases without changing
 characters, loot or equipment. These checks do not establish visual acceptance.
+
+When unfinished authored tiles must stay out of a regression, pass an isolated
+source inventory explicitly:
+
+```powershell
+.\bin\test_outer_edges.ps1 -OutputRoot .\generated\phase_c_live_20261011\checks -TemplateDirectory .\generated\phase_c_live_20261011\tiletemplates
+```
+
+The supplied inventory is used consistently for source geometry, expanded
+plans and the legacy comparison. It does not replace the working tile sources.
+
+After VBSP, verify compiled gate entities and their corresponding arrival
+landmarks against the freshly generated sources:
+
+```powershell
+.\bin\test_transition_gate_bsps.ps1 -SourceDirectory .\generated\phase_c_live_20261011\src -BuildDirectory .\generated\phase_c_live_20261011\bsp
+```
+
+This checks brush-model presence, entity identity and source pose; static
+barricade props are not part of the BSP entity-lump check. Live travel,
+arrival clearance and human readability remain separate acceptance gates.
 
 For future multi-tile prefab support, see [docs/two_by_two_tile_templates_plan.md](docs/two_by_two_tile_templates_plan.md).
 

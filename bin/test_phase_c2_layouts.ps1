@@ -7,12 +7,14 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$profile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile
+$inputPrefix = '{0}_grid_{1}x{1}_seed_1337' -f $profile.Config.filePrefix, $profile.Config.gridCells
 if ([string]::IsNullOrWhiteSpace($MapData)) {
-    $mapFilename = if ($WorldProfile -eq 'preview') { 'preview_grid_24x24_seed_1337.json' } else { 'map_grid_64x64_seed_1337.json' }
+    $mapFilename = "$inputPrefix.json"
     $MapData = Join-Path $PSScriptRoot $mapFilename
 }
 if ([string]::IsNullOrWhiteSpace($PlanData)) {
-    $planFilename = if ($WorldProfile -eq 'preview') { 'preview_grid_24x24_seed_1337_template_plan.json' } else { 'map_grid_64x64_seed_1337_template_plan.json' }
+    $planFilename = "${inputPrefix}_template_plan.json"
     $PlanData = Join-Path $PSScriptRoot $planFilename
 }
 if (-not (Test-Path -LiteralPath $MapData -PathType Leaf) -or -not (Test-Path -LiteralPath $PlanData -PathType Leaf)) {

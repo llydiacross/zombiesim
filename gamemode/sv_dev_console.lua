@@ -135,6 +135,112 @@ DevConsole.DirectCommands.zombiesim_dev_profile_client = function(argumentString
     return true
 end
 
+local walkerProfile
+
+local function finishWalkerProfile()
+    local session = walkerProfile
+    if not session then return end
+    walkerProfile = nil
+    for _, entry in ipairs(session.entries) do
+        if entry.owner[entry.name] == entry.wrapper then
+            entry.owner[entry.name] = entry.original
+        end
+    end
+    local results = {}
+    for _, entry in ipairs(session.entries) do
+        results[#results + 1] = { method = entry.label, calls = entry.calls,
+            totalMs = entry.totalMs, maxMs = entry.maxMs }
+    end
+    file.CreateDir("zombiesim")
+    file.Write("zombiesim/walker_profile.json", util.TableToJSON({
+        map = game.GetMap(), capturedAt = os.time(), seconds = SysTime() - session.started,
+        methods = results, slowCalls = session.slowCalls, slowCallLimit = 128,
+        nativeStart = session.nativeStart, nativeEnd = ZM_WalkerSim:GetStats(),
+        preload = ZM_WalkerPreload and ZM_WalkerPreload:GetDiagnosticSnapshot()
+    }, true))
+    print("[ZombieSim] Walker game-thread profile saved to data/zombiesim/walker_profile.json")
+end
+
+local function startWalkerProfile(seconds)
+    if walkerProfile then return false, "a Walker profile is already running" end
+    if GetConVar("zombiesim_world_profile"):GetString() ~= "preview" then
+        return false, "Walker profiling is restricted to the preview profile"
+    end
+    if not seconds or seconds ~= math.floor(seconds) or seconds < 1 or seconds > 120 then
+        return false, "usage: zombiesim_dev_profile_walker <seconds 1-120>"
+    end
+    local targets = {
+        { owner = ZM_WalkerSim, name = "InitializeForActiveProfile", label = "Walker.Initialize" },
+        { owner = ZM_WalkerSim, name = "SaveCheckpoint", label = "Walker.SaveCheckpoint" },
+        { owner = ZM_WalkerSim, name = "CollectPeriodicCheckpoint", label = "Walker.CollectCheckpoint" },
+        { owner = ZM_WalkerSim, name = "SpawnTicketZombie", label = "Walker.SpawnZombie" },
+        { owner = ZM_WalkerSim, name = "FindZombieSpawnPosition", label = "Walker.FindSpawnPosition" },
+        { owner = ZM_WalkerMaterializer, name = "Reconcile", label = "Materializer.Reconcile" },
+        { owner = util, name = "Base64Encode", label = "Checkpoint.Base64Encode" },
+        { owner = sql, name = "Query", label = "SQLite.Query" },
+        { owner = file, name = "Write", label = "File.Write" }
+    }
+    local zombie = scripted_ents.GetStored("zn_walker_zombie")
+    if not zombie or type(zombie.t) ~= "table" then
+        return false, "Walker profiling entity definition unavailable"
+    end
+    table.Add(targets, {
+        { owner = zombie.t, name = "Initialize", label = "Zombie.Initialize" },
+        { owner = zombie.t, name = "SetWalkerTicket", label = "Zombie.SetTicket" },
+        { owner = util, name = "IsValidModel", label = "Model.Validate" },
+        { owner = ents, name = "Create", label = "Entity.Create" },
+        { owner = ZM_Gore, name = "ApplyBloodyAppearance", label = "Zombie.BloodyAppearance" },
+        { owner = ZM_Clothing, name = "AssignWalkerOutfit", label = "Zombie.AssignOutfit" }
+    })
+    for _, entry in ipairs(targets) do
+        if type(entry.owner) ~= "table" or type(entry.owner[entry.name]) ~= "function" then
+            return false, "Walker profiling target unavailable: " .. entry.label
+        end
+    end
+    local session = { started = SysTime(), entries = targets, slowCalls = {},
+        nativeStart = ZM_WalkerSim:GetStats() }
+    for _, entry in ipairs(targets) do
+        entry.original = entry.owner[entry.name]
+        entry.calls, entry.totalMs, entry.maxMs = 0, 0, 0
+        entry.wrapper = function(...)
+            local started = SysTime()
+            local a, b = entry.original(...)
+            local elapsed = (SysTime() - started) * 1000
+            entry.calls = entry.calls + 1
+            entry.totalMs = entry.totalMs + elapsed
+            entry.maxMs = math.max(entry.maxMs, elapsed)
+            if elapsed >= 8 and #session.slowCalls < 128 then
+                session.slowCalls[#session.slowCalls + 1] = {
+                    method = entry.label, atSeconds = started - session.started, ms = elapsed
+                }
+            end
+            return a, b
+        end
+        entry.owner[entry.name] = entry.wrapper
+    end
+    walkerProfile = session
+    timer.Create("ZM.DevProfiler.WalkerFinish", seconds, 1, finishWalkerProfile)
+    print(string.format("[ZombieSim] Profiling Walker game-thread methods for %d s.", seconds))
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_profile_walker = function(argumentString)
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() then
+        return false, "Walker profiling requires a connected admin"
+    end
+    return startWalkerProfile(tonumber(string.Trim(argumentString or "")))
+end
+
+DevConsole.DirectCommands.zombiesim_dev_walker_preload_status = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() then
+        return false, "Walker preload diagnostics require a connected admin"
+    end
+    DevConsole:Report("walkerPreload", ZM_WalkerPreload:GetDiagnosticSnapshot())
+    return true
+end
+
 // Bridge-only: travels the single preview admin to a logical cell through the world-map teleport guards.
 DevConsole.DirectCommands.zombiesim_dev_preview_teleport = function(argumentString)
     local target = ZM_Util.FirstHuman()
@@ -356,6 +462,74 @@ DevConsole.DirectCommands.zombiesim_dev_test_imported_assets_client = function()
     if not target then return false, targetError end
     target:ConCommand("zombiesim_dev_test_imported_assets_client")
     return true, "requested read-only imported asset client tests"
+end
+
+DevConsole.DirectCommands.zombiesim_dev_test_character_cards = function()
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    target:ConCommand("zombiesim_dev_test_character_cards")
+    return true, "requested read-only character card client tests"
+end
+
+DevConsole.DirectCommands.zombiesim_dev_character_card_status = function()
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    target:ConCommand("zombiesim_dev_character_card_status")
+    return true, "requested read-only character card status"
+end
+
+DevConsole.DirectCommands.zombiesim_dev_test_launcher_presentation_client = function()
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    target:ConCommand("zombiesim_dev_test_launcher_presentation_client")
+    return true, "requested read-only launcher presentation client tests"
+end
+
+DevConsole.DirectCommands.zombiesim_dev_launcher_presentation = function(argumentString)
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    local state = string.lower(string.Trim(argumentString or ""))
+    if state ~= "earth" and state ~= "city" then return false, "usage: zombiesim_dev_launcher_presentation earth|city" end
+    target:ConCommand("zombiesim_dev_launcher_presentation " .. state)
+    return true, "requested launcher presentation state " .. state
+end
+
+DevConsole.DirectCommands.zombiesim_dev_launcher_presentation_status = function()
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    target:ConCommand("zombiesim_dev_launcher_presentation_status")
+    return true, "requested read-only launcher presentation status"
+end
+
+DevConsole.DirectCommands.zombiesim_dev_launcher_presentation_zoom = function(argumentString)
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    local mode = string.lower(string.Trim(argumentString or ""))
+    if mode ~= "normal" and mode ~= "close" then
+        return false, "usage: zombiesim_dev_launcher_presentation_zoom normal|close"
+    end
+    target:ConCommand("zombiesim_dev_launcher_presentation_zoom " .. mode)
+    return true, "requested launcher Earth prototype zoom " .. mode
+end
+
+DevConsole.DirectCommands.zombiesim_dev_launcher_presentation_quality = function(argumentString)
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    local value = tonumber(string.Trim(argumentString or ""))
+    if value ~= 0 and value ~= 1 then return false, "usage: zombiesim_dev_launcher_presentation_quality 0|1" end
+    target:ConCommand("zombiesim_globe_quality " .. value)
+    return true, "requested launcher Earth quality " .. value
+end
+
+DevConsole.DirectCommands.zombiesim_dev_launcher_presentation_layers = function(argumentString)
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    local value = tonumber(string.Trim(argumentString or ""))
+    if value ~= 0 and value ~= 1 and value ~= 2 and value ~= 3 then
+        return false, "usage: zombiesim_dev_launcher_presentation_layers 0|1|2|3"
+    end
+    target:ConCommand("zombiesim_dev_earth_layers " .. value)
+    return true, "requested launcher Earth layer mode " .. value
 end
 
 DevConsole.DirectCommands.zombiesim_dev_sign = function(argumentString)

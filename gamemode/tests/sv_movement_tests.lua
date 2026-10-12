@@ -14,22 +14,22 @@ end
 suite:Add("walk_and_sprint_scale_once_and_preserve_implant_bonuses", function(check)
     local user = target(200, 400)
     Movement.Apply(user, 0)
-    check(near(user.walk, 180) and near(user.run, 340), "walk is reduced 10 percent and sprint 15 percent")
+    check(near(user.walk, 135) and near(user.run, 306), "walk uses 0.675 and sprint uses 0.765")
     for _ = 1, 10 do Movement.Apply(user, 0) end
-    check(near(user.walk, 180) and near(user.run, 340), "repeated refresh does not compound reductions")
+    check(near(user.walk, 135) and near(user.run, 306), "repeated refresh does not compound reductions")
     Movement.Apply(user, 0.2)
-    check(near(user.walk, 216) and near(user.run, 408), "implant bonuses apply to the balanced speeds")
+    check(near(user.walk, 162) and near(user.run, 367.2), "implant bonuses apply to the balanced speeds")
     Movement.Apply(user, 0)
-    check(near(user.walk, 180) and near(user.run, 340), "implant removal restores balanced speeds")
+    check(near(user.walk, 135) and near(user.run, 306), "implant removal restores balanced speeds")
     user.walk, user.run = 200, 400
     Movement.Apply(user, 0.2)
-    check(near(user.walk, 216) and near(user.run, 408), "engine spawn speed reset is balanced once")
+    check(near(user.walk, 162) and near(user.run, 367.2), "engine spawn speed reset is balanced once")
     user.walk, user.run = 150, 300
     Movement.Apply(user, 0)
-    check(near(user.walk, 135) and near(user.run, 255), "external base speeds retain the same percentage policy")
+    check(near(user.walk, 101.25) and near(user.run, 229.5), "external base speeds retain the same percentage policy")
     user.walk = 100
     Movement.Apply(user, 0)
-    check(near(user.walk, 90) and near(user.run, 255), "a walk-only reset cannot compound the unchanged sprint speed")
+    check(near(user.walk, 67.5) and near(user.run, 229.5), "a walk-only reset cannot compound the unchanged sprint speed")
 end)
 
 suite:Add("stamina_rates_match_exact_old_to_new_percentages_at_all_stats", function(check)
@@ -86,9 +86,9 @@ suite:Add("deployed_players_use_balanced_runtime_speeds_and_rates", function(che
         if user.ZM_PersistentStateLoaded == true and user.ZM_Modifiers then
             local state = Movement.Snapshot(user)
             local scale = 1 + state.moveSpeedBonus
-            check(state.baseWalkSpeed ~= nil and near(state.walkSpeed, state.baseWalkSpeed * 0.90 * scale),
+            check(state.baseWalkSpeed ~= nil and near(state.walkSpeed, state.baseWalkSpeed * 0.675 * scale),
                 "actual player walk speed matches the captured base and modifiers")
-            check(state.baseRunSpeed ~= nil and near(state.runSpeed, state.baseRunSpeed * 0.85 * scale),
+            check(state.baseRunSpeed ~= nil and near(state.runSpeed, state.baseRunSpeed * 0.765 * scale),
                 "actual player run speed matches the captured base and modifiers")
             check(near(state.sprintDrain, 60 / (1 + state.agility * 0.05 + state.strength * 0.03)),
                 "actual stat-derived drain matches the authoritative rate")

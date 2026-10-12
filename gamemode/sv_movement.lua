@@ -1,8 +1,8 @@
 ZM_Movement = ZM_Movement or {}
 local Movement = ZM_Movement
 
-Movement.WalkScale = 0.90
-Movement.RunScale = 0.85
+Movement.WalkScale = 0.675
+Movement.RunScale = 0.765
 Movement.SprintDrain = 60
 Movement.Recovery = 5.5
 

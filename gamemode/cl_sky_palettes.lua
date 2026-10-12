@@ -287,10 +287,24 @@ function Palettes:Update()
     local id, failure = self:Resolve(choice:GetString(), context)
     if self.Preview then id, failure = self.Preview.id, nil end
     local inspection = ZM_SkyInspection and ZM_SkyInspection.State
+    local launcherPresentation = ZM_LauncherMenu and ZM_LauncherMenu.Active
+        and ZM_LauncherMenu.PresentationSkybox and not inspection
+    if launcherPresentation then
+        local scene = ZM_LauncherSceneClient
+        local sky, horizon = "imported_tropo_night_2", { 8, 12, 22 }
+        if scene and isfunction(scene.GetPresentationSky) then
+            local resolvedSky, resolvedHorizon = scene:GetPresentationSky()
+            if type(resolvedSky) == "string" and type(resolvedHorizon) == "table" then
+                sky, horizon = resolvedSky, resolvedHorizon
+            end
+        end
+        id, failure, fog = sky, nil, horizon
+    end
     if inspection and inspection.launcherFog then
-        id, failure = inspection.launcherFog.sky, nil
+        id, failure, fog = inspection.launcherFog.sky, nil, inspection.launcherFog.color
         if id == "default" then id = nil end
     end
+    self.LauncherPresentation = launcherPresentation
     if failure then
         if self.Failure ~= failure then ErrorNoHalt("[ZombieSim] " .. failure .. "\n") end
         self.Failure = failure
@@ -299,7 +313,10 @@ function Palettes:Update()
     end
     if not id then self:Clear() self.Failure = nil return end
     local horizon = {}
-    for index = 1, 3 do horizon[index] = math.Clamp(math.Round(fog[index] / 8) * 8, 0, 255) end
+    for index = 1, 3 do
+        local component = istable(fog) and tonumber(fog[index]) or 160
+        horizon[index] = math.Clamp(math.Round(component / 8) * 8, 0, 255)
+    end
     local key = id .. ":" .. table.concat(horizon, ":")
     if key == self.ActiveKey then return end
     local meshes, err = self:Prepare(id, horizon)
@@ -321,7 +338,7 @@ end)
 
 // Cached world-map captures must not depend on a player's cosmetic sky choice.
 function Palettes:ShouldDraw()
-    if choice:GetString() == "default" and not self.Preview then return false end
+    if choice:GetString() == "default" and not self.Preview and not self.LauncherPresentation then return false end
     if ZM_WorldMap and ZM_WorldMap.Capturing then return false end
     return #self.Meshes > 0
 end
@@ -347,7 +364,8 @@ function Palettes:GetDiagnosticSnapshot()
     for _, entry in ipairs(self.Meshes) do triangles = triangles + entry.triangles end
     return { palette = choice:GetString(), activeEntry = self.ActiveEntry, context = self:GetContext(),
         meshes = #self.Meshes, triangles = triangles, draws = self.Draws, failure = self.Failure,
-        preview = self.Preview, mountedValveTexturesCopied = false, bakedLightingChanged = false,
+        preview = self.Preview, launcherPresentation = self.LauncherPresentation == true,
+        mountedValveTexturesCopied = false, bakedLightingChanged = false,
         catalogueEntries = table.Count(self.Entries), customProfiles = table.Count(self.CustomStore.profiles),
         catalogueFailure = self.CatalogueFailure, customFailure = self.CustomFailure }
 end

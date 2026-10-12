@@ -1,5 +1,6 @@
 param(
     [string]$PlanData = '',
+    [string]$LayoutDirectory = '',
     [string]$DestinationDirectory = '',
     [string]$WorldProfile = '',
     [ValidateRange(1, 8)]
@@ -203,6 +204,22 @@ function Test-LandmarkAnchor {
         ($role -eq 'landmark' -or ($role -like 'landmark_*' -and $role -notlike 'landmark_carpark*'))
 }
 
+function Get-PlacementMapRole {
+    param([object]$Placement)
+
+    $roleProperty = $Placement.PSObject.Properties['role']
+    $role = if ($null -eq $roleProperty) { '' } else { [string]$roleProperty.Value }
+    if (-not [string]::IsNullOrWhiteSpace($role)) { return $role }
+    $template = ([string]$Placement.template).Replace('\', '/').ToLowerInvariant()
+    if ($template -like 'roads/*') {
+        if ($template -like '*motorway*') { return 'motorway' }
+        return 'road'
+    }
+    if ($template -like 'edges/*' -and $template -notlike '*_none.vmf') { return 'building' }
+    if ($template -like 'border/*') { return 'decoration' }
+    return 'terrain'
+}
+
 Add-Type -AssemblyName System.Drawing
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -228,17 +245,53 @@ $plan = Get-Content -Raw -LiteralPath $PlanData | ConvertFrom-Json
 if ($plan.schemaVersion -lt 4) {
     throw 'The template plan must use schema version 4 or later to provide local map tile placements.'
 }
+$bounds = $plan.cellBounds
+$coreGridSize = [int]$plan.cellTileGridSize
+$invalidBounds = $null -eq $bounds -or [int]$bounds.tileSize -lt 1 -or [int]$bounds.neighbourPitch -lt 1 -or $coreGridSize -lt 1
+if (-not $invalidBounds) {
+    $invalidBounds = (([int]$bounds.neighbourPitch) % ([int]$bounds.tileSize)) -ne 0
+}
+if ($invalidBounds) {
+    throw 'The template plan must provide consistent cell bounds and core grid metadata.'
+}
+$frameGridSize = [int]$bounds.neighbourPitch / [int]$bounds.tileSize
+$frameInset = [int](($frameGridSize - $coreGridSize) / 2)
+if ($frameGridSize -lt $coreGridSize -or (($frameGridSize - $coreGridSize) % 2) -ne 0) {
+    throw 'The visual cell frame must centre the core tile grid.'
+}
+if ([string]::IsNullOrWhiteSpace($LayoutDirectory)) {
+    $layoutProperty = $plan.PSObject.Properties['cellDirectory']
+    $LayoutDirectory = if ($null -ne $layoutProperty -and -not [string]::IsNullOrWhiteSpace([string]$layoutProperty.Value)) {
+        [string]$layoutProperty.Value
+    } else {
+        Join-Path $projectRoot ([string]$profileSettings.cellDirectory)
+    }
+}
+if (-not (Test-Path -LiteralPath $LayoutDirectory -PathType Container)) {
+    throw "Generated layout metadata directory was not found: $LayoutDirectory"
+}
 $recipeCells = @($plan.cells | Group-Object cellTemplateFilename | Sort-Object Name | ForEach-Object { $_.Group[0] })
 if ($recipeCells.Count -eq 0) { throw 'The template plan does not select any city recipes.' }
+$recipeLayouts = @{}
 foreach ($recipe in $recipeCells) {
     $tileGridSize = [int]$recipe.tileGridSize
     if ($tileGridSize -lt 1 -or @($recipe.tilePlacements).Count -ne ($tileGridSize * $tileGridSize)) {
         throw "City recipe '$($recipe.cellTemplateFilename)' does not contain a complete local map tile grid. Re-run plan_cell_templates.ps1."
     }
+    $layoutPath = Join-Path $LayoutDirectory ([System.IO.Path]::ChangeExtension([string]$recipe.cellTemplateFilename, '.layout.json'))
+    if (-not (Test-Path -LiteralPath $layoutPath -PathType Leaf)) {
+        throw "Generated layout metadata is missing for '$($recipe.cellTemplateFilename)': $layoutPath"
+    }
+    $layout = Get-Content -Raw -LiteralPath $layoutPath | ConvertFrom-Json
+    $layoutMismatch = [string]$layout.recipe -ne [string]$recipe.cellTemplateFilename -or @($layout.corePlacements).Count -ne ($coreGridSize * $coreGridSize)
+    if ($layoutMismatch) {
+        throw "Generated layout metadata does not match '$($recipe.cellTemplateFilename)'."
+    }
+    $recipeLayouts[[string]$recipe.cellTemplateFilename] = $layout
 }
 
 if ($WhatIf) {
-    Write-Output "WhatIf: render $($recipeCells.Count) local recipe map image(s) at ${ResolutionScale}x in: $DestinationDirectory"
+    Write-Output "WhatIf: render $($recipeCells.Count) local recipe map image(s) in a ${frameGridSize}x${frameGridSize} tile frame at ${ResolutionScale}x in: $DestinationDirectory"
     return
 }
 
@@ -254,6 +307,7 @@ $decorationBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::From
 $carparkBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(135, 146, 153))
 $roadBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(52, 59, 64))
 $pathBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(165, 170, 162))
+$waterBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(58, 91, 112))
 $motorwayBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(235, 35, 90, 190))
 $landmarkBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(206, 151, 54))
 $gridPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(115, 17, 20, 22), 1)
@@ -276,8 +330,9 @@ $landmarkFormat.LineAlignment = [System.Drawing.StringAlignment]::Center
 
 try {
     foreach ($recipe in $recipeCells) {
+        $layout = $recipeLayouts[[string]$recipe.cellTemplateFilename]
         $tileGridSize = [int]$recipe.tileGridSize
-        $imageSize = ($padding * 2) + ($tileGridSize * $tileSize)
+        $imageSize = ($padding * 2) + ($frameGridSize * $tileSize)
         $backgroundColor = Get-EnvironmentColor ([string]$recipe.environmentProfile)
         $backgroundBrush = [System.Drawing.SolidBrush]::new($backgroundColor)
         $bitmap = [System.Drawing.Bitmap]::new($imageSize * $ResolutionScale, $imageSize * $ResolutionScale)
@@ -288,13 +343,24 @@ try {
             $graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAlias
             $graphics.ScaleTransform([single]$ResolutionScale, [single]$ResolutionScale)
             $graphics.Clear($backgroundColor)
+            foreach ($waterSide in @($layout.waterSides)) {
+                switch ([string]$waterSide) {
+                    'N' { $graphics.FillRectangle($waterBrush, 0, 0, $imageSize, $frameInset * $tileSize) }
+                    'E' { $graphics.FillRectangle($waterBrush, $imageSize - ($frameInset * $tileSize), 0, $frameInset * $tileSize, $imageSize) }
+                    'S' { $graphics.FillRectangle($waterBrush, 0, $imageSize - ($frameInset * $tileSize), $imageSize, $frameInset * $tileSize) }
+                    'W' { $graphics.FillRectangle($waterBrush, 0, 0, $frameInset * $tileSize, $imageSize) }
+                }
+            }
             $isMotorway = [string]$recipe.topology -like 'motorway-*'
             $showLocationMarkers = -not $isMotorway -or [string]$recipe.transportFeature -like 'bridge-*' -or [string]$recipe.transportFeature -like 'onramp-*'
-            foreach ($placement in @($recipe.tilePlacements)) {
-                $tileLeft = $padding + ([int]$placement.tileX * $tileSize)
-                $tileTop = $padding + ([int]$placement.tileY * $tileSize)
-                $role = [string]$placement.role
+            $artworkPlacements = @($layout.corePlacements) + @($layout.borderPlacements) + @($layout.outerPlacements)
+            foreach ($placement in $artworkPlacements) {
+                $tileLeft = $padding + (([int]$placement.tileX + $frameInset) * $tileSize)
+                $tileTop = $padding + (([int]$placement.tileY + $frameInset) * $tileSize)
+                $role = Get-PlacementMapRole $placement
                 $tileBrush = if ($role -eq 'motorway_bridge_deadend') {
+                    $motorwayBrush
+                } elseif ($role -eq 'motorway') {
                     $motorwayBrush
                 } elseif ($role -in $roadRoles -or $role -like 'bridge-*' -or $role -like 'onramp-*') {
                     if ($isMotorway -and $role -in @('road', 'road_center')) { $motorwayBrush } else { $roadBrush }
@@ -307,7 +373,7 @@ try {
                 $graphics.FillRectangle($tileBrush, $tileLeft, $tileTop, $tileSize, $tileSize)
             }
 
-            $centerCoordinate = $padding + (($tileGridSize * $tileSize) / 2)
+            $centerCoordinate = $padding + (($frameGridSize * $tileSize) / 2)
             $topologyDirections = @(Get-TopologyDirections $recipe)
             $activeEntrances = @($recipe.activeEntrances | ForEach-Object { [string]$_ })
             $centerTile = [int][Math]::Floor($tileGridSize / 2)
@@ -359,7 +425,7 @@ try {
                 }
             }
 
-            for ($gridIndex = 1; $gridIndex -lt $tileGridSize; $gridIndex++) {
+            for ($gridIndex = 1; $gridIndex -lt $frameGridSize; $gridIndex++) {
                 $gridCoordinate = $padding + ($gridIndex * $tileSize)
                 $graphics.DrawLine($gridPen, $gridCoordinate, $padding, $gridCoordinate, $imageSize - $padding)
                 $graphics.DrawLine($gridPen, $padding, $gridCoordinate, $imageSize - $padding, $gridCoordinate)
@@ -369,8 +435,8 @@ try {
                 [string]$_.role -match '(?:^|_)carpark_lane(?:_endcap)?_(?:east|west)$'
             })
             foreach ($placement in $carparkLanePlacements) {
-                $tileLeft = $padding + ([int]$placement.tileX * $tileSize)
-                $tileTop = $padding + ([int]$placement.tileY * $tileSize)
+                $tileLeft = $padding + (([int]$placement.tileX + $frameInset) * $tileSize)
+                $tileTop = $padding + (([int]$placement.tileY + $frameInset) * $tileSize)
                 $spaceWidth = [int](($tileSize - 12) / 3)
                 for ($spaceIndex = 0; $spaceIndex -lt 3; $spaceIndex++) {
                     $spaceLeft = $tileLeft + 6 + ($spaceIndex * $spaceWidth)
@@ -386,8 +452,8 @@ try {
                 if ($landmarkPlacements.Count -eq 0) { break }
                 $placement = $landmarkPlacements[$landmarkIndex % $landmarkPlacements.Count]
                 $footprint = Get-PlacementFootprint $placement
-                $tileLeft = $padding + ([int]$placement.tileX * $tileSize)
-                $tileTop = $padding + ([int]$placement.tileY * $tileSize)
+                $tileLeft = $padding + (([int]$placement.tileX + $frameInset) * $tileSize)
+                $tileTop = $padding + (([int]$placement.tileY + $frameInset) * $tileSize)
                 $markerBounds = [System.Drawing.RectangleF]::new($tileLeft + 4, $tileTop + 4, ($footprint.width * $tileSize) - 8, ($footprint.height * $tileSize) - 8)
                 $markerBrush = [System.Drawing.SolidBrush]::new((Get-LandmarkMarkerColor $recipe ([string]$namedLandmarks[$landmarkIndex])))
                 $graphics.FillRectangle($markerBrush, $markerBounds)
@@ -403,8 +469,8 @@ try {
             } else { @() })
             foreach ($placement in $commercialPlacements) {
                 $footprint = Get-PlacementFootprint $placement
-                $tileLeft = $padding + ([int]$placement.tileX * $tileSize)
-                $tileTop = $padding + ([int]$placement.tileY * $tileSize)
+                $tileLeft = $padding + (([int]$placement.tileX + $frameInset) * $tileSize)
+                $tileTop = $padding + (([int]$placement.tileY + $frameInset) * $tileSize)
                 $markerBounds = [System.Drawing.RectangleF]::new($tileLeft + 4, $tileTop + 4, ($footprint.width * $tileSize) - 8, ($footprint.height * $tileSize) - 8)
                 $graphics.FillRectangle($landmarkBrush, $markerBounds)
                 $graphics.DrawRectangle($landmarkOutlinePen, $tileLeft + 4, $tileTop + 4, ($footprint.width * $tileSize) - 9, ($footprint.height * $tileSize) - 9)
@@ -421,10 +487,10 @@ try {
         }
     }
 } finally {
-    $buildingBrush, $decorationBrush, $carparkBrush, $roadBrush, $pathBrush, $motorwayBrush, $landmarkBrush | ForEach-Object Dispose
+    $buildingBrush, $decorationBrush, $carparkBrush, $roadBrush, $pathBrush, $waterBrush, $motorwayBrush, $landmarkBrush | ForEach-Object Dispose
     $gridPen, $roadPen, $roadLanePen, $carparkSpacePen, $motorwayPen, $motorwayLanePen, $fadedMotorwayPen, $fadedMotorwayLanePen, $blockadePen, $landmarkOutlinePen | ForEach-Object Dispose
     $landmarkFont.Dispose()
     $landmarkFormat.Dispose()
 }
 
-Write-Output "Rendered $($recipeCells.Count) local recipe map image(s) at $($imageSizeForReport)px: $DestinationDirectory"
+Write-Output "Rendered $($recipeCells.Count) local recipe map image(s) in a ${frameGridSize}x${frameGridSize} tile frame at $($imageSizeForReport)px: $DestinationDirectory"

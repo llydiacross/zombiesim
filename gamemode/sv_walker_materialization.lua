@@ -94,7 +94,8 @@ end
 
 local function getEligiblePlayer()
     for _, playerEntity in ipairs(player.GetAll()) do
-        if IsValid(playerEntity) and not playerEntity:IsBot() and playerEntity:Alive() then
+        if IsValid(playerEntity) and not playerEntity:IsBot() and playerEntity:Alive() and
+            not playerEntity.ZM_WalkerPreloadWaiting then
             local cell = playerEntity:GetWorldCell()
             if cell and (not ZM_SafeZones or not ZM_SafeZones:IsSafeZoneCell(cell)) then
                 return playerEntity, cell
@@ -228,6 +229,7 @@ end
 
 function Materializer:MaterializeReservations(tickets, cell, playerEntity, activeCount, targetCount)
     local capacity = targetCount
+    local deadline = SysTime() + 0.002
     for _, ticket in ipairs(tickets) do
         if activeCount >= capacity then
             break
@@ -235,6 +237,11 @@ function Materializer:MaterializeReservations(tickets, cell, playerEntity, activ
         local key = ticketKey(ticket)
         if ticket.CellId == cell.id and ticket.State == "reserved" and not self.Registry[key] and
             not self.HandledReservations[key] then
+            // Finish each ticket atomically; a cold spawn can exceed this soft frame budget.
+            if SysTime() >= deadline then
+                self.NextReconcileAt = CurTime()
+                return activeCount, true
+            end
             self.HandledReservations[key] = true
             local zombie, spawnError = ZM_WalkerSim:SpawnTicketZombie(
                 ticket,
@@ -306,6 +313,7 @@ function Materializer:PruneHandledReservations(tickets)
 end
 
 function Materializer:Reconcile()
+    if ZM_WalkerPreload and not ZM_WalkerPreload.done then return end
     if not self.Started or not self.Enabled or not ZM_WalkerSim or ZM_WalkerSim.IsShuttingDown then
         return
     end
@@ -353,8 +361,9 @@ function Materializer:Reconcile()
     activeCount = self:SynchronizeRegistry()
     self:DespawnExcess(targetCount)
     activeCount = self:SynchronizeRegistry()
-    activeCount = self:MaterializeReservations(tickets, cell, playerEntity, activeCount, targetCount)
-    self:RequestTickets(tickets, cell, activeCount, targetCount)
+    local deferred
+    activeCount, deferred = self:MaterializeReservations(tickets, cell, playerEntity, activeCount, targetCount)
+    if not deferred then self:RequestTickets(tickets, cell, activeCount, targetCount) end
     self:PruneHandledReservations(tickets)
 end
 

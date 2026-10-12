@@ -10,6 +10,8 @@ local function fakeEntity(position)
     return {
         position = position or Vector(0, 0, 0),
         IsValid = function() return true end,
+        WorldSpaceCenter = function(self) return self.position end,
+        GetPos = function(self) return self.position end,
         NearestPoint = function(self) return self.position end
     }
 end
@@ -37,7 +39,8 @@ end
 
 local function certainRule()
     return {
-        activationChance = 1,
+        // Test-only value 2 becomes a guaranteed searchable activation after the production 0.5 scale.
+        activationChance = 2,
         entries = { { item = "itemBandage", minWeight = 1, maxWeight = 1, minCount = 1, maxCount = 1, mastercraft = false, mastercraftChance = 0 } }
     }
 end
@@ -59,6 +62,17 @@ local suite = ZM_TestHarness.NewSuite()
 local function test(name, body)
     suite:Add(name, body)
 end
+
+test("fingerprinted_cold_start_has_revision_helpers_before_any_generation", function(check)
+    check(type(ZM_PrepareLootCellMapRevision) == "function"
+        and type(ZM_GetLootCellBackups) == "function"
+        and type(ZM_RestoreLootCellBackup) == "function",
+        "map revision helpers exist before the first loot cell replacement")
+    local loaded, loadError = Spots:LoadCell(testProfile, testCell, candidates(1), {
+        now = 900, mapFingerprint = "zz_preview_cold_start", rng = Generation.NewRng(6)
+    })
+    check(loaded and loaded.regenerated, "first fingerprinted generation loads: " .. tostring(loadError))
+end)
 
 test("entity_rules_match_by_runtime_class_and_model", function(check)
     local rule = ZM_StaticData:GetEntityLootRule("prop_physics", "models/props_vehicles/car001b_phy.mdl")
@@ -223,6 +237,11 @@ test("fallen_body_plans_are_deterministic", function(check)
         end
     end
     check(same, "the same seed recreates the same bodies under the same keys")
+    local legacy = Bodies.Plan(Generation.NewRng(99), bounds, pool, ground, open, Bodies.LegacyPolicy)
+    check(#legacy >= 2 and #legacy <= 4 and string.StartWith(legacy[1].key, "b1_"),
+        "an unexpired legacy loot generation recreates its original body policy")
+    check(#first >= 1 and #first <= 2 and string.StartWith(first[1].key, "b2_"),
+        "new and refreshed generations use the 1-2 body policy")
     local sky = function(x, y)
         local trace = ground(x, y)
         trace.HitSky = true
@@ -231,11 +250,52 @@ test("fallen_body_plans_are_deterministic", function(check)
     check(#Bodies.Plan(Generation.NewRng(99), bounds, pool, sky, open) == 0, "sky and unsuitable ground never receive bodies")
 end)
 
+test("searchable_generation_is_order_independent_and_spaces_actual_centres", function(check)
+    local rule = certainRule()
+    rule.activationChance = 1
+    local source = {
+        { key = "m3", rule = rule, entity = fakeEntity(Vector(320, 0, 0)), center = Vector(320, 0, 0) },
+        { key = "b2_01", rule = rule, entity = fakeEntity(Vector(0, 0, 320)), center = Vector(0, 0, 320) },
+        { key = "m2", rule = rule, entity = fakeEntity(Vector(319.999, 0, 0)), center = Vector(319.999, 0, 0) },
+        { key = "m1", rule = rule, entity = fakeEntity(Vector(0, 0, 0)), center = Vector(0, 0, 0) }
+    }
+    local function acceptingRng()
+        local priority = 0
+        return {
+            Chance = function(_, chance)
+                check(chance == 0.5, "original activation probability is halved once")
+                return true
+            end,
+            Next = function()
+                priority = priority + 0.1
+                return priority
+            end
+        }
+    end
+    local first = Spots.SelectActiveCandidates(source, acceptingRng())
+    local reversed = {}
+    for index = #source, 1, -1 do table.insert(reversed, source[index]) end
+    local second = Spots.SelectActiveCandidates(reversed, acceptingRng())
+    local firstKeys, secondKeys = {}, {}
+    for _, candidate in ipairs(first) do table.insert(firstKeys, candidate.key) end
+    for _, candidate in ipairs(second) do table.insert(secondKeys, candidate.key) end
+    check(table.concat(firstKeys, ",") == table.concat(secondKeys, ","),
+        "entity enumeration order cannot change the selected set")
+    check(table.HasValue(firstKeys, "m1") and not table.HasValue(firstKeys, "m2"),
+        "319.999 units is rejected")
+    check(table.HasValue(firstKeys, "m3"), "exactly 320 units is accepted")
+    check(table.HasValue(firstKeys, "b2_01"), "3D spacing accepts a body on a separate floor at 320 units")
+end)
+
 test("activation_generates_and_persists_spots", function(check)
     local rule = certainRule()
     local never = { activationChance = 0, entries = rule.entries }
-    local list = { { key = "m1", rule = rule, entity = fakeEntity() }, { key = "m2", rule = never, entity = fakeEntity() } }
-    local cell = Spots:LoadCell(testProfile, testCell, list, { now = 1000, rng = Generation.NewRng(1) })
+    local list = {
+        { key = "m1", rule = rule, entity = fakeEntity(), center = Vector(0, 0, 0) },
+        { key = "m2", rule = never, entity = fakeEntity(Vector(1000, 0, 0)), center = Vector(1000, 0, 0) }
+    }
+    local rng = { Chance = function(_, chance) return chance > 0 end, Next = function() return 0 end }
+    local cell = Spots:LoadCell(testProfile, testCell, list, { now = 1000, rng = rng })
     check(cell and cell.regenerated, "a new cell is generated")
     check(cell.spots.m1 and not cell.spots.m2, "activation chance 1 activates and 0 never does")
     local rows = ZM_GetLootSpots(testProfile, testCell)
@@ -254,6 +314,78 @@ test("refresh_waits_for_five_minutes_of_absence", function(check)
     check(late.regenerated and late.spots.m1.state == "available", "after five minutes away every spot re-rolls")
     local forced = Spots:LoadCell(testProfile, testCell, list, { now = touched + Spots.RefreshSeconds + 1, forceRegenerate = true })
     check(forced.regenerated, "forceRegenerate re-rolls immediately")
+end)
+
+test("map_revision_reset_is_backed_up_scoped_and_repeat_safe", function(check)
+    local list = candidates(2)
+    local first = Spots:LoadCell(testProfile, testCell, list, {
+        now = 1000, mapFingerprint = "zz_preview_old", rng = Generation.NewRng(7)
+    })
+    check(first and first.regenerated, "old map generation is created")
+    ZM_SetLootSpot(testProfile, testCell, "m1", "declined", { itemId = "itemBandage", count = 1 })
+    local same = Spots:LoadCell(testProfile, testCell, list, { now = 1100, mapFingerprint = "zz_preview_old" })
+    check(not same.regenerated and same.spots.m1.state == "declined", "same map revision preserves saved state")
+    local rebuilt = Spots:LoadCell(testProfile, testCell, list, {
+        now = 1200, mapFingerprint = "zz_preview_new", rng = Generation.NewRng(8)
+    })
+    check(rebuilt and rebuilt.regenerated and rebuilt.spots.m1.state == "available",
+        "changed map revision generates fresh logical-cell spots")
+    local backups = ZM_GetLootCellBackups(testProfile, testCell)
+    check(#backups == 1 and backups[1].mapFingerprint == "zz_preview_old",
+        "old map and loot rows are backed up together")
+    ZM_SetLootSpot(testProfile, testCell, "m1", "looted", nil)
+    local repeated = Spots:LoadCell(testProfile, testCell, list, { now = 1250, mapFingerprint = "zz_preview_new" })
+    check(not repeated.regenerated and repeated.spots.m1.state == "looted",
+        "repeated load of rebuilt revision never resets twice")
+    local other = Spots:LoadCell(otherProfile, testCell, list, {
+        now = 1000, mapFingerprint = "zz_preview_other", rng = Generation.NewRng(9)
+    })
+    check(other and other.regenerated and #ZM_GetLootCellBackups(otherProfile, testCell) == 0,
+        "map reset and backups remain profile scoped")
+    local restored, restoreError = ZM_RestoreLootCellBackup(testProfile, testCell, "zz_preview_old")
+    check(restored, "matching old map and loot backup restores: " .. tostring(restoreError))
+    local restoredRows = ZM_GetLootSpots(testProfile, testCell)
+    check(#restoredRows > 0 and restoredRows[1].state == "declined",
+        "restoration recovers the old saved spot state")
+end)
+
+test("legacy_revision_baseline_and_reset_failure_preserve_saved_rows", function(check)
+    local list = candidates(2)
+    local legacy = Spots:LoadCell(testProfile, testCell, list, {
+        now = 1000, rng = Generation.NewRng(10)
+    })
+    check(legacy and legacy.regenerated, "legacy row starts without map metadata")
+    ZM_SetLootSpot(testProfile, testCell, "m1", "declined", { itemId = "itemBandage", count = 1 })
+    local baselined = Spots:LoadCell(testProfile, testCell, list, {
+        now = 1100, mapFingerprint = "zz_preview_baseline"
+    })
+    local baselineRow = ZM_GetLootCell(testProfile, testCell)
+    check(not baselined.regenerated and baselined.spots.m1.state == "declined",
+        "first fingerprint assignment preserves an existing saved generation")
+    check(baselineRow and baselineRow.mapFingerprint == "zz_preview_baseline",
+        "legacy row records the current revision after safe baselining")
+
+    local originalQuery = sql.Query
+    local originalLastError = sql.LastError
+    sql.Query = function(query)
+        if string.find(query, "DELETE FROM loot_spots", 1, true) then return false end
+        return originalQuery(query)
+    end
+    sql.LastError = function() return "injected loot reset failure" end
+    local called, reset, resetError = pcall(ZM_PrepareLootCellMapRevision,
+        testProfile, testCell, "zz_preview_failed_rebuild", 1200)
+    sql.Query = originalQuery
+    sql.LastError = originalLastError
+
+    check(called and reset == nil and string.find(tostring(resetError), "injected loot reset failure", 1, true),
+        "SQL failure is returned explicitly")
+    local preservedCell = ZM_GetLootCell(testProfile, testCell)
+    local preservedSpots = ZM_GetLootSpots(testProfile, testCell)
+    check(preservedCell and preservedCell.mapFingerprint == "zz_preview_baseline"
+        and #preservedSpots == 2 and preservedSpots[1].state == "declined",
+        "failed reset rolls back the backup and preserves old cell/spot rows")
+    check(#ZM_GetLootCellBackups(testProfile, testCell) == 0,
+        "failed reset does not commit a success-shaped backup")
 end)
 
 test("search_offer_accept_loots_the_spot", function(check)

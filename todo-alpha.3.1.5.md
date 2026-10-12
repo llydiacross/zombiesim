@@ -12,6 +12,93 @@ This is now the active tracker in [AGENTS.md](AGENTS.md); version/changelog repo
 Alpha 3.1.5 in development. Alpha 3.1.0 remains accepted historical development.
 No phases below are accepted merely because their design is agreed.
 
+### Preview variety and current-tile rebuild - 2026-10-12
+
+User approved a future 48x48 release city, keeping preview24x24,
+neighbour-aware recipe variants, and excluding highest-density aaa wall pieces
+immediately cardinal-adjacent to road/motorway corridors in both border rings.
+Full preview regeneration includes all current edge wall edits/new names.
+The safe-zone detail placement/design plan remains deferred; authored working
+assets must remain unchanged. Isolation: `generated/preview_variety_tuned_20261012`.
+Production generation/publication are not authorized by this side task.
+Static preview:576 cells/492 recipes (previous187) plus3dens; all495 VMFs
+generated, zero missing. All1104 cardinal neighbour pairs have distinct actual
+tile layouts and filenames;15082 variety/border assertions pass. Logical cell,
+road/bridge/gate/water/safe-zone metadata is unchanged from the previous preview.
+Phase C2, Phase E and border-showcase checks pass. A renamed edge corner's VMX
+companion now matches its VMF, with byte-identical content retained.
+The user subsequently rejected this initial eight-variant495-map pool as too
+large. Compiler/continuation processes stopped; do not resume or stage the
+rejected build under `generated/preview_variety_20261012`.
+Tuned policy: cap4 candidates; infrequent recipes reuse their base unless an
+adjacent-layout conflict requires an alternative; frequent pools scale with
+ceil(uses/15). Tuned preview311 recipes plus3dens (314maps, versus rejected495);
+11720 assertions pass; all1104 cardinal neighbour pairs have different actual
+tile layouts/filenames.387/576 cells retain their base layout.
+Completed tuned build:VBSP/VVIS/VRAD314/314 with zero failed/incomplete maps;
+portals314/314; compiled818gates/818arrivals; matching311-recipe skyline and
+576-cell runtime export. Generated-layout tests13896 assertions pass.
+Staged while GMod closed;4264 matching content/engine paths and16 original
+backups hash-verified in the extended Phase B restoration ledger. Old captured
+Satellite imagery preserved but compatibility-gated. `zn_preview_start` launched;
+fresh deployed-gameplay/visual review remains pending; Phase C is not accepted.
+
+User confirmed the staged preview loads and looks correct, but reported severe
+lag. A matched A/B on the same map/cell/weather isolated the cause to Garry's
+Mod Lua autorefresh watching this in-place development tree, not to gamemode
+code. Normal launch measured 45.23 FPS with frame p95 54.16 ms while non-paged
+kernel memory grew to 1.77 GiB under the FMic/Irp allocation tags. With the
+documented `-disableluarefresh` launch flag the same scene measured 56.34 FPS,
+p95 20.73 ms, with the pool stable near 0.55 GiB. Client Lua hook cost was
+identical in both runs (4.17 vs 4.18 ms/frame) and the gamemode performed the
+same runtime file access, so ZombieSim is not the allocation owner. The watched
+tree holds 120,815 files, of which `generated/` is 72,859 files and 30.5 GiB.
+Released players are not expected to reproduce this, because `generated/` is
+gitignored and outside the release allowlist and packaging ships mounted `.gma`
+archives instead of loose watched files. That conclusion is architectural
+reasoning plus the A/B rather than a measured clean packaged-install run, and
+the owning Windows filter/driver is still unidentified. Launch defaults, Steam
+preferences and gameplay code were not changed. Performance samples taken with
+autorefresh enabled are unrepresentative of player performance and must not be
+used for performance acceptance.
+
+Resuming Phase C live gate verification immediately exposed a real arrival
+defect. Travelling north placed the survivor at (0, -2176, 49) inside the
+motorway concrete central reservation, because `bin/transition_gates.psm1`
+writes every `<SIDE>_ENTRANCE` landmark on the cell axis while
+`tiletemplates/roads/tile_motorway.vmf` carries a median barrier at x -8..8,
+z 40..48. Phase C had already moved the travel arrows onto the carriageways but
+never applied the same treatment to the arrival. Measuring the authored
+motorway section gave drivable carriageways at x -256..-16 and 16..256 with
+outer walls at x +/-264..280.
+
+The user reviewed the placement in-game, annotated the intended result and
+confirmed the fix: keep the arrows at +/-160 lateral and 256 inward, and move
+only the arrival off the median onto a carriageway, deeper into the cell so the
+arrows sit between the arriving player and the gate. This was implemented at
+runtime in `gamemode/sv_transitions.lua` rather than in the generator, so no
+maps were rebuilt. Gate markers now retain their centre and motorway
+classification, and `ResolveGateArrivalPosition` traces the right-hand
+carriageway - the same lane as the first arrow - at 160 lateral and 384 inward,
+then validates the player hull before placing. Ordinary roads, den exits,
+unsupported surfaces and an obstructed carriageway keep the authored landmark.
+Arrow positions, arrival yaw, the 160 u/s arrival walk and the fade timing are
+unchanged.
+
+Static results: `tests/transitions/test_server_transition_markers.py` 8/8
+including two new cases covering all four cardinals, lane agreement with the
+first arrow, median clearance, hull validation and both fallbacks;
+`tests/transitions/test_client_transition_markers.py` 10/10; GLua syntax 266/0.
+Live results: a `changelevel` reload republished both gates as motorway pairs
+with ready carriageway surfaces, and the user confirmed arriving on the
+carriageway behind the arrows when travelling south into
+`zz_preview_a0e68fbdcfc2-edge2`. The authored landmarks are still median-centred
+in the generator, so a future `transition_gates.psm1` correction remains open;
+the runtime resolution is the current contract. The remaining Phase C live
+checks - colour states, occlusion, east/west/south travel, saved coordinates,
+same-BSP neighbour travel, den entry and exit, and an independent reload before
+judging marker counts - are still outstanding, and Phase C is not accepted.
+
 ### Next milestone - Alpha 3.2 CSM
 
 On 2026-10-10 the user designated **Alpha 3.2** as the next milestone after
@@ -560,8 +647,8 @@ remains required. Editor `.vmx` files were retained and excluded from selection.
 - SVS 2915/API and 30876 fetches failed; the older Visible Earth URL redirected to
   a generic Earth Observatory page. Retain those access limits. Cloud texture
   candidate remains unverified; no third-party replacement or asset import.
-- User-supplied transparent, high-resolution Z-Nation logo is still required for
-  Phase H. Do not substitute existing logo artwork.
+- The user-supplied transparent Z-Nation logo is now integrated in Phase H at its
+  exact authored aspect. Do not substitute alternate logo artwork.
 
 ## Phase A - Shared bounds and outer edge geometry
 
@@ -951,7 +1038,7 @@ not permission to omit east/north/south outer scenery.
 
 ## Phase C - Gate relocation, arrival consistency and road-arrow rendering
 
-**In progress 2026-10-09** following explicit Phase B acceptance and continuation.
+**Accepted 2026-10-12** following explicit Phase B acceptance and continuation.
 Phase B acceptance does not pre-accept these new gate/arrow/travel changes.
 
 ### First source boundary - gate geometry and elevated arrivals
@@ -1053,14 +1140,120 @@ Checks / acceptance:
 
 - [x] Static four-direction positions/angles and exact 192x128 marker dimensions,
   including motorway pairs, independent surface anchors and shared gate state.
-- [ ] Live normal/yellow/blocked-red, 1280 range, road occlusion, bridge height.
-- [ ] Live N/E/S/W travel, arrival facing/walk, saved logical coordinates, same-BSP
+- [x] Live normal/yellow/blocked-red, 1280 range, road occlusion, bridge height.
+- [x] Live N/E/S/W travel, arrival facing/walk, saved logical coordinates, same-BSP
   neighbour travel and den entrance/exit regressions.
-- [ ] Reload independently after destructive fixture/service tests before judging
+- [x] Reload independently after destructive fixture/service tests before judging
   normal marker counts. Read-only status confirms actual destination.
-- [ ] Human approves readability and gate distance; no movement into blocked edge.
+- [x] Human approves readability and gate distance; no movement into blocked edge.
+
+### Phase C acceptance - 2026-10-12
+
+The user confirmed both blocked-red and waypoint-yellow arrows render correctly
+and that all tested gate entries and exits work after the motorway-arrival fix.
+Together with the previously confirmed green range fade, carriageway placement,
+minimap/Level overlays, bridge-height traces, independent reload and corrected
+arrival behind the arrows, this closes the remaining Phase C live acceptance
+items. Phase C is accepted on the accumulated static, compiled-map and human
+in-game evidence. Historical uncaptured details remain evidence limits rather
+than reopened gates. Production rebuilds/publication and the deferred authored
+safe-zone entrance/detail walls remain outside this acceptance.
+
+### Phase C continuation - 2026-10-11
+
+The user explicitly deferred newly authored safe-zone entrance/detail walls
+and `docs/safezone_entrances/plan.md` from this continuation. Their working
+VMFs/VMXs remain untouched. Committed tile sources from `7d7f8501` were retained
+under `generated/phase_c_live_20261011/tiletemplates`; the outer regression now
+accepts an explicit `-TemplateDirectory` so source geometry, expanded fixtures
+and legacy comparison use the same isolated inventory.
+
+Fresh isolated outer/gate regression2306 assertions passes. Client transition
+marker fixtures10/10, server6/6 and map-catalogue2/2 pass. Original Phase B
+restoration backups verify2074/2074 ledger entries. Fresh full preview planning
+retains576 cells/187 recipes with zero logical recipe-mapping changes and
+190 generated VMFs including the three dens; required-map check has zero missing.
+VBSP passes190/190 with zero failed/incomplete stages; all190 portal budgets
+pass with zero over-budget or invalid/missing PRTs. Matching187-recipe skyline
+build completed. `bin/test_transition_gate_bsps.ps1` verifies compiled trigger
+brush presence, identity/pose and corresponding arrival landmarks:
+186 gate-bearing maps/484 gates/484 arrivals pass. Barricade geometry remains
+covered by source regressions, not this BSP entity-lump test (static props are
+compiled separately). Isolated VVIS/VRAD is now running; runtime export follows
+only after zero failed/incomplete stages. No Phase C assets staged yet.
+Garry's Mod was closed when the bridge status was attempted,
+so live destination/marker/travel checks have not run.
+
+Phase C changes recipe contents and the matching plan/skyline revision.
+Existing completed capture imagery is preserved, but must not be presented
+as revision-current Satellite imagery after the new assets are staged.
+Do not weaken the captured-world compatibility gate or repeat a full capture
+before Phase C geometry is accepted.
 
 ## Phase D - Full-footprint minimap, world artwork and satellite capture
+
+**In progress 2026-10-12** following explicit Phase C acceptance.
+
+### Full-footprint Level/minimap projection - 2026-10-12
+
+Phase D audit found that revision-matching world capture already used the
+authoritative5760-unit neighbour pitch, but `cl_world_map.lua` still derived its
+Level/minimap capture span from the old3600-height/48-degree camera formula
+(about3206 units). That cropped the expanded outer footprint and projected
+dynamic markers against the same obsolete span.
+
+`world_capture/sh_contract.lua` now owns the local-map span and pure projection
+contract. City captures use `ZM_World:GetCellBounds().neighbourPitch`; den
+captures retain their independent previous span. Level/minimap rendering and
+marker projection consume the same resolved span, and the local capture cache
+version advanced from10 to11 so an old cropped texture cannot survive the
+change. No map generation or BSP rebuild was required.
+
+Focused offline capture fixtures pass client7/7 and server7/7. The new client
+case covers centre, +/-1600, +/-2240 and +/-2880 in all four directions,
+asymmetric northwest coast-contact/southeast land extents, missing-bounds
+failure and unchanged den span. GLua syntax passes266/0. A fresh reload of
+`zz_preview_a0e68fbdcfc2-edge2` retained the preview profile and produced no
+recent Lua/capture error. Full-border appearance and marker alignment remain a
+human visual gate. The user then confirmed the freshly reloaded Level/map-
+texture view shows the complete outer footprint and that player, loot, door and
+gate-arrow markers remain aligned. This accepts the current-cell Level/minimap
+projection change; stitched world previews, fresh Satellite imagery and den
+capture remain separate Phase D gates.
+
+### Full-footprint artwork and HUD contracts - 2026-10-12
+
+Per the user's request, Phase D continued only through fast source work and
+focused fixtures. Preview/world regeneration, compilers, navmesh work, complete
+material generation and fresh Satellite capture are deferred for a later
+explicitly approved batch.
+
+`build_cell_map_materials.ps1` now reads each recipe's generated `.layout.json`
+instead of rendering only the plan's 5-by-5 core. Expanded recipes render in the
+authoritative9-by-9 frame with a two-tile core inset, actual border and outer
+placements, and water in an omitted ocean-side outer band. Missing or mismatched
+layout metadata fails explicitly. Route, landmark, commercial and carpark
+coordinates share the same inset. `build_world_wireframe_material.ps1` now
+projects stitched and per-recipe nav areas against `neighbourPitch / 2` instead
+of the obsolete1640-unit half-extent. Satellite stitching already assigns one
+complete cell image to one logical-pitch square, so it consumes the expanded
+source frame without a separate transform.
+
+The HUD's static cell-texture projection and cross-cell compass also replaced
+their hardcoded3200-unit span with the authoritative neighbour pitch through
+the shared capture contract. City map-view height follows that span; den
+map-view height retains its prior independent value.
+
+The new `bin/test_cell_map_artwork.ps1` synthetic fixture passes:432px9-by-9
+frame, correctly inset core environment, actual north border route, actual east
+outer edge and west omitted-ocean water. A tuned-plan `-WhatIf` validates all311
+recipe layouts without generating images. Wireframe `-WhatIf` validates576
+logical cells at5760 units without parsing/rendering nav output. Capture/
+projection fixtures remain client7/7 and server7/7, now also covering static
+texture edges/coast inset and cross-cell cardinal signs; GLua syntax266/0.
+The broader multi-tile suite was deliberately stopped after exceeding the
+bounded quick-check window and is retained for the later approved validation
+batch. No content materials, navmeshes, BSPs or captures were changed.
 
 ### Authorized capture work and view naming - 2026-10-10
 
@@ -1131,14 +1324,40 @@ Implementation notes:
 
 Checks / acceptance:
 
-- [ ] Automated projection tests for centre, +/-1600, +/-2240 and +/-2880,
+- [x] Automated projection tests for centre, +/-1600, +/-2240 and +/-2880,
   all four directions and asymmetric coast omissions.
-- [ ] Fixtures prove artwork consumes actual edge/environment/route placements.
+- [x] Fixtures prove artwork consumes actual edge/environment/route placements.
 - [ ] Fresh staged images, wireframes and stitched satellite belong to same plan.
 - [ ] Human sees full borders/edges on minimap/world previews/level capture.
   Player/loot/doors/gates remain aligned and den capture is unchanged.
 
 ## Phase E - Slower movement and rarer, spaced searchable loot
+
+**Accepted 2026-10-12 after cold-start correction.** The user explicitly deferred
+Phase D's expensive generated-output acceptance batch and authorized source-only
+Phase E work so compiles, navmeshes, world materials and fresh Satellite capture
+can be combined later. Phase D remains implemented but acceptance-deferred; this
+does not pre-accept either phase.
+
+Movement now uses the approved 0.675/0.765 scales with unchanged stamina and
+transition behavior. Searchable candidates use half activation exactly once,
+stable seeded priority and 320-unit 3D centre spacing. New generations place
+1-2 fallen bodies while unexpired legacy generations retain their 2-4/version-1
+plan. Loot cells now record their content-hashed map filename. Legacy rows are
+baselined without reset; a later changed filename atomically backs up the old
+cell/spots, resets only that profile/cell once, and supports matching old-map
+backup restoration. Focused fresh-reload suites pass movement5/5, loot12/12 and
+loot-spots18/18; GLua syntax passes266/0. Fault-injected reset failure preserves
+the old cell/spots and commits no backup. Enemy14/14, boss5/5 and foliage16/16
+confirm unchanged drop/harvest paths. Human city-cell pace/search and persistence
+review initially exposed no searchable loot. The revision helpers had accidentally
+been nested inside `ZM_ReplaceLootCell`, so real fingerprinted cold starts called
+an undefined helper while fixtures masked the defect by generating a legacy cell
+first. The helpers now exist at file scope and the first fixture is the exact
+fingerprinted cold-start path. Fresh loot-spots19/19 passes. Live preview cell423
+loads seven available searchable spots from79 candidates, and the user confirmed
+the highlight and search interaction work. Phase E is accepted on that corrected
+evidence.
 
 Implementation notes:
 
@@ -1188,23 +1407,68 @@ Implementation notes:
 
 Checks / acceptance:
 
-- [ ] `zn_test_movement`: exact ratios, repeat refresh, spawn, bonuses, exhaustion,
+- [x] `zn_test_movement`: exact ratios, repeat refresh, spawn, bonuses, exhaustion,
   stationary sprint, sustained/interrupted sprint and unchanged rates.
-- [ ] `zn_test_loot` / `zn_test_loot_spots`: original probability halved once,
+- [x] `zn_test_loot` / `zn_test_loot_spots`: original probability halved once,
   deterministic order independence, 319.999 rejection/320 acceptance, separate
   floors, prop-body pairs, core bounds and rollback/error behavior.
-- [ ] Existing saved cluster/declined/searched rows remain untouched on upgrade;
+- [x] Existing saved cluster/declined/searched rows remain untouched on upgrade;
   absence threshold boundary causes one normal spaced regeneration.
-- [ ] Unrebuilt legacy body plans survive reload until refresh. Rebuilt-map reset
+- [x] Unrebuilt legacy body plans survive reload until refresh. Rebuilt-map reset
   backs up all affected loot, runs exactly once, preserves unrelated profile/cell
   rows and all character tables, and rolls back cleanly on backup/SQL failure.
-- [ ] Body count 1-2 in suitable fixtures; physically unsuitable attempts report
+  Shared-recipe logical cells resolve independently at their safe load boundary.
+- [x] Body count 1-2 in suitable fixtures; physically unsuitable attempts report
   their shortfall rather than faking successful placement.
-- [ ] Unchanged enemy/boss/harvest outputs and item quality/counts asserted.
-- [ ] Live city-cell walk/sprint and searching tested in actual context, not den
+- [x] Unchanged enemy/boss/harvest outputs and item quality/counts asserted.
+- [x] Live city-cell walk/sprint and searching tested in actual context, not den
   stubs; persistence reload demonstrated without modifying user cheats/inventory.
 
 ## Phase F - Read-only slot previews and bounded thumbnail cache
+
+**Accepted 2026-10-12.** Phase E is accepted after the corrected cold-start
+live check. The read-only server snapshot contract, isolation/idempotence
+fixtures and budgeted client thumbnail renderer are complete.
+
+The first server slice now extends the existing owner/profile-filtered list with
+decoded appearance, worn shirt/pants, selected weapon visual, validated city/
+den/start location and a deterministic presentation revision. Internal character
+IDs and raw appearance JSON are removed before transmission. Snapshot collection
+does not select/load a character or construct a SWEP. A two-call fixture hashes
+the character, player-data, inventory and weapon-slot sources before/after and
+proves unchanged rows, stable revision and slot isolation. Fresh character11/11,
+inventory51/51 and GLua266/0 pass. Explicit den/corrupt/appearance-required
+location cases and client cache/render work remain.
+
+The completed bounded client slice uses at most the three visible slot panels
+and one in-flight clothing composition under the existing2ms soft budget.
+Presentation-revision/renderer-version keys invalidate changed cards; transient
+clothing failures retry instead of caching a naked fallback. Page/frame cleanup
+restores native materials, removes the read-only client weapon model, clears the
+queue and now rebuilds the live load page after development fixtures. Full-body
+framing derives horizontal-FOV distance from model bounds and the actual panel
+aspect ratio; renderer v2 fixes the earlier torso/head crop. Weapon visuals use
+the item world model or icon-model fallback without constructing a SWEP.
+
+Live review exposed and corrected two fixture defects rather than accepting the
+first screenshot: forged profession input had been accepted through the stored-
+data Civilian fallback, and a creation fixture wrote `Valid Test` into the user's
+empty slot1. Creation now validates through `GetKnown`, canonicalizes the job id,
+and delegates to an explicit-owner transactional writer used only by isolated
+tests. Both known fixture rows were removed through the owning deletion service;
+slot1 is empty again and no cleanup command remains.
+
+Fresh character12/12, inventory51/51, profession12/12, client cards2/2 and
+GLua268/0 pass. Direct Garry's Mod captures show Jim full-body with head, saved
+clothing, visible crowbar model, CITY/15,5, unchanged Earth scene and empty
+slots1/3. A second capture after the client cleanup suite shows the same card,
+proving page restoration. No distinct second saved survivor or legacy-appearance
+slot was fabricated; explicit den/corrupt/start/profile cases remain fixture
+evidence rather than human comparison.
+
+The user accepted Phase F on the accumulated automated and direct Garry's Mod
+evidence. The unavailable second-survivor/legacy-state comparison remains a
+recorded validation limit rather than fabricated test data.
 
 Implementation notes:
 
@@ -1244,19 +1508,67 @@ Implementation notes:
 
 Checks / acceptance:
 
-- [ ] `zn_test_characters`/inventory-focused assertions verify owner/profile/slot
+- [x] `zn_test_characters`/inventory-focused assertions verify owner/profile/slot
   isolation, correct saved equipment/location and no database/active-slot mutation.
-- [ ] Snapshot collection twice is idempotent; same player/profile state and
+- [x] Snapshot collection twice is idempotent; same player/profile state and
   inventory/equipment hashes remain unchanged.
-- [ ] Client card cache invalidation, cancellation, queue budgets, failed build
+- [x] Client card cache invalidation, cancellation, queue budgets, failed build
   retries and resource/pin cleanup tests.
-- [ ] Human compares all occupied cards to actual saved outfits/active weapons,
-  including distinct slots, empty/legacy states and saved den locations.
+- [x] Human compares the available occupied card to its actual saved outfit and
+  active weapon. Distinct occupied slots, legacy states and saved den locations
+  were unavailable and remain an explicit validation limit.
 
 ## Phase G - Distressed Earth and bounded fictional city renderer
 
 **Prototype gate first:** clear exact assets, build one Earth and one selected-cell
 city example, then obtain appearance/performance approval before broad polish.
+
+**Prototype gate active 2026-10-12.** Phase F is accepted. Resolve the exact
+Earth/distress asset source before renderer implementation; do not substitute
+the Phase H supplied logo or begin broad presentation polish.
+
+**Accepted 2026-10-12.** The user confirmed the cache-corrected Earth and city
+views are both smooth in the foreground and that the presentation otherwise
+looks fine. Phase G is accepted on the accumulated source, licence, static,
+live resource, direct visual and user evidence. The background-throttled samples
+remain scoped operation evidence rather than a fabricated clean60FPS result.
+
+The user selected Natural Earth public-domain base art after a source/licence
+review. `build_launcher_earth.ps1` pins the reviewed 2048x1024 source hash and
+builds five owned layers: day, original deterministic night lights, clouds,
+distress and rim. The staged catalogue records source/terms/hashes,9.42MiB VTF
+storage and32.25MiB estimated RGBA; the original notice is shown in Third Party
+Licenses and packaged once in Common Content.
+
+The prototype owner switches among Earth/city/hidden without another scene
+hook. Earth uses reusable low/high static sphere pairs (960/3968 triangles,
+non-degenerate pole fans and duplicated seam vertices); high adds cloud and
+distress draws. City resolves Jim's exact preview logical15,5 recipe from
+revision-matched world/skyline data and owns one client model plus marker/label.
+Direct captures cover high, close, low and selected-cell city views. The user
+confirmed the presentation looks fine apart from the performance defect below,
+which accepts the prototype art gate.
+
+Fresh GLua271/0, launcher presentation server3/3, client2/2, characters12/12
+and packaging62/62 pass. Third Party Licenses passes in the launcher suite; its
+whole6/7 result retains the unrelated historical changelog source-order failure.
+The first full-layer profile was rejected because cold texture upload stalled
+at384.70ms/hook. After warming layers independently, full high Earth is
+0.0264ms/hook with about1.03KiB allocation/frame and16.64ms median full frame;
+p95/p99 remain49.59/52.00ms while the matched city control itself measured
+49.97ms median, so background-throttled full-frame evidence does not satisfy
+the Phase G performance gate. High/normal Earth and layer mode3 were restored.
+
+The user subsequently reported that the in-game presentation was severely
+lagging while everything else looked fine. The matched city control exposed the
+root cause: `PrepareCity` reparsed the complete world and skyline JSON on every
+rendered frame, costing399.38ms and12.04MiB allocation per frame. Parsed assets
+are now cached once per profile and the selected model is keyed by profile,
+slot, presentation revision and exact saved location. After a clean launcher
+reload the focused client suite passes3/3; the same city hook measures0.0856ms
+and1.71KiB/frame, and repeated Earth/city switches retain one asset load before
+restoring high/normal Earth/layer3. Fresh human smoothness confirmation and a
+clean matched60FPS sample remain performance gates; Phase G is not yet accepted.
 
 Implementation notes:
 
@@ -1297,11 +1609,11 @@ Implementation notes:
 
 Checks / acceptance:
 
-- [ ] Cold-load material validity/dimensions, sphere seam/poles, quality modes,
+- [x] Cold-load material validity/dimensions, sphere seam/poles, quality modes,
   day/night/cloud/rim layering and bounded model/resource counts.
-- [ ] Scene data tests: current saved cell, den owner, undeployed start, distant
+- [x] Scene data tests: current saved cell, den owner, undeployed start, distant
   logical cells, profile switching and explicit missing/stale assets.
-- [ ] Human prototype approves post-apocalyptic Earth/city at normal launcher view,
+- [x] Human prototype approves post-apocalyptic Earth/city at normal launcher view,
   close zoom and low quality; logo cannot be substituted during this review.
 - [ ] Matched home/city warm samples target 60 FPS; record full-frame FPS and
   median/p95/p99 frame time, hook CPU, draws, textures/memory and cold build spikes.
@@ -1309,21 +1621,199 @@ Checks / acceptance:
 - [ ] Repeated scene switches/reopens plateau resource counts. Gameplay/credits/
   sky tour are not rendered twice or left with changed lighting/fog/material state.
 
+The user accepted these remaining Phase G performance/resource gates after the
+per-frame city parse was removed and repeated switching retained one profile
+asset load. The checklist remains as the historical pre-acceptance gate record.
+
 ## Phase H - Home/Play flow, cinematic camera, Tools, Settings and logo
+
+**In progress 2026-10-12.** The first bounded slice adds one explicit
+page-to-state owner and the required four-action Home: Play, Tools, Settings and
+Exit. Play opens the existing three-slot selection without sending a deployment
+request. Content Addons and Credits now live under Settings; Tools remains
+visible on Home and is disabled with an explicit reason when unavailable. Home
+owns Earth and Play owns the selected-cell city presentation. Fresh launcher
+presentation4/4 and GLua271/0 pass after a clean launcher reload; a direct native
+capture confirms the four-action Home and sole Earth owner. This is not human
+acceptance of Phase H. Camera transitions, responsive cards, manual Earth
+controls, supplied-logo integration and the remaining lifecycle checks are open.
+
+The second bounded slice implements the approved4.5-second Home-to-Play and
+3-second Play-to-Home presentation handoffs without timers or a second scene
+hook. The user rejected both the first crossfade-only result and the subsequent
+attempt to conform skyline geometry to the globe. The current staged sequence is
+explicit: Earth alone rotates toward the survivor's stored coordinates and
+zooms1x->3.6x, then Earth fades out while a separate grounded sunset horizon
+fades in. That horizon uses the bounded3x3 logical-cell cluster (12 models for
+Jim's current cell), a dark silhouette override, low warm sun, haze and a reduced
+ground plane; it is neither a floating model nor distorted globe geometry.
+Interruption samples current weights/zoom and retargets without a snap or stale
+timer. Fresh launcher presentation server3/3/client5/5 and GLua271/0 pass. The
+completed horizon hook measures0.1395ms and4.52KiB allocation per frame in the
+scoped sample. Human horizon/choreography review, selection retarget and
+resize/cancel paths remain open.
+
+The exact supplied transparent288x128 `logo.png` is now staged once as a
+launcher UI material and replaces the temporary Home text heading. Its native
+2.25:1 aspect and alpha are retained inside bounded breathing/grunge framing;
+readability and button hit targets remain independent of that decoration. A
+fresh direct launcher capture shows the intended asset above the four Home
+actions. Material validity/dimensions join the focused presentation suite:
+presentation5/5, GLua271/0 and packaging62/62 pass. Human approval of the new
+logo/framing remains open and Phase H is not accepted.
+
+The latest authored preview launcher removes the enclosed starfield and exposes
+the existing scale16 3D skybox through `tools/toolsskybox`. Phase H now treats
+that map ownership explicitly: `launcher_presentation_skybox` opts the map into
+skybox rendering, server status publishes the matching `sky_camera` origin and
+scale, and the sole presentation hook maps Earth and every city-horizon element
+into that pass. The unchanged city launcher has no opt-in marker and retains the
+world-space fallback. GLua271/0 and source/diff checks pass. No launcher BSP was
+compiled or staged under the expensive-work deferral, so fresh-load placement,
+transition, visual and performance review remain required before acceptance.
+
+The user subsequently approved the skybox-backed Earth after an authorized
+preview-only VBSP/VVIS/VRAD build, matching staged BSP hashes and a full restart
+that cleared Source material-cache artifacts. Fresh client presentation6/6
+passes. The sole hook measures0.0356ms/frame and1.26KiB/frame with a0.1186ms
+maximum in the five-second sample. Normal launcher presentation now needs a
+space-specific backdrop that hides the authored water; sky inspection remains a
+separate owner and must retain that water, selected skies, haze and flight.
+
+The attempted runtime full-sphere water mask was removed after a warm actual
+client sample fell to1.1FPS outside measured Lua hooks. The accepted source
+boundary is narrower: the29 water faces belonging to eight 3D-skybox brushes are
+nodraw, while the six main-world water faces used by sky inspection are byte-
+positionally retained. Ordinary Home/Play uses approved
+`imported_tropo_night_2` through the existing cached sky-palette renderer; active
+inspection overrides it with the inspected selection and its own fog record.
+Preview launcher VBSP/VVIS/VRAD passes with staged hash
+`5A9CE06B755EE2B7B85C855A7446AA1A9716BB0A4E1D63C1C01F615638DC7242`;
+fresh client presentation7/7 and GLua271/0 pass. Human visual acceptance remains
+open.
+
+Paged-memory diagnostics do not support an idle or launcher-cycle retained-
+object leak: after early cache warming, matched60-second process commit rose
+2.47MiB only in the first10seconds and plateaued, while forced-GC Lua heap grew
+114KiB across2101frames. Ten Earth/city cycles admitted about9MiB of Source
+model/material cache once, then private commit was exactly stable for all ten
+cycles; handles did not grow and retained Lua heap was76.3KiB. Pausing stops
+frame-driven allocation, so process paged/private bytes stop rising too. This is
+consistent with allocator/cache high-water behavior, not proof that every
+deployed gameplay subsystem is leak-free; representative long gameplay remains
+unverified.
+
+The latest Phase H revision replaces the rejected scale-only approach rather
+than polishing it. A pulsing survivor-city marker is transformed by the same
+yaw/pitch matrix as Earth. The4.5-second path now advances through explicit
+orbit, approach, atmosphere and destination stages: Earth moves down and past
+the view while growing, a bounded blue-white atmospheric veil masks the scene
+handoff, and the destination appears only through the far side of that veil.
+Back reverses the same continuous descent value, including interruptions.
+
+The destination is now a grounded diorama rather than the flat black horizon:
+one cached1344-triangle enlarged rolling grass/rock terrain mesh, one96-triangle road mesh
+and the bounded skyline cluster share the same base. Each skyline part is seated
+at its terrain height, retains its authored materials and uses a controlled dusk
+light cube. Static meshes are versioned, reused and destroyed with the existing
+presentation resources. Fresh client presentation8/8 and GLua271/0 pass. An
+actual five-second destination sample reports59.74FPS,0.08345ms and4.91KiB per
+presentation-hook frame,12 city models, two diorama meshes and -147.98KiB
+retained Lua heap. This is operation/performance evidence, not visual approval.
+
+The survivor-selection layout now presents three compact horizontal slot
+selectors and only one selected dossier. The selected survivor owns ruled
+name/profession/location metadata, a bordered and backgrounded286px portrait,
+face-safe camera headroom, a stacked equipped-weapon box list and one action row;
+Delete is visually subordinate to Deploy. Empty slots no longer interrupt the
+selected portrait. The bounded outfit/weapon composition queue and explicit
+Deploy-only request are unchanged. Fresh client character cards2/2 pass. The
+user approved the marked descent, grounded diorama and cleaner survivor dossier
+in the running preview launcher and asked to keep this direction. The follow-up
+enlarged terrain/ridge, smoother atmosphere-covered night-to-day handoff and
+icon-backed box for every equipped weapon are also human-approved; the posed
+weapon model and duplicate equipped strip are removed. Fresh GLua271/0, launcher
+presentation8/8, character cards2/2 and characters12/12 pass. Manual Earth
+controls and remaining lifecycle paths remain separate gates; Phase H is not
+accepted.
+
+Home-only manual Earth controls are now implemented on a transparent viewport
+outside the left menu: left-drag rotates and the wheel zooms within bounds
+derived from the authored camera distance (currently0.72x-1.65x). Reset View
+returns to the selected saved-location anchor without mutating gameplay
+coordinates. Transition, page, inspection and frame ownership changes release
+capture and return automatic tracking/zoom ownership. Fresh GLua271/0 and
+launcher presentation10/10 pass. Actual mouse capture, Reset View, resize and
+browser/credits/appearance cleanup remain human/live acceptance gates. The user
+approved Home drag, wheel zoom, Reset View and Play/Back mouse cleanup in the
+running launcher; this does not accept the untested round trips.
+
+The focused lifecycle case now exercises the approved4.5-second entry/3-second
+return rather than the rejected old timing, immediate page-switch input release,
+prior-step Create Back, first-edit Create cancel and legacy-appearance cancel.
+Create now returns to the survivor grid instead of Home at its first editable
+step. This test is read-only: typed delete, creation, deployment and content
+failure remain separate live paths.
+
+The user approved Home->Settings->Back, Home->Tools->Back, Create cancel and
+Credits exit in the running preview launcher with normal mouse/camera
+restoration. Request ownership now records its initiating page: a client content
+failure preserves the survivor-grid Back target and a timeout returns to the
+grid rather than Home. Fresh launcher presentation11/11 and GLua271/0 pass.
+Typed-delete cancel, actual server failure, Exit confirmation and both-profile
+availability remain open.
+
+The user approved the typed-delete dialog cancel and Exit-to-GMod cancel paths
+in the restored preview launcher. Both return to the correct page with normal
+mouse/camera ownership. No survivor was deleted and disconnect confirmation was
+not executed; those destructive confirmations are not inferred from cancel
+behavior.
+
+Empty-grid and explicit server-rejection fixtures now verify that three empty
+slots expose Create only and that rejection/timeout retain their initiating
+grid and error. Launcher presentation12/12 and GLua271/0 pass. A scoped
+five-second daylight-destination sample measured0.21527ms/9.15KiB per
+presentation-hook frame with a1.454ms maximum and34.25KiB retained Lua heap.
+The process averaged19.74FPS while background/unmatched, so this demonstrates
+operation only and is not a performance acceptance or regression comparison.
+Earth presentation was restored after the probe.
+
+Tools visibility is now independent of preview-only action availability. City
+launcher users can open Item Atlas, Content Status and Sky Browser; Map Atlas is
+visible but disabled because its inspector still names preview artwork paths,
+and Wardrobe remains disabled behind its preview-admin guard. The dedicated
+actual-client profile case passed1/1 in `zn_city_start` and1/1 after a verified
+return to `zn_preview_start`/preview. Static capabilities also reject deployed
+gameplay maps. Both-profile Settings behavior and any remaining admin guards
+still require their own evidence.
+
+**Phase H accepted 2026-10-12:** the user approved the presentation, manual
+Earth controls, launcher round trips, safe dialog cancellations and the stated
+automated/profile evidence. Destructive delete/disconnect confirmation, live
+city Settings, resolution-change review and matched foreground performance are
+retained limits, not fabricated evidence or blockers to the user's acceptance.
+Proceed to Phase I. The complete preview closure, navmesh, Satellite capture,
+city rebuild and publication remain separately gated expensive work.
+
+Phase I's retained launcher-suite failure is resolved: current3.1.5 and
+archived3.1.0 highlights now follow the required additions/limits/fixes order,
+the accidental leading space is removed and stale “planned Earth-to-city”
+wording is replaced by the accepted result. Fresh launcher Tools8/8 passes.
+This is data-order cleanup, not a change to historical acceptance.
 
 Implement explicit states rather than scattered page booleans:
 
 | State | Left side | Right side / ownership |
 | --- | --- | --- |
 | Home | Play, Tools, Settings, Exit; supplied logo | Earth, bounded manual controls |
-| Entering Play | Character cards usable immediately | 3-second Earth-to-city transition |
+| Entering Play | Character cards usable immediately | 4.5-second Earth-to-city transition |
 | Play | Three-slot grid, selection actions, Back | Selected saved location, 1-second retarget |
 | Create / Set Appearance | Existing wizard | Existing full-body creation preview replaces city |
 | Settings | Existing options + Credits + Content Addons | Earth unless a dedicated child tool owns the view |
 | Tools | Read-only entries; disabled preview-only actions in city | Existing right-side workspaces/child tool ownership |
 | Credits | Existing credits flow | Existing credits camera; Earth/city suspended |
 | Sky inspection | Existing browser/temporary inspection flow | Existing flight/tour/fog/music/fades; Earth/city suspended |
-| Returning Home | Home controls usable | 2-second city-to-Earth return |
+| Returning Home | Home controls usable | 3-second city-to-Earth return |
 | Deploying | Existing waiting/content-gated state | Existing deployment/loading owner |
 
 Implementation notes:
@@ -1363,7 +1853,7 @@ Implementation notes:
 
 Checks / acceptance:
 
-- [ ] Fresh-load Home has exactly four primary actions; Play/selection never
+- [x] Fresh-load Home has exactly four primary actions; Play/selection never
   deploys before explicit confirmation.
 - [ ] Create, legacy appearance, typed delete/cancel, empty/no-slot, failed request,
   content failure, Exit cancel/confirm and return-to-grid tested.
@@ -1371,7 +1861,7 @@ Checks / acceptance:
 - [ ] Manual controls/Reset View work only on Home; every cleanup path restores
   mouse/camera correctly, including tool/browser/credits/appearance round trips.
 - [ ] Both-profile Settings/Tools availability and unchanged admin/profile guards.
-- [ ] Human approves actual new supplied logo, distressed menu, cards and camera
+- [x] Human approves actual new supplied logo, distressed menu, cards and camera
   choreography; static tests are not visual acceptance.
 
 ## Phase I - Integrated acceptance and separately approved city rollout

@@ -194,6 +194,52 @@ def main():
                     check(state.player.ZMTransitionGate_N_1_Blocked and not state.player.ZMTransitionGate_E_1_Blocked,
                         "availability changes follow real modes")
                 end)
+                suite:Add("motorway_arrivals_clear_the_median_and_stand_past_the_arrows", function(check)
+                    local forwards = { N = { 0, 1 }, E = { 1, 0 }, S = { 0, -1 }, W = { -1, 0 } }
+                    for code, xy in pairs(forwards) do
+                        local service, state, env = fixture()
+                        state.surface = 36
+                        env.MASK_PLAYERSOLID = 2
+                        state.hulls = {}
+                        env.util.TraceHull = function(spec)
+                            state.hulls[#state.hulls + 1] = spec
+                            return { StartSolid = state.hullSolid == true }
+                        end
+                        function state.player:GetHull() return env.Vector(-16, -16, 0), env.Vector(16, 16, 72) end
+                        local forward = env.Vector(xy[1], xy[2], 0)
+                        local right = forward:Cross(env.Vector(0, 0, 1))
+                        state:Gate(code, forward * 2208 + env.Vector(0, 0, 56), "highway")
+                        service:InitializeGates()
+                        local lane = state.globals["ZMTransitionGate_" .. code .. "_1_Surface"]
+                        local arrival = service:ResolveGateArrivalPosition(state.player, code)
+                        check(arrival == forward * 1824 + right * -160 + env.Vector(0, 0, 37),
+                            code .. " arrives on the lane-one carriageway")
+                        check(math.abs(arrival.x) > 8 and math.abs(arrival.y) > 8,
+                            code .. " clears the central reservation")
+                        check(forward:Dot(lane - arrival) > 0,
+                            code .. " stands further inside the cell than its arrow")
+                        check(#state.hulls == 1 and state.hulls[1].mask == env.MASK_PLAYERSOLID,
+                            code .. " validates the player hull before placing")
+                        state.hullSolid = true
+                        check(service:ResolveGateArrivalPosition(state.player, code) == nil,
+                            code .. " obstructed carriageway keeps the authored landmark")
+                        state.hullSolid, state.surface = false, false
+                        check(service:ResolveGateArrivalPosition(state.player, code) == nil,
+                            code .. " unsupported carriageway keeps the authored landmark")
+                    end
+                end)
+                suite:Add("ordinary_road_and_absent_gate_arrivals_keep_the_authored_landmark", function(check)
+                    local service, state, env = fixture()
+                    state.surface = 36
+                    env.util.TraceHull = function() return { StartSolid = false } end
+                    function state.player:GetHull() return env.Vector(-16, -16, 0), env.Vector(16, 16, 72) end
+                    state:Gate("S", env.Vector(0, -2208, 56), "road")
+                    service:InitializeGates()
+                    check(service:ResolveGateArrivalPosition(state.player, "S") == nil,
+                        "single-arrow road arrival unchanged")
+                    check(service:ResolveGateArrivalPosition(state.player, "N") == nil,
+                        "absent gate arrival unchanged")
+                end)
                 return suite:Run()
             end
             return tests

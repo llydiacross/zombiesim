@@ -97,6 +97,14 @@ function Loot.RollActivation(rule, rng)
     return rng:Chance(rule.activationChance or 0)
 end
 
+function Loot.GetSearchableActivationChance(rule)
+    return math.Clamp((tonumber(rule.activationChance) or 0) * 0.5, 0, 1)
+end
+
+function Loot.RollSearchableActivation(rule, rng)
+    return rng:Chance(Loot.GetSearchableActivationChance(rule))
+end
+
 function Loot:RollEntityLoot(rule, options)
     return self:RollItem(rule.entries, options)
 end

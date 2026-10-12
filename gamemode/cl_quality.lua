@@ -39,7 +39,8 @@ ZM_Quality.Presets = {
         zombiesim_sky_detail = 1,
         zombiesim_sky_clouds = 0,
         zombiesim_sky_props = 0.4,
-        zombiesim_sky_fires = 0
+        zombiesim_sky_fires = 0,
+        zombiesim_globe_quality = 0
     },
     medium = {
         zombiesim_atmosphere_rain_density = 1,
@@ -52,7 +53,8 @@ ZM_Quality.Presets = {
         zombiesim_sky_detail = 2,
         zombiesim_sky_clouds = 1,
         zombiesim_sky_props = 0.7,
-        zombiesim_sky_fires = 1
+        zombiesim_sky_fires = 1,
+        zombiesim_globe_quality = 1
     },
     high = {
         zombiesim_atmosphere_rain_density = 1.5,
@@ -65,7 +67,8 @@ ZM_Quality.Presets = {
         zombiesim_sky_detail = 2,
         zombiesim_sky_clouds = 1,
         zombiesim_sky_props = 1,
-        zombiesim_sky_fires = 1
+        zombiesim_sky_fires = 1,
+        zombiesim_globe_quality = 1
     }
 }
 

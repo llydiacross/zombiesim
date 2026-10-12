@@ -12,7 +12,7 @@
     "profiles": {
       "city": {
         "filePrefix": "map",
-        "gridCells": 64,
+        "gridCells": 48,
         "exportLayers": true,
         "cellDirectory": "generated/src",
         "buildDirectory": "generated/build",
@@ -434,7 +434,8 @@
     },
     "variants": {
       "usageThreshold": 15,
-      "maximumPerRecipe": 2,
+      "maximumPerRecipe": 4,
+      "avoidAdjacentDuplicates": true,
       "suffix": "v"
     },
     "landmarkTemplatePatterns": {
@@ -534,12 +535,16 @@
       "enabled": false,
       "wallVariationTemplates": [
         "edges/tile_edge_wall_1a.vmf",
-        "edges/tile_edge_wall_1aa.vmf"
+        "edges/tile_edge_wall_1aa.vmf",
+        "edges/tile_edge_wall_1aaa.vmf",
+        "edges/tile_edge_wall_2a.vmf",
+        "edges/tile_edge_wall_2aa.vmf",
+        "edges/tile_edge_wall_2aaa.vmf"
       ],
       "cornerTemplate": "edges/tile_edge_wall_corner.vmf",
       "profileTemplates": {
         "radioactive": {
-          "wallVariationTemplates": ["edges/tile_edge_ra_none.vmf", "edges/tile_edge_ra_wall_1a.vmf", "edges/tile_edge_ra_wall_1aa.vmf"]
+          "wallVariationTemplates": ["edges/tile_edge_ra_none.vmf", "edges/tile_edge_ra_wall_1a.vmf", "edges/tile_edge_ra_wall_1aa.vmf", "edges/tile_edge_ra_wall_1aaa.vmf"]
         },
         "military": {
           "wallVariationTemplates": ["edges/tile_edge_army_none.vmf", "edges/tile_edge_army_wall_1a.vmf", "edges/tile_edge_army_wall_1aa.vmf"]

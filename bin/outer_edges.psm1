@@ -1,6 +1,16 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function Get-ZMRoadAdjacentWallPool {
+    param([string[]]$Templates, [object[]]$RouteSlots, [int]$TileX, [int]$TileY)
+
+    $adjacent = @($RouteSlots | Where-Object { [Math]::Abs([int]$_.tileX - $TileX) + [Math]::Abs([int]$_.tileY - $TileY) -eq 1 }).Count -gt 0
+    if (-not $adjacent) { return $Templates }
+    $eligible = @($Templates | Where-Object { $_ -notmatch '_\d+aaa\.vmf$' })
+    if ($eligible.Count -eq 0) { throw "No non-aaa wall template is available beside a route at $TileX,$TileY." }
+    return $eligible
+}
+
 function Get-ZMOuterEdgeRoadTemplates {
     param(
         [object[]]$BorderPlacements,
@@ -46,6 +56,7 @@ function Get-ZMOuterEdgePlacements {
 
     $borderSlots = @{}
     foreach ($placement in $BorderPlacements) { $borderSlots["$($placement.tileX),$($placement.tileY)"] = $placement }
+    $routeSlots = @($BorderPlacements | Where-Object { [string]$_.template -match '^roads[\\/]' })
     $sideYaw = @{ N = 180; E = 90; S = 0; W = 270 }
     $cornerYaw = @{ NW = 180; NE = 90; SE = 0; SW = 270 }
     $center = [int][Math]::Floor($TileGridSize / 2)
@@ -75,7 +86,13 @@ function Get-ZMOuterEdgePlacements {
                 } else {
                     $hash = ([int64]$Recipe.placementSeed * 2654435761) -bxor ([int64]$x * 73856093) -bxor ([int64]$y * 19349663)
                     $hash = $hash -bxor ($hash -shr 15)
-                    $template = [string]$walls[[int]([Math]::Abs($hash) % $walls.Count)]
+                    $eligibleWalls = @(Get-ZMRoadAdjacentWallPool $walls $routeSlots $x $y)
+                    # Include the outer continuation itself when checking its two flanking wall slots.
+                    if ($RoadTemplates.ContainsKey($side) -and $(if ($vertical) { [Math]::Abs($x - $center) -eq 1 } else { [Math]::Abs($y - $center) -eq 1 })) {
+                        $corridor = [pscustomobject]@{ tileX = $(if ($vertical) { $center } else { $x }); tileY = $(if ($vertical) { $y } else { $center }) }
+                        $eligibleWalls = @(Get-ZMRoadAdjacentWallPool $eligibleWalls @($corridor) $x $y)
+                    }
+                    $template = [string]$eligibleWalls[[int]([Math]::Abs($hash) % $eligibleWalls.Count)]
                     $yaw = $sideYaw[$side]
                     $kind = 'wall'
                 }
@@ -164,4 +181,4 @@ function Convert-ZMVmfNodeToText {
     return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
 }
 
-Export-ModuleMember -Function Get-ZMOuterEdgeRoadTemplates, Get-ZMOuterEdgePlacements, Expand-ZMOuterEdgeShell
+Export-ModuleMember -Function Get-ZMRoadAdjacentWallPool, Get-ZMOuterEdgeRoadTemplates, Get-ZMOuterEdgePlacements, Expand-ZMOuterEdgeShell

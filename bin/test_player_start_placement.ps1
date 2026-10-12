@@ -8,8 +8,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($PlanData)) {
-    $prefix = if ($WorldProfile -eq 'city') { 'map' } else { 'preview' }
-    $PlanData = Join-Path $PSScriptRoot "${prefix}_grid_$(if ($WorldProfile -eq 'city') { '64x64' } else { '24x24' })_seed_1337_template_plan.json"
+    $profile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile
+    $PlanData = Join-Path $PSScriptRoot ('{0}_grid_{1}x{1}_seed_1337_template_plan.json' -f $profile.Config.filePrefix, $profile.Config.gridCells)
 }
 if ([string]::IsNullOrWhiteSpace($CellDirectory)) {
     $CellDirectory = Join-Path $projectRoot "generated/player_start_check_$WorldProfile"

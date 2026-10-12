@@ -1,4 +1,7 @@
-param([string]$OutputRoot = '')
+param(
+    [string]$OutputRoot = '',
+    [string]$TemplateDirectory = ''
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -20,12 +23,19 @@ function Assert {
 
 $resolved = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile preview
 $settings = $resolved.Settings
+if ([string]::IsNullOrWhiteSpace($TemplateDirectory)) {
+    $TemplateDirectory = Join-Path $projectRoot $settings.paths.templateDirectory
+}
+$TemplateDirectory = (Resolve-Path -LiteralPath $TemplateDirectory).Path
+$settings.paths.templateDirectory = [Uri]::UnescapeDataString(
+    ([Uri]($projectRoot.TrimEnd('\') + '\')).MakeRelativeUri([Uri]($TemplateDirectory + '\')).ToString()
+).Replace('/', '\')
 $settings.vmfBuild.outerEdges.enabled = $true
 $settingsPath = Join-Path $OutputRoot 'settings.json'
 [IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json -Depth 100), [Text.UTF8Encoding]::new($false))
 $edgeSettings = $settings.vmfBuild.outerEdges
-$roadHeight = Get-ZMTransitionDeckHeight (Join-Path $projectRoot 'tiletemplates\roads\tile_road.vmf') 640
-$bridgeHeight = Get-ZMTransitionDeckHeight (Join-Path $projectRoot 'tiletemplates\roads\tile_road_bridge.vmf') 640
+$roadHeight = Get-ZMTransitionDeckHeight (Join-Path $TemplateDirectory 'roads\tile_road.vmf') 640
+$bridgeHeight = Get-ZMTransitionDeckHeight (Join-Path $TemplateDirectory 'roads\tile_road_bridge.vmf') 640
 Assert ($roadHeight -eq 36 -and $bridgeHeight -eq 196) 'Gate elevation follows the actual road and bridge decks, not the ground/rails/supports.'
 foreach ($expanded in @($false, $true)) {
     $gateBounds = Get-ZMCellBounds 5 640 $expanded
@@ -45,7 +55,7 @@ $fixedProps = @{
     'tile_edge_ra_wall_1aa.vmf' = 2
 }
 foreach ($filename in $fixedProps.Keys) {
-    $root = [ZombieSim.Skybox.KeyValuesParser]::Parse((Get-Content -Raw -LiteralPath (Join-Path $projectRoot "tiletemplates\edges\$filename")))
+    $root = [ZombieSim.Skybox.KeyValuesParser]::Parse((Get-Content -Raw -LiteralPath (Join-Path $TemplateDirectory "edges\$filename")))
     $props = @($root.Children | Where-Object { $_.Name -eq 'entity' -and $_.Get('classname') -eq 'prop_dynamic_override' })
     Assert ($props.Count -eq $fixedProps[$filename]) "$filename retains all approved fixed dynamic trees/signs."
     Assert (@($root.Children | Where-Object { $_.Get('classname') -eq 'prop_static' -and $_.Get('model') -match 'tree[13]_trunk|signpole001|streetsign004e' }).Count -eq 0) 'VBSP-incompatible new-edge static props must not reappear.'
@@ -243,7 +253,7 @@ if (-not $?) { throw 'Expanded protected recipe planning failed.' }
 $coveragePlan = Get-Content -Raw -LiteralPath $coveragePlanPath | ConvertFrom-Json
 $legacyPlanPath = Join-Path $OutputRoot 'legacy-plan.json'
 $legacyDirectory = Join-Path $OutputRoot 'legacy-src'
-& (Join-Path $PSScriptRoot 'plan_cell_templates.ps1') -WorldProfile preview -MapData (Join-Path $PSScriptRoot 'preview_grid_24x24_seed_1337.json') -CellDirectory $legacyDirectory -Output $legacyPlanPath -ListOutput (Join-Path $OutputRoot 'legacy-required.txt') | Out-Null
+& (Join-Path $PSScriptRoot 'plan_cell_templates.ps1') -WorldProfile preview -TemplateDirectory $TemplateDirectory -MapData (Join-Path $PSScriptRoot 'preview_grid_24x24_seed_1337.json') -CellDirectory $legacyDirectory -Output $legacyPlanPath -ListOutput (Join-Path $OutputRoot 'legacy-required.txt') | Out-Null
 if (-not $?) { throw 'Legacy border comparison planning failed.' }
 $legacyPlan = Get-Content -Raw $legacyPlanPath | ConvertFrom-Json
 Assert ($legacyPlan.requiredCellCount -eq 179) 'Installed legacy recipe policy remains 179 recipes.'

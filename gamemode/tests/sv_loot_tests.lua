@@ -170,6 +170,11 @@ test("activation_and_boss_rewards", function(check)
     end
     check(never == 0 and always == 5000, "activation chances 0 and 1 are exact")
     check(math.abs(some / 5000 - 0.35) < 0.02, string.format("activation rate %.3f should be about 0.35", some / 5000))
+    check(Loot.GetSearchableActivationChance({ activationChance = 1 }) == 0.5
+        and Loot.GetSearchableActivationChance({ activationChance = 0.35 }) == 0.175,
+        "searchable generation halves the original probability exactly once")
+    check(Loot.GetSearchableActivationChance({ activationChance = 0 }) == 0,
+        "zero searchable probability remains zero")
 
     local boss = { lootEntries = { entry("weaponMeleeCrowbar", 5, 5), entry("weaponHandgun9mm", 5, 5), entry("itemBossJuice", 2, 2, { bossOnly = true }), entry("itemBandage", 50) } }
     local crowbars = 0

@@ -1,6 +1,7 @@
 ZM_WorldMap = ZM_WorldMap or {}
 local WorldMap = ZM_WorldMap
 local CaptureCatalog = include("cl_world_map_catalog.lua")()
+local CaptureContract = include("world_capture/sh_contract.lua")
 local MapColors = ZM_DermaSkin.Palette
 local getAllPlayers = player.GetAll
 local localMapCameraHeight = 3600
@@ -14,7 +15,7 @@ local localMapDenSpanScale = 2
 // Ortho ignores fov for projection; a wide fov only keeps any fov-based culling generous
 // (120 degrees reaches the doubled den span from the camera height).
 local localMapCullFieldOfView = 120
-local localMapCaptureVersion = 10
+local localMapCaptureVersion = 11
 local localMapRefreshInterval = 3
 local mapDebugConVar = CreateClientConVar("zombiesim_map_debug", "0", true, false, "Show world map draw diagnostics.")
 
@@ -463,7 +464,8 @@ local function getLocalMapCaptureSpan()
     local player = LocalPlayer()
     local safeZoneId = IsValid(player) and player:GetNWString("CurrentSafeZoneId", "") or ""
     local isInDen = safeZoneId ~= "" and safeZoneId ~= "NULL"
-    return isInDen and localMapBaseSpan * localMapDenSpanScale or localMapBaseSpan
+    local bounds = ZM_World and ZM_World.GetCellBounds and ZM_World:GetCellBounds() or nil
+    return CaptureContract.LocalMapSpan(bounds, isInDen, localMapBaseSpan * localMapDenSpanScale)
 end
 
 // Projection always uses the span the current capture was rendered with.
@@ -564,6 +566,10 @@ function WorldMap:CaptureCurrentMap(resetViewport)
     end
 
     local span = getLocalMapCaptureSpan()
+    if not span then
+        ErrorNoHalt("[ZombieSim] Local map capture has no authoritative span.\n")
+        return false
+    end
     self.Capturing = true
     local hiddenPlayerEntities = self:HideCapturePlayerEntities()
     if ZM_Atmosphere then ZM_Atmosphere:SetMapCaptureHidden(true) end
@@ -631,14 +637,10 @@ end
 function WorldMap:ProjectLocalMapPosition(x, y, width, height, centerPosition, viewHeight, mapPosition)
     centerPosition = centerPosition or vector_origin
     mapPosition = mapPosition or vector_origin
-    viewHeight = math.Clamp(tonumber(viewHeight) or getLocalMapSpan() * 0.46, 1, getLocalMapSpan())
-    local viewWidth = viewHeight * width / height
-    local viewStartU = 0.5 + centerPosition.x / getLocalMapSpan() - viewWidth / getLocalMapSpan() * 0.5
-    local viewStartV = 0.5 - centerPosition.y / getLocalMapSpan() - viewHeight / getLocalMapSpan() * 0.5
-    local mapU = 0.5 + mapPosition.x / getLocalMapSpan()
-    local mapV = 0.5 - mapPosition.y / getLocalMapSpan()
-    return x + (mapU - viewStartU) / (viewWidth / getLocalMapSpan()) * width,
-        y + (mapV - viewStartV) / (viewHeight / getLocalMapSpan()) * height
+    local markerX, markerY = CaptureContract.ProjectLocalMap(getLocalMapSpan(), width, height,
+        centerPosition.x, centerPosition.y, viewHeight, mapPosition.x, mapPosition.y)
+    if not markerX then return nil, nil end
+    return x + markerX, y + markerY
 end
 
 WorldMap.SafeZoneDoorColor = Color(92, 214, 140)

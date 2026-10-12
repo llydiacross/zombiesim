@@ -703,6 +703,13 @@ function Get-BorderPlacements {
     $borderTemplates = Get-BorderTemplateSet $Recipe
     $waterSides = Get-WaterBorderPlan $Recipe
     $center = [int][Math]::Floor($TileGridSize / 2)
+    $routeSlots = @($Recipe.tilePlacements | Where-Object { [string]$_.template -match '^roads[\\/]' })
+    foreach ($routeSide in @($edgeConnections + $rampExits | Sort-Object -Unique)) {
+        $routeSlots += [pscustomobject]@{
+            tileX = $(if ($routeSide -eq 'W') { -1 } elseif ($routeSide -eq 'E') { $TileGridSize } else { $center })
+            tileY = $(if ($routeSide -eq 'N') { -1 } elseif ($routeSide -eq 'S') { $TileGridSize } else { $center })
+        }
+    }
     $carparkEndcapsByBorderSlot = @{}
     foreach ($endcap in @(Get-CarparkEndcapPlacements -Recipe $Recipe -TileGridSize $TileGridSize -CarparkTemplates $generatorSettings.cellPlanning.carparks.templates)) {
         $carparkEndcapsByBorderSlot["$($endcap.tileX),$($endcap.tileY)"] = $endcap
@@ -765,10 +772,13 @@ function Get-BorderPlacements {
             # Only the single center slot caps the run; the rest of a tip cell's side is plain wall, not a repeating water strip.
             $usesWaterDeadend = $usesWaterSide -and $waterPlan.isFarTip -and $isCenterEdgeSlot
             $usesWaterFill = $usesWaterSide -and -not $waterPlan.isFarTip
+            $wallTemplates = if (-not ($usesRoad -or $null -ne $carparkEndcap -or $usesWaterDeadend -or $usesWaterFill)) {
+                @(Get-ZMRoadAdjacentWallPool $borderTemplates.wallTemplates $routeSlots $tileX $tileY)
+            } else { @($borderTemplates.wallTemplates) }
             $placements.Add([ordered]@{
                 tileX = $tileX
                 tileY = $tileY
-                template = if ($isBridgeSide) { $bridgeRoadTemplate } elseif ($usesTransitionGateRoad) { $transitionGateRoadTemplate } elseif ($usesRampRoad) { $rampRoadTemplate } elseif ($usesPrimaryRoad) { $primaryRoadTemplate } elseif ($null -ne $carparkEndcap) { $carparkEndcap.template } elseif ($usesWaterDeadend) { [string]$waterSettings.deadendTemplate } elseif ($usesWaterFill) { Get-WaterWallTemplate $waterIndex } else { Get-RandomWallVariationTemplate $borderTemplates.wallTemplates $placementSeed $tileX $tileY }
+                template = if ($isBridgeSide) { $bridgeRoadTemplate } elseif ($usesTransitionGateRoad) { $transitionGateRoadTemplate } elseif ($usesRampRoad) { $rampRoadTemplate } elseif ($usesPrimaryRoad) { $primaryRoadTemplate } elseif ($null -ne $carparkEndcap) { $carparkEndcap.template } elseif ($usesWaterDeadend) { [string]$waterSettings.deadendTemplate } elseif ($usesWaterFill) { Get-WaterWallTemplate $waterIndex } else { Get-RandomWallVariationTemplate $wallTemplates $placementSeed $tileX $tileY }
                 rotationYaw = if ($usesRoad) { $roadYawBySide[$side] } elseif ($null -ne $carparkEndcap) { $carparkEndcap.rotationYaw } elseif ($usesWaterDeadend) { $waterDeadendYawBySide[$side] } else { $wallYawBySide[$side] }
                 targetname = if ($usesTransitionGateRoad) { "zm_transition_road_$side" } else { "zm_border_$side`_$tileX`_$tileY" }
             })

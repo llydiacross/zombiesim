@@ -10,19 +10,20 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -SettingsPath $SettingsPath
+$inputPrefix = '{0}_grid_{1}x{1}_seed_1337' -f $worldGenerationProfile.Config.filePrefix, $worldGenerationProfile.Config.gridCells
 if ([string]::IsNullOrWhiteSpace($MapData)) {
-    $mapFilename = if ($WorldProfile -eq 'preview') { 'preview_grid_24x24_seed_1337.json' } else { 'map_grid_64x64_seed_1337.json' }
+    $mapFilename = "$inputPrefix.json"
     $MapData = Join-Path $PSScriptRoot $mapFilename
 }
 if ([string]::IsNullOrWhiteSpace($PlanData)) {
-    $planFilename = if ($WorldProfile -eq 'preview') { 'preview_grid_24x24_seed_1337_template_plan.json' } else { 'map_grid_64x64_seed_1337_template_plan.json' }
+    $planFilename = "${inputPrefix}_template_plan.json"
     $PlanData = Join-Path $PSScriptRoot $planFilename
 }
 if (-not (Test-Path -LiteralPath $MapData -PathType Leaf) -or -not (Test-Path -LiteralPath $PlanData -PathType Leaf)) {
     throw 'A current map manifest and matching template plan are required.'
 }
 
-$worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -SettingsPath $SettingsPath
 $plannerSettings = $worldGenerationProfile.Settings.cellPlanning
 $maximumOpenTilePercent = [int]$plannerSettings.openTerrain.maximumOpenTilePercent
 $variantChancePercent = [int]$plannerSettings.topologyVariants.chancePercent

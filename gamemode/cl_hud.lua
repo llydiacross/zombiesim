@@ -1,5 +1,6 @@
 // Short-lived messages shown above the local player's head, newest message nearest the player.
 local getAllPlayers = player.GetAll
+local CaptureContract = include("world_capture/sh_contract.lua")
 local playerNotifications = {}
 local hudEventNotifications = {}
 local notificationDuration = 1
@@ -18,14 +19,13 @@ local minimapSizeScale = CreateClientConVar("zombiesim_minimap_size", "1", true,
     "Minimap size multiplier (0.7 to 1.75).")
 local minimapMaterials = {}
 local minimapSatelliteMaterials = {}
-local minimapCellHalfExtent = 1600
+local legacyMinimapCellSpan = 3200
 local minimapZoom = 1
 local minimapZoomProfile
 local minimapZoomInDown = false
 local minimapZoomOutDown = false
 local minimapViewModes = {}
 local minimapModeDown = false
-local compassCellSize = 3200
 local denNpcColor = Color(222, 184, 84)
 local compassMarkerLabels = {
     waypoint = "Waypoint",
@@ -444,8 +444,9 @@ local function getCellCompassYaw(player, targetCell)
     end
 
     local position = player:GetPos()
-    local offsetX = (targetWorldX - playerWorldX) * compassCellSize - position.x
-    local offsetY = (playerWorldY - targetWorldY) * compassCellSize - position.y
+    local bounds = ZM_World:GetCellBounds()
+    local offsetX, offsetY = CaptureContract.WorldCellOffset(bounds.neighbourPitch,
+        playerWorldX, playerWorldY, targetWorldX, targetWorldY, position.x, position.y)
     if offsetX * offsetX + offsetY * offsetY < 2500 then
         return nil
     end
@@ -830,10 +831,13 @@ local function getMinimapCellMaterial(cell)
     return minimapMaterials[key]
 end
 
+local function getMinimapCellSpan()
+    local bounds = ZM_World and ZM_World.GetCellBounds and ZM_World:GetCellBounds() or nil
+    return bounds and bounds.neighbourPitch or legacyMinimapCellSpan
+end
+
 local function getCellTextureCoordinates(position)
-    local cellSpan = minimapCellHalfExtent * 2
-    return math.Clamp((position.x + minimapCellHalfExtent) / cellSpan, 0, 1),
-        math.Clamp((minimapCellHalfExtent - position.y) / cellSpan, 0, 1)
+    return CaptureContract.CellTextureCoordinates(getMinimapCellSpan(), position.x, position.y)
 end
 
 local function getMinimapViewMode(isInSafeZone)
@@ -1101,7 +1105,7 @@ local function drawPlayerMinimap()
     local minimapViewMode = getMinimapViewMode(isInDen)
     local drewMap = false
     local cellTextureTransform
-    local localMapViewHeight = minimapCellHalfExtent * 2 * 0.46 / zoom
+    local localMapViewHeight = (isInDen and legacyMinimapCellSpan or getMinimapCellSpan()) * 0.46 / zoom
     if minimapViewMode == "map" and ZM_WorldMap and ZM_WorldMap.EnsureLocalMapCapture and ZM_WorldMap.DrawLocalMap then
         if ZM_WorldMap:EnsureLocalMapCapture() then
             drewMap = ZM_WorldMap:DrawLocalMap(

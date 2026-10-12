@@ -85,7 +85,7 @@ The `cellPlanning.rotations` values in [generator-settings.json](generator-setti
 
 `worldGeneration.profiles` in [generator-settings.json](generator-settings.json) defines every generated world. A profile owns its grid size, generated file prefix, layer-image setting, source VMF folder, compiler build folder, staged map folder, runtime-world JSON, and optional launcher thumbnail. The included `city` and `preview` entries are normal profiles; add another entry such as `coast` to build a separate custom city without adding another set of special-case settings.
 
-`build_city.ps1` also stages generated in-game map materials in `content/materials/worlds/<profile>`. The composite world image and its exported layers are placed in `map_layers` with stable names: `world.png` for the composite and `<layer>.png` for every individual layer. One local schematic for each reusable city recipe is rendered in `cells` using the matching BSP name with a `.png` extension. Each local map reflects its planned 5-by-5 tile layout, dark asphalt roads with yellow dotted centerlines, road or motorway topology, blocked exits, building squares, and every carpark entrance, junction, lane, and endcap. Carparks use a lighter surface and outlined parking bays. It marks named landmarks at their exact planned tile positions; commercial-building tiles are marked `COM`, while a future dedicated `tile_market` remains a named `MKT` landmark. Satellite mode always renders the generated named-landmarks overlay above its satellite image and is stitched from the local recipe maps at the highest whole-cell resolution within the 4096px material limit. Each local recipe map is rendered at `-ResolutionScale` times the authored 48px-per-tile layout (4x, or 960px square, by default), so the stitched satellite downsamples from sharp source art and the client can draw individual cells at native resolution. `build_world_wireframe_material.ps1` likewise writes one per-recipe navmesh image into `cells_wireframe` alongside the stitched `map_layers/wireframe.png`, sized by `-CellImageSize`. Source map layers are replaced for each plan while the derived satellite is retained until the stitcher overwrites it. Profile generation automatically removes stale generated source world maps and layers, source VMFs, zoo VMFs, compiler artifacts, staged BSPs, cell maps, and map-layer PNGs; it does not touch authored templates or other profiles. Set `exportLayers` to `true` for any profile that needs the individual world layer images; the release build stops with an actionable error when they have not been generated.
+`build_city.ps1` also stages generated in-game map materials in `content/materials/worlds/<profile>`. The composite world image and its exported layers are placed in `map_layers` with stable names: `world.png` for the composite and `<layer>.png` for every individual layer. One local schematic for each reusable city recipe is rendered in `cells` using the matching BSP name with a `.png` extension. Expanded maps use the generated layout metadata to render the 5-by-5 core inset within the complete 9-by-9 core/border/outer frame; omitted ocean-side outer bands use water rather than invented scenery. Each local map reflects its actual core, border and outer placements, dark asphalt roads with yellow dotted centerlines, road or motorway topology, blocked exits, building squares, and every carpark entrance, junction, lane, and endcap. Per-recipe and stitched wireframes project nav areas against the same authoritative neighbour pitch, keeping their core nav coverage inset consistently within that frame. Carparks use a lighter surface and outlined parking bays. It marks named landmarks at their exact planned tile positions; commercial-building tiles are marked `COM`, while a future dedicated `tile_market` remains a named `MKT` landmark. Satellite mode always renders the generated named-landmarks overlay above its satellite image and is stitched from the local recipe maps at the highest whole-cell resolution within the 4096px material limit. Each local recipe map is rendered at `-ResolutionScale` times the authored 48px-per-tile layout (4x, or 960px square, by default), so the stitched satellite downsamples from sharp source art and the client can draw individual cells at native resolution. `build_world_wireframe_material.ps1` likewise writes one per-recipe navmesh image into `cells_wireframe` alongside the stitched `map_layers/wireframe.png`, sized by `-CellImageSize`. Source map layers are replaced for each plan while the derived satellite is retained until the stitcher overwrites it. Profile generation automatically removes stale generated source world maps and layers, source VMFs, zoo VMFs, compiler artifacts, staged BSPs, cell maps, and map-layer PNGs; it does not touch authored templates or other profiles. Set `exportLayers` to `true` for any profile that needs the individual world layer images; the release build stops with an actionable error when they have not been generated.
 
 The native client map opens with `M` or the `zombiesim_map` console command. It supports layer toggles, pan and deep zoom, selected-cell inspection, selected-cell right-click waypoints, and dynamic player and road-blockade overlays. Layer toggles are per render mode: the Layers list only offers the layers that view can use, and each mode stores its own toggle state. Atlas offers the full authored stack (terrain, districts, buildings, roads, motorways, metro, safe zones, landmarks, radiation, danger, and the map key) with stacking order controls. Satellite and Walkers omit terrain, buildings, roads, and motorways because the satellite image already contains them, and default to safe zones, landmarks, and the map key. Wireframe draws no map layers, title, or map key at all; it shows only a red cell-boundary grid over the wireframe, the player, the waypoint and its route, the selected cell, and safe-zone destinations, all drawn directly in Lua so they stay sharp at any zoom. A waypoint draws a route from the player that avoids blocked roads when a valid path exists. Satellite, Walkers, and Wireframe swap from the stitched atlas to per-cell images once the zoomed map exceeds the atlas resolution, so deep zoom stays sharp instead of magnifying the atlas; only cells inside the visible canvas are drawn. The title and map key remain fixed in the upper-left and upper-right corners while the world map is moved. It uses Derma and the staged material PNGs directly, so no HTML, CSS, or JavaScript needs to be packaged. Set `zombiesim_map_debug 1` to overlay the current zoom, map size, atlas width, and whether the view is drawing the stitched atlas or per-cell images.
 
@@ -290,8 +290,8 @@ Hammer++ is an editor/orchestration tool and BSPSource is a decompiler, so neith
 After reviewing the preview, regenerate production recipes so they inherit the current base cell template, including its lighting and fog entities. Then build the release:
 
 ```powershell
-.\bin\build_cell_vmfs.ps1 -PlanData .\bin\map_grid_64x64_seed_1337_template_plan.json -RefreshGenerated
-.\bin\build_city.ps1 -MapData .\bin\map_grid_64x64_seed_1337.json -PlanData .\bin\map_grid_64x64_seed_1337_template_plan.json -CleanStagedCity
+.\bin\build_cell_vmfs.ps1 -WorldProfile city -PlanData .\bin\map_grid_48x48_seed_1337_template_plan.json -RefreshGenerated
+.\bin\build_city.ps1 -WorldProfile city -MapData .\bin\map_grid_48x48_seed_1337.json -PlanData .\bin\map_grid_48x48_seed_1337_template_plan.json -CleanStagedCity
 ```
 
 `build_city.ps1` runs the sequential VBSP, VVIS, and VRAD compiler pass for every VMF in the selected profile's `cellDirectory`, using that profile's `buildDirectory` as an intermediate folder. It copies only the recipe BSPs selected by the plan to the profile's `releaseMapDirectory` and writes the compact gameplay world index to its `runtimeWorldData` path.
@@ -356,7 +356,7 @@ These are project-relative folders and files. Use forward slashes or backslashes
 | Profile setting | What it controls |
 | --- | --- |
 | `filePrefix` | Prefix for the profile's generated map image, manifest, template plan, required-recipe list, and filename key. |
-| `gridCells` | Width and height of this city in logical cells. `64` means a 64-by-64 city. |
+| `gridCells` | Width and height in logical cells. The future release `city` is 48-by-48 (2304 cells); `preview` remains 24-by-24. Existing production exports are not resized until an explicitly approved rebuild. |
 | `exportLayers` | Whether generation writes separate terrain, roads, buildings, highways, landmarks, safe zones, metro, grid, labels, and key PNG layers. |
 | `cellDirectory` | Generated VMF source folder for this profile. |
 | `buildDirectory` | Intermediate compiler output folder for this profile. |
@@ -709,11 +709,23 @@ Variants prevent a highly repeated recipe from making every intersection look id
 
 | Setting | What it controls |
 | --- | --- |
-| `usageThreshold` | A base recipe gets variants only when it is used more than this number of times. `15` means 16 or more uses. |
-| `maximumPerRecipe` | Maximum number of layouts made for one repeated base recipe. The generator distributes uses as evenly as possible among them. The current limit is `2`. |
-| `suffix` | Letter before the variation number in filenames. The current limit produces `-v1` and `-v2`. Keep `x` free for the future `_2x` prefab-footprint convention. |
+| `usageThreshold` | Default `15`. Frequently reused recipes receive `ceil(uses / usageThreshold)` layouts, up to the cap below. With neighbour avoidance enabled, less-used recipes retain their base layout and try alternatives only when an actual adjacent-layout conflict requires one. |
+| `maximumPerRecipe` | Maximum candidate layouts per repeated base recipe. Default `4`. Frequent recipes prefer the least-used compatible variant; less-used recipes prefer their base layout so distant cells can reuse maps. Neighbourhood constraints take priority over perfectly even use. |
+| `avoidAdjacentDuplicates` | Default `true`. Compare actual emitted tile layouts against all four cardinal neighbours, not just map filenames. Try another candidate when a layout repeats. If every candidate repeats, choose the fewest conflicts and emit an explicit warning: a limited authored pool cannot guarantee unlimited distinct geometry. |
+| `suffix` | Letter before the variation number in filenames (up to `-v4`; retained base layouts have no variant suffix). Keep `x` free for the future `_2x` prefab-footprint convention. |
 
 Variants preserve road topology and transport pieces. They vary non-transport placement choices such as buildings and decorations. They are deterministic: the same city seed and settings produce the same variant assignments.
+
+With neighbour avoidance enabled, the final recipe hash includes its emitted
+tile layout and placement seed. Different terrain-dependent building choices
+must not accidentally share one BSP just because their coarse topology/profile
+codes match. Context splits can therefore produce more unique BSPs than the
+candidate variant count alone suggests.
+
+`bin/test_cell_variants.ps1 -PlanData <plan> -BaselinePlanData <previous-plan>`
+checks real layout differences at every adjacent pair and unchanged logical
+connections, transport metadata and safe-zone footprints. Optional
+`-LayoutDirectory <generated-src>` checks generated border/outer placements too.
 
 ### `landmarkTemplatePatterns`
 
@@ -877,6 +889,12 @@ boundary (`x = 0`), including its NW/SW outer corners. The planner's
 continues selecting the previously authored border/water-corner tiles, unchanged.
 Only reserved centre road/bridge corridors may continue on omitted sides.
 Safe-zone suppression takes precedence.
+
+Both border and outer straight-wall pools exclude terminal `_1aaa`/`_2aaa`
+(and other numeric `aaa`) pieces in slots immediately cardinal-adjacent to a
+road, motorway or bridge corridor. `a`/`aa`, diagonals, distant wall slots,
+corners, water pieces and road sources are unchanged. Selection remains
+deterministic; an adjacent pool containing only `aaa` fails explicitly.
 
 Authored north-facing straights use inward N180/E90/S0/W270. The separately
 inspected NW-opening corner uses NW180/NE90/SE0/SW270. Do not rotate or trim

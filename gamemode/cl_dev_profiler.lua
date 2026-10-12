@@ -173,6 +173,8 @@ local function finishProfile()
     Profiler.Session = nil
     restoreHooks()
     if not session then return end
+    collectgarbage("collect")
+    local luaHeapFinishKb = collectgarbage("count")
 
     local frames = math.max(1, session.frames)
     local results = {}
@@ -211,18 +213,33 @@ local function finishProfile()
         luaHookMsPerFrame = hookTotal,
         // Rough Lua allocation rate: positive heap growth between frames (garbage-collection cycles are excluded).
         allocatedKbPerFrame = session.allocated / frames,
+        luaHeap = {
+            startKb = session.luaHeapStartKb,
+            finishKb = luaHeapFinishKb,
+            deltaKb = luaHeapFinishKb - session.luaHeapStartKb
+        },
+        resources = {
+            clientEntities = #ents.GetAll(),
+            launcherCityModels = ZM_LauncherSceneClient and #(ZM_LauncherSceneClient.CityModels or {}) or 0,
+            launcherSpheres = ZM_LauncherSceneClient and table.Count(ZM_LauncherSceneClient.Spheres or {}) or 0,
+            launcherDioramaMeshes = ZM_LauncherSceneClient and ZM_LauncherSceneClient.DioramaMeshes
+                and tonumber(ZM_LauncherSceneClient.DioramaMeshes.meshes) or 0,
+            skyPaletteMeshes = ZM_SkyPalettes and #(ZM_SkyPalettes.Meshes or {}) or 0,
+            characterCardEntries = ZM_CharacterCards and table.Count(ZM_CharacterCards.Entries or {}) or 0
+        },
         weather = ZM_Atmosphere and ZM_Atmosphere.Weather or nil,
         snowCover = ZM_Atmosphere and ZM_Atmosphere.SnowCoverAmount or nil,
         puddleRenderLobes = ZM_Atmosphere and ZM_Atmosphere.PuddleRenderLobes or nil,
         puddleDropRings = ZM_Atmosphere and ZM_Atmosphere.PuddleDropRings or nil,
         skyInspection = ZM_SkyInspection and ZM_SkyInspection:GetDiagnosticSnapshot() or nil,
+        walkerPreload = ZM_WalkerPreload and ZM_WalkerPreload:GetDiagnosticSnapshot() or nil,
         hooks = results
     }
     file.CreateDir("zombiesim")
     file.Write(outputPath, util.TableToJSON(report, true))
-    print(string.format("[ZombieSim] Hook profile: %d frames, %.1f fps, frame p50 %.2f / p95 %.2f / max %.2f ms, Lua hooks %.3f ms/frame, %.1f KB/frame allocated.",
+    print(string.format("[ZombieSim] Hook profile: %d frames, %.1f fps, frame p50 %.2f / p95 %.2f / max %.2f ms, Lua hooks %.3f ms/frame, %.1f KB/frame allocated, retained Lua heap %+.1f KB.",
         report.frames, report.averageFps, report.frameMs.p50, report.frameMs.p95, report.frameMs.max,
-        report.luaHookMsPerFrame, report.allocatedKbPerFrame))
+        report.luaHookMsPerFrame, report.allocatedKbPerFrame, report.luaHeap.deltaKb))
     for index = 1, math.min(12, #results) do
         local result = results[index]
         print(string.format("  %-60s %7.3f ms/frame  max %6.2f ms  %6.2f KB/frame", result.hook, result.msPerFrame,
@@ -237,7 +254,15 @@ function Profiler:Start(seconds)
         return
     end
     seconds = math.Clamp(tonumber(seconds) or 10, 1, 120)
-    local session = { stats = {}, frames = 0, frameTimes = {}, allocated = 0, started = SysTime() }
+    collectgarbage("collect")
+    local session = {
+        stats = {},
+        frames = 0,
+        frameTimes = {},
+        allocated = 0,
+        started = SysTime(),
+        luaHeapStartKb = collectgarbage("count")
+    }
     self.Session = session
     self.Wrapped = {}
     local hooks = hook.GetTable()

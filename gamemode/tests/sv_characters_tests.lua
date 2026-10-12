@@ -138,6 +138,111 @@ Suite:Add("slot storage is isolated", function(check)
         "slot 1 and slot 2 credit balances do not overlap")
 end)
 
+Suite:Add("presentation snapshots are read-only isolated and revisioned", function(check)
+    insertCharacter(rawSteamId, 1, characterOne, "Test One")
+    run("UPDATE characters SET model = " .. sql.SQLStr(ZM_CharacterRules.Models[1])
+        .. ", skin = 0, bodygroups = '{}', playerColour = '[0.2,0.4,0.6]', appearanceRequired = 0,"
+        .. " originCellX = 0, originCellY = 0 WHERE characterId = " .. sql.SQLStr(characterOne))
+    local cell = ZM_World:GetCell(0, 0)
+    check(cell ~= nil, "snapshot fixture uses a real logical cell")
+    ZM_SetPlayerData(characterOne, profile, {
+        XP = 25, Level = 3, CellX = 0, CellY = 0, Cash = 7
+    }, "character snapshot test")
+    local rows = {
+        { instanceId = "snapshot-shirt", container = "equipped", slot = ZM_Clothing.Slots.shirt,
+            itemId = "itemPrototypeShirt", count = 1, level = 1 },
+        { instanceId = "snapshot-pants", container = "equipped", slot = ZM_Clothing.Slots.pants,
+            itemId = "itemPrototypePants", count = 1, level = 1 },
+        { instanceId = "snapshot-weapon", container = "equipped", slot = 1,
+            itemId = "weaponMeleeHammer", count = 1, level = 1 }
+    }
+    local saved, saveError = ZM_ReplacePlayerItems(characterOne, profile, rows)
+    check(saved, "snapshot inventory saves: " .. tostring(saveError))
+    run("INSERT OR REPLACE INTO equipped_weapon_slots (steamid, profile, slot, instanceId, selected) VALUES ("
+        .. sql.SQLStr(characterOne) .. ", " .. sql.SQLStr(profile) .. ", 1, 'snapshot-weapon', 1)")
+    local character = run("SELECT * FROM characters WHERE characterId = " .. sql.SQLStr(characterOne))[1]
+    local before = util.TableToJSON({
+        character = run("SELECT * FROM characters WHERE characterId = " .. sql.SQLStr(characterOne)),
+        data = ZM_GetPlayerData(characterOne, profile),
+        items = ZM_GetPlayerItems(characterOne, profile),
+        weapons = ZM_GetEquippedWeaponSlots(characterOne, profile)
+    })
+    local first, firstError = Characters:BuildPresentationSnapshot(profile, character)
+    local second, secondError = Characters:BuildPresentationSnapshot(profile, character)
+    local after = util.TableToJSON({
+        character = run("SELECT * FROM characters WHERE characterId = " .. sql.SQLStr(characterOne)),
+        data = ZM_GetPlayerData(characterOne, profile),
+        items = ZM_GetPlayerItems(characterOne, profile),
+        weapons = ZM_GetEquippedWeaponSlots(characterOne, profile)
+    })
+    check(first and second, "snapshot collection succeeds twice: " .. tostring(firstError or secondError))
+    check(first and first.appearance.model == ZM_CharacterRules.Models[1]
+        and first.outfit.shirt == "prototype" and first.outfit.pants == "prototype",
+        "snapshot contains saved appearance and worn clothing")
+    check(first and first.activeWeapon and first.activeWeapon.itemId == "weaponMeleeHammer"
+        and type(first.activeWeapon.worldModel) == "string",
+        "snapshot contains the selected weapon visual without creating a weapon")
+    check(first and type(first.weapons) == "table" and #first.weapons >= 1
+        and first.weapons[1].itemId == "weaponMeleeHammer" and first.weapons[1].selected == true,
+        "snapshot lists every equipped weapon slot and marks the selected one")
+    check(first and first.location.available and first.location.state == "city"
+        and first.location.cellId == cell.id and first.location.map == cell.map,
+        "snapshot resolves the saved logical city location")
+    check(first and second and first.presentationRevision == second.presentationRevision and before == after,
+        "repeated snapshot collection is idempotent and leaves every source row unchanged")
+
+    insertCharacter(rawSteamId, 2, characterTwo, "Test Two")
+    run("UPDATE characters SET model = " .. sql.SQLStr(ZM_CharacterRules.Models[2])
+        .. ", skin = 1, bodygroups = '{}', playerColour = '[1,1,1]', appearanceRequired = 0,"
+        .. " originCellX = 0, originCellY = 0 WHERE characterId = " .. sql.SQLStr(characterTwo))
+    local other = Characters:BuildPresentationSnapshot(profile,
+        run("SELECT * FROM characters WHERE characterId = " .. sql.SQLStr(characterTwo))[1])
+    check(other and other.appearance.model ~= first.appearance.model and other.outfit.shirt == ""
+        and other.activeWeapon == nil and #other.weapons == 0,
+        "another slot cannot see slot 1 outfit or weapon data")
+    cleanup()
+end)
+
+Suite:Add("presentation locations and owner profile remain explicit", function(check)
+    insertCharacter(rawSteamId, 1, characterOne, "Test One")
+    run("UPDATE characters SET model = " .. sql.SQLStr(ZM_CharacterRules.Models[1])
+        .. ", skin = 0, bodygroups = '{}', playerColour = '[1,1,1]',"
+        .. " originCellX = 0, originCellY = 0 WHERE characterId = " .. sql.SQLStr(characterOne))
+    local starting = Characters:BuildPresentationSnapshot(profile,
+        run("SELECT * FROM characters WHERE characterId = " .. sql.SQLStr(characterOne))[1])
+    check(starting and starting.location.available and starting.location.state == "start",
+        "undeployed character uses its defined origin start")
+
+    local safeZone = ZM_World:GetOriginSafeZone()
+    local safeX, safeY
+    if safeZone then safeX, safeY = ZM_World:GetCoordinates(tonumber(safeZone.cell)) end
+    check(safeZone and safeX ~= nil and safeY ~= nil, "fixture resolves the authoritative origin den")
+    ZM_SetPlayerData(characterOne, profile, {
+        XP = 0, Level = 1, CellX = safeX, CellY = safeY, Cash = 0,
+        CurrentSafeZoneId = safeZone.id
+    }, "character den snapshot test")
+    local den = Characters:BuildPresentationSnapshot(profile,
+        run("SELECT * FROM characters WHERE characterId = " .. sql.SQLStr(characterOne))[1])
+    check(den and den.location.available and den.location.state == "den"
+        and den.location.safeZoneId == safeZone.id and den.location.map == safeZone.map,
+        "saved den is resolved through authoritative safe-zone data")
+
+    run("UPDATE player_data SET CellX = 99999, CellY = 99999, CurrentSafeZoneId = NULL WHERE steamid = "
+        .. sql.SQLStr(characterOne) .. " AND profile = " .. sql.SQLStr(profile))
+    local corrupt = Characters:BuildPresentationSnapshot(profile,
+        run("SELECT * FROM characters WHERE characterId = " .. sql.SQLStr(characterOne))[1])
+    check(corrupt and not corrupt.location.available and corrupt.location.state == "unavailable"
+        and type(corrupt.location.reason) == "string",
+        "corrupt saved coordinates produce an explicit unavailable card")
+
+    local owned = Characters:ListOwned(rawSteamId, profile)
+    local wrongProfile = Characters:ListOwned(rawSteamId, "city")
+    check(owned and #owned == 1 and owned[1].characterId == nil
+        and wrongProfile and #wrongProfile == 0,
+        "listing strips internal ids and cannot cross the requested owner profile")
+    cleanup()
+end)
+
 Suite:Add("slot and name validation reject invalid values", function(check)
     check(Characters.ValidateSlot(1) and Characters.ValidateSlot(3), "slots 1 and 3 are accepted")
     check(not Characters.ValidateSlot(0) and not Characters.ValidateSlot(4)
@@ -165,13 +270,9 @@ Suite:Add("starting allocation and appearance reject forged input", function(che
 end)
 
 Suite:Add("failed creation writes no character rows", function(check)
-    local target = ZM_Util.FirstHuman()
-    if not IsValid(target) or (game.GetMap() ~= "zn_city_start" and game.GetMap() ~= "zn_preview_start") then
-        check(true, "creation request requires a human in the launcher; skipped outside launcher")
-        return
-    end
-    local owner = sql.SQLStr(target:SteamID())
-    local currentProfile = ZM_Util.ProfileFor(target)
+    cleanup()
+    local owner = sql.SQLStr(rawSteamId)
+    local currentProfile = profile
     local profileName = sql.SQLStr(currentProfile)
     local queryCount = "SELECT COUNT(*) FROM characters WHERE steamid = " .. owner
         .. " AND profile = " .. profileName
@@ -185,31 +286,23 @@ Suite:Add("failed creation writes no character rows", function(check)
         { label = "invalid name", change = function(p) p.name = "!invalid!" end },
         { label = "overspent points", change = function(p) p.attributes.Strength = 11 end }
     }
-    for _, testCase in ipairs(cases) do
-        local details = table.Copy(payload)
-        testCase.change(details)
-        target.ZM_CharacterRequestAt = nil
-        local created = Characters:Create(target, 1, details)
-        check(not created and (tonumber(sql.QueryValue(queryCount)) or 0) == before,
-            testCase.label .. " writes no rows")
-    end
-    local occupiedSlot = tonumber(sql.QueryValue("SELECT slot FROM characters WHERE steamid = " .. owner
-        .. " AND profile = " .. profileName .. " LIMIT 1"))
-    if not occupiedSlot then
-        run("BEGIN")
-        local inserted, insertError = pcall(function()
-            run("INSERT INTO characters (steamid, profile, slot, characterId, name, job, createdAt) VALUES ("
-                .. owner .. ", " .. profileName .. ", 1, "
-                .. sql.SQLStr("test-full-slot-" .. suffix) .. ", 'Occupied', 'Civilian', " .. os.time() .. ")")
-        end)
-        if inserted then occupiedSlot = 1 end
-        check(inserted, "occupied-slot fixture created: " .. tostring(insertError))
-    end
-    target.ZM_CharacterRequestAt = nil
-    local created = Characters:Create(target, occupiedSlot, payload)
-    check(not created, "an occupied slot is refused")
-    if before == 0 then run("ROLLBACK") end
-    check((tonumber(sql.QueryValue(queryCount)) or 0) == before, "full-slot rejection writes no rows")
+    local ok, failure = xpcall(function()
+        for _, testCase in ipairs(cases) do
+            local details = table.Copy(payload)
+            testCase.change(details)
+            local created = Characters:CreateOwned(rawSteamId, currentProfile, 1, details)
+            local current = tonumber(sql.QueryValue(queryCount)) or 0
+            check(not created and current == before, string.format(
+                "%s writes no rows (result %s, before %d, after %d)",
+                testCase.label, tostring(created), before, current))
+        end
+        insertCharacter(rawSteamId, 1, characterOne, "Occupied")
+        local created = Characters:CreateOwned(rawSteamId, currentProfile, 1, payload)
+        check(not created, "an occupied slot is refused")
+        check((tonumber(sql.QueryValue(queryCount)) or 0) == 1, "full-slot rejection writes no additional rows")
+    end, debug.traceback)
+    cleanup()
+    check(ok, "isolated creation fixture completes: " .. tostring(failure))
 end)
 
 Suite:Add("three character slots are the maximum", function(check)
@@ -220,6 +313,11 @@ Suite:Add("three character slots are the maximum", function(check)
         .. " AND profile = " .. sql.SQLStr(profile))
     check(rows and #rows == Characters.MaximumSlots, "all three allowed slots can be occupied")
     check(not Characters.ValidateSlot(Characters.MaximumSlots + 1), "a fourth slot is rejected")
+    run("INSERT INTO active_characters (steamid, profile, slot, selectedAt) VALUES ("
+        .. sql.SQLStr(rawSteamId) .. ", " .. sql.SQLStr(profile) .. ", 2, " .. os.time() .. ")")
+    local listed = Characters:ListOwned(rawSteamId, profile)
+    check(listed and tonumber(listed[2].active) == 1 and tonumber(listed[1].active) == 0
+        and tonumber(listed[3].active) == 0, "listing exposes one read-only active-slot default")
     cleanup()
 end)
 

@@ -34,6 +34,44 @@ return function(createEngine, loadChunk)
                 and not env.ZM_Atmosphere.MapCaptureParticlesHidden and state.targetDepth == 0, "all scopes restored")
             for _, entity in ipairs(state.transients) do check(not entity.noDraw and not entity.shadow, "transient auto-draw restored") end
         end)
+        suite:Add("local_map_projection_uses_full_footprint_and_preserves_den_span", function(check)
+            local _, _, state, contract = fixture()
+            local span = contract.LocalMapSpan(state.world.cellBounds, false, 6400)
+            check(span == 5760, "city capture uses authoritative neighbour pitch")
+            check(contract.LocalMapSpan(state.world.cellBounds, true, 6400) == 6400,
+                "den capture retains its independent span")
+            check(not contract.LocalMapSpan(nil, false, 6400), "missing city bounds fail explicitly")
+            local function project(x, y)
+                return contract.ProjectLocalMap(span, 576, 576, 0, 0, span, x, y)
+            end
+            local centerX, centerY = project(0, 0)
+            check(centerX == 288 and centerY == 288, "cell centre")
+            for _, distance in ipairs({1600, 2240, 2880}) do
+                local eastX, eastY = project(distance, 0)
+                local westX, westY = project(-distance, 0)
+                local northX, northY = project(0, distance)
+                local southX, southY = project(0, -distance)
+                local offset = distance / 10
+                check(eastX == 288 + offset and eastY == 288, "east " .. distance)
+                check(westX == 288 - offset and westY == 288, "west " .. distance)
+                check(northX == 288 and northY == 288 - offset, "north " .. distance)
+                check(southX == 288 and southY == 288 + offset, "south " .. distance)
+            end
+            local coastX, coastY = project(-2240, 2240)
+            local landX, landY = project(2880, -2880)
+            check(coastX == 64 and coastY == 64 and landX == 576 and landY == 576,
+                "asymmetric NW coast contact and SE land edge share the full frame")
+            local centerU, centerV = contract.CellTextureCoordinates(span, 0, 0)
+            local westU, northV = contract.CellTextureCoordinates(span, -2880, 2880)
+            local coastU, coastV = contract.CellTextureCoordinates(span, -2240, 2240)
+            check(centerU == 0.5 and centerV == 0.5 and westU == 0 and northV == 0,
+                "static cell texture uses full-footprint centre and edges")
+            check(coastU == (0.5 - 2240 / 5760) and coastV == (0.5 - 2240 / 5760),
+                "coast contact stays inset within static cell texture")
+            local eastOffset, northOffset = contract.WorldCellOffset(span, 2, 3, 3, 2, 120, -80)
+            check(eastOffset == 5640 and northOffset == 5840,
+                "cross-cell compass uses authoritative pitch and cardinal signs")
+        end)
         suite:Add("render_clear_and_capture_failures_restore_every_scope", function(check)
             for _, failure in ipairs({"renderFailure", "clearFailure", "png", "writeFailure", "blankPixels", "pixelFailure"}) do
                 local capture, env, state = fixture()

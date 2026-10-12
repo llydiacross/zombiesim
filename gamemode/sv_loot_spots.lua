@@ -16,6 +16,7 @@ Spots.UseRange = ZM_LootTargeting.UseRange
 Spots.OfferRange = 200
 Spots.OfferSeconds = 120
 Spots.PresenceInterval = 15
+Spots.MinActiveSpacing = 320
 Spots.HighlightColor = Color(255, 225, 110)
 Spots.DeclinedColor = Color(145, 145, 145)
 
@@ -44,10 +45,14 @@ function Spots:FindCandidates()
             local rule = ZM_StaticData:GetEntityLootRule(entity:GetClass(), entity:GetModel())
             local key = rule and self.GetSpotKey(entity)
             if key then
-                table.insert(candidates, { key = key, rule = rule, entity = entity })
+                local center = entity.ZM_LootSpotCenter
+                    or (entity.WorldSpaceCenter and entity:WorldSpaceCenter())
+                    or entity:GetPos()
+                table.insert(candidates, { key = key, rule = rule, entity = entity, center = center })
             end
         end
     end
+    table.sort(candidates, function(a, b) return a.key < b.key end)
     return candidates
 end
 
@@ -62,10 +67,48 @@ local function readItem(value)
     return util.JSONToTable(value)
 end
 
+function Spots.SelectActiveCandidates(candidates, rng)
+    local ordered = table.Copy(candidates or {})
+    table.sort(ordered, function(a, b) return a.key < b.key end)
+    local winners = {}
+    for _, candidate in ipairs(ordered) do
+        if ZM_Loot.RollSearchableActivation(candidate.rule, rng) then
+            table.insert(winners, { candidate = candidate, priority = rng:Next() })
+        end
+    end
+    table.sort(winners, function(a, b)
+        return a.priority == b.priority and a.candidate.key < b.candidate.key or a.priority < b.priority
+    end)
+    local selected = {}
+    local minimumDistanceSqr = Spots.MinActiveSpacing * Spots.MinActiveSpacing
+    for _, winner in ipairs(winners) do
+        local candidate = winner.candidate
+        local center = candidate.center
+            or (candidate.entity.WorldSpaceCenter and candidate.entity:WorldSpaceCenter())
+            or candidate.entity:GetPos()
+        local spaced = center ~= nil
+        for _, existing in ipairs(selected) do
+            if center:DistToSqr(existing.center) < minimumDistanceSqr then
+                spaced = false
+                break
+            end
+        end
+        if spaced then
+            table.insert(selected, { key = candidate.key, rule = candidate.rule, entity = candidate.entity, center = center })
+        end
+    end
+    table.sort(selected, function(a, b) return a.key < b.key end)
+    return selected
+end
+
 // Loads or re-rolls the spots for a cell. Returns the cell state or nil and a reason.
 // candidates: { key, rule, entity }; options: { now, rng, danger, forceRegenerate }.
 function Spots:LoadCell(profile, cellId, candidates, options)
     local now = options.now or os.time()
+    if type(options.mapFingerprint) == "string" and options.mapFingerprint ~= "" then
+        local reset, resetError = ZM_PrepareLootCellMapRevision(profile, cellId, options.mapFingerprint, now)
+        if reset == nil then return nil, resetError end
+    end
     local cellRow, cellError = ZM_GetLootCell(profile, cellId)
     if cellError then
         return nil, cellError
@@ -80,12 +123,10 @@ function Spots:LoadCell(profile, cellId, candidates, options)
     if options.forceRegenerate or self.ShouldRegenerate(cellRow, now) then
         local rng = options.rng or Generation.NewRng()
         local rows = {}
-        for _, candidate in ipairs(candidates) do
-            if ZM_Loot.RollActivation(candidate.rule, rng) then
-                table.insert(rows, { key = candidate.key, state = "available" })
-            end
+        for _, candidate in ipairs(self.SelectActiveCandidates(candidates, rng)) do
+            table.insert(rows, { key = candidate.key, state = "available" })
         end
-        local saved, saveError = ZM_ReplaceLootCell(profile, cellId, now, now, rows)
+        local saved, saveError = ZM_ReplaceLootCell(profile, cellId, now, now, rows, options.mapFingerprint)
         if not saved then
             return nil, saveError
         end
@@ -424,7 +465,10 @@ function Spots:OnPlayerReady(target)
     if baseMapName(ZM_World:GetMapPath(cell)) ~= baseMapName(game.GetMap()) then
         return
     end
-    local loaded, loadError = self:LoadCell(ZM_World.ActiveProfile, cell.id, self:FindCandidates(), { danger = ZM_World:GetDangerIntensity(cell) or 0 })
+    local loaded, loadError = self:LoadCell(ZM_World.ActiveProfile, cell.id, self:FindCandidates(), {
+        danger = ZM_World:GetDangerIntensity(cell) or 0,
+        mapFingerprint = cell.map
+    })
     if not loaded then
         print("[ZombieSim] Loot spots could not be loaded: " .. tostring(loadError))
         return

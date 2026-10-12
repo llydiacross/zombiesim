@@ -5,9 +5,11 @@ ZM_LootBodies = ZM_LootBodies or {}
 local Bodies = ZM_LootBodies
 local Foliage = ZM_Foliage
 
-Bodies.Version = 1
-Bodies.MinCount = 2
-Bodies.MaxCount = 4
+Bodies.Version = 2
+Bodies.MinCount = 1
+Bodies.MaxCount = 2
+Bodies.LegacyPolicy = { version = 1, minCount = 2, maxCount = 4 }
+Bodies.CurrentPolicy = { version = Bodies.Version, minCount = Bodies.MinCount, maxCount = Bodies.MaxCount }
 Bodies.MaxAttempts = 80
 Bodies.MapEdgeMargin = 256
 Bodies.MinSpacing = 320
@@ -80,8 +82,9 @@ end
 
 // Plans bodies with injected world access: traceGround(x, y, bounds) and isBlocked(position, angles).
 // Every random draw happens before any rejection check, so one rejected attempt never shifts later attempts.
-function Bodies.Plan(rng, bounds, pool, traceGround, isBlocked)
+function Bodies.Plan(rng, bounds, pool, traceGround, isBlocked, policy)
     local plans = {}
+    policy = policy or Bodies.CurrentPolicy
     if #pool == 0 then
         return plans
     end
@@ -92,7 +95,7 @@ function Bodies.Plan(rng, bounds, pool, traceGround, isBlocked)
     if maximumX <= minimumX or maximumY <= minimumY then
         return plans
     end
-    local wanted = rng:Int(Bodies.MinCount, Bodies.MaxCount)
+    local wanted = rng:Int(policy.minCount, policy.maxCount)
     for attempt = 1, Bodies.MaxAttempts do
         if #plans >= wanted then
             break
@@ -115,7 +118,7 @@ function Bodies.Plan(rng, bounds, pool, traceGround, isBlocked)
             end
             if spaced and not isBlocked(position, angles) then
                 table.insert(plans, {
-                    key = string.format("b%d_%02d", Bodies.Version, attempt),
+                    key = string.format("b%d_%02d", policy.version, attempt),
                     model = model,
                     group = group,
                     position = position,
@@ -189,6 +192,7 @@ function Bodies:SpawnPlan(plan)
     entity.ZM_FallenBody = true
     entity:Spawn()
     entity:Activate()
+    entity.ZM_LootSpotCenter = entity:WorldSpaceCenter()
     entity:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
     for index = 0, entity:GetPhysicsObjectCount() - 1 do
         local physics = entity:GetPhysicsObjectNum(index)
@@ -229,7 +233,13 @@ function Bodies:OnPlayerReady(target)
         return false
     end
     local seed = Foliage.GetSeed(ZM_World.ActiveProfile, cell.id, mapName .. ":bodies")
-    local plans = Bodies.Plan(ZM_ItemGeneration.NewRng(seed), bounds, pool, Foliage.TraceGround, isBlocked)
+    local lootCell, lootCellError = ZM_GetLootCell(ZM_World.ActiveProfile, cell.id)
+    if lootCellError then
+        ErrorNoHalt("[ZombieSim] Fallen-body policy could not be resolved: " .. tostring(lootCellError) .. "\n")
+        return false
+    end
+    local policy = ZM_LootSpots.ShouldRegenerate(lootCell, os.time()) and Bodies.CurrentPolicy or Bodies.LegacyPolicy
+    local plans = Bodies.Plan(ZM_ItemGeneration.NewRng(seed), bounds, pool, Foliage.TraceGround, isBlocked, policy)
     self.Cell = { profile = ZM_World.ActiveProfile, cellId = cell.id, map = mapName, entities = {} }
     for _, plan in ipairs(plans) do
         local entity = self:SpawnPlan(plan)

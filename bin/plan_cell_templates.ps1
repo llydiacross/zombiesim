@@ -2527,7 +2527,7 @@ function Get-RecipeFilenameCodes {
 }
 
 function Get-CellFilename {
-    param([object]$Codes)
+    param([object]$Codes, [string]$LayoutIdentity = '')
 
     $filename = [string]$filenameAbbreviations.format
     if ([string]::IsNullOrWhiteSpace($filename)) { throw 'cellPlanning.filenameAbbreviations.format must not be empty.' }
@@ -2543,6 +2543,7 @@ function Get-CellFilename {
     if (-not [string]::IsNullOrEmpty([string]$Codes.safeZoneEntrance)) {
         $recipeIdentity += "|$($Codes.safeZoneEntrance)"
     }
+    if ($LayoutIdentity) { $recipeIdentity += "|layout:$LayoutIdentity" }
     $sha256 = [System.Security.Cryptography.SHA256]::Create()
     try {
         $hashBytes = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($recipeIdentity))
@@ -2582,6 +2583,13 @@ function Get-CellVariantSortKey {
         $seed = (($seed * 31) + [int][char]$character) % 2147483647
     }
     return $seed
+}
+
+function Get-CellLayoutSignature {
+    param([object]$Cell)
+
+    $instances = @($Cell.tilePlacements | Where-Object emitsInstance | Sort-Object tileY, tileX | Select-Object tileX, tileY, template, rotationYaw, footprintWidth, footprintHeight)
+    return ($instances | ConvertTo-Json -Depth 5 -Compress)
 }
 
 function ConvertTo-FilenamePart {
@@ -2893,27 +2901,80 @@ foreach ($safeZone in @($map.safeZones | Sort-Object y, x, name)) {
 
 $variantThreshold = [int]$plannerSettings.variants.usageThreshold
 $maximumCellVariants = [int]$plannerSettings.variants.maximumPerRecipe
-foreach ($recipeGroup in @($planCells | Group-Object baseCellTemplateFilename | Where-Object { $_.Count -gt $variantThreshold })) {
-    $variantCount = [Math]::Min($maximumCellVariants, $recipeGroup.Count)
+$avoidAdjacentDuplicates = $plannerSettings.variants.ContainsKey('avoidAdjacentDuplicates') -and [bool]$plannerSettings.variants.avoidAdjacentDuplicates
+if ($variantThreshold -lt 1 -or $maximumCellVariants -lt 1) {
+    throw 'Cell variants require usageThreshold and maximumPerRecipe of at least one.'
+}
+$assignedLayouts = @{}
+foreach ($cell in $planCells) { $assignedLayouts["$($cell.x),$($cell.y)"] = Get-CellLayoutSignature $cell }
+foreach ($recipeGroup in @($planCells | Group-Object baseCellTemplateFilename | Where-Object { $_.Count -gt $variantThreshold -or ($avoidAdjacentDuplicates -and $_.Count -gt 1) } | Sort-Object Name)) {
+    $reuseBaseLayout = $avoidAdjacentDuplicates -and $recipeGroup.Count -le $variantThreshold
+    $variantCount = if ($avoidAdjacentDuplicates -and -not $reuseBaseLayout) {
+        [Math]::Min($maximumCellVariants, [Math]::Ceiling($recipeGroup.Count / [double]$variantThreshold))
+    } else { [Math]::Min($maximumCellVariants, $recipeGroup.Count) }
+    $variantNumbers = if ($reuseBaseLayout) { @(0..($variantCount - 1)) } else { @(1..$variantCount) }
+    $variantUses = @{}
+    foreach ($number in $variantNumbers) { $variantUses[$number] = 0 }
+    $unavoidableRepeats = 0
     $variantCells = @($recipeGroup.Group | Sort-Object @{ Expression = { Get-CellVariantSortKey $_ }; Ascending = $true }, x, y)
     for ($variantIndex = 0; $variantIndex -lt $variantCells.Count; $variantIndex++) {
         $variantCell = $variantCells[$variantIndex]
-        $variantCell.cellVariant = ($variantIndex % $variantCount) + 1
-        $variantCell.availableCellVariants = $variantCount
-        $variantCell.cellTemplateFilename = Get-CellVariantFilename $variantCell.baseCellTemplateFilename $variantCell.cellVariant
-        $variantCell.cellTemplatePath = Join-Path $CellDirectory $variantCell.cellTemplateFilename
-        $variantCell.cellTemplateExists = Test-Path $variantCell.cellTemplatePath
-        $variantCell.placementSeed = Get-RecipePlacementSeed $variantCell.environmentProfile $variantCell.topology $variantCell.orientation $variantCell.buildingDensityTier $variantCell.landmarks $variantCell.cellVariant
-        $mapCell = @($map.cells | Where-Object { $_.x -eq $variantCell.x -and $_.y -eq $variantCell.y } | Select-Object -First 1)[0]
-        if ($null -eq $mapCell) { throw "Map cell was not found for variant at $($variantCell.x),$($variantCell.y)" }
-        $variantTerrainTemplate = Get-TerrainTemplate $mapCell.environment.terrain
-        $variantCell.tilePlacements = @(Get-CellTilePlacements $mapCell $variantTerrainTemplate $variantCell.buildingTemplates $variantCell.landmarkTemplate $variantCell.landmarks $variantCell.environmentProfile $carparkTemplates $decorationTemplates $variantCell.placementSeed $variantCell.buildingDensityTier $variantCell.transportFeature $variantCell.topology $variantCell.orientation $CellTileSize $templateFiles ([bool]$variantCell.forceCarpark) $variantCell.safeZoneEntrance)
-        $variantCell.filenameCodes = Get-RecipeFilenameCodes $variantCell.environmentProfile $variantCell.topology $variantCell.orientation $variantCell.transportFeature $variantCell.buildingDensityTier $variantCell.landmarks $variantCell.tilePlacements $variantCell.safeZoneEntrance
-        $variantBaseFilename = Get-CarparkCoverageFilename (Get-WaterBorderFilename (Get-CellFilename $variantCell.filenameCodes) @(Get-WaterBorderPlan $mapCell)) ([bool]$variantCell.forceCarpark)
-        $variantCell.baseCellTemplateFilename = $variantBaseFilename
-        $variantCell.cellTemplateFilename = Get-CellVariantFilename $variantBaseFilename $variantCell.cellVariant
-        $variantCell.cellTemplatePath = Join-Path $CellDirectory $variantCell.cellTemplateFilename
-        $variantCell.cellTemplateExists = Test-Path $variantCell.cellTemplatePath
+        $preferredVariant = ($variantIndex % $variantCount) + 1
+        $candidateNumbers = if ($reuseBaseLayout) {
+            $variantNumbers
+        } elseif ($avoidAdjacentDuplicates) {
+            @($variantNumbers | Sort-Object @{ Expression = { $variantUses[$_] } }, @{ Expression = { ($_ - $preferredVariant + $variantCount) % $variantCount } })
+        } else { @($preferredVariant) }
+        $bestCandidate = $null
+        $bestConflicts = [int]::MaxValue
+        foreach ($number in $candidateNumbers) {
+            $candidate = $variantCell.PSObject.Copy()
+            $candidate.cellVariant = $number
+            $candidate.availableCellVariants = if ($reuseBaseLayout) { $variantCount - 1 } else { $variantCount }
+            $candidate.placementSeed = Get-RecipePlacementSeed $candidate.environmentProfile $candidate.topology $candidate.orientation $candidate.buildingDensityTier $candidate.landmarks $candidate.cellVariant
+            $mapCell = @($map.cells | Where-Object { $_.x -eq $candidate.x -and $_.y -eq $candidate.y } | Select-Object -First 1)[0]
+            if ($null -eq $mapCell) { throw "Map cell was not found for variant at $($candidate.x),$($candidate.y)" }
+            $variantTerrainTemplate = Get-TerrainTemplate $mapCell.environment.terrain
+            $candidate.tilePlacements = @(Get-CellTilePlacements $mapCell $variantTerrainTemplate $candidate.buildingTemplates $candidate.landmarkTemplate $candidate.landmarks $candidate.environmentProfile $carparkTemplates $decorationTemplates $candidate.placementSeed $candidate.buildingDensityTier $candidate.transportFeature $candidate.topology $candidate.orientation $CellTileSize $templateFiles ([bool]$candidate.forceCarpark) $candidate.safeZoneEntrance)
+            $candidate.filenameCodes = Get-RecipeFilenameCodes $candidate.environmentProfile $candidate.topology $candidate.orientation $candidate.transportFeature $candidate.buildingDensityTier $candidate.landmarks $candidate.tilePlacements $candidate.safeZoneEntrance
+            $variantBaseFilename = Get-CarparkCoverageFilename (Get-WaterBorderFilename (Get-CellFilename $candidate.filenameCodes) @(Get-WaterBorderPlan $mapCell)) ([bool]$candidate.forceCarpark)
+            $candidate.baseCellTemplateFilename = $variantBaseFilename
+            $candidate.cellTemplateFilename = Get-CellVariantFilename $variantBaseFilename $candidate.cellVariant
+            $candidate.cellTemplatePath = Join-Path $CellDirectory $candidate.cellTemplateFilename
+            $candidate.cellTemplateExists = Test-Path $candidate.cellTemplatePath
+            $signature = Get-CellLayoutSignature $candidate
+            $conflicts = 0
+            if ($avoidAdjacentDuplicates) {
+                foreach ($coordinate in @("$($candidate.x - 1),$($candidate.y)", "$($candidate.x + 1),$($candidate.y)", "$($candidate.x),$($candidate.y - 1)", "$($candidate.x),$($candidate.y + 1)")) {
+                    if ($assignedLayouts.ContainsKey($coordinate) -and $assignedLayouts[$coordinate] -ceq $signature) { $conflicts++ }
+                }
+            }
+            if ($conflicts -lt $bestConflicts) {
+                $bestCandidate = $candidate
+                $bestConflicts = $conflicts
+            }
+            if ($conflicts -eq 0) { break }
+        }
+        foreach ($property in @('cellVariant', 'availableCellVariants', 'cellTemplateFilename', 'cellTemplatePath', 'cellTemplateExists', 'placementSeed', 'tilePlacements', 'filenameCodes', 'baseCellTemplateFilename')) {
+            $variantCell.$property = $bestCandidate.$property
+        }
+        $variantUses[[int]$variantCell.cellVariant]++
+        $assignedLayouts["$($variantCell.x),$($variantCell.y)"] = Get-CellLayoutSignature $variantCell
+        if ($bestConflicts -gt 0) { $unavoidableRepeats++ }
+    }
+    if ($unavoidableRepeats -gt 0) {
+        Write-Warning "$($recipeGroup.Name): $unavoidableRepeats cells could not avoid a matching neighbouring tile layout with $variantCount candidate variants."
+    }
+}
+
+if ($avoidAdjacentDuplicates) {
+    foreach ($cell in $planCells) {
+        # The same coarse recipe can select different buildings for different terrain contexts.
+        $layoutIdentity = "$(Get-CellLayoutSignature $cell)|seed:$($cell.placementSeed)"
+        $filename = Get-CarparkCoverageFilename (Get-WaterBorderFilename (Get-CellFilename $cell.filenameCodes $layoutIdentity) @($cell.waterBorderSides)) ([bool]$cell.forceCarpark)
+        $cell.cellTemplateFilename = Get-CellVariantFilename $filename $cell.cellVariant
+        $cell.cellTemplatePath = Join-Path $CellDirectory $cell.cellTemplateFilename
+        $cell.cellTemplateExists = Test-Path $cell.cellTemplatePath
     }
 }
 

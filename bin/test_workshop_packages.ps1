@@ -132,6 +132,9 @@ try {
     Write-Fixture 'content\materials\zombiesim\skies\imported_fixtureft.vmt' 'owned sky material'
     Write-Fixture 'content\materials\zombiesim\skies\imported_tropo_night_1ft.vmt' 'retired sky material'
     Write-Fixture 'content\data_static\sky_licences\imported_fixture\README.txt' 'Artist licence fixture: retain this README.'
+    Write-Fixture 'content\data_static\launcher_earth.json' '{"schemaVersion":1,"ownedNoticeFiles":["data_static\\launcher_earth\\NOTICE.txt"]}'
+    Write-Fixture 'content\data_static\launcher_earth\NOTICE.txt' 'Natural Earth public-domain fixture notice.'
+    Write-Fixture 'content\materials\zombiesim\launcher\earth_day.vmt' 'owned launcher Earth material'
     Write-Fixture 'content\data_static\clothing_citizen_calibration.json' '{"schemaVersion":1,"previewOnly":false,"models":{}}'
     Write-Fixture 'content\sounds\music\a.mp3' 'audio'
     Write-Fixture 'content\sounds\music\preview skybox 1.mp3' 'launcher preview audio'
@@ -165,8 +168,8 @@ try {
     Write-WorkshopJson $fixtureSettings @{
         schemaVersion = 1; worldProfiles = @('city', 'preview'); maximumShardBytes = 1MB; metadataReserveBytes = 65536
         releaseCleared = $false; coreWorkshopId = 'pending:core'; workshopIds = @{ 'clothing-01' = 'pending:clothing-01' }
-        coreStaticFiles = @('clothing_catalogue.json', 'clothing_citizen_calibration.json', 'music_definitions.json', 'sky_catalogue.json', 'version.json', 'zombiesim_signs_preview.json')
-        commonMaterialDirectories = @('materials\zombiesim\skies'); commonMaterialExtensions = @('.vmt', '.vtf', '.png'); externalDependencies = @('Mounted native fixtures') }
+        coreStaticFiles = @('clothing_catalogue.json', 'clothing_citizen_calibration.json', 'launcher_earth.json', 'music_definitions.json', 'sky_catalogue.json', 'version.json', 'zombiesim_signs_preview.json')
+        commonMaterialDirectories = @('materials\zombiesim\skies', 'materials\zombiesim\launcher'); commonMaterialExtensions = @('.vmt', '.vtf', '.png'); externalDependencies = @('Mounted native fixtures') }
     $builder = Join-Path $PSScriptRoot 'build_workshop_packages.ps1'
     & $builder -ProjectRoot $fixtureRoot -SettingsPath $fixtureSettings -Pack
     $fixtureReport = Get-Content -LiteralPath (Join-Path $fixtureRoot 'generated\workshop\inventory-report.json') -Raw | ConvertFrom-Json
@@ -208,6 +211,12 @@ try {
     Assert-Package 'sky README survives GMA staging unchanged' (
         (Get-Content -LiteralPath (Join-Path $fixtureReport.stageRoot "$($licencePack[0].id)\data_static\sky_licences\imported_fixture\readme.txt") -Raw) -eq
         'Artist licence fixture: retain this README.')
+    $earthNoticePack = @($fixtureReport.packages | Where-Object {
+        $_.files.path -contains 'data_static/launcher_earth/notice.txt'
+    })
+    Assert-Package 'launcher Earth material and public-domain notice ship once in common' (
+        $earthNoticePack.Count -eq 1 -and $earthNoticePack[0].id -like 'common-*' -and
+        @($fixtureReport.packages.files | Where-Object path -eq 'materials/zombiesim/launcher/earth_day.vmt').Count -eq 1)
     $core = Join-Path $fixtureReport.stageRoot 'core'
     $fixtureManifest = Get-Content -LiteralPath (Join-Path $core 'data_static\zombiesim_distribution.json') -Raw | ConvertFrom-Json
     Assert-Package 'manifest keeps placeholders separate from actionable Workshop IDs' (

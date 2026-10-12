@@ -72,6 +72,19 @@ if ($settings.coreStaticFiles -contains 'sky_catalogue.json') {
             Add-Content $path 'common' 'sky-licences'
         }
     }
+    if ($settings.coreStaticFiles -contains 'launcher_earth.json') {
+        $earthCatalogue = Read-PackageJson (Join-Path $content 'data_static\launcher_earth.json')
+        $noticeFiles = $earthCatalogue.PSObject.Properties['ownedNoticeFiles']
+        if ($null -eq $noticeFiles -or @($noticeFiles.Value).Count -ne 1) {
+            throw 'Launcher Earth must own exactly one notice file.'
+        }
+        foreach ($path in $noticeFiles.Value) {
+            if ($path -ne 'data_static\launcher_earth\NOTICE.txt') {
+                throw "Invalid launcher Earth notice ownership path: $path"
+            }
+            Add-Content $path 'common' 'launcher-earth-notice'
+        }
+    }
 }
 $musicPath = Join-Path $content 'data_static\music_definitions.json'
 $music = Read-PackageJson $musicPath

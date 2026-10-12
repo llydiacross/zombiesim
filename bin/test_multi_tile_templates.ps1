@@ -339,7 +339,7 @@ foreach ($recipe in $recipes) {
     }
 }
 
-& $mapRendererScript -WorldProfile preview -PlanData $planPath -DestinationDirectory $mapDirectory -SettingsPath $SettingsPath | Out-Null
+& $mapRendererScript -WorldProfile preview -PlanData $planPath -LayoutDirectory $cellDirectory -DestinationDirectory $mapDirectory -SettingsPath $SettingsPath | Out-Null
 if (-not $?) { throw 'Multi-tile fixture local-map renderer failed.' }
 if (@(Get-ChildItem -LiteralPath $mapDirectory -Filter '*.png' -File).Count -ne $expectedTemplates.Count) {
     throw 'Multi-tile fixture local-map renderer did not create every recipe image.'

@@ -32,12 +32,29 @@ local function findLauncherSkyCamera()
     if IsValid(camera) and camera:GetClass() == "point_camera" then return camera end
 end
 
+local function findLauncherPresentationSkybox()
+    if not IsValid(findMarker("launcher_presentation_skybox")) then return nil end
+    local camera = ents.FindByClass("sky_camera")[1]
+    if not IsValid(camera) then return nil end
+    local scale = tonumber(camera:GetInternalVariable("scale")) or 16
+    if scale <= 0 then return nil end
+    return camera, scale
+end
+
 local function sendPose(camera)
     net.WriteBool(IsValid(camera))
     if not IsValid(camera) then return end
     net.WriteVector(camera:GetPos())
     net.WriteAngle(camera:GetAngles())
     net.WriteFloat(tonumber(camera:GetInternalVariable("FOV")) or 90)
+end
+
+local function sendPresentationSkybox()
+    local camera, scale = findLauncherPresentationSkybox()
+    net.WriteBool(IsValid(camera))
+    if not IsValid(camera) then return end
+    net.WriteVector(camera:GetPos())
+    net.WriteFloat(scale)
 end
 
 local function sendCreditsFog(camera)
@@ -96,6 +113,7 @@ function Launcher:SendStatus(target, action, success, message)
         local marker = findMarker("menu_globe")
         net.WriteBool(IsValid(marker))
         if IsValid(marker) then net.WriteVector(marker:GetPos()) end
+        sendPresentationSkybox()
         net.WriteString(ZM_World.ActiveProfile or "")
         for _, name in ipairs(dancers) do
             local dancer = findMarker(name)

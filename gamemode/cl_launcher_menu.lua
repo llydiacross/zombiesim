@@ -2,6 +2,7 @@
 ZM_LauncherMenu = ZM_LauncherMenu or {}
 local Menu = ZM_LauncherMenu
 local palette = ZM_DermaSkin.Palette
+local launcherLogo = Material("zombiesim/ui/logo.png", "smooth")
 local steps = { "slot", "name", "appearance", "profession", "points", "review" }
 local menuSounds = {
     hover = "buttons/button15.wav",
@@ -9,6 +10,151 @@ local menuSounds = {
     back = "buttons/button10.wav",
     confirm = "buttons/button16.wav"
 }
+local pageStates = {
+    menu = "home",
+    load = "play",
+    create = "create",
+    appearance = "appearance",
+    options = "settings",
+    content = "settings",
+    tools = "tools"
+}
+
+function Menu:RefreshState()
+    if self.Credits then
+        self.State = "credits"
+    elseif self.Waiting == "select" then
+        self.State = "deploying"
+    elseif ZM_SkyInspection and ZM_SkyInspection:IsActive() then
+        self.State = "sky_inspection"
+    elseif ZM_LauncherSceneClient and ZM_LauncherSceneClient:GetPresentationTransitionState() then
+        self.State = ZM_LauncherSceneClient:GetPresentationTransitionState()
+    else
+        self.State = pageStates[self.Page] or "home"
+    end
+    return self.State
+end
+
+function Menu:SetPage(page)
+    if not pageStates[page] then return false end
+    if self.ReleaseEarthControls then self:ReleaseEarthControls() end
+    self.Page = page
+    self:RefreshState()
+    if ZM_LauncherSceneClient then
+        if page == "load" then
+            ZM_LauncherSceneClient:TransitionPresentationState("city", 4.5)
+        elseif page ~= "create" and page ~= "appearance" then
+            ZM_LauncherSceneClient:TransitionPresentationState("earth", 3)
+        end
+    end
+    self:RefreshState()
+    return true
+end
+
+function Menu:GetState()
+    return self:RefreshState()
+end
+
+function Menu:GetLogoStatus()
+    local texture = not launcherLogo:IsError() and launcherLogo:GetTexture("$basetexture") or nil
+    return {
+        valid = not launcherLogo:IsError() and texture ~= nil and texture:Width() > 0,
+        width = texture and texture:Width() or 0,
+        height = texture and texture:Height() or 0
+    }
+end
+
+function Menu:IsEarthControlsActive()
+    return self.Active and self.Page == "menu" and not self.Waiting and not self.Credits
+        and IsValid(self.Frame) and self.Frame:IsVisible()
+        and not (ZM_SkyInspection and ZM_SkyInspection:IsActive())
+        and ZM_LauncherSceneClient
+        and ZM_LauncherSceneClient:GetPresentationState() == "earth"
+        and not ZM_LauncherSceneClient:GetPresentationTransitionState()
+end
+
+function Menu:ReleaseEarthControls()
+    local panel = self.EarthControls
+    if IsValid(panel) and panel.DragButton then
+        panel.DragButton = nil
+        panel:MouseCapture(false)
+    end
+    if ZM_LauncherSceneClient then ZM_LauncherSceneClient:ReleaseEarthView() end
+end
+
+function Menu:SyncEarthControls()
+    local wanted = IsValid(self.Frame) and self.Page == "menu" and not self.Waiting and not self.Credits
+    if not wanted then
+        self:ReleaseEarthControls()
+        if IsValid(self.EarthControls) then self.EarthControls:Remove() end
+        self.EarthControls = nil
+        return nil
+    end
+    if IsValid(self.EarthControls) then return self.EarthControls end
+
+    local panel = vgui.Create("DPanel")
+    panel:SetPaintBackgroundEnabled(false)
+    panel:SetKeyboardInputEnabled(false)
+    panel.DragButton = nil
+    local reset = vgui.Create("DButton", panel)
+    reset:SetText("RESET VIEW")
+    reset:SetSkin("ZombieSim")
+    reset.DoClick = function()
+        if self:IsEarthControlsActive() and ZM_LauncherSceneClient then
+            ZM_LauncherSceneClient:ResetEarthView()
+        end
+    end
+    panel.OnMousePressed = function(viewport, code)
+        if code ~= MOUSE_LEFT or not self:IsEarthControlsActive() then return end
+        viewport.DragButton = code
+        viewport.DragX, viewport.DragY = gui.MousePos()
+        viewport:MouseCapture(true)
+        ZM_LauncherSceneClient:BeginEarthView()
+    end
+    panel.OnMouseReleased = function(viewport, code)
+        if code ~= viewport.DragButton then return end
+        viewport.DragButton = nil
+        viewport:MouseCapture(false)
+    end
+    panel.OnMouseWheeled = function(_, delta)
+        if not self:IsEarthControlsActive() then return false end
+        ZM_LauncherSceneClient:AdjustEarthView(0, 0, delta)
+        return true
+    end
+    panel.Think = function(viewport)
+        local active = self:IsEarthControlsActive()
+        viewport:SetMouseInputEnabled(active)
+        reset:SetVisible(active)
+        local left = self.FrameWidth or 0
+        viewport:SetPos(left, 0)
+        viewport:SetSize(math.max(1, ScrW() - left), ScrH())
+        reset:SetPos(18, viewport:GetTall() - 54)
+        reset:SetSize(112, 32)
+        if viewport.WasActive and not active then self:ReleaseEarthControls() end
+        viewport.WasActive = active
+        if not active or not viewport.DragButton then return end
+        if not input.IsMouseDown(viewport.DragButton) then
+            viewport:OnMouseReleased(viewport.DragButton)
+            return
+        end
+        local x, y = gui.MousePos()
+        local deltaX, deltaY = x - viewport.DragX, y - viewport.DragY
+        viewport.DragX, viewport.DragY = x, y
+        ZM_LauncherSceneClient:AdjustEarthView(deltaX, deltaY, 0)
+    end
+    panel.Paint = function(viewport, _, height)
+        if not self:IsEarthControlsActive() then return end
+        draw.SimpleText("DRAG EARTH  /  SCROLL ZOOM", "DermaDefaultBold", 140, height - 38,
+            palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+    end
+    panel.OnRemove = function(viewport)
+        if viewport.DragButton then viewport:MouseCapture(false) end
+        if self.EarthControls == viewport then self.EarthControls = nil end
+        if ZM_LauncherSceneClient then ZM_LauncherSceneClient:ReleaseEarthView() end
+    end
+    self.EarthControls = panel
+    return panel
+end
 
 function Menu:PlayCue(cue)
     local soundPath = menuSounds[cue]
@@ -43,6 +189,108 @@ local function addLabel(parent, text, height)
     label:SetTextColor(palette.text)
     label:SetWrap(true)
     return label
+end
+
+local function addRule(parent, text)
+    local panel = vgui.Create("DPanel", parent)
+    panel:Dock(TOP)
+    panel:DockMargin(4, 7, 4, 7)
+    panel:SetTall(text and 24 or 1)
+    panel.Paint = function(_, width, height)
+        local y = math.floor(height * 0.5)
+        surface.SetDrawColor(palette.border)
+        surface.DrawRect(0, y, width, 1)
+        if not text then return end
+        surface.SetFont("DermaDefaultBold")
+        local textWidth = surface.GetTextSize(text)
+        surface.SetDrawColor(5, 8, 12, 245)
+        surface.DrawRect(12, y - 10, textWidth + 16, 20)
+        draw.SimpleText(text, "DermaDefaultBold", 20, y, palette.muted,
+            TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+    end
+    return panel
+end
+
+local function locationLabel(row)
+    local location = row.location or {}
+    if not location.available then
+        return "LOCATION UNAVAILABLE"
+    end
+    if location.state == "den" then return "DEN / " .. tostring(location.safeZoneId) end
+    return string.upper(location.state or "CITY") .. " / "
+        .. tostring(location.cellX) .. ", " .. tostring(location.cellY)
+end
+
+local function addSurvivorDossier(parent, slot, row)
+    local header = vgui.Create("DPanel", parent)
+    header:Dock(TOP)
+    header:DockMargin(4, 2, 4, 0)
+    header:SetTall(62)
+    header.Paint = function(_, width, height)
+        surface.SetDrawColor(12, 16, 21, 238)
+        surface.DrawRect(0, 0, width, height)
+        surface.SetDrawColor(palette.border)
+        surface.DrawRect(0, 0, width, 1)
+        surface.DrawRect(0, height - 1, width, 1)
+        surface.SetDrawColor(palette.redBright)
+        surface.DrawRect(0, 0, 3, height)
+        draw.SimpleText(string.upper(row.name or "SURVIVOR"), "ZM_DependencyBriefingTitle",
+            16, 12, palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+        draw.SimpleText("SLOT 0" .. slot, "DermaDefaultBold", width - 14, 15,
+            palette.redBright, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+        draw.SimpleText(string.upper(tostring(row.job or "SURVIVOR")) .. "  /  LEVEL "
+            .. tostring(tonumber(row.level) or 1), "DermaDefault", 17, 43,
+            palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+    end
+    local details = vgui.Create("DPanel", parent)
+    details:Dock(TOP)
+    details:DockMargin(4, 0, 4, 0)
+    details:SetTall(58)
+    details.Paint = function(_, width, height)
+        surface.SetDrawColor(8, 11, 15, 220)
+        surface.DrawRect(0, 0, width, height)
+        draw.SimpleText("RESUME", "DermaDefaultBold", 12, 15, palette.muted,
+            TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+        draw.SimpleText(locationLabel(row), "DermaDefaultBold", width - 12, 15,
+            row.location and row.location.available and palette.text or palette.redBright,
+            TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
+        local played = tonumber(row.lastPlayedAt) and tonumber(row.lastPlayedAt) > 0
+            and os.date("%Y-%m-%d", tonumber(row.lastPlayedAt)) or "NEVER"
+        draw.SimpleText("ORIGIN " .. tostring(row.originCellX or "?") .. ", "
+            .. tostring(row.originCellY or "?"), "DermaDefault", 12, 41,
+            palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+        draw.SimpleText("LAST PLAYED " .. played, "DermaDefault", width - 12, 41,
+            palette.muted, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
+        surface.SetDrawColor(palette.border)
+        surface.DrawRect(12, 29, width - 24, 1)
+    end
+    return header, details
+end
+
+local function addLogo(parent)
+    local panel = vgui.Create("DPanel", parent)
+    panel:Dock(TOP)
+    panel:DockMargin(4, 4, 4, 10)
+    panel:SetTall(132)
+    panel.Paint = function(_, width, height)
+        local imageWidth = math.min(width - 24, 288)
+        local imageHeight = imageWidth / 2.25
+        local x, y = (width - imageWidth) * 0.5, (height - imageHeight) * 0.5
+        local breath = 232 + math.sin(RealTime() * 0.8) * 18
+        surface.SetDrawColor(8, 10, 13, 150)
+        surface.DrawRect(x - 10, y - 7, imageWidth + 20, imageHeight + 14)
+        surface.SetDrawColor(palette.redBright.r, palette.redBright.g, palette.redBright.b, 48)
+        for index = 0, 5 do
+            local offset = index * (imageWidth / 5)
+            surface.DrawRect(x + offset - 3, y - 5, math.max(8, imageWidth * 0.13), 1)
+            surface.DrawRect(x + imageWidth - offset - imageWidth * 0.1, y + imageHeight + 4,
+                math.max(7, imageWidth * 0.1), 1)
+        end
+        surface.SetMaterial(launcherLogo)
+        surface.SetDrawColor(255, 255, 255, breath)
+        surface.DrawTexturedRect(x, y, imageWidth, imageHeight)
+    end
+    return panel
 end
 
 local function addButton(parent, text, callback)
@@ -196,12 +444,15 @@ function Menu:Request(action, slot, details)
         local ready, message = ZM_Distribution:RefreshClient()
         if not ready then
             self.Error = "Content packages unavailable: " .. tostring(message)
-            self.Page = "content"
+            self.ContentReturnPage = "load"
+            self:SetPage("content")
             self:Render()
             return
         end
     end
+    self.RequestReturnPage = self.Page
     self.Waiting = action
+    self:RefreshState()
     self.Deadline = RealTime() + 10
     self:Render()
     net.Start("ZM.LauncherRequest")
@@ -217,12 +468,18 @@ function Menu:Back()
     if self.Page == "menu" then return end
     self:PlayCue("back")
     if self.Page == "create" then
-        self.Step = math.max(1, self.Step - 1)
-        if self.Step == 1 then self.Page = "menu" end
+        if self.Step <= 2 then
+            self:SetPage("load")
+        else
+            self.Step = self.Step - 1
+        end
     elseif self.Page == "appearance" then
-        self.Page = "load"
+        self:SetPage("load")
+    elseif self.Page == "content" then
+        self:SetPage(self.ContentReturnPage or "options")
+        self.ContentReturnPage = nil
     else
-        self.Page = "menu"
+        self:SetPage("menu")
     end
     self:Render()
 end
@@ -231,7 +488,7 @@ function Menu:Open()
     if ZM_Distribution then ZM_Distribution:RefreshWorkshop() end
     if self.Credits then self:EndCredits() end
     self.Active = true
-    self.Page = "menu"
+    self:SetPage("menu")
     self.Step = 1
     self.Waiting = nil
     if ZM_DependencyPrompts then ZM_DependencyPrompts:SetLauncherBlackout(not self.Camera) end
@@ -277,16 +534,21 @@ function Menu:Open()
         if self.Waiting and RealTime() > self.Deadline then
             self.Waiting = nil
             self.Error = "Server did not respond. Try again."
-            self.Page = "menu"
+            self:SetPage(self.RequestReturnPage or "menu")
+            self.RequestReturnPage = nil
             self:Render()
         end
     end
     frame.OnRemove = function()
         if self.Frame ~= frame then return end
         if self.Credits then self:EndCredits() end
+        if ZM_CharacterCards then ZM_CharacterCards:Reset() end
         self.Frame = nil
         if IsValid(self.PreviewPanel) then self.PreviewPanel:Remove() end
         self.PreviewPanel = nil
+        self:ReleaseEarthControls()
+        if IsValid(self.EarthControls) then self.EarthControls:Remove() end
+        self.EarthControls = nil
         if ZM_UI then ZM_UI:UnregisterTransient(frame) end
     end
     self.Frame = frame
@@ -297,12 +559,15 @@ end
 
 function Menu:Render()
     if not IsValid(self.Frame) then return end
+    self:RefreshState()
     if ZM_LauncherTools then
         ZM_LauncherTools:Attach(self.Frame, self.FrameWidth)
         if self.Page ~= "tools" or self.Waiting or self.Credits then ZM_LauncherTools:CloseWorkspace() end
     end
     if ZM_Changelog and (self.Page ~= "options" or self.Waiting or self.Credits) then ZM_Changelog:ClosePanel() end
     self:SyncCharacterPreview()
+    self:SyncEarthControls()
+    if ZM_CharacterCards then ZM_CharacterCards:Reset() end
     if IsValid(self.Content) then self.Content:Remove() end
     local content = vgui.Create("DScrollPanel", self.Frame)
     content:Dock(FILL)
@@ -312,13 +577,17 @@ function Menu:Render()
     self.Content = content
     self.Buttons = {}
     self.FocusIndex = 1
-    local function button(text, callback)
-        local item = addButton(content, text, callback)
+    local function button(text, callback, parent)
+        local item = addButton(parent or content, text, callback)
         item.OnKeyCodePressed = function(_, key) self.Frame:OnKeyCodePressed(key) end
         table.insert(self.Buttons, item)
         return item
     end
-    addLabel(content, "Z-NATION ", 52):SetFont("ZM_DependencyBriefingTitle")
+    if self.Page == "menu" then
+        addLogo(content)
+    else
+        addLabel(content, "Z-NATION ", 52):SetFont("ZM_DependencyBriefingTitle")
+    end
     if self.Error then
         addLabel(content, self.Error, 48):SetTextColor(palette.redBright)
         self.Error = nil
@@ -331,33 +600,13 @@ function Menu:Render()
         if ZM_Distribution and not ZM_Distribution.Ready then
             addLabel(content, "CONTENT CHECK FAILED - open Content Addons before deploying.", 42):SetTextColor(palette.redBright)
         end
-        local anchor = ZM_LauncherScene:GetAnchor(self.Profile)
-        if anchor then
-            for slot, row in pairs(self.Slots or {}) do
-                button((slot == self.SelectedSlot and "● " or "○ ") .. "Continue: " .. row.name .. " / " .. anchor.city,
-                    function()
-                        self.SelectedSlot = slot
-                        self:Request("select", slot)
-                    end)
-            end
+        button("PLAY", function() self:SetPage("load") self:Render() end)
+        local tools = button("TOOLS", function() self:SetPage("tools") self:Render() end)
+        if not ZM_LauncherTools or not ZM_LauncherTools:IsAvailable() then
+            tools:SetEnabled(false)
+            tools:SetTooltip("Launcher tools are unavailable in this profile.")
         end
-        button("NEW CHARACTER", function()
-            self.Draft = { attributes = {}, appearance = { model = ZM_CharacterRules.Models[1], skin = 0, bodygroups = {}, playerColour = { 1, 1, 1 } } }
-            self.Step = 1
-            self.Page = "create"
-            self:Render()
-        end)
-        button("EDIT CHARACTERS", function() self.Page = "load" self:Render() end)
-        button("OPTIONS", function() self.Page = "options" self:Render() end)
-        if ZM_LauncherTools and ZM_LauncherTools:IsAvailable() then
-            button("TOOLS", function() self.Page = "tools" self:Render() end)
-        end
-        button("CONTENT ADDONS", function()
-            ZM_Distribution:RefreshWorkshop()
-            self.Page = "content"
-            self:Render()
-        end)
-        button("CREDITS", function() self:Request("credits_start", 0) end)
+        button("SETTINGS", function() self:SetPage("options") self:Render() end)
         button("EXIT TO GMOD", function()
             Derma_Query("Disconnect from this session?", "EXIT TO GMOD", "DISCONNECT",
                 function() RunConsoleCommand("disconnect") end, "CANCEL", function() end)
@@ -388,6 +637,13 @@ function Menu:Render()
         button("BACK", function() self:Back() end)
     elseif self.Page == "options" then
         button("BACK", function() self:Back() end)
+        button("CONTENT ADDONS", function()
+            ZM_Distribution:RefreshWorkshop()
+            self.ContentReturnPage = "options"
+            self:SetPage("content")
+            self:Render()
+        end)
+        button("CREDITS", function() self:Request("credits_start", 0) end)
         local panel = vgui.Create("DPanel", content)
         panel:Dock(TOP)
         panel:SetTall(640)
@@ -396,51 +652,95 @@ function Menu:Render()
             ZM_Changelog:TogglePanel(self.Frame, self.FrameWidth)
         end })
     elseif self.Page == "load" then
-        addLabel(content, "CHOOSE A SURVIVOR", 36)
+        addRule(content, "SELECT SURVIVOR")
+        local slotRow = vgui.Create("DPanel", content)
+        slotRow:Dock(TOP)
+        slotRow:DockMargin(0, 0, 0, 6)
+        slotRow:SetTall(52)
+        slotRow.Paint = function() end
+        local slotButtons = {}
         for slot = 1, 3 do
-            local row = self.Slots and self.Slots[slot]
+            local slotId = slot
+            local row = self.Slots and self.Slots[slotId]
             if row then
-                addLabel(content, string.format("%d  %s  /  %s  /  LEVEL %d", slot, row.name, row.job,
-                    tonumber(row.level) or 1), 28)
-                addLabel(content, string.format("ORIGIN %s, %s  /  LAST PLAYED %s", row.originCellX or "?",
-                    row.originCellY or "?", tonumber(row.lastPlayedAt) and tonumber(row.lastPlayedAt) > 0
-                        and os.date("%Y-%m-%d", tonumber(row.lastPlayedAt)) or "NEVER"), 24)
-                if row.model and util.IsValidModel(row.model) then
-                    local preview = vgui.Create("DModelPanel", content)
-                    preview:Dock(TOP)
-                    preview:SetTall(124)
-                    preview:SetModel(row.model)
-                    preview:SetFOV(45)
-                    preview:SetCamPos(Vector(70, 0, 55))
-                    preview:SetLookAt(Vector(0, 0, 50))
-                    preview.LayoutEntity = function(_, entity) entity:SetAngles(Angle(0, RealTime() * 15 % 360, 0)) end
-                end
-                button(tonumber(row.appearanceRequired) ~= 0 and "SET APPEARANCE" or "DEPLOY " .. row.name,
-                    function()
-                        if tonumber(row.appearanceRequired) ~= 0 then
-                            self.Draft = { slot = slot, name = row.name, job = row.job,
-                                appearance = { model = ZM_CharacterRules.Models[1], skin = 0,
-                                bodygroups = {}, playerColour = { 1, 1, 1 } } }
-                            self.Page = "appearance"
-                            self:Render()
-                        else
-                            self:Request("select", slot)
-                        end
-                    end)
-                button("DELETE " .. row.name, function()
-                    Derma_StringRequest("DELETE SURVIVOR", "Type " .. row.name .. " to delete this character:",
-                        "", function(name) self:Request("delete", slot, { name = name }) end)
-                end)
+                slotButtons[slotId] = button("0" .. slotId .. "  "
+                    .. string.upper(tostring(row.name or "SURVIVOR")), function()
+                    self.SelectedSlot = slotId
+                    self:Render()
+                end, slotRow)
             else
-                button("SLOT " .. slot .. "  /  EMPTY - CREATE", function()
-                    self.Draft = { slot = slot, attributes = {}, appearance = { model = ZM_CharacterRules.Models[1],
+                slotButtons[slotId] = button("0" .. slotId .. "  + CREATE", function()
+                    self.Draft = { slot = slotId, attributes = {}, appearance = { model = ZM_CharacterRules.Models[1],
                         skin = 0, bodygroups = {}, playerColour = { 1, 1, 1 } } }
-                    self.Page = "create"
+                    self:SetPage("create")
                     self.Step = 2
                     self:Render()
-                end)
+                end, slotRow)
+            end
+            local selector = slotButtons[slotId]
+            selector:Dock(LEFT)
+            selector:DockMargin(slotId == 1 and 4 or 3, 4, slotId == 3 and 4 or 3, 4)
+            selector.PaintOver = function(control, width, height)
+                if self.SelectedSlot ~= slotId or not (self.Slots and self.Slots[slotId]) then return end
+                surface.SetDrawColor(palette.redBright)
+                surface.DrawRect(0, height - 2, width, 2)
             end
         end
+        slotRow.PerformLayout = function(_, width)
+            local available = math.max(width - 20, 3)
+            for _, selector in ipairs(slotButtons) do selector:SetWide(math.floor(available / 3)) end
+        end
+        local selectedSlot = tonumber(self.SelectedSlot)
+        local row = selectedSlot and self.Slots and self.Slots[selectedSlot]
+        if row then
+            addSurvivorDossier(content, selectedSlot, row)
+            if ZM_CharacterCards then
+                local preview, previewError = ZM_CharacterCards:Create(content, self.Profile, row)
+                if not preview then
+                    addLabel(content, string.upper(tostring(previewError)), 32):SetTextColor(palette.redBright)
+                end
+            elseif row.model and util.IsValidModel(row.model) then
+                addLabel(content, "CHARACTER PREVIEW UNAVAILABLE", 32):SetTextColor(palette.redBright)
+            end
+            if tonumber(row.appearanceRequired) ~= 0 then
+                addLabel(content, "APPEARANCE REQUIRED BEFORE DEPLOYMENT", 32):SetTextColor(palette.redBright)
+            end
+            local actionRow = vgui.Create("DPanel", content)
+            actionRow:Dock(TOP)
+            actionRow:DockMargin(0, 0, 0, 5)
+            actionRow:SetTall(48)
+            actionRow.Paint = function() end
+            local action = button(tonumber(row.appearanceRequired) ~= 0 and "SET APPEARANCE"
+                or "DEPLOY " .. string.upper(row.name), function()
+                if tonumber(row.appearanceRequired) ~= 0 then
+                    self.Draft = { slot = selectedSlot, name = row.name, job = row.job,
+                        appearance = { model = ZM_CharacterRules.Models[1], skin = 0,
+                        bodygroups = {}, playerColour = { 1, 1, 1 } } }
+                    self:SetPage("appearance")
+                    self:Render()
+                else
+                    self:Request("select", selectedSlot)
+                end
+            end, actionRow)
+            action:Dock(LEFT)
+            action:DockMargin(4, 3, 3, 3)
+            local remove = button("DELETE", function()
+                Derma_StringRequest("DELETE SURVIVOR", "Type " .. row.name .. " to delete this character:",
+                    "", function(name) self:Request("delete", selectedSlot, { name = name }) end)
+            end, actionRow)
+            remove:Dock(FILL)
+            remove:DockMargin(3, 3, 4, 3)
+            actionRow.PerformLayout = function(_, width) action:SetWide(math.floor(width * 0.68)) end
+            local location = row.location or {}
+            if tonumber(row.appearanceRequired) == 0 and not location.available then
+                action:SetEnabled(false)
+                action:SetTooltip(location.reason or "Saved location is unavailable")
+            end
+        else
+            addLabel(content, "Choose an occupied slot, or create a new survivor.", 44)
+                :SetTextColor(palette.muted)
+        end
+        addRule(content)
         button("BACK", function() self:Back() end)
     elseif self.Page == "create" or self.Page == "appearance" then
         local draft = self.Draft
@@ -709,6 +1009,22 @@ function Menu:FinishCredits(generation)
     if self.Active and not self.Waiting then self:Request("credits_stop", 0) end
 end
 
+function Menu:ApplyRequestResult(action, success, message, deploying)
+    self.Waiting = nil
+    if not success then
+        self.Error = message ~= "" and message or "Server request failed"
+        self:SetPage(self.RequestReturnPage or "menu")
+    elseif action == "create" or action == "appearance" then
+        self:SetPage("load")
+    elseif action == "select" and deploying then
+        self.Waiting = "select"
+        self.Deadline = RealTime() + 30
+    elseif action == "credits_start" then
+        self:StartCredits()
+    end
+    self.RequestReturnPage = nil
+end
+
 net.Receive("ZM.LauncherStatus", function()
     local action = net.ReadString()
     local success = net.ReadBool()
@@ -731,6 +1047,9 @@ net.Receive("ZM.LauncherStatus", function()
         red = net.ReadUInt(8), green = net.ReadUInt(8), blue = net.ReadUInt(8) }
     if Menu.CreditsCamera then Menu.CreditsCamera.fog = fog end
     Menu.Globe = net.ReadBool() and net.ReadVector() or nil
+    local hasPresentationSkybox = net.ReadBool()
+    Menu.PresentationSkybox = hasPresentationSkybox and
+        { origin = net.ReadVector(), scale = net.ReadFloat() } or nil
     Menu.Profile = net.ReadString()
     Menu.DancerIds = {}
     Menu.DancerNames = {}
@@ -740,22 +1059,15 @@ net.Receive("ZM.LauncherStatus", function()
     end
     if ZM_DependencyPrompts then ZM_DependencyPrompts:SetLauncherBlackout(not Menu.Camera) end
     if not Menu.Active then Menu:Open() end
-    Menu.Waiting = nil
     Menu.Slots = {}
-    for _, row in ipairs(rows) do Menu.Slots[tonumber(row.slot)] = row end
-    if not success then
-        Menu.Error = message ~= "" and message or "Server request failed"
-        Menu.Page = "menu"
-    elseif action == "create" then
-        Menu.Page = "load"
-    elseif action == "appearance" then
-        Menu.Page = "load"
-    elseif action == "select" and deploying then
-        Menu.Waiting = "select"
-        Menu.Deadline = RealTime() + 30
-    elseif action == "credits_start" then
-        Menu:StartCredits()
+    local activeSlot
+    for _, row in ipairs(rows) do
+        local slot = tonumber(row.slot)
+        Menu.Slots[slot] = row
+        if tonumber(row.active) == 1 then activeSlot = slot end
     end
+    if not Menu.Slots[Menu.SelectedSlot] then Menu.SelectedSlot = activeSlot end
+    Menu:ApplyRequestResult(action, success, message, deploying)
     Menu:Render()
 end)
 
