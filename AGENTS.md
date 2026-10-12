@@ -786,6 +786,15 @@ Run PowerShell commands from the repository root. For changes to planning or VMF
 
 ## Environment Notes
 
+- **Always launch Garry's Mod for the user** (requested 2026-10-12): do not ask
+  them to start it. Use
+  `Start-Process 'C:\Program Files (x86)\Steam\steam.exe' -ArgumentList '-applaunch','4000','-console','-disableluarefresh','+gamemode','zombiesim','+map','zn_preview_start'`
+  and verify `-disableluarefresh` on the actual `gmod.exe` command line.
+  Launching without it lets autorefresh watch this development tree, which
+  inflates kernel non-paged memory (observed ~5.2 GiB) and causes startup
+  stutter; such samples are not valid performance evidence. With
+  `-disableluarefresh`, reload changed Lua via `changelevel <current-map>`.
+
 - The repository is already under Garry's Mod. The active compiler profile resolves `vbsp`, `vvis`, and `vrad` from the game's `bin` directory.
 - To find or verify a model or material, list the mounted game VPKs with the installed `GarrysMod\bin\vpk.exe l <path-to-_dir.vpk>` (for example `sourceengine\content_hl2_dir.vpk` or `garrysmod\garrysmod_dir.vpk`) and reference the mounted virtual path. Do not search the user's `addons` folder, and do not extract or copy Valve content into the addon.
 - The development command bridge source is `content/data_static/consolecommands.txt`; its acknowledgement is deliberately written outside the repository to Garry's Mod `DATA` at `data/zombiesim/consolecommands.result.json`.

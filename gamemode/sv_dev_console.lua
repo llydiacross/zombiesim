@@ -232,6 +232,143 @@ DevConsole.DirectCommands.zombiesim_dev_profile_walker = function(argumentString
     return startWalkerProfile(tonumber(string.Trim(argumentString or "")))
 end
 
+// Bounded server outbound traffic profile: net messages by name plus networked-variable writes by key.
+// Entity-state deltas are engine-owned and not visible to Lua, so they are summarised as entity counts.
+// Only calls through the global net/entity tables are seen; locally cached function references are not.
+local netProfile
+
+local function finishNetProfile()
+    local session = netProfile
+    if not session then return end
+    netProfile = nil
+    for _, patch in ipairs(session.patches) do
+        if patch.owner[patch.name] == patch.wrapper then patch.owner[patch.name] = patch.original end
+    end
+    local seconds = math.max(SysTime() - session.started, 0.001)
+    local messages, variables, classes = {}, {}, {}
+    for name, entry in pairs(session.messages) do
+        messages[#messages + 1] = { name = name, sends = entry.sends, recipientSends = entry.recipientSends,
+            bytes = entry.bytes, bytesPerSecond = entry.bytes / seconds, maxBytes = entry.maxBytes }
+    end
+    table.sort(messages, function(a, b) return a.bytes > b.bytes end)
+    for key, entry in pairs(session.variables) do
+        variables[#variables + 1] = { key = key, calls = entry.calls, changes = entry.changes,
+            changesPerSecond = entry.changes / seconds }
+    end
+    table.sort(variables, function(a, b) return a.changes > b.changes end)
+    local counts = {}
+    for _, entity in ipairs(ents.GetAll()) do
+        local class = entity:GetClass()
+        counts[class] = (counts[class] or 0) + 1
+    end
+    for class, count in pairs(counts) do classes[#classes + 1] = { class = class, count = count } end
+    table.sort(classes, function(a, b) return a.count > b.count end)
+    while #classes > 25 do table.remove(classes) end
+    local total = 0
+    for _, entry in ipairs(messages) do total = total + entry.bytes end
+    file.CreateDir("zombiesim")
+    file.Write("zombiesim/net_profile.json", util.TableToJSON({
+        map = game.GetMap(), capturedAt = os.time(), seconds = seconds,
+        players = player.GetCount(), entities = #ents.GetAll(),
+        netBytesPerSecond = total / seconds, messages = messages,
+        networkedVariables = variables, topEntityClasses = classes,
+        largeSends = session.largeSends, largeSendLimit = 64
+    }, true))
+    print("[ZombieSim] Net traffic profile saved to data/zombiesim/net_profile.json")
+end
+
+local function startNetProfile(seconds)
+    if netProfile then return false, "a net profile is already running" end
+    if ZM_World.ActiveProfile ~= "preview" then
+        return false, "net profiling is restricted to the preview profile"
+    end
+    if not seconds or seconds ~= math.floor(seconds) or seconds < 1 or seconds > 120 then
+        return false, "usage: zombiesim_dev_profile_net <seconds 1-120>"
+    end
+    local session = { started = SysTime(), patches = {}, messages = {}, variables = {}, largeSends = {} }
+    local function patch(owner, name, makeWrapper)
+        local original = owner[name]
+        if type(original) ~= "function" then return end
+        local entry = { owner = owner, name = name, original = original }
+        entry.wrapper = makeWrapper(original)
+        owner[name] = entry.wrapper
+        session.patches[#session.patches + 1] = entry
+    end
+
+    patch(net, "Start", function(original)
+        return function(name, ...)
+            session.current = name
+            return original(name, ...)
+        end
+    end)
+    local function recipientCount(kind, target)
+        if kind == "Broadcast" then return player.GetCount() end
+        if kind == "SendOmit" then
+            local omitted = istable(target) and #target or (IsValid(target) and 1 or 0)
+            return math.max(player.GetCount() - omitted, 0)
+        end
+        if kind == "SendPVS" or kind == "SendPAS" then return player.GetCount() end
+        if istable(target) then return #target end
+        if type(target) == "CRecipientFilter" then return target:GetCount() end
+        return IsValid(target) and 1 or 0
+    end
+    for _, kind in ipairs({ "Send", "Broadcast", "SendOmit", "SendPVS", "SendPAS" }) do
+        patch(net, kind, function(original)
+            return function(target, ...)
+                local name = session.current or "?"
+                local bytes = net.BytesWritten() or 0
+                local recipients = recipientCount(kind, target)
+                local entry = session.messages[name]
+                if not entry then
+                    entry = { sends = 0, recipientSends = 0, bytes = 0, maxBytes = 0 }
+                    session.messages[name] = entry
+                end
+                entry.sends = entry.sends + 1
+                entry.recipientSends = entry.recipientSends + recipients
+                entry.bytes = entry.bytes + bytes * recipients
+                entry.maxBytes = math.max(entry.maxBytes, bytes)
+                if bytes >= 512 and #session.largeSends < 64 then
+                    session.largeSends[#session.largeSends + 1] = { name = name, bytes = bytes,
+                        recipients = recipients, atSeconds = SysTime() - session.started }
+                end
+                session.current = nil
+                return original(target, ...)
+            end
+        end)
+    end
+    local entityMeta = FindMetaTable("Entity")
+    for _, suffix in ipairs({ "Int", "Float", "Bool", "String", "Vector", "Angle", "Entity" }) do
+        for _, prefix in ipairs({ "NW", "NW2" }) do
+            local getter = entityMeta["Get" .. prefix .. suffix]
+            patch(entityMeta, "Set" .. prefix .. suffix, function(original)
+                return function(entity, key, value, ...)
+                    local label = prefix .. suffix .. ":" .. tostring(key)
+                    local entry = session.variables[label]
+                    if not entry then
+                        entry = { calls = 0, changes = 0 }
+                        session.variables[label] = entry
+                    end
+                    entry.calls = entry.calls + 1
+                    if not getter or getter(entity, key) ~= value then entry.changes = entry.changes + 1 end
+                    return original(entity, key, value, ...)
+                end
+            end)
+        end
+    end
+    netProfile = session
+    timer.Create("ZM.DevProfiler.NetFinish", seconds, 1, finishNetProfile)
+    print(string.format("[ZombieSim] Profiling server net traffic for %d s.", seconds))
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_profile_net = function(argumentString)
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() then
+        return false, "net profiling requires a connected admin"
+    end
+    return startNetProfile(tonumber(string.Trim(argumentString or "")))
+end
+
 DevConsole.DirectCommands.zombiesim_dev_walker_preload_status = function()
     local target = ZM_Util.FirstHuman()
     if not IsValid(target) or not target:IsAdmin() then

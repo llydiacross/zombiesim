@@ -62,6 +62,11 @@ preferences and gameplay code were not changed. Performance samples taken with
 autorefresh enabled are unrepresentative of player performance and must not be
 used for performance acceptance.
 
+Repeat observation 2026-10-12: a launch without the flag again stuttered at
+startup with kernel non-paged memory near 5.2 GiB; it fell to 0.63 GiB when the
+game closed. A relaunch with `-disableluarefresh` held near 0.63 GiB while
+loading and the user reported no stutter. A clean Workshop-mount run remains the
+release gate that would confirm players are unaffected.
 Resuming Phase C live gate verification immediately exposed a real arrival
 defect. Travelling north placed the survivor at (0, -2176, 49) inside the
 motorway concrete central reservation, because `bin/transition_gates.psm1`

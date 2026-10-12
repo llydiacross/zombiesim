@@ -916,6 +916,15 @@ stats before/after. Nested method times overlap; do not sum them. This is not a
 native heap measurement or a complete server profiler. SQLite queries, Base64
 encoding and DATA writes are also timed across the server during the window;
 their totals include non-Walker callers, and query contents are not recorded.
+
+For preview-admin outbound traffic, send `zombiesim_dev_profile_net 30` through the
+bridge. It temporarily wraps the global `net.Start`/send functions and entity
+`SetNW*`/`SetNW2*` setters, then restores them and writes
+`data/zombiesim/net_profile.json` with per-message bytes (payload × recipients),
+sends of at least 512 bytes, networked-variable writes/changes per key and the
+top entity classes. Engine entity-state deltas and locally cached function
+references are not captured, so compare it with `net_graph` rather than treating
+it as the complete inbound total.
 Entity creation, Walker initialization/ticket assignment, model validation,
 bloody appearance and outfit assignment are timed separately to isolate first-spawn
 costs. Spawn placement reads each valid nav-area centre once per search and sorts
