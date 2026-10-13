@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "20"
+	"mapversion" "21"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "20"
+	"mapversion" "21"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -215,135 +215,17 @@ world
 	}
 	solid
 	{
-		"id" "371"
-		side
-		{
-			"id" "402"
-			"plane" "(-320 256 224) (-320 -320 224) (320 -320 224)"
-			vertices_plus
-			{
-				"v" "-320 256 224"
-				"v" "-320 -320 224"
-				"v" "320 -320 224"
-				"v" "320 256 224"
-			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
-			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 -1 0 0] 0.25"
-			"rotation" "0"
-			"lightmapscale" "16"
-			"smoothing_groups" "0"
-		}
-		side
-		{
-			"id" "401"
-			"plane" "(-320 -320 224) (-320 256 224) (-320 256 384)"
-			vertices_plus
-			{
-				"v" "-320 -320 224"
-				"v" "-320 256 224"
-				"v" "-320 256 384"
-				"v" "-320 -320 384"
-			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
-			"uaxis" "[0 1 0 0] 0.25"
-			"vaxis" "[0 0 -1 0] 0.25"
-			"rotation" "0"
-			"lightmapscale" "16"
-			"smoothing_groups" "0"
-		}
-		side
-		{
-			"id" "400"
-			"plane" "(320 256 224) (320 -320 224) (320 -320 384)"
-			vertices_plus
-			{
-				"v" "320 256 224"
-				"v" "320 -320 224"
-				"v" "320 -320 384"
-				"v" "320 256 384"
-			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
-			"uaxis" "[0 1 0 0] 0.25"
-			"vaxis" "[0 0 -1 0] 0.25"
-			"rotation" "0"
-			"lightmapscale" "16"
-			"smoothing_groups" "0"
-		}
-		side
-		{
-			"id" "399"
-			"plane" "(-320 256 224) (320 256 224) (320 256 384)"
-			vertices_plus
-			{
-				"v" "-320 256 224"
-				"v" "320 256 224"
-				"v" "320 256 384"
-				"v" "-320 256 384"
-			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
-			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 0 -1 0] 0.25"
-			"rotation" "0"
-			"lightmapscale" "16"
-			"smoothing_groups" "0"
-		}
-		side
-		{
-			"id" "398"
-			"plane" "(320 -320 224) (-320 -320 224) (-320 -320 384)"
-			vertices_plus
-			{
-				"v" "320 -320 224"
-				"v" "-320 -320 224"
-				"v" "-320 -320 384"
-				"v" "320 -320 384"
-			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
-			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 0 -1 0] 0.25"
-			"rotation" "0"
-			"lightmapscale" "16"
-			"smoothing_groups" "0"
-		}
-		side
-		{
-			"id" "397"
-			"plane" "(-320 -320 384) (-320 256 384) (320 256 384)"
-			vertices_plus
-			{
-				"v" "-320 -320 384"
-				"v" "-320 256 384"
-				"v" "320 256 384"
-				"v" "320 -320 384"
-			}
-			"material" "CONCRETE/CONCRETECEILING003A"
-			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 -1 0 0] 0.25"
-			"rotation" "0"
-			"lightmapscale" "16"
-			"smoothing_groups" "0"
-		}
-		editor
-		{
-			"color" "0 222 239"
-			"visgroupshown" "1"
-			"visgroupautoshown" "1"
-		}
-	}
-	solid
-	{
 		"id" "452"
 		side
 		{
 			"id" "474"
-			"plane" "(-320 256 96) (-320 -320 96) (320 -320 96)"
+			"plane" "(-320 -320 96) (320 -320 96) (320 256 96)"
 			vertices_plus
 			{
-				"v" "-320 256 96"
 				"v" "-320 -320 96"
 				"v" "320 -320 96"
 				"v" "320 256 96"
+				"v" "-320 256 96"
 			}
 			"material" "BRICK/BRICKWALL055D"
 			"uaxis" "[1 0 0 256] 0.25"
@@ -355,13 +237,13 @@ world
 		side
 		{
 			"id" "473"
-			"plane" "(-320 -320 96) (-320 256 96) (-320 256 224)"
+			"plane" "(-320 256 96) (-320 256 224) (-320 -320 256)"
 			vertices_plus
 			{
-				"v" "-320 -320 96"
 				"v" "-320 256 96"
 				"v" "-320 256 224"
-				"v" "-320 -320 224"
+				"v" "-320 -320 256"
+				"v" "-320 -320 96"
 			}
 			"material" "BRICK/BRICKWALL008A"
 			"uaxis" "[0 1 0 256] 0.25"
@@ -373,13 +255,13 @@ world
 		side
 		{
 			"id" "472"
-			"plane" "(320 256 96) (320 -320 96) (320 -320 224)"
+			"plane" "(320 -320 96) (320 -320 256) (320 256 224)"
 			vertices_plus
 			{
-				"v" "320 256 96"
 				"v" "320 -320 96"
-				"v" "320 -320 224"
+				"v" "320 -320 256"
 				"v" "320 256 224"
+				"v" "320 256 96"
 			}
 			"material" "BRICK/BRICKWALL008A"
 			"uaxis" "[0 1 0 256] 0.25"
@@ -391,13 +273,13 @@ world
 		side
 		{
 			"id" "471"
-			"plane" "(-320 256 96) (320 256 96) (320 256 224)"
+			"plane" "(320 256 96) (320 256 224) (-320 256 224)"
 			vertices_plus
 			{
-				"v" "-320 256 96"
 				"v" "320 256 96"
 				"v" "320 256 224"
 				"v" "-320 256 224"
+				"v" "-320 256 96"
 			}
 			"material" "BRICK/BRICKWALL055D"
 			"uaxis" "[1 0 0 256] 0.25"
@@ -409,13 +291,13 @@ world
 		side
 		{
 			"id" "470"
-			"plane" "(320 -320 96) (-320 -320 96) (-320 -320 224)"
+			"plane" "(-320 -320 96) (-320 -320 256) (320 -320 256)"
 			vertices_plus
 			{
-				"v" "320 -320 96"
 				"v" "-320 -320 96"
-				"v" "-320 -320 224"
-				"v" "320 -320 224"
+				"v" "-320 -320 256"
+				"v" "320 -320 256"
+				"v" "320 -320 96"
 			}
 			"material" "BRICK/BRICKWALL055D"
 			"uaxis" "[1 0 0 256] 0.25"
@@ -427,15 +309,15 @@ world
 		side
 		{
 			"id" "469"
-			"plane" "(-320 -320 224) (-320 256 224) (320 256 224)"
+			"plane" "(-320 256 224) (320 256 224) (320 -320 256)"
 			vertices_plus
 			{
-				"v" "-320 -320 224"
 				"v" "-320 256 224"
 				"v" "320 256 224"
-				"v" "320 -320 224"
+				"v" "320 -320 256"
+				"v" "-320 -320 256"
 			}
-			"material" "BRICK/BRICKWALL055D"
+			"material" "CS_HAVANA/METAL01"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"

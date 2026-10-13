@@ -367,10 +367,15 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
   Explosives, alternate fire, gravity gun and recoverable bolts are excluded.
   This side task does not accept Phase C or authorize publication.
 
-- **Next milestone: Alpha 3.2 CSM**, designated by the user on 2026-10-10.
-  Follow [the CSM implementation tracker](docs/csm-implementation.md) after
-  completing Alpha 3.1.5. Do not start CSM during the current milestone or skip
-  its projector/lighting feasibility gates. Production rebuilds and publication
+- **Next milestone: Alpha 3.2**, designated on 2026-10-10 and expanded in the
+  user-approved planning decisions on 2026-10-13. Follow the
+  [master phased plan](todo-alpha.3.2.md) for density-aware buildings,
+  decorations, borders/edges and footprint-aware 3-wide motorways, plus the
+  [CSM technical tracker](docs/csm-implementation.md). Planning does not activate
+  the milestone; complete or explicitly disposition Alpha 3.1.5 first and obtain
+  start approval. CSM now requires replacement-quality lighting with acceptable
+  native fallback; an additive overlay is not an approved substitute. Do not
+  skip projector/lighting feasibility gates. Production rebuilds and publication
   remain separately gated.
 
 - **Fixture-review preference:** when the user chooses to inspect fixtures,

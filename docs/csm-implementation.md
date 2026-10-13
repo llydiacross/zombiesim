@@ -7,13 +7,24 @@ by this document.** The user requested a source investigation of
 [Xenthio/RealCSM](https://github.com/Xenthio/RealCSM) and a future-agent plan for
 ZombieSim's own implementation.
 
-The authoritative milestone remains [Alpha 3.1.5](../todo-alpha.3.1.5.md):
-Phases A/B are accepted and Phase C is in progress. On 2026-10-10 the user
+The authoritative milestone remains [Alpha 3.1.5](../todo-alpha.3.1.5.md);
+use its latest dated acceptance notes and [AGENTS.md](../AGENTS.md), not
+historical phase labels. On 2026-10-10 the user
 designated this plan as **Alpha 3.2, the next milestone after Alpha 3.1.5**.
 Complete Alpha 3.1.5 first. This scheduling decision does not insert CSM into
 the current milestone, reopen accepted reviews, authorize production rebuilds
 or authorize Workshop publication. Retain the Phase 0 feasibility and
 lighting-policy decisions before implementation.
+
+On 2026-10-13 the user expanded Alpha 3.2 to include density-aware scenery and
+3-wide motorway assemblies. The [master phased plan](../todo-alpha.3.2.md)
+owns milestone ordering and those contracts; this document remains the CSM
+technical subtracker. The user also made **replacement-quality lighting with
+an acceptable native fallback mandatory**. This supersedes earlier optional
+overlay recommendations: additive illumination may be investigated to understand
+projector behavior, but cannot be accepted as the shipping CSM solution. If
+replacement and native fallback cannot both be proven, stop the CSM track and
+request a scope decision. No implementation or probe is authorized by planning.
 
 Preserve the approved launcher flight, skies/palettes, fog, weather,
 post-processing, clothing/gore and current-cell edge fires. CSM must not become
@@ -21,7 +32,7 @@ a second day/night, weather, fog or camera owner.
 
 ### Executive recommendation
 
-Build a **small, optional, client-side projected-light cascade service**, not
+Build a **small, client-side projected-light cascade service**, not
 an embedded copy of the addon. Begin disabled, on an existing preview map,
 with one light and a fixed map-matching sun direction. Prove the actual GMod
 branch supports the required caster/receiver combinations before investing in
@@ -525,14 +536,16 @@ Do not change walker networking or add an always-transmitted editor entity.
 Keep all existing global render cvars, native shadows, server lightstyles,
 weather and sky/fog values untouched during the initial prototype.
 
-An additive prototype is an experiment, not automatically an acceptable final
-look. If baked direct light cannot be selectively/reversibly controlled while
-preserving ambient and native fallback, offer these decisions to the user:
+An additive prototype is an experiment, not the accepted final look. Under the
+2026-10-13 master-plan decision, replacement-quality direct lighting and an
+acceptable native fallback are both required. If baked direct light cannot be
+selectively/reversibly controlled while preserving ambient and native fallback,
+stop the CSM track and request a scope decision. Do not substitute an optional
+projected-light overlay.
 
-- Retain native lighting and abandon replacement CSM.
-- Accept a specifically reviewed optional projected-light overlay.
-- Author separately approved preview lighting variants, with a defined native
-  fallback and asset/package cost.
+Separately approved preview lighting variants may be investigated, with a
+defined native fallback and asset/package cost, but are not authorized by this
+plan and do not bypass the independent-client acceptance gate.
 
 Do not assume that a map with ambient-only baking gives clients with CSM off
 an acceptable equivalent image. That is a map-art decision and a multi-client
@@ -586,8 +599,8 @@ separate from syntax or fixture success.
 - [ ] Confirm implementation scope and lighting-policy decisions at Alpha 3.2 start.
 - [ ] Record installed GMod branch/build, architecture, GPU, HDR mode, relevant
       render cvars, projected-light addons and current map/profile.
-- [ ] Agree initial overlay/replacement intent and performance budget before
-      applying any lighting changes.
+- [ ] Reconfirm the mandatory replacement/native-fallback contract and agree
+      the performance budget before applying any lighting changes.
 - [ ] Verify licence/asset/dependency decisions in section 8.
 - [ ] On an existing approved preview map, create one removable shadowed
       orthographic projector with explicit diagnostics and native baseline.
