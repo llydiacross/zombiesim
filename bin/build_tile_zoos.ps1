@@ -14,6 +14,8 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile preview
 $generatorSettings = $worldGenerationProfile.Settings
 Import-Module (Join-Path $PSScriptRoot 'carpark_endcaps.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'tile_ground_grid.psm1')
+Import-Module (Join-Path $PSScriptRoot 'scenery_density.psm1') -Force
 if ([string]::IsNullOrWhiteSpace($TemplateDirectory)) { $TemplateDirectory = Join-Path $projectRoot 'tiletemplates' }
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $projectRoot 'celltemplates/dev' }
 if ([string]::IsNullOrWhiteSpace($PlanData)) { $PlanData = Join-Path $PSScriptRoot 'preview_grid_24x24_seed_1337_template_plan.json' }
@@ -38,6 +40,7 @@ if ($plan.cellTileGridSize -lt 1 -or @($plan.cells).Count -eq 0) { throw 'Templa
 function Get-InstancePath {
     param([string]$OutputPath, [string]$Template)
 
+    Write-ZMTileGroundGridWarnings (Join-Path $TemplateDirectory $Template)
     $sourceUri = [System.Uri]((Split-Path -Parent $OutputPath).TrimEnd('\') + '\')
     $templateUri = [System.Uri](Join-Path $TemplateDirectory $Template)
     return [System.Uri]::UnescapeDataString($sourceUri.MakeRelativeUri($templateUri).ToString())
@@ -62,10 +65,7 @@ function Get-BuildingZooSortKey {
 function Get-TemplateFootprint {
     param([string]$Template)
 
-    $templateName = [System.IO.Path]::GetFileNameWithoutExtension($Template)
-    if ($templateName -match '(?i)_2x(?:2)?$') { return [pscustomobject]@{ width = 2; height = 2 } }
-    if ($templateName -match '(?i)_3x(?:3)?$') { return [pscustomobject]@{ width = 3; height = 3 } }
-    return [pscustomobject]@{ width = 1; height = 1 }
+    return Get-ZMTemplateFootprint $Template
 }
 
 function Get-PlannedPlacementFootprint {
@@ -94,7 +94,10 @@ function Get-ZooGridPlacements {
     } else {
         $orderedTemplates = @($Templates | Sort-Object)
     }
-    $maximumFootprint = @($orderedTemplates | ForEach-Object { (Get-TemplateFootprint $_).width } | Measure-Object -Maximum).Maximum
+    $maximumFootprint = @($orderedTemplates | ForEach-Object {
+        $footprint = Get-TemplateFootprint $_
+        [Math]::Max($footprint.width, $footprint.height)
+    } | Measure-Object -Maximum).Maximum
     $slotTileSpan = [Math]::Max(1, [int]$maximumFootprint + 1)
     $columns = [Math]::Max(1, [int][Math]::Ceiling([Math]::Sqrt($orderedTemplates.Count)))
     $placements = [System.Collections.Generic.List[object]]::new()

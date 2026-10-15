@@ -96,6 +96,8 @@ foreach ($track in $music.tracks) {
 }
 Add-WorkshopFile $inventory $musicPath 'data_static/music_definitions.json' 'core' 'registries' ($music | ConvertTo-Json -Depth 8)
 Add-WorkshopFile $inventory (Join-Path $content 'sounds\music\preview skybox 1.mp3') 'sound/music/preview skybox 1.mp3' 'common' 'audio:launcher-sky-preview'
+Add-WorkshopFile $inventory (Join-Path $content 'sounds\music\menu.mp3') 'sound/music/menu.mp3' 'common' 'audio:launcher-menu'
+Add-WorkshopFile $inventory (Join-Path $content 'sounds\music\menu 2.mp3') 'sound/music/menu 2.mp3' 'common' 'audio:launcher-menu-loop'
 
 $assetsPath = Join-Path $content 'data_static\imported_assets.json'
 $assets = Read-PackageJson $assetsPath

@@ -1,5 +1,21 @@
 # Safezone Entrances
 
+## Outcome: rejected, not scheduled
+
+On 2026-10-14 the user rejected the automatic detail treatment after reviewing
+the result. Its planner claims, scenery reservations, recipe-signature
+contributions and builder emission have been removed. Alpha 3.2 Phase M is
+cancelled; none of the ideas below is an active implementation requirement.
+Existing safe-zone entrances and the user's authored VMF/VMX files remain.
+
+The replacement direction is larger, interesting authored tiles with varied
+width/height placed through the ordinary generator. Continue
+[Alpha 3.2 Phase E](../../todo-alpha.3.2.md#phase-e---rectangular-vmfs-ring-leases-and-actual-travel);
+inspect actual authored footprints/frontage before wiring them. Do not revive
+neighbor claims, coastal detailing or naval silhouettes from these old notes.
+
+## Original proposal (historical only)
+
 - Safezone entrances need to be placed in each corner of the cell, but also the corner which the entrance is placed, the surrounding neighbouring cells corners which touch this safezone entrance should have special "safezone entrance detail tiles" which make the safezone entrance look a lot larger and more prominent in the city.
 
 - To achieve this, the level design should include a system that automatically places these detail tiles in the neighbouring cells whenever a safezone entrance is added to a corner. For instance, if the hospital is placed in the corner, its safe zone entrance details can make the hospital look a lot larger and more integrated into the cityscape. 

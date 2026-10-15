@@ -1,30 +1,84 @@
-# Alpha 3.2 - ZombieSim cascaded shadows implementation tracker
+# ZombieSim cascaded shadows - accepted experiment and deferred implementation
 
 ## Status and scope
 
-**Planning only. No CSM renderer, map changes or dependencies are implemented
-by this document.** The user requested a source investigation of
+**Current experimental implementation accepted by the user; all remaining CSM
+work deferred outside Alpha 3.2's completion requirements.** This is acceptance
+of the limited opt-in experiment, not seamless cascade, live lifecycle or
+performance certification. No map changes or dependencies were introduced.
+The user requested a source investigation of
 [Xenthio/RealCSM](https://github.com/Xenthio/RealCSM) and a future-agent plan for
 ZombieSim's own implementation.
 
-The authoritative milestone remains [Alpha 3.1.5](../todo-alpha.3.1.5.md);
-use its latest dated acceptance notes and [AGENTS.md](../AGENTS.md), not
-historical phase labels. On 2026-10-10 the user
-designated this plan as **Alpha 3.2, the next milestone after Alpha 3.1.5**.
-Complete Alpha 3.1.5 first. This scheduling decision does not insert CSM into
-the current milestone, reopen accepted reviews, authorize production rebuilds
-or authorize Workshop publication. Retain the Phase 0 feasibility and
-lighting-policy decisions before implementation.
+The authoritative schedule is the [Alpha 3.2 master plan](../todo-alpha.3.2.md)
+and [AGENTS.md](../AGENTS.md). On 2026-10-13 the user moved unfinished
+Alpha 3.1.5 closure to the end of 3.2 and prioritized generator work. Old
+3.1.5 closure is not a prerequisite. On 2026-10-14 the user moved Phase C/Phase 0
+feasibility forward to run alongside the isolated preview regeneration and
+compile. The approved
+probe is capability-only: one client-local shadowed orthographic projector,
+recording its `Update` call timing without a performance claim. This does not
+authorize `light_environment`, baked-lightmap/lightstyle, shared-server,
+production-map, preference-default or dependency changes.
 
 On 2026-10-13 the user expanded Alpha 3.2 to include density-aware scenery and
 3-wide motorway assemblies. The [master phased plan](../todo-alpha.3.2.md)
 owns milestone ordering and those contracts; this document remains the CSM
-technical subtracker. The user also made **replacement-quality lighting with
-an acceptable native fallback mandatory**. This supersedes earlier optional
-overlay recommendations: additive illumination may be investigated to understand
-projector behavior, but cannot be accepted as the shipping CSM solution. If
-replacement and native fallback cannot both be proven, stop the CSM track and
-request a scope decision. No implementation or probe is authorized by planning.
+technical subtracker. On 2026-10-14 the user explicitly accepted an **additive
+client-local CSM overlay** as the intended CSM direction. This supersedes the
+earlier replacement-quality requirement. The baked `light_environment` remains
+unchanged; CSM-off must retain the existing native image, and the CSM-on option
+must be opt-in/default off. Additive overlap, image brightness, performance and
+independent-client behavior remain unverified and deferred. The test-only probe
+below is separate from the `ZM_CSM` runtime owner. The service is opt-in/default off
+and exposes the selected Low = 1 cascade / 15 Hz, Medium = 2 / 30 Hz, and High
+= 3 / rendered frame rate mapping. Its current cascades are weighted,
+overlapping ProjectedTextures without seam-blending masks; the result is an
+experimental overlay, not proven seamless cascade coverage. The user has now
+accepted that experimental scope and requested that the remaining work be saved
+here for a future return. Do not resume CSM implementation, optimization, probes,
+reloads or benchmarks merely to close Alpha 3.2.
+
+### Accepted scope and evidence boundary
+
+- Client-local additive overlay, archived enable/quality preferences, default
+  off; existing graphics presets do not enable or change it.
+- Low = 1 projector / 15 Hz, Medium = 2 / 30 Hz, High = 3 / rendered-frame
+  updates. These rates cap GLua `ProjectedTexture:Update` calls, not a proven
+  engine shadow-map refresh cadence or GPU saving.
+- Weighted nested projected lights with the existing mounted texture; no
+  contiguous masks, seam blending or light-space snapping yet. Baked lighting,
+  shared lightstyles and server lighting remain unchanged.
+- GLua syntax275/0 and editor diagnostics pass. Earlier one-projector preview
+  review confirmed world/telephone-pole and tree-leaf shadows only in the
+  observed cell. The running client has not loaded the new runtime/Options
+  source; that review is not evidence for its controls or all quality tiers.
+- Live enable/tier/persistence behavior, lifecycle, secondary-view/skybox
+  isolation, two-client independence and matched foreground performance remain
+  unverified. Focus-unmatched bridge samples are not causal cost evidence.
+- The permanent unshadowed F-toggle chest lamp is separate; its outstanding
+  multiplayer/culling/lifecycle checks remain documented, not silently passed.
+
+### Deferred backlog transferred from Alpha 3.2
+
+The following is the canonical future work list, not an active milestone gate.
+Keep the detailed contracts and unchecked cases below for resumption only after
+the user authorizes a bounded CSM follow-up.
+
+| Former master-plan work | Future work and detailed location |
+| --- | --- |
+| C - capability and native fallback | Complete caster/receiver and projector-pool matrix, environment/HDR inventory, additive-on/native-off review and coexistence checks; section 6 Phase 0. |
+| F - lighting provenance | Resolve authoritative per-map direction, LDR/HDR direct/ambient values and map/build compatibility; section 5.3. No replacement-lighting work is authorized. |
+| H - service and cascade correctness | Strict offline/actual-client fixtures, stable snapping, conservative depth/caster margins, deterministic splits, masks/blending and view restoration; section 6 Phases 1-3. |
+| I - isolation and resource/performance acceptance | Moving casters, two clients, repeated enable/travel/capture cycles, matched foreground Off/1/2/3 samples and agreed full-frame/resource budgets; section 6 Phases 3-4 and section 7. |
+| L - future CSM hardening/release | Revalidate owned resources, notices, diagnostics and supported modes after future changes; section 6 Phase 5. Current-code packaging checks remain part of Alpha 3.2. |
+
+Also audit the temporary old/new projector overlap during quality replacement
+(up to six can briefly coexist), and replace exposed mutable projector records
+with read-only diagnostics if the ownership contract requires it. These are
+future resource/encapsulation checks, not completed guarantees. Keep
+`SetSkipShadowUpdates` disabled: it produced missing/stale reviewed shadows.
+Do not use culling, masks, RTs or dependencies as speculative optimizations.
 
 Preserve the approved launcher flight, skies/palettes, fog, weather,
 post-processing, clothing/gore and current-cell edge fires. CSM must not become
@@ -32,25 +86,27 @@ a second day/night, weather, fog or camera owner.
 
 ### Executive recommendation
 
-Build a **small, client-side projected-light cascade service**, not
-an embedded copy of the addon. Begin disabled, on an existing preview map,
-with one light and a fixed map-matching sun direction. Prove the actual GMod
-branch supports the required caster/receiver combinations before investing in
-three cascades, dynamic masks or map relighting.
+Keep the **small, client-side projected-light prototype** disabled by default.
+The user requested that the Options toggle and three quality tiers be wired
+now, with further testing deferred. The current source therefore allocates the
+selected 1/2/3 weighted projector layers directly; it does not yet prove
+contiguous cascade coverage or acceptable performance. The user accepts the
+experiment with those limits; do not enable it automatically or alter map
+lighting. Further hardening is deferred, not a prerequisite for generator work.
 
-There are two independent feasibility gates:
+When future CSM work is authorized, retain two independent feasibility checks:
 
 1. Orthographic projected shadows must work on the geometry ZombieSim uses.
    The GMod wiki explicitly warns about failures on non-static props and most
    map brushes. Upstream's use of the API is not proof it works on our branch.
 2. Projected lights add light; they do not, by themselves, subtract baked
-   sunlight or its baked shadows. A visually acceptable overlay and a genuine
-   replacement of baked direct sunlight are different projects. Do not promise
-   replacement-quality shadows until a reversible lighting experiment proves it.
+   sunlight or its baked shadows. The user accepted this as an additive overlay,
+   but the actual combination must still be visually acceptable and must retain
+   the exact native path when disabled. Never represent it as replacing VRAD
+   sunlight or dynamically changing shared baked lighting.
 
 If either gate fails, stop with evidence and request a scope decision. Do not
-quietly ship brighter lighting under the name "CSM", replace materials, remove
-baked ambient light or require an undocumented engine hack.
+hide additive brightness or require an undocumented engine hack.
 
 ## 1. Research baseline and evidence rules
 
@@ -451,20 +507,24 @@ Resolve the selected authored source, compiler mode and actual BSP before
 exporting CSM metadata. Do not "fix" existing approved lighting in this task.
 Launcher/safe-room templates need independent metadata or an explicit off path.
 
-### 5.2 Proposed service boundaries, not a new framework
+### 5.2 Current service boundary
 
-Use a small `ZM_CSM` public owner and initially three internal files:
+`gamemode/cl_csm.lua` currently owns the client convars, readiness/status state,
+the `PreDrawOpaqueRenderables` hook, camera/sun transforms and a bounded set of
+up to three `ProjectedTexture`s. The actual view comes from
+`render.GetViewSetup(true)`. It suspends during launcher, sky-inspection and
+world-capture contexts, and keeps all state local to the client; there is no
+server CSM message or editor entity.
 
-- `gamemode/cl_csm.lua`: facade, configuration, capability state, lifecycle,
-  bounded projector ownership and diagnostics.
-- `gamemode/csm/cl_layout.lua`: pure light-space/split/depth/coverage
-  calculations; no hooks or engine allocations.
-- `gamemode/csm/cl_projectors.lua`: coherent transform application, mask
-  resources and render-pass scheduling.
+The current tier profiles use nested 512/1024/2048-unit extents and normalized
+brightness weights. They use the existing flashlight projection texture and
+do not have seam-blending masks or stable light-space snapping. This is an
+experimental weighted overlap, not a completed conventional CSM blend.
 
-Add more files only when an accepted optional branch justifies them. Do not
-recreate the entire addon module/entity/menu structure. Exact names are
-proposals, not existing files or implemented APIs.
+Keep future extraction small and evidence-driven. A pure
+`csm/cl_layout.lua` or separate projector/mask owner is still a possible later
+refactor, not a prerequisite for the current user-requested Options prototype.
+Do not recreate the entire addon module/entity/menu structure.
 
 Expose narrow operations such as enable/reconcile, begin/end view scope,
 reset/cleanup and a read-only diagnostic snapshot. Keep mutable state on the
@@ -512,21 +572,21 @@ Do not change walker networking or add an always-transmitted editor entity.
 
 ### 5.4 Render-pass and camera policy
 
-1. Identify final gameplay view origin/angles/projection from the real camera
-   lifecycle. Consume it explicitly and prepare projectors for the intended
-   main-world pass; do not rely on unordered hook callbacks returning values.
+1. The current prototype reads origin/angles from `render.GetViewSetup(true)`
+   in `PreDrawOpaqueRenderables`. Confirm this is the final intended camera in a
+   fresh live load before accepting third-person, zoom or secondary-view behavior.
 2. Default: CSM participates only in the main playable-world view.
 3. Initial level-capture policy: suspend/remove its contribution during capture
    and restore for the next main view. Retain the existing native capture
    appearance. Confirm no stale shadow map is reprojected on return.
-4. Initial city/den sky-inspection secondary views: suspend CSM unless their
-   view has explicitly tested support. Preserve the existing sweep.
+4. The current source suspends during `ZM_SkyInspection:IsActive()`. Verify
+   suspended-to-main restoration and preserve the existing sweep.
 5. Launcher: initially off. Add support only after the authored island,
    main menu/credits, banking flight and return are independently reviewed.
-6. Native 3D skybox: exclude ordinary cascades from that pass. Preserve matched
-   skyline lighting, coast, custom meshes and edge-fire rendering. Engine
-   projector behavior under `SuppressEngineLighting` and IMesh must be tested,
-   not inferred from ordinary prop behavior.
+6. The update hook skips skybox callbacks, but that alone does not prove engine
+   ProjectedTextures are absent from the native 3D skybox pass. Preserve matched
+   skyline lighting, coast, custom meshes and edge-fire rendering; verify the
+   actual skybox behavior, `SuppressEngineLighting` and IMesh interaction.
 7. Avoid an extra `RenderView` to generate shadows; engine projectors already
    own the depth work. Scope existing nested renders with guaranteed cleanup,
    explicit errors and no recursion/repeated-update loop.
@@ -536,21 +596,20 @@ Do not change walker networking or add an always-transmitted editor entity.
 Keep all existing global render cvars, native shadows, server lightstyles,
 weather and sky/fog values untouched during the initial prototype.
 
-An additive prototype is an experiment, not the accepted final look. Under the
-2026-10-13 master-plan decision, replacement-quality direct lighting and an
-acceptable native fallback are both required. If baked direct light cannot be
-selectively/reversibly controlled while preserving ambient and native fallback,
-stop the CSM track and request a scope decision. Do not substitute an optional
-projected-light overlay.
+The user explicitly accepted additive projected sunlight on 2026-10-14. Keep
+the original compiled `light_environment` and lightmaps untouched. CSM-off
+must leave the native render path as-is; CSM-on adds client-local light and may
+overlap existing baked direct sunlight. Human review must explicitly accept
+or reject brightness, doubled illumination, seams and shadow contrast on
+representative materials. Never label the overlay as replacement or alter
+shared lightstyles to make it appear subtractive.
 
-Separately approved preview lighting variants may be investigated, with a
-defined native fallback and asset/package cost, but are not authorized by this
-plan and do not bypass the independent-client acceptance gate.
-
-Do not assume that a map with ambient-only baking gives clients with CSM off
-an acceptable equivalent image. That is a map-art decision and a multi-client
-compatibility gate. Client A toggling local shadows must never change Client
-B's lightmap state or shared server lighting.
+Every client owns its own projector/settings. Enabling CSM must not send server
+lightstyle/`light_environment` inputs, change another client's image, or
+require relit BSP variants. The native-fallback check means the unmodified
+native image remains available when that client disables CSM; it is not a
+replacement-lighting claim. Client A toggling local shadows must never change
+Client B's lightmap state or shared server lighting.
 
 ### 5.6 Proposed resource and quality caps
 
@@ -587,55 +646,165 @@ internal shadow-target names or claim targets are freed by assigning nil.
 
 ## 6. Implementation phases and acceptance checklist
 
-All phases below are **pending**, except this research/documentation handoff.
-Within each phase: run focused static tests first, fix failures, then perform
-the real engine/visual checks. Human acceptance and performance evidence are
+Checked items below record completed source/decision or scoped live evidence;
+unchecked items are **deferred future work**, not Alpha 3.2 blockers. The user
+accepted the current experimental implementation without requiring those
+checks now. Within a future authorized phase: run focused static tests first,
+fix failures, then perform the real engine/visual checks. Human acceptance and performance evidence are
 separate from syntax or fixture success.
 
 ### Phase 0 - Approval, provenance and feasibility
 
-- [x] User designates Alpha 3.2 as the next milestone after Alpha 3.1.5
-      (2026-10-10); implementation waits for current-milestone completion.
-- [ ] Confirm implementation scope and lighting-policy decisions at Alpha 3.2 start.
+- [x] User designates Alpha 3.2 (2026-10-10); generator-first scheduling
+      (2026-10-13) moves remaining 3.1.5 closure to final master phases J/K.
+      On 2026-10-14 the user explicitly moved this feasibility gate forward to
+      run alongside preview generation/compile; this supersedes only its prior
+      position after G, not the required feasibility or later implementation
+      gates.
+- [x] User approved a temporary client-local, one-projector capability probe;
+      record `ProjectedTexture:Update` timing as operation data only, with no
+      performance acceptance claim. Baked/shared lighting changes remain
+      unauthorized.
+- [x] Confirm current experimental implementation scope: additive/client-local,
+      default off, user-selected tiers; remaining hardening explicitly deferred.
 - [ ] Record installed GMod branch/build, architecture, GPU, HDR mode, relevant
       render cvars, projected-light addons and current map/profile.
-- [ ] Reconfirm the mandatory replacement/native-fallback contract and agree
-      the performance budget before applying any lighting changes.
+      Partial environment inventory, 2026-10-14: installed `gmod.exe` file
+      version `2026.09.16`; detected `AMD Radeon(TM) Graphics` (Windows
+      reported512MiB adapter memory, not verified dedicated VRAM); active
+      profile/map during the probe was preview /
+      `zz_preview_a7477221a688-oceanw-edge2`. Runtime build/HDR mode, renderer
+      cvars and projected-light coexistence remain unrecorded.
+- [x] On 2026-10-14 the user accepted an additive CSM overlay as the intended
+      approach, with the original baked sunlight left untouched and the exact
+      native render path retained when CSM is off. This explicitly supersedes
+      the replacement-quality requirement. Do not toggle shared map lighting.
+- [ ] Agree a foreground performance budget for the opt-in overlay before
+      enabling it by default or declaring performance acceptance.
 - [ ] Verify licence/asset/dependency decisions in section 8.
-- [ ] On an existing approved preview map, create one removable shadowed
-      orthographic projector with explicit diagnostics and native baseline.
+- [x] On a deployed generated preview cell, run the removable diagnostic in
+      `gamemode/tests/cl_csm_feasibility_probe.lua` with the client `developer`
+      convar enabled. Its commands are `zombiesim_dev_csm_probe`,
+      `zombiesim_dev_csm_probe_status`,
+      `zombiesim_dev_csm_probe_skip_updates on|off`, and
+      `zombiesim_dev_csm_probe_stop`.
+      It prefers `util.GetSunInfo`, then for the current generated preview-cell
+      family derives the light-ray vector from the authored
+      `celltemplates/template_border_s.vmf` `light_environment` (`angles 0 0 0`,
+      `pitch -75`). The 1024-unit orthographic extent uses local brightness1.0
+      updates only in `PreDrawOpaqueRenderables`; it does not modify map
+      lightstyles or baked lighting. The status is written to
+      `data/zombiesim/csm_probe_status.json`.
+      **Live discovery, 2026-10-14:** `util.GetSunInfo` returned no enabled sun
+      on `zz_preview_a7477221a688-oceanw-edge2`, so the first command created no
+      projector. The source fallback is diagnostic only: VDC's
+      `light_environment` page was inaccessible behind Anubis; TWHL's
+      [light_environment reference](https://twhl.info/wiki/page/light_environment)
+      states `pitch` overrides the angle pitch, and the related Source SDK 2013
+      [`src/public/map_utils.cpp`](https://github.com/ValveSoftware/source-sdk-2013/blob/b8cfb12c0e083a2ef5b2f9f9b50f3902fa034474/src/public/map_utils.cpp)
+      `SetupLightNormalFromProps` computes the direct ray as
+      `(cos(yaw)cos(pitch), sin(yaw)cos(pitch), sin(pitch))`. This is a
+      source-derived direction for the probe, not proof of the installed GMod
+      branch's VRAD/runtime equivalence or acceptable replacement lighting.
+      On 2026-10-14 the user visually confirmed localized light and cast shadows
+      from the sun-aligned orthographic probe, including a tree's leaf shadow.
+      The final report recorded `lastTarget=prop_dynamic`; this is scoped to
+      the observed telephone-pole/tree in this cell, not every static prop or
+      alpha-tested material. After1718 updates, `ProjectedTexture:Update`
+      averaged0.134ms with a1.003ms maximum; this is CPU call timing, not total
+      frame/GPU cost. The projector was removed; status verified `active=false`,
+      `projectorValid=false`.
+- [x] User requested a permanent light-only chest lamp, F-toggle replacing the
+      native flashlight on gameplay maps, visible to all clients. No visible
+      prop/model or battery; lamp state is non-persistent and turns off on
+      death. Each client renders at most the nearest four unshadowed lamps
+      within2048 units. The chest-cone proof-of-concept was visually confirmed
+      to follow player aim, then replaced by the gameplay implementation.
+- [x] User specified CSM options expose a client-local
+      enable toggle (default off) plus one Low/Medium/High quality selector;
+      chest lamp remains F-only. The selected mapping is Low = 1 cascade /
+      15 Hz, Medium = 2 / 30 Hz, High = 3 / rendered frame rate. These controls
+      are wired to the accepted experimental owner; live behavior is deferred.
+- [ ] Measure performance and optimize CSM shadows separately from the chest
+      lamp. Shadowed-chest A/B/A profiles were22.5/59.8/26.6FPS; switching the
+      permanent lamp to unshadowed cones then measured59.5FPS versus the
+      59.8FPS off sample. The captured transform-cached chest hook was
+      0.262ms/frame and0.675KiB/frame (correcting the earlier0.081ms summary).
+      These one-machine samples are not general
+      performance or GPU claims. A foreground-window monitor run during a
+      bridge-started profile observed Garry's Mod in0 of159 samples, confirming
+      that this workflow does not keep the game focused. Earlier bridge-started
+      FPS samples were not monitored and cannot be treated as foreground or
+      causal evidence.
+- [ ] A test-only `zombiesim_dev_csm_probe_rate 15|30|60` command now caps
+      calls to `ProjectedTexture:Update`; the default probe rate remains60Hz.
+      Bridge-started 10-second profiles reported44.37FPS with one projector at
+      60Hz and59.80FPS after removal; at15Hz they reported22.85FPS and, in the
+      run with focus monitoring,23.31FPS. The monitored run again recorded
+      Garry's Mod in0 of159 foreground samples. These values are explicitly
+      focus-unmatched and must not be used to attribute cost or approve a rate.
+      The probe hook averaged0.216ms/frame at60Hz and0.095ms/frame at15Hz in
+      those respective runs; this CPU timing does not include engine/GPU shadow
+      rendering. A fresh, manually initiated in-game profile with GMod
+      foreground is still required before performance tuning.
+- [ ] The earlier bridge-run orthographic profile reported199
+      frames /19.94FPS over10 seconds; its Lua hook averaged0.184ms and maxed
+      at0.409ms. Focus was not monitored, so this is not causal performance
+      evidence. One supported client exposed `SetSkipShadowUpdates`; with it
+      enabled the user saw stale/incorrect shadows, so it was disabled and must
+      not ship from this result.
+      The user-authorized Options controls are now wired to the initial
+      prototype: CSM on/off (default off) plus the selected Low/Medium/High
+      mapping. The prototype is not yet visually or performance accepted.
+- [x] The user selected additive CSM over unchanged baked sunlight. Preserve
+      the exact native image when CSM is off; the additive-on image and
+      performance budget remain unaccepted. No `light_environment` or
+      shared/baked-light change is authorized. Keep the test-only probe out of
+      ordinary gameplay and the future feature off by default.
 - [ ] Test caster AND receiver combinations: BSP brush, static prop, dynamic
       prop, player, citizen walker, ragdoll/detached piece, custom IMesh,
       alpha-tested foliage and translucent surfaces. Record unsupported pairs.
 - [ ] Test player flashlight coexistence and reaching the shadow-pool limit;
       no crashes, hidden failure or corruption after removing the probe.
-- [ ] Test actual `light_environment` on/off only with separate permission,
-      on an isolated preview, capturing direct/ambient/prop lighting separately.
-      Restore exact state; no server lighting change from local settings.
-- [ ] Decide go/no-go and fallback. A no-go is a valid result; do not bypass it.
+- [ ] Keep `light_environment`/lightstyle on/off experiments out of scope unless
+      separately approved; the selected additive design leaves them unchanged.
+- [ ] Human-review the additive-on image for excessive/double illumination,
+      hard seams, caster/receiver failures and native-off restoration.
 
 Exit: demonstrated compatible geometry and an explicitly accepted lighting
 strategy. No broad map rebuild is needed to discover whether a projector works.
 
-### Phase 1 - Single-owner service and coherent one-light baseline
+### Phase 1 - Initial service source (experiment accepted; live checks deferred)
 
-- [ ] Wire client/server includes and capability/readiness diagnostics.
-- [ ] Implement bounded, idempotent lifecycle and partial-failure cleanup.
-- [ ] Feed actual main-view camera and map-compatible sunlight metadata.
-- [ ] Guard finite math, valid extents/depth, absent player/map data and
-      unsupported APIs; surface failures instead of guessing.
-- [ ] Preserve native off mode and all approved renderer/global settings.
+- [x] Send/include the client-only `ZM_CSM` owner and show readiness/failure in
+      Options. No server CSM network state or entity is used.
+- [x] Implement default-off, bounded projector ownership, idempotent cleanup
+      and rollback on partial allocation/configuration/update failure.
+- [x] Consume `render.GetViewSetup(true)` for the current view. Sun direction
+      prefers enabled `util.GetSunInfo`, then uses the reviewed source-derived
+      direction only on generated preview/city cells; full per-map lighting
+      metadata and actual camera behavior still require live validation.
+- [x] Guard finite vectors/angles, valid supported profiles, texture material,
+      projector allocation and update failures; expose failure state and log
+      once per changed failure.
+- [x] Preserve the native off mode by removing every owned projector without
+      modifying baked lighting, lightstyles or other global settings.
 - [ ] Add strict offline tests and actual-client tests using existing harnesses.
 - [ ] Verify enable/disable/re-enable, fresh map load, cleanup, reconnect,
       death, spectating and service reload cleanup with zero orphan lights.
-- [ ] Human reviews one-light lighting/shadows against the native baseline.
+- [ ] Human reviews the additive image against the native baseline. The
+      prototype currently creates the selected 1/2/3 tiers directly rather than
+      gating the user behind another one-light-only review.
 
 Exit: stable one-light behavior and exact off/restoration path, not a claim
 that a full cascade renderer is accepted.
 
 ### Phase 2 - Cascades, coverage and stability
 
-- [ ] Introduce up to three contiguous cascade records and deterministic splits.
+- [x] Add 1/2/3 nested projected-light tiers with the user-selected 15/30/full
+      rendered-frame update rates and normalized brightness weights.
+- [ ] Turn the weighted nested prototype into contiguous cascades with
+      deterministic splits and seam-blending masks.
 - [ ] Begin with stable symmetric boxes; compare concentric and frustum-fitted
       layouts only after one-light behavior is accepted.
 - [ ] Specify FOV/aspect/projection convention and conservative caster margins.
@@ -688,9 +857,12 @@ unmatched crowd/weather/camera settings or hook timing alone.
 
 ### Phase 5 - Presets, documentation and release decision
 
-- [ ] User approves default state and mapping into existing quality presets.
-- [ ] Options explain compatibility, cost, unavailable reasons and global
-      flashlight-setting implications without silently changing preferences.
+- [x] User selected CSM default off and Low=1/15Hz, Medium=2/30Hz,
+      High=3/full rendered-frame rate. Existing graphics presets do not change
+      CSM.
+- [x] Options explain client-local additive behavior, potential performance
+      cost, supported generated-cell scope and current overlap limitation.
+      Unsupported reasons are shown; global flashlight settings are untouched.
 - [ ] Packaging includes only cleared/owned required code/assets/licences.
 - [ ] Update [README](../readme.md), [agent guide](../AGENTS.md) and the
       approved milestone tracker with static/live/visual/performance results.
@@ -838,8 +1010,15 @@ exist, so also test practical shadow-pool coexistence.
 
 ## 9. Handoff and stop conditions
 
-Next action is **Phase 0 approval and a one-projector feasibility prototype**,
-not copying the upstream tree or rebuilding the city.
+No CSM action is currently scheduled. Continue the active non-CSM work in the
+[master tracker](../todo-alpha.3.2.md). Do not repeat the completed
+one-projector probe or copy the upstream tree.
+
+When the user explicitly returns to CSM, first inspect the current owner and
+retained evidence, agree one bounded target from the deferred backlog, and
+reconfirm map/profile, foreground conditions and the unchanged default-off
+policy. Existing source has not received a runtime/Options live review; use
+that evidence boundary rather than assuming experimental acceptance proves it.
 
 Stop and ask for a decision if:
 

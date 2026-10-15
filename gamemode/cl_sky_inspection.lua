@@ -49,6 +49,21 @@ function Inspection:GetEndFade(state, elapsed)
     return fade * fade * (3 - 2 * fade)
 end
 
+// The launcher flight repeats until the player exits; returns the time within the current pass and its index.
+function Inspection:GetCycleTime(state, elapsed)
+    if not state.loop then return elapsed, 0 end
+    local duration = math.max(state.duration, 0.01)
+    local cycle = math.floor(math.max(0, elapsed) / duration)
+    return math.max(0, elapsed) - cycle * duration, cycle
+end
+
+function Inspection:GetLoopStartFade(state, elapsed)
+    local cycleTime, cycle = self:GetCycleTime(state, elapsed)
+    if cycle == 0 then return 0 end
+    local fade = math.Clamp(1 - cycleTime / 0.8, 0, 1)
+    return fade * fade * (3 - 2 * fade)
+end
+
 function Inspection:UpdateLauncherSlot(state, elapsed)
     local slot = math.min(#state.sequence, math.floor(math.max(0, elapsed) / 5) + 1)
     if slot == state.slot then return true end
@@ -62,7 +77,11 @@ function Inspection:UpdateLauncherSlot(state, elapsed)
 end
 
 function Inspection:RenderFlight(state, width, height)
-    local elapsed = RealTime() - state.startedAt
+    local elapsed, cycle = self:GetCycleTime(state, RealTime() - state.startedAt)
+    if cycle ~= (state.cycle or 0) then
+        // The pass restarts at the authored camera behind a black fade; do not trace the jump back.
+        state.cycle, state.lastOrigin = cycle, nil
+    end
     local ready, failure = self:UpdateLauncherSlot(state, elapsed)
     if not ready then
         ZM_SkyBrowser.Error = "Sky preview failed: " .. tostring(failure)
@@ -182,6 +201,7 @@ function Inspection:Start(browser)
         if not sequence then return false, sequenceFailure end
         state.sequence = sequence
         if #sequence > 1 then state.duration = #sequence * 5 end
+        state.loop = true
         local clear, failure = self:ValidateLauncherFlight(state)
         if not clear then return false, failure end
         state.launcherFog, failure = ZM_SkyPalettes:GetLauncherPreviewFog(sequence[1].id, sequence[1].context)
@@ -224,15 +244,16 @@ function Inspection:Start(browser)
             self:Finish("interrupted")
         elseif state.alive and (not current:Alive() or current:Health() < state.health) then
             self:Finish("survivor needs attention")
-        elseif RealTime() - state.startedAt >= state.duration + (state.authoredCamera and 0.15 or 0) then
+        elseif not state.loop and RealTime() - state.startedAt >= state.duration + (state.authoredCamera and 0.15 or 0) then
             self:Finish("completed")
         end
     end
     frame.Paint = function(_, width, height)
         if self.State ~= state then return end
         if state.authoredCamera then
-            local elapsed = RealTime() - state.startedAt
-            local endFade = self:GetEndFade(state, elapsed)
+            local elapsed = self:GetCycleTime(state, RealTime() - state.startedAt)
+            local endFade = math.max(self:GetEndFade(state, elapsed),
+                self:GetLoopStartFade(state, RealTime() - state.startedAt))
             if #state.sequence > 1 then
                 local within = elapsed % 5
                 local alpha = math.max(elapsed >= 5 and math.Clamp(1 - within / 0.3, 0, 1) or 0,
@@ -245,6 +266,10 @@ function Inspection:Start(browser)
             else
                 surface.SetDrawColor(0, 0, 0, endFade * 255)
                 surface.DrawRect(0, 0, width, height)
+            end
+            if state.loop then
+                draw.SimpleText("ESC / SPACE  -  EXIT PREVIEW", "DermaDefault", width - 24, height - 28,
+                    Color(255, 255, 255, 150), TEXT_ALIGN_RIGHT)
             end
             return
         end
@@ -266,6 +291,7 @@ end
 function Inspection:GetDiagnosticSnapshot()
     local state = self.State
     return { active = state ~= nil, cameraOnly = true, duration = state and state.duration or self.Duration,
+        loop = state and state.loop == true, cycle = state and state.cycle or 0,
         motion = state and state.authoredCamera and "launcher flight" or "sky sweep",
         fog = state and state.launcherFog or nil, rendering = self.Rendering == true,
         slot = state and state.slot, slots = state and state.sequence and #state.sequence,

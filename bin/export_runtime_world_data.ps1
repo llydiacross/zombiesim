@@ -11,6 +11,49 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'scenery_density.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'motorway_geometry.psm1') -Force
+
+function Get-RuntimeMotorwayGates {
+    param([object]$PlanCell, [string]$TemplateDirectory)
+
+    if ($null -eq $PlanCell.PSObject.Properties['motorwayAssembly']) { return }
+    if ($PlanCell.motorwayAssembly.schemaVersion -eq 2) {
+        if ($PlanCell.motorwayAssembly.status -ne 'normal_complex_travel_pending') {
+            throw "Runtime complex motorway contract has unsupported status for $($PlanCell.cellTemplateFilename)."
+        }
+        $complexGates = @(Get-ZMComplexMotorwayGates $PlanCell.motorwayAssembly $TemplateDirectory)
+        if ((@($PlanCell.activeEntrances | Sort-Object -Unique) -join ',') -ne (@($complexGates.direction | Sort-Object) -join ',')) {
+            throw "Runtime complex motorway gates disagree with active entrances for $($PlanCell.cellTemplateFilename)."
+        }
+        return $complexGates
+    }
+    $measured = New-ZMNormalStraightMotorwayContract $PlanCell $TemplateDirectory
+    if (($measured | ConvertTo-Json -Depth 30 -Compress) -cne
+        ($PlanCell.motorwayAssembly | ConvertTo-Json -Depth 30 -Compress)) {
+        throw "Runtime motorway gate metadata differs from current source for $($PlanCell.cellTemplateFilename)."
+    }
+    return $measured.gates
+}
+
+function Get-RuntimeSceneryDensityFields {
+    param([object]$MapCell, [object]$PlanCell)
+
+    $manifestDensity = Get-ZMStoredSceneryDensity $MapCell
+    $planDensity = Get-ZMStoredSceneryDensity $PlanCell
+    if ($null -eq $manifestDensity -and $null -eq $planDensity) { return @{} }
+    if ($null -eq $manifestDensity -or $null -eq $planDensity) {
+        throw "Runtime scenery density requires matching manifest and plan at $($MapCell.x),$($MapCell.y)."
+    }
+    $fields = @{}
+    foreach ($field in $manifestDensity.PSObject.Properties) {
+        if ($field.Value -cne $planDensity.($field.Name)) {
+            throw "Runtime scenery density mismatch for '$($field.Name)' at $($MapCell.x),$($MapCell.y)."
+        }
+        $fields[$field.Name] = $field.Value
+    }
+    return $fields
+}
 
 function Get-RecordName {
     param([object]$Record, [string]$Context)
@@ -156,6 +199,7 @@ if ([string]::IsNullOrWhiteSpace($Output)) {
 }
 
 $map = Get-Content -Raw -LiteralPath $MapData | ConvertFrom-Json
+Test-ZMSceneryDensityManifest $map | Out-Null
 $plan = Get-Content -Raw -LiteralPath $PlanData | ConvertFrom-Json
 $cellBounds = Get-OptionalProperty $plan 'cellBounds'
 if ($null -ne $cellBounds -and [int]$cellBounds.revision -eq 2) {
@@ -422,7 +466,7 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
     $dangerIntensity = if ($null -ne $cellDanger -and $null -ne (Get-OptionalProperty $cellDanger 'intensity')) { [double]$cellDanger.intensity } else { 0.0 }
     $dangerIntensity = [Math]::Max(0.0, [Math]::Min(1.0, $dangerIntensity))
     $cellBuilding = Get-OptionalProperty $mapCell 'building'
-    $runtimeCells.Add([ordered]@{
+    $runtimeCell = [ordered]@{
         id = $cellId
         map = $mapName
         environment = $environmentIndexByKey[$environmentKey]
@@ -444,7 +488,14 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
         transport = [ordered]@{ bridge = [bool]$mapCell.highway.bridge; rampExits = if ([bool]$mapCell.highway.bridge) { @() } else { @($mapCell.highway.rampExits) }; diagonal = [bool]$mapCell.highway.diagonal }
         exits = @($exits)
         metro = [ordered]@{ lines = $metroLineIds; stop = $metroStopId }
-    })
+    }
+    $densityFields = Get-RuntimeSceneryDensityFields $mapCell $planCell
+    foreach ($field in $densityFields.Keys) { $runtimeCell[$field] = $densityFields[$field] }
+    if ($null -ne $planCell.PSObject.Properties['motorwayAssembly']) {
+        $templateRoot = Join-Path $projectRoot $generatorSettings.paths.templateDirectory
+        $runtimeCell.motorwayGates = @(Get-RuntimeMotorwayGates $planCell $templateRoot)
+    }
+    $runtimeCells.Add($runtimeCell)
 }
 
 if ($RequireCompiledMaps) {

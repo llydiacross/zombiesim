@@ -1,0 +1,5 @@
+"VertexLitGeneric"
+{
+    "$basetexture" "building_template/building_trainstation_truss_template001d"
+    "$alphatest" "1"
+}

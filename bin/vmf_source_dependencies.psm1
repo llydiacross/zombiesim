@@ -1,4 +1,5 @@
 Set-StrictMode -Version Latest
+Import-Module (Join-Path $PSScriptRoot 'tile_ground_grid.psm1')
 
 # A recipe VMF only references its tiles through func_instance, so a tile edit leaves the
 # recipe text unchanged. Compile staleness must use the newest write time across the VMF
@@ -28,6 +29,7 @@ function Get-InstanceTreeWriteTimeUtc {
     $key = $VmfPath.ToLowerInvariant()
     if ($script:InstanceWriteTimeCache.ContainsKey($key)) { return $script:InstanceWriteTimeCache[$key] }
     if (-not (Test-Path -LiteralPath $VmfPath -PathType Leaf)) { return [DateTime]::MinValue }
+    Write-ZMTileGroundGridWarnings $VmfPath
     if ($Visiting.ContainsKey($key)) { return [DateTime]::MinValue }
     $Visiting[$key] = $true
 
@@ -56,6 +58,7 @@ function Get-VmfSourceHashes {
         $fullPath = [System.IO.Path]::GetFullPath($Path)
         if ($seen.ContainsKey($fullPath)) { return }
         if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) { throw "Missing VMF source dependency: $fullPath" }
+        Write-ZMTileGroundGridWarnings $fullPath
         $seen[$fullPath] = $true
         $hashes.Add((Get-FileHash -LiteralPath $fullPath -Algorithm SHA256).Hash)
         foreach ($instancePath in (Get-VmfInstancePaths $fullPath | Sort-Object)) { Add-DependencyHash $instancePath }

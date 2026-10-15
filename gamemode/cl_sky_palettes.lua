@@ -291,7 +291,7 @@ function Palettes:Update()
         and ZM_LauncherMenu.PresentationSkybox and not inspection
     if launcherPresentation then
         local scene = ZM_LauncherSceneClient
-        local sky, horizon = "imported_tropo_night_2", { 8, 12, 22 }
+        local sky, horizon = "imported_space_9", { 24, 6, 6 }
         if scene and isfunction(scene.GetPresentationSky) then
             local resolvedSky, resolvedHorizon = scene:GetPresentationSky()
             if type(resolvedSky) == "string" and type(resolvedHorizon) == "table" then

@@ -1,5 +1,121 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'scenery_density.psm1') -Force
+
+function Get-ZMSceneryWallTemplateSelection {
+    param(
+        [object]$Recipe,
+        [string[]]$Templates,
+        [int]$MapSeed,
+        [string]$Ring,
+        [string]$Slot,
+        [string]$Role,
+        [bool]$RouteAdjacentWall
+    )
+
+    $density = Get-ZMStoredSceneryDensity $Recipe
+    if ($null -eq $density) { return $null }
+    $landmarks = @($Recipe.landmarks) -join '+'
+    $cellPolicy = '{0}|{1}|{2}|{3}|{4}' -f `
+        $Recipe.environmentProfile, $Recipe.topology, $Recipe.orientation, $density.sceneryDensityTier, $landmarks
+    $selectionContext = @{
+        Seed = $MapSeed
+        CellPolicy = $cellPolicy
+        Ring = $Ring
+        Slot = $Slot
+        Role = $Role
+        Variant = [int]$Recipe.cellVariant
+    }
+    $tierHash = Get-ZMScenerySelectionHash @selectionContext -Purpose tier
+    $templateHash = Get-ZMScenerySelectionHash @selectionContext -Purpose template
+    $context = 'cell={0},{1} ring={2} slot={3} role={4}' -f $Recipe.x, $Recipe.y, $Ring, $Slot, $Role
+    $selection = Select-ZMSceneryTemplate $Templates $density.sceneryDensityTier ([int]($tierHash % 100)) $templateHash $context -RouteAdjacentWall:$RouteAdjacentWall -Required
+    return [pscustomobject]@{
+        template = [string]$selection.template
+        selection = [ordered]@{
+            policyVersion = 1
+            source = $density.sceneryDensitySource
+            status = $selection.status
+            zoneTier = $selection.zoneTier
+            targetTier = $selection.targetTier
+            template = [string]$selection.template
+            actualTag = $selection.actualTag
+            densityException = $null
+            routeAdjacentWall = $selection.routeAdjacentWall
+            excluded = @($selection.excluded)
+        }
+    }
+}
+
+function Get-ZMPlacementField {
+    param([object]$Placement, [string]$Name)
+
+    if ($Placement -is [System.Collections.IDictionary]) {
+        if ($Placement.Contains($Name)) { return $Placement[$Name] }
+        return $null
+    }
+    $property = $Placement.PSObject.Properties[$Name]
+    if ($null -eq $property) { return $null }
+    return $property.Value
+}
+
+function Get-ZMRouteFootprintSlots {
+    # Every tile occupied by a road, bridge or motorway corridor, including non-emitting occupied
+    # records and motorway inspection leases. Carpark lanes, entrances and endcaps are not corridors.
+    param([object[]]$Placements, [object[]]$Leases = @(), [string[]]$LeaseRings = @())
+
+    $routeRoles = @('motorway_assembly', 'motorway_occupied', 'motorway_external_occupied')
+    $slots = [ordered]@{}
+    foreach ($placement in @($Placements)) {
+        if ($null -eq $placement) { continue }
+        $role = [string](Get-ZMPlacementField $placement 'role')
+        $template = [string](Get-ZMPlacementField $placement 'template')
+        if (-not ($role -in $routeRoles -or $template -match '^roads[\\/]')) { continue }
+        $width = Get-ZMPlacementField $placement 'footprintWidth'
+        $height = Get-ZMPlacementField $placement 'footprintHeight'
+        $width = if ($null -eq $width) { 1 } else { [Math]::Max(1, [int]$width) }
+        $height = if ($null -eq $height) { 1 } else { [Math]::Max(1, [int]$height) }
+        $emits = Get-ZMPlacementField $placement 'emitsInstance'
+        # Non-emitting occupied records describe one slot of an owner already listed elsewhere.
+        if ($null -ne $emits -and -not [bool]$emits) { $width = 1; $height = 1 }
+        for ($offsetY = 0; $offsetY -lt $height; $offsetY++) {
+            for ($offsetX = 0; $offsetX -lt $width; $offsetX++) {
+                $tileX = [int](Get-ZMPlacementField $placement 'tileX') + $offsetX
+                $tileY = [int](Get-ZMPlacementField $placement 'tileY') + $offsetY
+                $slots["$tileX,$tileY"] = [pscustomobject]@{ tileX = $tileX; tileY = $tileY }
+            }
+        }
+    }
+    foreach ($lease in @($Leases)) {
+        if ($null -eq $lease) { continue }
+        if ($LeaseRings.Count -gt 0 -and [string](Get-ZMPlacementField $lease 'ring') -notin $LeaseRings) { continue }
+        $tileX = [int](Get-ZMPlacementField $lease 'tileX')
+        $tileY = [int](Get-ZMPlacementField $lease 'tileY')
+        $slots["$tileX,$tileY"] = [pscustomobject]@{ tileX = $tileX; tileY = $tileY }
+    }
+    return @($slots.Values)
+}
+
+function Get-ZMRecipeRouteLeases {
+    param([object]$Recipe)
+
+    $inspection = Get-ZMPlacementField $Recipe 'motorwayCellInspection'
+    $normal = Get-ZMPlacementField $Recipe 'motorwayAssembly'
+    if ($null -ne $inspection -and $null -ne $normal) { throw 'A motorway recipe cannot own both inspection and normal leases.' }
+    if ($null -ne $normal) {
+        $schema = Get-ZMPlacementField $normal 'schemaVersion'
+        $status = Get-ZMPlacementField $normal 'status'
+        if (-not (($schema -eq 1 -and $status -eq 'normal_reservations_travel_pending') -or
+            ($schema -eq 2 -and $status -eq 'normal_complex_travel_pending'))) {
+            throw 'Unsupported normal motorway route-lease contract.'
+        }
+        return @(Get-ZMPlacementField $normal 'leases')
+    }
+    if ($null -eq $inspection) { return @() }
+    $leases = Get-ZMPlacementField $inspection 'leases'
+    if ($null -eq $leases) { return @() }
+    return @($leases)
+}
 
 function Get-ZMRoadAdjacentWallPool {
     param([string[]]$Templates, [object[]]$RouteSlots, [int]$TileX, [int]$TileY)
@@ -40,7 +156,8 @@ function Get-ZMOuterEdgePlacements {
         [hashtable]$Settings,
         [object[]]$BorderPlacements,
         [hashtable]$WaterSides,
-        [hashtable]$RoadTemplates
+        [hashtable]$RoadTemplates,
+        [int]$MapSeed = 0
     )
 
     if (-not $Settings.ContainsKey('enabled') -or -not $Settings.enabled) { return @() }
@@ -56,7 +173,7 @@ function Get-ZMOuterEdgePlacements {
 
     $borderSlots = @{}
     foreach ($placement in $BorderPlacements) { $borderSlots["$($placement.tileX),$($placement.tileY)"] = $placement }
-    $routeSlots = @($BorderPlacements | Where-Object { [string]$_.template -match '^roads[\\/]' })
+    $routeSlots = @(Get-ZMRouteFootprintSlots $BorderPlacements (Get-ZMRecipeRouteLeases $Recipe) @('border', 'outer'))
     $sideYaw = @{ N = 180; E = 90; S = 0; W = 270 }
     $cornerYaw = @{ NW = 180; NE = 90; SE = 0; SW = 270 }
     $center = [int][Math]::Floor($TileGridSize / 2)
@@ -66,6 +183,7 @@ function Get-ZMOuterEdgePlacements {
             $vertical = if ($y -eq -2) { 'N' } elseif ($y -eq $TileGridSize + 1) { 'S' } else { '' }
             $horizontal = if ($x -eq -2) { 'W' } elseif ($x -eq $TileGridSize + 1) { 'E' } else { '' }
             if (-not ($vertical -or $horizontal)) { continue }
+            $wallSelection = $null
             $side = if ($vertical) { $vertical } else { $horizontal }
             $bx = [Math]::Max(-1, [Math]::Min($TileGridSize, $x))
             $by = [Math]::Max(-1, [Math]::Min($TileGridSize, $y))
@@ -86,21 +204,33 @@ function Get-ZMOuterEdgePlacements {
                 } else {
                     $hash = ([int64]$Recipe.placementSeed * 2654435761) -bxor ([int64]$x * 73856093) -bxor ([int64]$y * 19349663)
                     $hash = $hash -bxor ($hash -shr 15)
-                    $eligibleWalls = @(Get-ZMRoadAdjacentWallPool $walls $routeSlots $x $y)
+                    $adjacentSlots = @($routeSlots)
                     # Include the outer continuation itself when checking its two flanking wall slots.
                     if ($RoadTemplates.ContainsKey($side) -and $(if ($vertical) { [Math]::Abs($x - $center) -eq 1 } else { [Math]::Abs($y - $center) -eq 1 })) {
-                        $corridor = [pscustomobject]@{ tileX = $(if ($vertical) { $center } else { $x }); tileY = $(if ($vertical) { $y } else { $center }) }
-                        $eligibleWalls = @(Get-ZMRoadAdjacentWallPool $eligibleWalls @($corridor) $x $y)
+                        $adjacentSlots += [pscustomobject]@{ tileX = $(if ($vertical) { $center } else { $x }); tileY = $(if ($vertical) { $y } else { $center }) }
                     }
-                    $template = [string]$eligibleWalls[[int]([Math]::Abs($hash) % $eligibleWalls.Count)]
+                    $routeAdjacentWall = @($adjacentSlots | Where-Object {
+                        [Math]::Abs([int]$_.tileX - $x) + [Math]::Abs([int]$_.tileY - $y) -eq 1
+                    }).Count -gt 0
+                    $eligibleWalls = @(Get-ZMRoadAdjacentWallPool $walls $adjacentSlots $x $y)
+                    $wallSelection = Get-ZMSceneryWallTemplateSelection $Recipe $eligibleWalls $MapSeed 'outer' "$x,$y" 'outer_wall' $routeAdjacentWall
+                    $template = if ($null -ne $wallSelection) {
+                        [string]$wallSelection.template
+                    } else {
+                        [string]$eligibleWalls[[int]([Math]::Abs($hash) % $eligibleWalls.Count)]
+                    }
                     $yaw = $sideYaw[$side]
                     $kind = 'wall'
                 }
             }
-            $result.Add([ordered]@{
+            $placement = [ordered]@{
                 tileX = $x; tileY = $y; template = $template; rotationYaw = $yaw
                 targetname = "zm_outer_$kind`_$x`_$y"
-            })
+            }
+            if ($kind -eq 'wall' -and $null -ne $wallSelection -and $null -ne $wallSelection.selection) {
+                $placement.sceneryDensitySelection = $wallSelection.selection
+            }
+            $result.Add($placement)
         }
     }
     return @($result.ToArray())
@@ -181,4 +311,4 @@ function Convert-ZMVmfNodeToText {
     return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
 }
 
-Export-ModuleMember -Function Get-ZMRoadAdjacentWallPool, Get-ZMOuterEdgeRoadTemplates, Get-ZMOuterEdgePlacements, Expand-ZMOuterEdgeShell
+Export-ModuleMember -Function Get-ZMSceneryWallTemplateSelection, Get-ZMRouteFootprintSlots, Get-ZMRecipeRouteLeases, Get-ZMRoadAdjacentWallPool, Get-ZMOuterEdgeRoadTemplates, Get-ZMOuterEdgePlacements, Expand-ZMOuterEdgeShell

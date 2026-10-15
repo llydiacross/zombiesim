@@ -104,17 +104,30 @@ function Menu:SyncEarthControls()
             ZM_LauncherSceneClient:ResetEarthView()
         end
     end
+    local lowerMusic = vgui.Create("DButton", panel)
+    lowerMusic:SetSkin("ZombieSim")
+    lowerMusic.DoClick = function()
+        if self:IsEarthControlsActive() and ZM_Music then
+            ZM_Music:ToggleLauncherTrackLevel()
+        end
+    end
     panel.OnMousePressed = function(viewport, code)
-        if code ~= MOUSE_LEFT or not self:IsEarthControlsActive() then return end
+        if not self:IsEarthControlsActive() then return end
+        if code == MOUSE_MIDDLE then
+            ZM_LauncherSceneClient:ResetEarthView()
+            return
+        end
+        if code ~= MOUSE_LEFT then return end
         viewport.DragButton = code
         viewport.DragX, viewport.DragY = gui.MousePos()
         viewport:MouseCapture(true)
-        ZM_LauncherSceneClient:BeginEarthView()
+        ZM_LauncherSceneClient:BeginEarthDrag()
     end
     panel.OnMouseReleased = function(viewport, code)
         if code ~= viewport.DragButton then return end
         viewport.DragButton = nil
         viewport:MouseCapture(false)
+        ZM_LauncherSceneClient:EndEarthDrag()
     end
     panel.OnMouseWheeled = function(_, delta)
         if not self:IsEarthControlsActive() then return false end
@@ -130,6 +143,10 @@ function Menu:SyncEarthControls()
         viewport:SetSize(math.max(1, ScrW() - left), ScrH())
         reset:SetPos(18, viewport:GetTall() - 54)
         reset:SetSize(112, 32)
+        lowerMusic:SetText(ZM_Music and ZM_Music.LauncherTrackLowered
+            and "RESTORE MENU MUSIC" or "LOWER MENU MUSIC")
+        lowerMusic:SetPos(138, viewport:GetTall() - 54)
+        lowerMusic:SetSize(190, 32)
         if viewport.WasActive and not active then self:ReleaseEarthControls() end
         viewport.WasActive = active
         if not active or not viewport.DragButton then return end
@@ -140,11 +157,12 @@ function Menu:SyncEarthControls()
         local x, y = gui.MousePos()
         local deltaX, deltaY = x - viewport.DragX, y - viewport.DragY
         viewport.DragX, viewport.DragY = x, y
-        ZM_LauncherSceneClient:AdjustEarthView(deltaX, deltaY, 0)
+        ZM_LauncherSceneClient:AdjustEarthView(deltaX, deltaY, 0, FrameTime())
     end
     panel.Paint = function(viewport, _, height)
         if not self:IsEarthControlsActive() then return end
-        draw.SimpleText("DRAG EARTH  /  SCROLL ZOOM", "DermaDefaultBold", 140, height - 38,
+        draw.SimpleText("DRAG TO SPIN  /  SCROLL TO ZOOM  /  MIDDLE-CLICK TO RECENTER",
+            "DermaDefaultBold", 344, height - 38,
             palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
     end
     panel.OnRemove = function(viewport)
@@ -488,6 +506,7 @@ function Menu:Open()
     if ZM_Distribution then ZM_Distribution:RefreshWorkshop() end
     if self.Credits then self:EndCredits() end
     self.Active = true
+    if ZM_Music then ZM_Music:PlayLauncherTrackOnce() end
     self:SetPage("menu")
     self.Step = 1
     self.Waiting = nil

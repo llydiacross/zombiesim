@@ -24,7 +24,7 @@
       "worldX": 0,
       "worldY": 0,
       "zooScenario": "generic_2x_road_frontage",
-      "multiTileTemplate": "buildings/tile_building_1b_2x.vmf",
+      "multiTileTemplate": "buildings/tile_building_2aa_2x.vmf",
       "environment": { "terrain": "grassland", "tags": ["roadside", "low_density"] },
       "radiation": { "intensity": 0 },
       "danger": {},

@@ -67,8 +67,60 @@ if ($errors.Count -gt 0) {
     throw "Border showcase fixture planner validation failed with $($errors.Count) error(s)."
 }
 
+$cornerDensityCell = @($plan.cells | Where-Object {
+    $_.cellTemplateFilename -notlike '*-wtr*' -and $_.environmentProfile -notin @('radioactive', 'military', 'fortified')
+} | Select-Object -First 1)[0]
+if ($null -eq $cornerDensityCell) {
+    throw 'Border showcase fixture needs a standard non-water corner recipe for density-selection coverage.'
+}
+$cornerDensityFilename = [string]$cornerDensityCell.cellTemplateFilename
+foreach ($recipe in @($plan.cells | Where-Object { $_.cellTemplateFilename -ceq $cornerDensityFilename })) {
+    Add-Member -InputObject $recipe -NotePropertyName sceneryDensityPolicyVersion -NotePropertyValue 1 -Force
+    Add-Member -InputObject $recipe -NotePropertyName sceneryDensityTier -NotePropertyValue 3 -Force
+    Add-Member -InputObject $recipe -NotePropertyName sceneryDensitySource -NotePropertyValue 'inland_band' -Force
+    Add-Member -InputObject $recipe -NotePropertyName sceneryInlandDistance -NotePropertyValue 8 -Force
+    Add-Member -InputObject $recipe -NotePropertyName buildingDensityTier -NotePropertyValue 3 -Force
+}
+[IO.File]::WriteAllText($planPath, ($plan | ConvertTo-Json -Depth 100), [Text.UTF8Encoding]::new($false))
+
 & $builderScript -WorldProfile preview -PlanData $planPath -CellDirectory $cellDirectory -Force | Out-Null
 if (-not $?) { throw 'Border showcase fixture VMF builder failed.' }
+
+$cornerDensityVmfPath = Join-Path $cellDirectory $cornerDensityFilename
+$cornerDensityVmf = Get-Content -Raw -LiteralPath $cornerDensityVmfPath
+$cornerDensityLayout = Get-Content -Raw -LiteralPath ([IO.Path]::ChangeExtension($cornerDensityVmfPath, '.layout.json')) | ConvertFrom-Json
+$expectedCornerYaw = [ordered]@{ NW = 0; NE = 270; SE = 180; SW = 90 }
+foreach ($corner in $expectedCornerYaw.GetEnumerator()) {
+    $cornerEntity = [regex]::Match($cornerDensityVmf, '(?ms)entity\s*\{[^}]*"targetname"\s+"zm_border_corner_' + $corner.Key + '"[^}]*\}')
+    $cornerLayout = @($cornerDensityLayout.borderPlacements | Where-Object { $_.targetname -ceq "zm_border_corner_$($corner.Key)" })[0]
+    if (-not $cornerEntity.Success -or
+        $cornerEntity.Value -notmatch '"file"\s+"[^"]*tile_border_wall_corner_1aa\.vmf"' -or
+        $cornerEntity.Value -notmatch ('"angles"\s+"0 ' + $corner.Value + ' 0"') -or
+        $null -eq $cornerLayout -or
+        $cornerLayout.sceneryDensitySelection.status -ne 'selected_explicit_exception' -or
+        $cornerLayout.sceneryDensitySelection.densityException -ne 'target_tier_3_fallback') {
+        $errors.Add("$cornerDensityFilename must emit the medium corner exception at $($corner.Key) with canonical yaw $($corner.Value).")
+    }
+}
+$policyWalls = @($cornerDensityLayout.borderPlacements | Where-Object {
+    $_.template -match '^border/tile_border_wall_1(?:a|aa|aaa)\.vmf$'
+})
+if ($policyWalls.Count -eq 0) {
+    $errors.Add("$cornerDensityFilename must emit ordinary density-policy border walls.")
+}
+foreach ($wall in $policyWalls) {
+    if ($null -eq $wall.PSObject.Properties['sceneryDensitySelection']) {
+        $errors.Add("$cornerDensityFilename border wall $($wall.targetname) must record an eligible policy-v1 selection.")
+        continue
+    }
+    if ($wall.sceneryDensitySelection.zoneTier -ne 3 -or
+        $wall.sceneryDensitySelection.actualTag -notin @(0, $wall.sceneryDensitySelection.targetTier)) {
+        $errors.Add("$cornerDensityFilename border wall $($wall.targetname) must record an eligible policy-v1 selection.")
+    } elseif ($wall.sceneryDensitySelection.routeAdjacentWall -and
+        ($wall.sceneryDensitySelection.targetTier -ne 2 -or $wall.sceneryDensitySelection.actualTag -eq 3)) {
+        $errors.Add("$cornerDensityFilename route-adjacent wall $($wall.targetname) must use the medium target without aaa.")
+    }
+}
 
 if (-not (Test-CellHasTemplate $cornerCell 'tile_border_water_pier_corner\.vmf')) {
     $errors.Add("$($cornerCell.cellTemplateFilename) must use tile_border_water_pier_corner.vmf at its map corner.")

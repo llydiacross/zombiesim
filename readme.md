@@ -5,17 +5,121 @@
 Alpha 3.1.0 development, including final Phase H, was accepted by the user on
 2026-10-06. The [archived tracker](docs/todo-alpha-3.1.0.md) records static,
 live and human acceptance separately, including remaining validation limits.
-Alpha 3.1.5 implementation was authorized on 2026-10-06. Its
-[active phased tracker](todo-alpha.3.1.5.md) records accepted Phase 0 baseline/
-inventory with explicit limits carried forward. Phase A outer edge geometry
-passes isolated structural checks; land/coast Hammer and isolated Sandbox
-geometry reviews are accepted. Phases A/B are accepted on accumulated preview
-review; Phase C gate/arrival migration is in progress. Expanded preview assets
-are temporarily staged with a restoration ledger; normal production settings
-remain unchanged. Uncaptured individual reviews and matched performance are
-retained validation limits, not new Phase B gates. Workshop publication is still
-deferred; `version.json` reports `in development`, not `released`. Production
-city rebuilds require separate approval.
+On 2026-10-13 the user made [Alpha 3.2](todo-alpha.3.2.md) the active schedule
+and prioritized density/3-wide motorway generator work before CSM.
+[Alpha 3.1.5](docs/todo-alpha.3.1.5.md) phases 0/A/B/C/E/F/G/H and current-cell
+Level/minimap projection remain accepted. Its unfinished Phase D generated
+artwork/wireframe/Satellite acceptance and Phase I integration are carried to
+3.2's final shared output batch J and closure phase K; they do not block the
+generator. This transfer does not declare 3.1.5 complete or reopen retained
+limits from accepted phases.
+
+The [reconciled Alpha3.2 status](todo-alpha.3.2.md#current-reconciled-status---2026-10-14)
+is authoritative over older chronological progress notes. Both straight and
+all seven complex motorway fixtures were reviewed; Phase B remains accepted
+with its retained limits. The isolated fixture pipeline is not normal-world
+integration. The retained full density-preview plan still records1x1 motorway
+placements without measured assemblies, despite remapping to wide assets.
+Its336/338 compile has two crossroads failures, but fixing those alone does
+not finish widened reservations, ring ownership, gates/travel or derivatives.
+Do not reopen accepted motorway artwork or infer new connector-authoring work.
+
+Generator work is active in Phase E rectangular/ring/gate integration.
+The user resumed work after reconciliation: density and motorways are the
+release priority. Ordinary rectangular-building physical validation waits
+until an authored asset is supplied; CSM remains deferred. Normal plain-straight
+planning now reserves the full three-wide core before density decorations,
+using the same physical stripe origins as inspection. Two isolated normal-plan
+outputs cover both orientations. Complete measured straight contracts now
+authorize normal VMF emission; complex normal rollout remains unfinished.
+Normal straight plans now also declare27 core/ring leases and four ring owners;
+the tested builder resolver preserves unleased boundary walls/corners and
+rejects stale sources. `.\bin\build_motorway_cell_preview.ps1 -NormalPlanOnly`
+reproduces the isolated expanded normal plans without compilation. This is ring
+ownership preparation, not complete gates/runtime integration or live evidence.
+Straight normal plans now also include source-measured gate lanes/decks:
+416-unit carriageways at Z68 with asymmetric centres, transformed in all four
+directions. Legacy160-unit runtime offsets remain unchanged until the matching
+brush/marker/arrival integration is complete; no live-travel claim is implied.
+The normal straight VMF writer now consumes those measurements for asymmetric
+trigger bounds, lane-positioned arrival landmarks and translated car/glass
+barricades. Legacy geometry remains unchanged. Runtime export and server
+arrows/arrivals now consume the same measured lanes through `ZM_World`; old
+maps retain their legacy offsets. Invalid/conflicting shared-map contracts are
+reported and blocked rather than guessed. Fresh offline server10/10,
+client10/10, motorway1529 and GLua275/0 pass. Actual compiled/live review and
+remaining complex normal assembly integration are pending. The follow-on
+`.\bin\build_motorway_cell_preview.ps1 -Normal` output passes two-map
+VBSP/portals/VVIS/VRAD and BSP checks for four gates/four arrivals, without
+inspection metadata. Unsupported or stale normal contracts remain blocked.
+`-Mixed` covers the four actual combined layouts, preserving all routes.
+The corrected fixtures under `generated/phase_e_mixed_centred_routes_20261014`
+pass VBSP/portal budgets/VVIS/VRAD with the preview fast preset. Three wide insertion seams are exact;
+the new corner/on-ramp join retains a2-unit centre/36-unit width difference.
+Deadend/bridge combinations now keep the bridge exactly at the cell origin;
+the deadend adjusts around its measured mouths. Mixed on-ramp approaches now
+snake from the central side-entry axis through two ordinary corners and an
+approved768-unit straight, without moving the wide pieces or authored ramps.
+`create_road_connector_template.ps1` initializes that editable source once and
+preserves subsequent artist edits; source floor-mouth validation rejects
+incompatible edits rather than guessing joins. Its extra128 units are explicitly
+approved, not generated-instance scaling.
+`-Mixed` automatically runs the existing complete rectangular-infill workflow.
+The accepted corner-specific infill exclusions remain unchanged; this does not
+claim every corner gap is filled. Fresh mixed infill27022 assertions/128 emitted
+rectangles and density2633 pass. The two centred road routes publish
+`ordinaryRoadApproaches.boundaryPort` for subsequent gate integration; diagnostic
+fixtures still emit no gates, and actual normal mixed gate/arrival wiring is
+pending. All four corrected fixtures are open in new Hammer++ windows; old
+comparisons and unsaved work remain untouched. The user approved both bridge/
+deadend arrangements, the deadend/on-ramp and the corner's connecting road.
+Their remaining corner correction removes the obsolete south border straight
+at slot2,5 and replaces it with the existing planned terrain source.
+Fresh `generated/phase_e_corner_terrain_cleanup_20261014` output passes the
+same four-map fast compile/portal and27022 infill checks; the three approved
+control VMFs are byte-identical. This replaces no other piece and preserves
+the approved connecting road. No installed profile, BSP,
+persistence or gameplay state was changed.
+The immediate focus is now motorway-specific origins, rings and travel, not
+additional general-building features. The builder's shared straight motorway
+contract checks exact core/border/outer ownership and approved finite origins
+before replacing ring pieces. Focused source fixtures and retained straight
+plans pass; normal-world enablement and physical/live acceptance remain open.
+Core/ring instance emission now uses the measured motorway owner's explicit
+cell-local XYZ instead of deriving it again from reservation dimensions.
+Fractional coordinates are retained; incompatible frame/pitch/Z shifts fail.
+Ordinary centred output and interior rounding remain unchanged. The focused
+motorway suite covers the actual entity writer, not complete-map compilation.
+Its first source slice aligns explicit rectangular occupancy between planner
+and builder and validates footprint owner IDs/geometry. The fast
+`.\bin\test_rectangular_footprints.ps1` fixture covers square controls and
+rectangles; new asset selection, inventory/origin and ring/travel integration
+remain unfinished. See the [occupancy contract](docs.md#alpha-32-explicit-rectangular-occupancy).
+Marked and generic frontage candidates now validate rotated dimensions, and
+building/landmark reservations use the same rectangle. Focused source checks
+preserve square candidate order/targets. Shared `_WxH` filename recognition,
+authored rectangular edge-marker validation and zoo/test geometry consumers
+are now wired within the unchanged ordinary three-tile limit. No new authored
+building rectangle is installed; fresh small-output/physical validation remains.
+The user rejected the safe-zone detail experiment: Phase M is cancelled and
+its claim/reservation/emission integration has been removed. Authored tiles
+are preserved; the replacement direction is larger, interesting authored tiles
+placed through the ordinary generator, not another automatic detail system.
+See the [recorded outcome](docs.md#alpha-32-safe-zone-detail-outcome).
+The user accepted the
+current experimental client-local CSM overlay and Options controls, default off.
+Remaining CSM work is deferred to [its dedicated tracker](docs/csm-implementation.md)
+outside Alpha 3.2's completion gates; no further probes or optimization are
+scheduled. Runtime/Options live review, seamless blending, lifecycle isolation
+and matched performance remain unverified, not implied by acceptance. Expanded preview
+assets retain their restoration ledger; production settings/installed outputs
+remain untouched. The bounded isolated preview generation/compile/derivative/
+backed-up staging/launch batch is now approved. Minimal crossroads brush41926
+repair is also approved and attempted, with a verified original backup;
+compiler verification remains pending. Full-world navmesh/Satellite closure
+and production/publication still need separate approval. Workshop publication remains deferred;
+`version.json` reports `in development`, not `released`. Production city
+rebuilds require separate approval.
 
 The future release city is configured as **48x48** (2304 logical cells);
 preview remains **24x24**. This does not resize the installed production world.
@@ -34,6 +138,171 @@ corner assets remain eligible. Validate a regenerated plan with:
 Warnings identify authored pools unable to supply a different adjacent layout.
 New BSPs, skyline and runtime exports must be staged together; old captured
 Satellite imagery remains compatibility-gated, not relabelled as current.
+
+### Alpha 3.2 motorway assembly inspection
+
+For **complete generated cells**, rather than an asset overview, use:
+
+```powershell
+.\bin\build_motorway_cell_preview.ps1
+.\bin\test_motorway_cells.ps1
+```
+
+These run the normal planner/builder with an explicit isolated inspection mode
+and generate two real preview straight-cell examples under
+`generated/phase_b_motorway_cells/src`: logical(6,-11) north-south and
+logical(2,-5) east-west. Each includes the normal shell, surrounding scenery,
+border/outer rings and skybox room. Three-wide reservations continue the
+motorway on its existing axis through the full5760footprint.
+The user inspected and approved both examples in Hammer.
+
+The default mode accepts only plain inland straight cells. For the remaining
+seven pieces inside complete cells:
+
+```powershell
+.\bin\build_motorway_cell_preview.ps1 -Complex
+.\bin\test_complex_motorway_cells.ps1
+```
+
+Outputs stay separate under `generated/phase_b_complex_cells`; `cell-report.json`
+maps each complete VMF to its logical coordinates and topology. Six cases use
+real current cells; the T-junction is an explicitly synthetic modification of
+a crossroads because no T exists in the matching world. Core, border and outer
+scenery respects conservative saved-winding leases for the full assemblies,
+including ordinary-road approaches. This is a **diagnostic geometry preview**:
+residual two-lane seams, road deck/grade mismatches, partial boundary tiles,
+below-terrain geometry and envelope overlaps remain disclosed in the plan.
+The bridge preserves the existing `bridge-horizontal` yaw90 mapping; its
+measured motorway is E/W rather than the source cell's N/S. This discrepancy
+must be resolved at integration, not silently corrected or labelled supported.
+Mixed corner/ramp and terminal/bridge cells fail explicitly rather than losing
+either route. Neither mode emits legacy narrow travel triggers/blockers,
+changes normal settings, stages outputs or proves live travel. Full Phase B
+acceptance remains separate.
+
+The user completed the original seven-cell Hammer review, identifying missing
+ground rather than requesting changes to the motorway assets. Editable infill
+bases now live in `tiletemplates/terrain/infill`: `tile_ground_full.vmf`
+is640x640, `tile_ground_half.vmf`
+is320x640 and `tile_ground_quarter.vmf` is320x320, centered at the origin,
+with the existing grass material and ground Z0..32. Artists can add detail
+without shrinking or changing the base ground footprint. Decorated variants
+still need independent road/bridge/prop clearance review; automatic variant
+discovery is not enabled.
+
+```powershell
+.\bin\create_terrain_infill_templates.ps1
+.\bin\test_terrain_infill.ps1
+```
+
+The first command creates missing sources only and **never overwrites an
+existing artist-owned template**. The focused test builds corrected full-cell
+previews in an isolated generated directory. Fully empty
+ground prefers640x640tiles, then half/quarter
+instances. Below-ground geometry stays protected against filling intentional
+depressions. Ground coverage is independent of conservative scenery leases.
+Partly occupied curved/fractional slots remain explicitly review-required;
+passing this test does not declare every visible gap or compiled clearance
+resolved. Normal generation and approved straights remain unchanged.
+
+The first correction passed corner review but left crossroads strips narrower
+than320units. The user approved additional measured-size editable bases:
+
+```powershell
+.\bin\build_motorway_cell_preview.ps1 -Complex -SizedInfill -OutputDirectory .\generated\phase_b_sized_infill_cells
+.\bin\test_terrain_infill.ps1 -SizedInfill
+```
+
+The opt-in first measures uncovered ground, creates only missing rectangular
+patch sources, then builds their instances. Names such as
+`tile_ground_patch_u304_u320.vmf` express **Hammer-unit dimensions**, not a
+304-tile footprint. The old arbitrary-size/decimal/polygon pass is retired:
+extra patches use only strict powers of two from 4 through 512 on both axes,
+including U4/U8 for narrow bounds-verified gaps. Standard 640/320 ground bases
+remain explicit exceptions. Sources remain editable and are never overwritten.
+Fractional boundaries are inset to integer edges; fractional or sub-4 remainders
+stay on the default black floor. No `p` filenames or polygon ground sources are
+generated. Existing human-approved roadway art remains unchanged; new
+ground/clearance review is separate.
+
+### Tile ground alignment and centering
+
+Ground classification uses the existing plain640x640/Z0..32 base construction,
+not every grass-looking brush. Tile origins are checked against a complete
+declared ground footprint; incomplete/asymmetric ground is not automatically
+recentered. Existing props, overhangs, curves, ramps, displacements and custom
+infill have separate contracts. See [the ground-source contract](docs.md#standard-ground-and-source-origin-checks).
+
+```powershell
+.\bin\repair_tile_ground_grid.ps1
+.\bin\test_tile_ground_grid.ps1
+# After reviewing the reported source and intended center:
+.\bin\repair_tile_ground_grid.ps1 -Paths .\tiletemplates\roads\motorway_3x1\tile_motorway_tjunction_6x3.vmf -Apply -CenterOrigin
+```
+
+The first command audits all authored tile VMFs without modifying them.
+Generation/build tools also warn on encountered ground misalignment. Explicit
+repair backs up original sources with verified hashes; whole-template centering
+moves roads/props with the ground and preserves texture locking. No automatic
+world rebuild or staging follows. Repaired-source diagnostic cells are isolated
+under `generated/phase_b_grid_infill_cells`; the accepted corner and crossroads
+VMFs remain retained historical artifacts. Current infill is rectangle-only;
+nonstandard ground and compiled review remain open.
+
+The consolidated rectangle pass and safe cleanup are explicit:
+
+```powershell
+.\bin\build_motorway_cell_preview.ps1 -Complex -CompleteInfill
+.\bin\test_terrain_infill.ps1 -CompleteInfill -OutputDirectory .\generated\phase_b_power2_infill_cells
+.\bin\test_complex_motorway_cells.ps1 -CompleteInfill -OutputDirectory .\generated\phase_b_power2_infill_cells
+.\bin\clean_terrain_infill_templates.ps1 -LayoutDirectories .\generated\phase_b_power2_infill_cells\src
+```
+
+Cleanup audits by default. Add `-Apply` only after reviewing the report:
+current VMF hashes/dependencies must resolve; full/half/quarter defaults and authored
+nested references are retained. Only unused byte-identical initializer defaults
+are retired, with verified originals and a report under
+`generated/retired_terrain_infill`. Edited/unknown sources and VMX-owned sources
+are preserved. Historical superseded fixtures may reference retired sources;
+restore the exact archived files or regenerate before inspecting those fixtures.
+The former64x320extra patch is replaced by64x256plus64x64 under the strict
+power-of-two rule; unused unmodified sources are safely archived.
+
+The compatibility name `-CompleteInfill` now means rectangle consolidation,
+not polygon generation or guaranteed full ground. Coverage uses recognized
+ground bases rather than arbitrary road/structural brushes. Tests separately
+account for recognized ground, emitted rectangles and explicit default-floor/
+nonstandard exclusions at four rotations; this is not compiler/live acceptance.
+
+Generate only the isolated Hammer inspection fixtures and run their focused
+checks with:
+
+```powershell
+.\bin\build_motorway_preview.ps1 -WorldProfile preview
+.\bin\test_motorway_geometry.ps1
+.\bin\test_complex_motorway_gates.ps1
+.\bin\test_motorway_survey.ps1
+.\bin\test_motorway_preview.ps1
+```
+
+The complex gate check generates the four approved mixed fixtures in isolation,
+then tests source-floor gate/arrow/arrival support and all cardinal rotations.
+Use `-PlanData` with a fresh four-mixed or seven-standalone fixture plan to
+avoid regeneration. Old plans without the source coordinate frame must be
+regenerated. These are offline candidate-contract checks, not installed maps,
+normal-generator integration or in-game travel acceptance.
+
+The overview is `generated/phase_b_motorway/motorway_phase_b_preview.vmf`;
+eight companion rotation fixtures cover all four cardinal yaws. Saved cameras
+focus each case. Overview rows, left/right, are straight/bridge,
+corner/crossroads, T/deadend and single/dual ramp.
+
+The generated report distinguishes exact floor joins, inspection-only joins
+with measured residuals, pending road approaches and conservative envelope
+overlaps. These are integration inspections of trusted authored assets, not
+individual asset re-approval or compiled/playable maps. Normal settings,
+recipe plans and installed worlds remain untouched. See the
+[generator reference](docs.md) and [Phase B gates](todo-alpha.3.2.md).
 
 ## CS 1.6 weapon assets
 
@@ -398,7 +667,7 @@ was removed after validation; no source or installed asset was pruned.
 
 On `zn_preview_start` or `zn_city_start`, the optional Volt/Walker briefings precede the character menu. The launcher is not yet deployed gameplay: load an existing slot or create one of three profile-specific survivors, complete any required appearance, and deploy the character. Only after the server accepts deployment does play continue into the character's saved city cell or safe zone; for a gameplay test, then enter the intended den or cell. Choose a name, citizen model/appearance, profession, and spend exactly ten starting attribute points when creating a survivor. A migrated slot-1 survivor requires an appearance before deployment. Deleting a slot requires typing its name. Options in the launcher use the same settings controls as the in-game radial menu; Exit disconnects. Keyboard navigation supports Up/Down, Enter and Escape.
 
-The main menu draws a textured Earth at the authored `menu_globe` marker. Its reviewed Natural Earth I base is public-domain map art; `.\bin\build_launcher_earth.ps1 -StageToGame` verifies the pinned source hash, generates original night-light/cloud/distress/rim layers, compiles their VTFs, stages one source notice and writes `launcher_earth.json` ownership/size diagnostics. Each slot's origin uses the profile's fictional geographic anchor in `content/data_static/launcher_scene.json`; it is presentation, **not** a real-world geolocation of generated cells. Low detail uses a 960-triangle static sphere and omits cloud/distress draws; high uses 3968 triangles and all five layers. Existing saved `zombiesim_globe_quality` choices are preserved, while new/reset and medium/high presets use high detail. The bounded Phase G prototype can show one revision-matched selected-cell skyline model without mutating the gameplay skybox owner.
+The main menu draws a textured Earth at the authored `menu_globe` marker. Its public-domain Natural Earth I base is blended with a grayscale NASA Black Marble 2016 night map using a soft day/night terminator; night imagery fades out on the daylight hemisphere, and the orange city marker remains a separate presentation element. Coherent, seam-wrapped procedural cloud wisps replace the old scattered oval puffs. Random straight distress scratches are excluded. `.\bin\build_launcher_earth.ps1 -StageToGame` verifies both pinned source hashes, builds the cloud/distress/rim/space-fog derivatives, compiles the six VTF layers plus two 4096x2048 close-zoom layers, stages the source notice and writes `launcher_earth.json` ownership/size diagnostics. The close-zoom day map is resampled from the full 10800x5400 Natural Earth TIFF, and the close-zoom night lights from NASA's 13500x6750 3 km Black Marble 2016 image. Both are downloaded once into `generated/launcher_earth/archive` and verified against pinned hashes. At high globe quality, the close-zoom day and night-light layers crossfade in between 1.5x and 2.1x zoom and load only when first needed. Low quality never loads them. Dragging Earth works like a gimbal: horizontal drag spins the planet about its pole, and vertical drag tilts it about the screen-horizontal axis, so north stays upright at every longitude. The drag also carries damped spin momentum on release; zooming stops residual spin, and zoom reaches up to 3x while respecting the authored camera clearance. Middle-click smoothly recentres on the selected waypoint, while page changes cancel the motion. The launcher soundtrack plays `menu.mp3` once, then continues with looping `menu 2.mp3`; **Lower Menu Music** affects only those launcher tracks. Each slot's origin uses the profile's fictional geographic anchor in `content/data_static/launcher_scene.json`; it is presentation, **not** a real-world geolocation of generated cells. Low detail uses a 960-triangle static sphere and omits cloud/distress draws; high uses 3968 triangles and all five layers. Existing saved `zombiesim_globe_quality` choices are preserved, while new/reset and medium/high presets use high detail. The bounded Phase G prototype can show one revision-matched selected-cell skyline model without mutating the gameplay skybox owner. The halo is a translucent orange-red rim. An original procedural `space_fog` puff layer drifts behind the globe as dark rust nebula, with a few faint near puffs framing it. Purely cosmetic missiles launch from fictional silo regions, then arc along great circles to major cities away from the selected waypoint. Each impact shows a flash, a shockwave ring, a rising mushroom cloud and a fading ember glow. There are at most 9 strikes, with 3 missiles in flight, and all of them fade out with the descent. In the preview launcher, the 15 skybox G-Men are parented to `launcher_gman_carousel`, a non-solid `func_rotating` that turns once a minute.
 
 Credits uses the same maintained JSON file for its crawl. It hides the menu and cuts to `credits_camera`, then cycles through the four named dancers; Escape, Enter, Space, or click returns to the menu. The server supplies camera poses, dancer entity indexes, and credits-area visibility; credits fog is confined to the credits view. For camera tuning, `zombiesim_credits_shot gman` (or `alyx`, `barney`, `kleiner`; empty to unlock) and `zombiesim_credits_debug 1` expose the shot and obstruction trace. Admins can run `zombiesim_launcher_flexes` to inspect available model flex controllers. The dancing, flex replication, camera clearance, and presentation still require live-client verification.
 
@@ -602,7 +871,10 @@ their ID when edited and can be deleted with confirmation. Custom palettes
 are saved locally in `data/zombiesim/sky_custom_palettes.json`.
 
 Licensed imports include Moonlit Night, 26 Tropospheric sets and nine additional
-sets supplied with author-confirmed permission. The sky builder retains full
+sets supplied with author-confirmed permission, plus the ten-sky GameBanana
+Deep Space pack (Mr.Who/Keen; no licence file, imported on user-confirmed
+permission). Home/Play draw Deep Space 9 (`imported_space_9`, crimson nebula)
+behind the launcher Earth. The sky builder retains full
 licence/credit metadata and byte-identical README files under
 `content/data_static/sky_licences`; the package builder includes the latter
 in common content. Run `bin/build_sky_catalogue.ps1`, then
@@ -697,8 +969,11 @@ Generate the deterministic preview world image, manifest, and map layers:
 Plan its recipes and write the required-map list:
 
 ```powershell
-.\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json
+.\bin\build_motorway_preview.ps1 -WorldProfile preview -OutputDirectory .\generated\measured-assemblies
+.\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json -MotorwayAssemblyReport .\generated\measured-assemblies\assembly-report.json
 ```
+
+Normal wide (3x) motorway cells plan only from current measured assemblies (`-MotorwayAssemblyReport`) and require the expanded border/outer rings. Root settings keep `vmfBuild.outerEdges.enabled` false, so full-world preview batches use an isolated settings copy with it enabled and redirected profile paths. Full terrain infill is three passes: `build_cell_vmfs.ps1 ... -MeasureCompleteTerrainInfill`, `create_terrain_infill_templates.ps1 -PartialGapLayoutDirectory <src> -CompletePatches`, then `build_cell_vmfs.ps1 ... -SizedTerrainInfill -CompleteTerrainInfill`. An explicit `-ContentMapDirectory` (isolated batch) also disables copying and stale-map cleanup in the live engine `garrysmod/maps` folder unless `-StageEngineMaps` is passed; stage isolated outputs through a backed-up ledger instead.
 
 Refresh the generated recipe VMFs, prune obsolete generated files, and verify every required recipe exists:
 
@@ -1001,6 +1276,37 @@ Offline, the same isolated cases use the shared runner below:
 python .\tests\atmosphere\test_client_atmosphere.py
 .\bin\test_glua_syntax.ps1
 ```
+
+Alpha 3.2 includes an experimental client-local CSM overlay in the in-game
+Options > Graphics section. It defaults off and leaves baked lighting
+unchanged. Low uses1 cascade/15Hz, Medium2/30Hz, and High3/every rendered
+frame. The current tiers use weighted overlapping projected lights without
+seam-blending masks; the user accepted this experimental scope, not proven
+seamless cascades or performance. Further work and validation are saved in the
+[deferred CSM tracker](docs/csm-implementation.md), not required to complete
+Alpha 3.2. The new runtime/Options source has not yet been live-loaded.
+Only generated preview/city cells are supported. The F-toggle chest lamp is a
+separate unshadowed feature.
+
+CSM has retained manually invoked diagnostic probes for a future explicitly
+authorized investigation; they are not the next milestone action:
+`zombiesim_dev_csm_probe` starts one additive shadowed orthographic projector,
+`zombiesim_dev_csm_probe_status` returns a structured snapshot to
+`data/zombiesim/csm_probe_status.json`, and `zombiesim_dev_csm_probe_stop`
+removes it. `zombiesim_dev_csm_probe_rate 15|30|60` changes its test-only
+`ProjectedTexture:Update` cadence. Use the probe only in a deployed generated
+preview cell as a preview admin, with client `developer 1`. The probe is
+separate from the permanent F-toggle chest lamp. The chest lamp replaces the
+native flashlight bind in gameplay cells; its client-local cone is positioned at the survivor's
+`ValveBiped.Bip01_Spine2` bone and follows eye direction. Every client sees
+active lamps within2048 units; each client renders at most the nearest four.
+For frame cost, every permanent chest cone is unshadowed; directional sun
+shadows belong to the separate opt-in CSM path. The lamp has no battery, model
+prop or saved preference; it turns off on death. Neither test probe nor lamp
+changes baked or shared server lighting.
+Bridge-started performance samples did not keep GMod foreground, so their FPS
+results are not valid acceptance evidence. `ProjectedTexture:Update` timings
+are diagnostic operation data, not a performance acceptance claim.
 
 The Python runner also accepts `--baseline <retained-pre-refactor-script>` for
 old/new diagnostic comparisons under forward and reverse update orders.
@@ -1552,7 +1858,7 @@ The first command generates matching preview-only settings, plans, layout
 metadata and VMFs under `generated\outer_edges`; it does not stage maps or
 replace installed runtime data. The second checks previously compiled fixture
 BSPs, so run the focused VBSP workflow against the generated fixture lists
-first (see [the active tracker](todo-alpha.3.1.5.md#phase-a---shared-bounds-and-outer-edge-geometry)).
+first (see [the archived geometry plan](docs/todo-alpha.3.1.5.md#phase-a---shared-bounds-and-outer-edge-geometry)).
 `zn_test_world_bounds` runs six isolated in-engine cases without changing
 characters, loot or equipment. These checks do not establish visual acceptance.
 

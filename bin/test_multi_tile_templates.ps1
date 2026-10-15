@@ -5,6 +5,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'scenery_density.psm1') -Force
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $fixtureMapPath = Join-Path $PSScriptRoot 'multi_tile_zoo_fixture_map.json'
@@ -24,10 +25,7 @@ $mapRendererScript = Join-Path $PSScriptRoot 'build_cell_map_materials.ps1'
 function Get-TemplateFootprint {
     param([string]$Template)
 
-    $templateName = [System.IO.Path]::GetFileNameWithoutExtension($Template)
-    if ($templateName -match '(?i)_2x(?:2)?$') { return [pscustomobject]@{ width = 2; height = 2 } }
-    if ($templateName -match '(?i)_3x(?:3)?$') { return [pscustomobject]@{ width = 3; height = 3 } }
-    return [pscustomobject]@{ width = 1; height = 1 }
+    return Get-ZMTemplateFootprint $Template
 }
 
 function Test-PlacementEmitsInstance {
@@ -110,8 +108,8 @@ function Add-PhysicalRoadConnectionValidation {
 
     $markers = @(Get-TemplateRoadConnectionMarkers ([string]$Anchor.template) | Where-Object { $_.connectionType -ne 'none' })
     $matchedTargets = @{}
-    $originX = (([int]$Anchor.tileX - 2) + (($Footprint.width - 1) / 2.0)) * 640
-    $originY = ((2 - [int]$Anchor.tileY) - (($Footprint.height - 1) / 2.0)) * 640
+    $originX = (([int]$Anchor.tileX - 2) + (($Anchor.footprintWidth - 1) / 2.0)) * 640
+    $originY = ((2 - [int]$Anchor.tileY) - (($Anchor.footprintHeight - 1) / 2.0)) * 640
     $radians = ([int]$Anchor.rotationYaw % 360) * [Math]::PI / 180.0
     $cosine = [Math]::Cos($radians)
     $sine = [Math]::Sin($radians)
@@ -267,8 +265,8 @@ foreach ($recipe in $recipes) {
     Add-PhysicalRoadConnectionValidation $recipe $anchor $footprint $errors $markerStatistics
     $facesRoad = $false
     $localDirection = Get-AuthoredTileDirection ([string]$anchor.template)
-    foreach ($tileY in [int]$anchor.tileY..(([int]$anchor.tileY + $footprint.height) - 1)) {
-        foreach ($tileX in [int]$anchor.tileX..(([int]$anchor.tileX + $footprint.width) - 1)) {
+    foreach ($tileY in [int]$anchor.tileY..(([int]$anchor.tileY + $anchor.footprintHeight) - 1)) {
+        foreach ($tileX in [int]$anchor.tileX..(([int]$anchor.tileX + $anchor.footprintWidth) - 1)) {
             foreach ($roadPlacement in $roadPlacements) {
                 $deltaX = [int]$roadPlacement.tileX - $tileX
                 $deltaY = [int]$roadPlacement.tileY - $tileY
@@ -330,8 +328,8 @@ foreach ($recipe in $recipes) {
     if ($tileInstanceCount -ne $expectedInstanceCount) {
         throw "$($recipe.cellTemplateFilename) has an incorrect VMF instance count ($tileInstanceCount, expected $expectedInstanceCount)."
     }
-    $expectedX = [int]((([int]$anchor.tileX - 2) + (($footprint.width - 1) / 2.0)) * 640)
-    $expectedY = [int](((2 - [int]$anchor.tileY) - (($footprint.height - 1) / 2.0)) * 640)
+    $expectedX = [int]((([int]$anchor.tileX - 2) + (($anchor.footprintWidth - 1) / 2.0)) * 640)
+    $expectedY = [int](((2 - [int]$anchor.tileY) - (($anchor.footprintHeight - 1) / 2.0)) * 640)
     $templateFilename = [regex]::Escape([System.IO.Path]::GetFileName([string]$anchor.template))
     $macroEntities = @([regex]::Matches($contents, '(?ms)^entity\r?\n\{.*?^\}', [System.Text.RegularExpressions.RegexOptions]::Multiline) | Where-Object { $_.Value -match $templateFilename })
     if ($macroEntities.Count -ne 1 -or $macroEntities[0].Value -notmatch [regex]::Escape(('"origin" "{0} {1} 0"' -f $expectedX, $expectedY))) {

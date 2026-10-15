@@ -9,6 +9,22 @@ Suite:Add("Earth materials and bounded static spheres", function(check)
         check(status.width == expected and status.height == (name == "rim" and 256 or 1024),
             name .. " has its authored dimensions")
     end
+    for name, status in pairs(Scene:GetHighDetailMaterialStatus()) do
+        check(status.valid and status.width == 4096 and status.height == 2048,
+            "close-zoom " .. name .. " layer resolves at 4096x2048")
+    end
+    local qualityConVar = GetConVar("zombiesim_globe_quality")
+    local originalQuality = qualityConVar:GetString()
+    qualityConVar:SetBool(true)
+    check(Scene:GetEarthHighDetailBlend(1) == 0 and Scene:GetEarthHighDetailBlend(1.5) == 0,
+        "the standard texture owns the ordinary and moderately zoomed globe")
+    local midway = Scene:GetEarthHighDetailBlend(1.8)
+    check(midway > 0 and midway < 1 and Scene:GetEarthHighDetailBlend(2.1) == 1
+        and Scene:GetEarthHighDetailBlend(3) == 1,
+        "deep zoom crossfades smoothly to the high-detail texture")
+    qualityConVar:SetBool(false)
+    check(Scene:GetEarthHighDetailBlend(3) == 0, "low globe quality never uses the high-detail layer")
+    qualityConVar:SetString(originalQuality)
     local low = Scene:GetSphereForDetail(16)
     local high = Scene:GetSphereForDetail(32)
     check(low.triangles == 960 and low.vertices == 2880, "low quality has a fixed sphere budget")
@@ -16,6 +32,13 @@ Suite:Add("Earth materials and bounded static spheres", function(check)
     check(low.seamVertices == 32 and high.seamVertices == 64, "both qualities duplicate only the UV seam")
     check(low.poleTriangles == 64 and high.poleTriangles == 128, "both qualities use non-degenerate pole fans")
     check(table.Count(Scene.Spheres) == 2, "building both qualities owns exactly two sphere pairs")
+    local light = Vector(-0.4, -0.8, 0.45):GetNormalized()
+    local dayAmount, nightAmount = Scene:GetEarthNightBlend(light)
+    check(dayAmount == 1 and nightAmount == 0,
+        "real night-light imagery fades completely on the illuminated hemisphere")
+    dayAmount, nightAmount = Scene:GetEarthNightBlend(-light)
+    check(dayAmount == 0 and nightAmount == 1,
+        "the night surface reaches full weight on the dark hemisphere")
     local horizon = Scene:GetHorizonMaterialStatus()
     check(horizon.sun.valid and horizon.terrain.valid and horizon.roads.valid,
         "sun, terrain and road materials resolve for the grounded city diorama")
@@ -39,6 +62,16 @@ Suite:Add("city marker follows the rotated Earth surface", function(check)
     position, normal = Scene:GetEarthMarkerPosition(vector_origin, 2, 0.5, 0, 0)
     check(position:Distance(Vector(0, 43.2, 0)) < 0.001 and normal:Distance(Vector(0, 1, 0)) < 0.001,
         "the same marker transform follows Earth yaw and presentation scale")
+    local laLatitude, laLongitude = 34.05, -118.24
+    Scene.Yaw, Scene.Pitch = -90 - laLongitude, laLatitude
+    local _, laNormal = Scene:GetEarthMarkerPosition(vector_origin, 1, 1, laLatitude, laLongitude)
+    local pole = Scene:GetEarthRotation() * Vector(0, 0, 1)
+    check(laNormal:Distance(Vector(0, -1, 0)) < 0.001 and math.abs(pole.x) < 0.001 and pole.z > 0,
+        "a centred far-west city faces the camera with north still upright, not rolled")
+    Scene.Yaw, Scene.Pitch = 0, 40
+    pole = Scene:GetEarthRotation() * Vector(0, 0, 1)
+    check(math.abs(pole.x) < 0.001 and pole.z > 0,
+        "vertical gimbal tilt never rolls the pole sideways at any yaw")
     Scene.Yaw, Scene.Pitch = originalYaw, originalPitch
 end)
 
@@ -47,21 +80,25 @@ Suite:Add("manual Earth view is bounded and Home-owned", function(check)
     local inspection = ZM_SkyInspection
     local original = {
         yaw = Scene.Yaw, pitch = Scene.Pitch, zoom = Scene.EarthViewZoom,
+        returnTransition = Scene.EarthViewReturn,
+        dragging = Scene.EarthDragging, spinYaw = Scene.EarthSpinYawVelocity,
+        spinPitch = Scene.EarthSpinPitchVelocity,
         manual = Scene.ManualEarthView, presentation = Scene.PresentationState or "earth",
         transition = Scene.PresentationTransition, page = menu.Page, active = menu.Active,
         waiting = menu.Waiting, credits = menu.Credits, inspection = inspection.State,
         frameVisible = IsValid(menu.Frame) and menu.Frame:IsVisible()
     }
     local minimum, maximum, distance = Scene:GetEarthZoomBounds()
-    check(minimum == 0.72 and maximum >= 1 and maximum <= 1.65 and distance > 42,
-        "zoom bounds use the authored camera distance and keep the camera outside Earth")
+    check(minimum == 0.72 and maximum > 1.65 and maximum <= 3 and distance > 100
+        and 42 * maximum <= distance - 24 + 0.001,
+        "extended zoom uses the authored camera clearance without entering the Earth")
     Scene.Yaw, Scene.Pitch, Scene.EarthViewZoom = 0, 0, 1
     Scene:AdjustEarthView(10000, 10000, 50)
     check(Scene.ManualEarthView and Scene.Pitch == 72 and Scene.EarthViewZoom == maximum,
-        "drag pitch and wheel zoom clamp at their safe upper bounds")
+        "drag pitch and wheel zoom clamp at their safe bounds")
     Scene:AdjustEarthView(0, -20000, -100)
     check(Scene.Pitch == -72 and Scene.EarthViewZoom == minimum,
-        "reverse drag and wheel input clamp at their safe lower bounds")
+        "reverse drag and wheel input clamp at their safe bounds")
     menu.Active, menu.Page, menu.Waiting, menu.Credits = true, "menu", nil, nil
     if IsValid(menu.Frame) then menu.Frame:SetVisible(true) end
     inspection.State = nil
@@ -72,17 +109,104 @@ Suite:Add("manual Earth view is bounded and Home-owned", function(check)
     check(not menu:IsEarthControlsActive(), "Settings cannot retain Earth input ownership")
     Scene:ResetEarthView()
     local latitude, longitude = Scene:GetEarthTarget()
-    check(not Scene.ManualEarthView and Scene.EarthViewZoom == 1
-        and Scene.Yaw == (longitude and -90 - longitude or 0)
-        and Scene.Pitch == (latitude or 12),
-        "Reset View returns to the saved location without changing gameplay coordinates")
+    check(not Scene.ManualEarthView and Scene.EarthViewReturn ~= nil,
+        "Reset View starts an animated return without changing gameplay coordinates")
+    Scene:AdvanceEarthViewReturn(Scene.EarthViewReturn.startedAt + Scene.EarthViewReturn.duration)
+    local expectedYaw = longitude and -90 - longitude or 0
+    check(Scene.EarthViewZoom == 1
+        and math.abs(math.AngleDifference(Scene.Yaw, expectedYaw)) < 0.001
+        and math.abs(Scene.Pitch - (latitude or 12)) < 0.001,
+        "the animated return finishes centred on the saved location")
     Scene.Yaw, Scene.Pitch, Scene.EarthViewZoom = original.yaw, original.pitch, original.zoom
+    Scene.EarthViewReturn = original.returnTransition
     Scene.ManualEarthView, Scene.PresentationState = original.manual, original.presentation
+    Scene.EarthDragging = original.dragging
+    Scene.EarthSpinYawVelocity, Scene.EarthSpinPitchVelocity = original.spinYaw, original.spinPitch
     Scene.PresentationTransition = original.transition
     menu.Page, menu.Active, menu.Waiting, menu.Credits =
         original.page, original.active, original.waiting, original.credits
     if IsValid(menu.Frame) then menu.Frame:SetVisible(original.frameVisible) end
     inspection.State = original.inspection
+end)
+
+Suite:Add("Earth spin carries momentum after drag and releases at bounds", function(check)
+    local original = {
+        yaw = Scene.Yaw, pitch = Scene.Pitch, manual = Scene.ManualEarthView,
+        dragging = Scene.EarthDragging, spinYaw = Scene.EarthSpinYawVelocity,
+        spinPitch = Scene.EarthSpinPitchVelocity
+    }
+    Scene.Yaw, Scene.Pitch = 0, 0
+    Scene.ManualEarthView, Scene.EarthDragging = true, false
+    Scene:AdjustEarthView(10, 10, 0)
+    check(Scene.Yaw > 0 and Scene.Pitch > 0,
+        "mouse movement drives the two gimbal axes independently")
+    Scene.Yaw, Scene.Pitch = 0, 0
+    Scene:AdjustEarthView(10, 0, 0)
+    check(Scene.Yaw > 0 and Scene.Pitch == 0,
+        "horizontal drag turns only the vertical gimbal axis")
+    Scene.Yaw, Scene.Pitch = 0, 0
+    Scene:AdjustEarthView(0, 10, 0)
+    check(Scene.Yaw == 0 and Scene.Pitch > 0,
+        "vertical drag turns only the horizontal gimbal axis")
+    Scene.Yaw, Scene.Pitch = 0, 0
+    Scene.EarthSpinYawVelocity, Scene.EarthSpinPitchVelocity = 180, 90
+    Scene:AdvanceEarthMomentum(0.1)
+    check(Scene.Yaw > 0 and Scene.Pitch > 0
+        and Scene.EarthSpinYawVelocity > 0 and Scene.EarthSpinYawVelocity < 180,
+        "a released drag keeps rotating while angular velocity damps smoothly")
+    Scene.Pitch, Scene.EarthSpinPitchVelocity = 71, 240
+    Scene:AdvanceEarthMomentum(0.1)
+    check(Scene.Pitch == 72 and Scene.EarthSpinPitchVelocity == 0,
+        "inertial pitch stops cleanly at the safe camera-angle limit")
+    Scene.EarthSpinYawVelocity, Scene.EarthSpinPitchVelocity = 80, -40
+    Scene:AdjustEarthView(0, 0, 1)
+    check(Scene.EarthSpinYawVelocity == 0 and Scene.EarthSpinPitchVelocity == 0,
+        "zooming cancels residual spin so the selected area stays under the cursor")
+    Scene:ReleaseEarthView()
+    check(not Scene.ManualEarthView and Scene.EarthSpinYawVelocity == 0
+        and Scene.EarthSpinPitchVelocity == 0,
+        "leaving Home releases inertial ownership and clears spin")
+    Scene.Yaw, Scene.Pitch, Scene.ManualEarthView, Scene.EarthDragging =
+        original.yaw, original.pitch, original.manual, original.dragging
+    Scene.EarthSpinYawVelocity, Scene.EarthSpinPitchVelocity = original.spinYaw, original.spinPitch
+end)
+
+Suite:Add("Earth recenter cancels when manual input resumes", function(check)
+    local original = {
+        yaw = Scene.Yaw, pitch = Scene.Pitch, zoom = Scene.EarthViewZoom,
+        manual = Scene.ManualEarthView, transition = Scene.EarthViewReturn,
+        dragging = Scene.EarthDragging, spinYaw = Scene.EarthSpinYawVelocity,
+        spinPitch = Scene.EarthSpinPitchVelocity
+    }
+    Scene.Yaw, Scene.Pitch, Scene.EarthViewZoom = 40, 20, 1.3
+    Scene:ResetEarthView()
+    local transition = Scene.EarthViewReturn
+    check(transition ~= nil, "recenter retains a time-bounded interpolation")
+    Scene:AdvanceEarthViewReturn(transition.startedAt + transition.duration * 0.5)
+    check(Scene.EarthViewReturn ~= nil and Scene.EarthViewZoom < 1.3 and Scene.EarthViewZoom > 1,
+        "recenter smoothly interpolates orientation and zoom")
+    Scene:BeginEarthDrag()
+    check(Scene.EarthViewReturn == nil and Scene.EarthDragging,
+        "a new drag takes ownership and cancels recentering")
+    Scene:ReleaseEarthView()
+    Scene.Yaw, Scene.Pitch, Scene.EarthViewZoom = original.yaw, original.pitch, original.zoom
+    Scene.ManualEarthView, Scene.EarthViewReturn = original.manual, original.transition
+    Scene.EarthDragging = original.dragging
+    Scene.EarthSpinYawVelocity, Scene.EarthSpinPitchVelocity = original.spinYaw, original.spinPitch
+end)
+
+Suite:Add("launcher music volume toggle is scoped to its own track", function(check)
+    local music = ZM_Music
+    local original = music.LauncherTrackLowered
+    check(music.LauncherTracks.intro.path == "sounds/music/menu.mp3"
+        and not music.LauncherTracks.intro.looping,
+        "the first menu track plays once")
+    check(music.LauncherTracks.loop.path == "sounds/music/menu 2.mp3"
+        and music.LauncherTracks.loop.looping,
+        "menu 2 follows the first track and is configured to loop")
+    check(music:SetLauncherTrackLowered(true) == true, "launcher menu track can select the quieter level")
+    check(music:ToggleLauncherTrackLevel() == false, "the adjacent control restores normal launcher music")
+    music:SetLauncherTrackLowered(original == true)
 end)
 
 Suite:Add("presentation state has one visible owner", function(check)
@@ -122,8 +246,8 @@ Suite:Add("launcher space sky does not replace sky inspection", function(check)
     Scene:SetPresentationState("earth")
     palettes:Update()
     local launcher = palettes:GetDiagnosticSnapshot()
-    check(launcher.launcherPresentation and launcher.activeEntry == "imported_tropo_night_2",
-        "orbital launcher presentation uses the dedicated approved night cube")
+    check(launcher.launcherPresentation and launcher.activeEntry == "imported_space_9",
+        "orbital launcher presentation uses the dedicated deep-space cube")
     Scene:SetPresentationState("city")
     palettes:Update()
     local grounded = palettes:GetDiagnosticSnapshot()

@@ -15,6 +15,19 @@ website are in the public domain. Natural Earth permits use, modification and
 redistribution for personal, educational and commercial purposes without
 permission or required credit.
 
-ZombieSim resampled the source to 2048x1024. The night lights, cloud, distress
-and rim layers are original deterministic ZombieSim build outputs and are not
-copied from an external texture.
+ZombieSim resampled the source to 2048x1024. For the close-zoom layer, the build
+also verifies the source archive above by SHA-256 and resamples its full
+10800x5400 NE1_50M_SR_W.tif to 4096x2048. The cloud, distress and rim layers
+are original deterministic ZombieSim build outputs.
+
+NASA Black Marble 2016 night-light source:
+https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/
+The source is the NASA Black Marble global annual night-light composite from
+Suomi NPP VIIRS, normalized to grayscale and resampled by ZombieSim to
+2048x1024 and, for close zoom, 4096x2048 from the 13500x6750 3 km
+BlackMarble_2016_3km.jpg rendition of the same NASA image record. Credit: NASA's Goddard Space Flight Center; scientist Miguel Roman;
+image processing Joshua Stevens (SSAI).
+
+NASA imagery is generally in the public domain unless otherwise noted. This
+source is used as an Earth at Night map layer, without NASA insignia or any
+implication of NASA endorsement.

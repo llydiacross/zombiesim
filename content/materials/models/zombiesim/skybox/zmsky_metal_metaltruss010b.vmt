@@ -1,0 +1,5 @@
+"VertexLitGeneric"
+{
+    "$basetexture" "metal/metaltruss010b"
+    "$alphatest" "1"
+}

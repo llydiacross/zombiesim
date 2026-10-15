@@ -116,6 +116,16 @@
         { "prefix": "dusk_", "label": "Tropospheric dusk", "context": "dusk", "count": 6 },
         { "prefix": "night_", "label": "Tropospheric night", "context": "night", "count": 2 }
       ]
+    },
+    {
+      "idPrefix": "imported_",
+      "sourceDirectory": "space_skybox_pack\\materials\\skybox",
+      "licenceFile": "space_skybox_pack\\README.txt",
+      "credit": "Keen Software House (original Space Engineers artwork); ported by Mr.Who, Space Skybox Pack (GameBanana 7222)",
+      "permission": "No licence supplied. Project owner confirmed permission on 2026-10-14 covering the original Keen artwork and the port for use and redistribution in this non-commercial project.",
+      "families": [
+        { "prefix": "space_", "label": "Deep space", "context": "night", "count": 10 }
+      ]
     }
   ],
   "excludedEntries": ["imported_tropo_night_1"],

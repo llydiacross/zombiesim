@@ -11,15 +11,16 @@ local shotLock = CreateClientConVar("zombiesim_credits_shot", "", false, false,
 local debugShots = CreateClientConVar("zombiesim_credits_debug", "0", false, false,
     "Show the credits camera trace and shot state.")
 local tilt = math.rad(12)
-local lightDirection = Vector(-0.4, -0.8, 0.45):GetNormalized()
-local presentationResourceVersion = 5
+local presentationResourceVersion = 6
 local transitionEarthZoom = 7
+local earthSpinDamping = 2.4
 local horizonCityScale = 0.19
 local horizonCityHeightScale = 0.23
 local dioramaHalfWidth, dioramaHalfDepth = 620, 520
 local dioramaRoadExtent = 300
-local presentationNightSky = { id = "imported_tropo_night_2", horizon = { 8, 12, 22 } }
+local presentationNightSky = { id = "imported_space_9", horizon = { 24, 6, 6 } }
 local presentationDaySky = { id = "imported_tropo_day_2", horizon = { 150, 178, 204 } }
+local presentationLightingDirection = Vector(-0.4, -0.8, 0.45):GetNormalized()
 local presentationAssets = {}
 local sunMaterial = Material("sprites/light_glow02_add")
 local dioramaTerrainMaterial = CreateMaterial("zombiesim_launcher_diorama_terrain_v1", "UnlitGeneric", {
@@ -41,13 +42,48 @@ local earthMarkerColor = Color(255, 176, 82)
 local cityMarkerColor = Color(255, 154, 62)
 local cityLabelColor = Color(248, 242, 232)
 local cityLabelOutline = Color(16, 20, 26, 235)
+local earthLightMaterial = CreateMaterial("zombiesim_launcher_earth_lights_v2", "UnlitGeneric", {
+    ["$basetexture"] = "zombiesim/launcher/earth_lights",
+    ["$vertexcolor"] = 1,
+    ["$vertexalpha"] = 1,
+    ["$translucent"] = 1,
+    ["$nocull"] = 1,
+    ["$nofog"] = 1
+})
 local earthMaterials = {
     day = Material("zombiesim/launcher/earth_day"),
-    lights = Material("zombiesim/launcher/earth_lights"),
+    lights = earthLightMaterial,
     clouds = Material("zombiesim/launcher/earth_clouds"),
     distress = Material("zombiesim/launcher/earth_distress"),
     rim = Material("zombiesim/launcher/earth_rim")
 }
+local earthHighDetailStart, earthHighDetailFull = 1.5, 2.1
+local earthHighDetailMaterials
+
+// The 4096x2048 close-zoom layers are created on the first high-quality draw,
+// so low globe quality never loads their extra texture memory.
+local function getEarthHighDetailMaterials()
+    if earthHighDetailMaterials then return earthHighDetailMaterials end
+    local function layer(name)
+        return CreateMaterial("zombiesim_launcher_" .. name .. "_v1", "UnlitGeneric", {
+            ["$basetexture"] = "zombiesim/launcher/" .. name,
+            ["$vertexcolor"] = 1,
+            ["$vertexalpha"] = 1,
+            ["$translucent"] = 1,
+            ["$nocull"] = 1,
+            ["$nofog"] = 1
+        })
+    end
+    earthHighDetailMaterials = { day = layer("earth_day_hd"), lights = layer("earth_lights_hd") }
+    return earthHighDetailMaterials
+end
+
+function Scene:GetEarthHighDetailBlend(zoom)
+    if not quality:GetBool() then return 0 end
+    local amount = math.Clamp(((tonumber(zoom) or 1) - earthHighDetailStart)
+        / (earthHighDetailFull - earthHighDetailStart), 0, 1)
+    return amount * amount * (3 - 2 * amount)
+end
 
 function Scene:GetDancer(index)
     local id = Menu.DancerIds and Menu.DancerIds[index]
@@ -95,36 +131,106 @@ function Scene:GetEarthZoomBounds()
     local cameraDistance = Menu.Camera and Menu.Globe
         and (Menu.Camera.origin - Menu.Globe):Length() or 0
     local maximum = cameraDistance > 0 and (cameraDistance - 24) / 42 or 1.45
-    return 0.72, math.Clamp(maximum, 1, 1.65), cameraDistance
+    return 0.72, math.Clamp(maximum, 1, 3), cameraDistance
 end
 
 function Scene:BeginEarthView()
+    self.EarthViewReturn = nil
     self.ManualEarthView = true
     self.EarthViewZoom = self.EarthViewZoom or 1
 end
 
-function Scene:AdjustEarthView(deltaX, deltaY, wheel)
+function Scene:BeginEarthDrag()
     self:BeginEarthView()
-    self.Yaw = (tonumber(self.Yaw) or 0) + (tonumber(deltaX) or 0) * 0.28
-    self.Pitch = math.Clamp((tonumber(self.Pitch) or math.deg(tilt))
-        + (tonumber(deltaY) or 0) * 0.22, -72, 72)
+    self.EarthDragging = true
+    self.EarthSpinYawVelocity, self.EarthSpinPitchVelocity = 0, 0
+end
+
+function Scene:EndEarthDrag()
+    self.EarthDragging = false
+end
+
+function Scene:AdjustEarthView(deltaX, deltaY, wheel, frameTime)
+    self:BeginEarthView()
+    deltaX, deltaY = tonumber(deltaX) or 0, tonumber(deltaY) or 0
+    wheel = tonumber(wheel) or 0
+    if wheel ~= 0 then
+        self.EarthSpinYawVelocity, self.EarthSpinPitchVelocity = 0, 0
+    end
+    self.Yaw = (tonumber(self.Yaw) or 0) + deltaX * 0.28
+    self.Pitch = math.Clamp((tonumber(self.Pitch) or math.deg(tilt)) + deltaY * 0.22, -72, 72)
+    if frameTime and frameTime > 0 then
+        local blend = 1 - math.exp(-math.min(frameTime, 0.1) * 18)
+        local targetYawVelocity = math.Clamp(deltaX * 0.28 / frameTime, -360, 360)
+        local targetPitchVelocity = math.Clamp(deltaY * 0.22 / frameTime, -240, 240)
+        self.EarthSpinYawVelocity = Lerp(blend, self.EarthSpinYawVelocity or 0, targetYawVelocity)
+        self.EarthSpinPitchVelocity = Lerp(blend, self.EarthSpinPitchVelocity or 0, targetPitchVelocity)
+    end
     local minimum, maximum = self:GetEarthZoomBounds()
     self.EarthViewZoom = math.Clamp((self.EarthViewZoom or 1)
-        * math.pow(1.1, tonumber(wheel) or 0), minimum, maximum)
+        * math.pow(1.1, wheel), minimum, maximum)
     return self.Yaw, self.Pitch, self.EarthViewZoom
+end
+
+function Scene:AdvanceEarthMomentum(frameTime)
+    if not self.ManualEarthView or self.EarthDragging then return self.Yaw, self.Pitch end
+    local elapsed = math.max(0, math.min(tonumber(frameTime) or 0, 0.1))
+    if elapsed == 0 then return self.Yaw, self.Pitch end
+    local decay = math.exp(-earthSpinDamping * elapsed)
+    local travel = (1 - decay) / earthSpinDamping
+    local yawVelocity = self.EarthSpinYawVelocity or 0
+    local pitchVelocity = self.EarthSpinPitchVelocity or 0
+    self.Yaw = (tonumber(self.Yaw) or 0) + yawVelocity * travel
+    local nextPitch = (tonumber(self.Pitch) or math.deg(tilt)) + pitchVelocity * travel
+    self.Pitch = math.Clamp(nextPitch, -72, 72)
+    self.EarthSpinYawVelocity = math.abs(yawVelocity * decay) < 0.2 and 0 or yawVelocity * decay
+    if nextPitch ~= self.Pitch or math.abs(pitchVelocity * decay) < 0.2 then
+        self.EarthSpinPitchVelocity = 0
+    else
+        self.EarthSpinPitchVelocity = pitchVelocity * decay
+    end
+    return self.Yaw, self.Pitch
+end
+
+function Scene:ClearEarthMomentum()
+    self.EarthDragging = false
+    self.EarthSpinYawVelocity, self.EarthSpinPitchVelocity = 0, 0
 end
 
 function Scene:ReleaseEarthView()
     self.ManualEarthView = false
+    self.EarthViewReturn = nil
+    self:ClearEarthMomentum()
 end
 
 function Scene:ResetEarthView()
     local latitude, longitude = self:GetEarthTarget()
+    local targetYaw = longitude and (-90 - longitude) or 0
+    local targetPitch = latitude or math.deg(tilt)
+    self:ClearEarthMomentum()
+    self.EarthViewReturn = {
+        startedAt = RealTime(),
+        duration = 0.8,
+        yaw = self.Yaw or targetYaw,
+        pitch = self.Pitch or targetPitch,
+        zoom = self.EarthViewZoom or 1,
+        targetYaw = targetYaw,
+        targetPitch = targetPitch
+    }
     self.ManualEarthView = false
-    self.EarthViewZoom = 1
-    self.Yaw = longitude and (-90 - longitude) or 0
-    self.Pitch = latitude or math.deg(tilt)
-    return self.Yaw, self.Pitch, self.EarthViewZoom
+    return targetYaw, targetPitch, 1
+end
+
+function Scene:AdvanceEarthViewReturn(now)
+    local transition = self.EarthViewReturn
+    if not transition then return false end
+    local progress = math.Clamp(((now or RealTime()) - transition.startedAt) / transition.duration, 0, 1)
+    local eased = progress * progress * (3 - 2 * progress)
+    self.Yaw = transition.yaw + math.AngleDifference(transition.targetYaw, transition.yaw) * eased
+    self.Pitch = Lerp(eased, transition.pitch, transition.targetPitch)
+    self.EarthViewZoom = Lerp(eased, transition.zoom, 1)
+    if progress >= 1 then self.EarthViewReturn = nil end
+    return true
 end
 
 function Scene:ShouldDrawPresentationPass(depth, skybox)
@@ -143,10 +249,17 @@ local function addTriangle(vertices, a, b, c, colourA, colourB, colourC)
 end
 
 local function lightingColours(normal)
-    local daylight = math.Clamp(normal:Dot(lightDirection) * 0.5 + 0.5, 0, 1)
-    local amount = 0.2 + daylight * 0.8
+    local daylight, nightBlend = Scene:GetEarthNightBlend(normal)
+    local amount = 0.055 + math.pow(daylight, 1.45) * 0.945
     return Color(amount * 255, amount * 255, amount * 255, 255),
-        Color(255, 210, 145, (1 - daylight) ^ 2 * 255)
+        Color(255, 191, 119, nightBlend * 255)
+end
+
+function Scene:GetEarthNightBlend(normal)
+    local daylight = math.Clamp(normal:Dot(presentationLightingDirection) * 0.5 + 0.5, 0, 1)
+    local edge = math.Clamp((daylight - 0.28) / 0.5, 0, 1)
+    local night = 1 - edge * edge * (3 - 2 * edge)
+    return daylight, night
 end
 
 local function buildSphere(detail)
@@ -515,11 +628,238 @@ end
 
 function Scene:GetEarthMarkerPosition(centre, zoom, presentationScale, latitude, longitude)
     if not latitude or not longitude then return nil end
-    local rotation = Matrix()
-    rotation:Rotate(Angle(0, self.Yaw or 0, 0))
-    rotation:Rotate(Angle(self.Pitch or 0, 0, 0))
-    local normal = (rotation * surfacePoint(latitude, longitude)):GetNormalized()
+    local normal = (self:GetEarthRotation() * surfacePoint(latitude, longitude)):GetNormalized()
     return centre + normal * 43.2 * zoom * presentationScale, normal
+end
+
+// Gimbal: the planet spins about its own pole (inner yaw), then tilts about the
+// screen-horizontal axis facing the menu camera along +Y (outer pitch). Tilting
+// about world X keeps north up for any longitude instead of rolling the globe.
+function Scene:GetEarthRotation()
+    local yaw, pitch = math.rad(self.Yaw or 0), math.rad(self.Pitch or 0)
+    local cy, sy, cp, sp = math.cos(yaw), math.sin(yaw), math.cos(pitch), math.sin(pitch)
+    return Matrix({
+        { cy, -sy, 0, 0 },
+        { cp * sy, cp * cy, -sp, 0 },
+        { sp * sy, sp * cy, cp, 0 },
+        { 0, 0, 0, 1 }
+    })
+end
+
+local spaceFogMaterial = Material("zombiesim/launcher/space_fog")
+local missileTrailMaterial = Material("trails/smoke")
+local shockwaveMaterial = Material("effects/select_ring")
+// Gloomy nebula drift: far puffs sit behind the globe, a few faint near puffs frame its edges.
+local spaceFogPuffs = {
+    { right = -150, up = 60, depth = 120, size = 260, alpha = 95, speed = 0.011, phase = 0.4 },
+    { right = 170, up = -40, depth = 150, size = 300, alpha = 90, speed = -0.008, phase = 1.9 },
+    { right = 30, up = 130, depth = 180, size = 280, alpha = 70, speed = 0.006, phase = 3.1 },
+    { right = -60, up = -120, depth = 140, size = 240, alpha = 80, speed = -0.012, phase = 4.4 },
+    { right = 230, up = 110, depth = 90, size = 200, alpha = 60, speed = 0.014, phase = 5.2 },
+    { right = -240, up = -70, depth = 80, size = 210, alpha = 65, speed = -0.01, phase = 2.6 },
+    { right = -120, up = -78, depth = -70, size = 120, alpha = 28, speed = 0.018, phase = 0.9, front = true },
+    { right = 128, up = 74, depth = -60, size = 110, alpha = 24, speed = -0.016, phase = 3.7, front = true },
+    { right = 112, up = -92, depth = -80, size = 130, alpha = 22, speed = 0.013, phase = 5.9, front = true }
+}
+local spaceFogColor = { 92, 30, 22 }
+local spaceFogFrontColor = { 70, 38, 32 }
+local strikeBlocs = {
+    west = {
+        launch = { { 47.5, -111.2 }, { 48.4, -101.4 }, { 41.1, -104.8 }, { 55, -32 }, { 42, -160 } },
+        targets = { { 40.7, -74.0 }, { 34.05, -118.24 }, { 41.9, -87.6 }, { 38.9, -77.0 }, { 51.5, -0.13 },
+            { 48.86, 2.35 }, { 52.5, 13.4 }, { 47.6, -122.3 }, { 43.7, -79.4 }, { 29.8, -95.4 }, { 37.8, -122.4 } }
+    },
+    east = {
+        launch = { { 55.3, 89.8 }, { 51.2, 58.6 }, { 54.0, 35.8 }, { 39.7, 98.5 }, { 72, 40 }, { 40.0, 125.8 } },
+        targets = { { 55.75, 37.6 }, { 59.9, 30.3 }, { 39.9, 116.4 }, { 31.2, 121.5 }, { 39.0, 125.75 },
+            { 56.8, 60.6 }, { 55.0, 82.9 }, { 30.6, 104.1 }, { 43.1, 131.9 }, { 22.5, 114.1 } }
+    }
+}
+local maximumStrikes, maximumMissilesInFlight = 9, 3
+local strikeAftermath = 22
+
+local function slerpUnit(a, b, amount, omega)
+    if omega < 0.0001 then return a end
+    local sinOmega = math.sin(omega)
+    return a * (math.sin((1 - amount) * omega) / sinOmega) + b * (math.sin(amount * omega) / sinOmega)
+end
+
+local function strikePoint(strike, amount)
+    local direction = slerpUnit(strike.from, strike.to, amount, strike.omega)
+    return direction * (1 + strike.apex * math.sin(math.pi * amount)), direction
+end
+
+local function sightBlocked(point, camera, centre, radius)
+    local ray, offset = camera - point, point - centre
+    local a, b = ray:Dot(ray), offset:Dot(ray)
+    local c = offset:Dot(offset) - radius * radius
+    local discriminant = b * b - a * c
+    if c <= 0 or discriminant < 0 then return c <= 0 end
+    local hit = (-b - math.sqrt(discriminant)) / a
+    return hit > 0 and hit < 1
+end
+
+function Scene:SpawnNuclearStrike(now)
+    local blocs = { "west", "east" }
+    local attacker = blocs[math.random(2)]
+    local defender = attacker == "west" and "east" or "west"
+    local launch = strikeBlocs[attacker].launch[math.random(#strikeBlocs[attacker].launch)]
+    local markerLat, markerLon = self:GetEarthTarget()
+    local candidates = {}
+    for _, target in ipairs(strikeBlocs[defender].targets) do
+        if not markerLat or math.abs(target[1] - markerLat) + math.abs(math.AngleDifference(target[2], markerLon)) > 9 then
+            candidates[#candidates + 1] = target
+        end
+    end
+    if #candidates == 0 then return nil end
+    local target = candidates[math.random(#candidates)]
+    local from, to = surfacePoint(launch[1], launch[2]), surfacePoint(target[1], target[2])
+    local omega = math.acos(math.Clamp(from:Dot(to), -1, 1))
+    local strike = {
+        from = from, to = to, omega = omega,
+        apex = 0.06 + 0.16 * omega / math.pi,
+        launchedAt = now,
+        flight = 4.5 + 4 * omega / math.pi
+    }
+    self.NuclearStrikes[#self.NuclearStrikes + 1] = strike
+    return strike
+end
+
+function Scene:UpdateNuclearStrikes(now)
+    self.NuclearStrikes = self.NuclearStrikes or {}
+    local strikes, inFlight = self.NuclearStrikes, 0
+    for index = #strikes, 1, -1 do
+        local strike = strikes[index]
+        if now - strike.launchedAt > strike.flight + strikeAftermath then
+            table.remove(strikes, index)
+        elseif now - strike.launchedAt < strike.flight then
+            inFlight = inFlight + 1
+        end
+    end
+    self.NextStrikeAt = self.NextStrikeAt or now + 1.2
+    if now >= self.NextStrikeAt then
+        if #strikes < maximumStrikes and inFlight < maximumMissilesInFlight then self:SpawnNuclearStrike(now) end
+        self.NextStrikeAt = now + math.Rand(2.4, 5.8)
+    end
+    return strikes
+end
+
+function Scene:DrawSpaceFog(centre, presentationScale, alpha, front, fade)
+    if not Menu.Camera or spaceFogMaterial:IsError() then return 0 end
+    local camera = self:GetPresentationCameraOrigin()
+    local forward = (centre - camera):GetNormalized()
+    local right = forward:Cross(Vector(0, 0, 1)):GetNormalized()
+    local up = right:Cross(forward):GetNormalized()
+    local now, draws = RealTime(), 0
+    local tint = front and spaceFogFrontColor or spaceFogColor
+    render.OverrideDepthEnable(true, false)
+    render.SetMaterial(spaceFogMaterial)
+    for _, puff in ipairs(spaceFogPuffs) do
+        if (puff.front == true) == front then
+            local drift = math.sin(now * 0.07 + puff.phase)
+            local position = centre + (right * (puff.right + drift * 18) + up * (puff.up + math.cos(now * 0.05 + puff.phase) * 10)
+                + forward * puff.depth) * presentationScale
+            local size = puff.size * (1 + drift * 0.06) * presentationScale
+            render.DrawQuadEasy(position, -forward, size, size,
+                Color(tint[1], tint[2], tint[3], puff.alpha * alpha * (fade or 1)),
+                (puff.phase * 57 + now * puff.speed * 57.3) % 360)
+            draws = draws + 1
+        end
+    end
+    render.OverrideDepthEnable(false, false)
+    return draws
+end
+
+function Scene:DrawNuclearStrikes(centre, rotation, radius, alpha, now)
+    local strikes = self:UpdateNuclearStrikes(now)
+    if #strikes == 0 or alpha <= 0.001 then return 0 end
+    local camera = self:GetPresentationCameraOrigin()
+    local toCamera = (camera - centre):GetNormalized()
+    local draws = 0
+    local function world(local_)
+        return centre + (rotation * local_) * radius
+    end
+    render.OverrideDepthEnable(true, false)
+    for _, strike in ipairs(strikes) do
+        local age = now - strike.launchedAt
+        local progress = math.Clamp(age / strike.flight, 0, 1)
+        local travel = progress * progress * (3 - 2 * progress) * 0.35 + progress * 0.65
+        local trailFade = alpha * (1 - smoothStep((age - strike.flight) / 7))
+        if trailFade > 0.01 then
+            render.SetMaterial(missileTrailMaterial)
+            local samples = math.max(2, math.ceil(28 * travel))
+            local previous = world(strikePoint(strike, 0))
+            local previousHidden = sightBlocked(previous, camera, centre, radius * 0.995)
+            for step = 1, samples do
+                local amount = travel * step / samples
+                local point = world(strikePoint(strike, amount))
+                local hidden = sightBlocked(point, camera, centre, radius * 0.995)
+                if not hidden and not previousHidden then
+                    local recency = step / samples
+                    render.DrawBeam(previous, point, radius * (0.008 + 0.01 * recency), 0, 1,
+                        Color(214, 196, 178, 255 * trailFade * (0.3 + 0.7 * recency)))
+                    draws = draws + 1
+                end
+                previous, previousHidden = point, hidden
+            end
+        end
+        if progress < 1 then
+            local head = world(strikePoint(strike, travel))
+            if not sightBlocked(head, camera, centre, radius * 0.995) then
+                render.SetMaterial(sunMaterial)
+                local flicker = 1 + math.sin(now * 37 + strike.launchedAt) * 0.15
+                render.DrawSprite(head, radius * 0.09 * flicker, radius * 0.09 * flicker, Color(255, 196, 128, 255 * alpha))
+                render.DrawSprite(head, radius * 0.035, radius * 0.035, Color(255, 250, 235, 255 * alpha))
+                draws = draws + 2
+            end
+        else
+            local since = age - strike.flight
+            local normal = (rotation * strike.to):GetNormalized()
+            local facing = smoothStep((normal:Dot(toCamera) + 0.12) / 0.3)
+            if facing > 0.01 then
+                local ground = centre + normal * radius * 1.004
+                local fade = alpha * facing
+                render.SetMaterial(sunMaterial)
+                if since < 1.2 then
+                    local flash = 1 - since / 1.2
+                    local size = radius * (0.1 + 0.55 * smoothStep(since / 0.25))
+                    render.DrawSprite(ground, size, size, Color(255, 252, 240, 255 * fade * flash))
+                    draws = draws + 1
+                end
+                local fire = 1 - smoothStep((since - 1.5) / 9)
+                if fire > 0.01 then
+                    local size = radius * (0.08 + 0.1 * smoothStep(since / 2.5))
+                    render.DrawSprite(ground + normal * radius * 0.01, size, size, Color(255, 120, 40, 255 * fade * fire))
+                    draws = draws + 1
+                end
+                local embers = 1 - smoothStep((since - 6) / (strikeAftermath - 6))
+                render.DrawSprite(ground, radius * 0.07, radius * 0.07, Color(255, 84, 24, 190 * fade * embers))
+                draws = draws + 1
+                if since < 3 then
+                    local ring = smoothStep(since / 3)
+                    render.SetMaterial(shockwaveMaterial)
+                    render.DrawQuadEasy(ground + normal * radius * 0.003, normal, radius * 0.42 * ring,
+                        radius * 0.42 * ring, Color(255, 214, 170, 230 * fade * (1 - ring)), 0)
+                    draws = draws + 1
+                end
+                local cloud = smoothStep(since / 4)
+                local cloudFade = (1 - smoothStep((since - 7) / 12)) * smoothStep(since / 0.6)
+                if cloudFade > 0.01 then
+                    render.SetMaterial(spaceFogMaterial)
+                    local heat = 1 - smoothStep((since - 1) / 6)
+                    local stem = ground + normal * radius * (0.012 + 0.03 * cloud)
+                    local cap = ground + normal * radius * (0.02 + 0.075 * cloud)
+                    render.DrawSprite(stem, radius * 0.035, radius * (0.03 + 0.05 * cloud),
+                        Color(150 + 105 * heat, 110 + 40 * heat, 80, 200 * fade * cloudFade))
+                    render.DrawSprite(cap, radius * (0.05 + 0.08 * cloud), radius * (0.04 + 0.06 * cloud),
+                        Color(140 + 115 * heat, 96 + 50 * heat, 70 + 10 * heat, 230 * fade * cloudFade))
+                    draws = draws + 2
+                end
+            end
+        end
+    end
+    render.OverrideDepthEnable(false, false)
+    return draws
 end
 
 function Scene:DrawEarth(alpha, transitionZoom, descent)
@@ -535,16 +875,18 @@ function Scene:DrawEarth(alpha, transitionZoom, descent)
     self.Pitch = self.Pitch or math.deg(tilt)
     local manual = self.ManualEarthView and Menu.IsEarthControlsActive
         and Menu:IsEarthControlsActive()
-    if not manual and targetYaw then
+    local returning = self:AdvanceEarthViewReturn(now)
+    if manual then self:AdvanceEarthMomentum(elapsed) end
+    if not manual and not returning and targetYaw then
         local blend = 1 - math.exp(-elapsed * 2)
         self.Yaw = self.Yaw + math.AngleDifference(targetYaw, self.Yaw) * blend
         self.Pitch = self.Pitch + ((lat or 0) - self.Pitch) * blend
-    elseif not manual then
+    elseif not manual and not returning then
         self.Yaw = self.Yaw + elapsed * 4
         self.Pitch = math.deg(tilt)
     end
     self.EarthViewZoom = self.EarthViewZoom or 1
-    if not manual then
+    if not manual and not returning then
         local zoomBlend = 1 - math.exp(-elapsed * 4)
         self.EarthViewZoom = Lerp(zoomBlend, self.EarthViewZoom, 1)
     end
@@ -553,19 +895,34 @@ function Scene:DrawEarth(alpha, transitionZoom, descent)
     local zoom = (self.PrototypeEarthZoom or 1) * self.EarthViewZoom * (transitionZoom or 1)
     local fogMode = render.GetFogMode()
     render.FogMode(MATERIAL_FOG_NONE)
+    local fogDraws = self:DrawSpaceFog(centre, presentationScale, alpha, false)
     render.SetBlend(alpha)
     render.SetMaterial(earthMaterials.rim)
     render.DrawSprite(centre, 102 * zoom * presentationScale, 102 * zoom * presentationScale, color_white)
-    local matrix = Matrix()
-    matrix:Rotate(Angle(0, self.Yaw, 0))
-    matrix:Rotate(Angle(self.Pitch, 0, 0))
+    local matrix = self:GetEarthRotation()
     matrix:Scale(Vector(42, 42, 42) * zoom * presentationScale)
     matrix:SetTranslation(centre)
     cam.PushModelMatrix(matrix)
+    local highDetail = quality:GetBool() and getEarthHighDetailMaterials() or nil
+    local highBlend = highDetail and self:GetEarthHighDetailBlend(zoom) or 0
     render.SetMaterial(earthMaterials.day)
     sphere.day:Draw()
-    render.SetMaterial(earthMaterials.lights)
-    sphere.night:Draw()
+    if highBlend > 0 then
+        highDetail.day:SetFloat("$alpha", highBlend)
+        render.SetMaterial(highDetail.day)
+        sphere.day:Draw()
+    end
+    if highBlend < 1 then
+        earthMaterials.lights:SetFloat("$alpha", 1 - highBlend)
+        render.SetMaterial(earthMaterials.lights)
+        sphere.night:Draw()
+        earthMaterials.lights:SetFloat("$alpha", 1)
+    end
+    if highBlend > 0 then
+        highDetail.lights:SetFloat("$alpha", highBlend)
+        render.SetMaterial(highDetail.lights)
+        sphere.night:Draw()
+    end
     local layerMode = math.Clamp(prototypeLayers:GetInt(), 0, 3)
     if quality:GetBool() and layerMode % 2 == 1 then
         render.SetMaterial(earthMaterials.clouds)
@@ -594,17 +951,24 @@ function Scene:DrawEarth(alpha, transitionZoom, descent)
         end
     end
     render.SetBlend(1)
+    local strikeDraws = self:DrawNuclearStrikes(centre, self:GetEarthRotation(),
+        42 * zoom * presentationScale, alpha * visuals.marker, now)
+    fogDraws = fogDraws + self:DrawSpaceFog(centre, presentationScale, alpha, true, 1 / math.max(zoom, 1))
     render.FogMode(fogMode)
     local minimumZoom, maximumZoom, cameraDistance = self:GetEarthZoomBounds()
     self.Stats = {
         state = "earth", detail = detail, triangles = sphere.triangles, vertices = sphere.vertices,
-        meshes = 2, draws = 3 + (quality:GetBool() and (layerMode % 2 + math.floor(layerMode / 2)) or 0), models = 0,
+        meshes = 2, draws = 3 + (highBlend > 0 and highBlend < 1 and 2 or highBlend >= 1 and 1 or 0)
+            + (quality:GetBool() and (layerMode % 2 + math.floor(layerMode / 2)) or 0), models = 0,
+        highDetailBlend = highBlend,
         seamVertices = sphere.seamVertices, poleTriangles = sphere.poleTriangles, zoom = zoom,
         layerMode = layerMode, alpha = alpha, marker = markerAlpha,
         markerLatitude = lat, markerLongitude = lon,
         manualView = manual == true, viewZoom = self.EarthViewZoom,
         minimumViewZoom = minimumZoom, maximumViewZoom = maximumZoom,
         cameraDistance = cameraDistance,
+        fogDraws = fogDraws, strikeDraws = strikeDraws,
+        nuclearStrikes = #(self.NuclearStrikes or {}),
         descent = visuals.descent, descentStage = visuals.stage, earthDrop = visuals.earthDrop,
         coordinateSpace = self:Uses3DSkybox() and "skybox" or "world"
     }
@@ -781,6 +1145,21 @@ function Scene:GetMaterialStatus()
             sun = { valid = not sunMaterial:IsError(), shader = sunMaterial:GetShader() },
             terrain = { valid = not dioramaTerrainMaterial:IsError(), shader = dioramaTerrainMaterial:GetShader() },
             roads = { valid = not dioramaRoadMaterial:IsError(), shader = dioramaRoadMaterial:GetShader() }
+        }
+    end
+    return result
+end
+
+function Scene:GetHighDetailMaterialStatus()
+    local result = {}
+    for name, material in pairs(getEarthHighDetailMaterials()) do
+        local texture = not material:IsError() and material:GetTexture("$basetexture") or nil
+        result[name] = {
+            valid = not material:IsError() and texture ~= nil and not texture:IsError()
+                and texture:Width() > 0 and texture:Height() > 0,
+            width = texture and texture:Width() or 0,
+            height = texture and texture:Height() or 0,
+            shader = material:GetShader()
         }
     end
     return result

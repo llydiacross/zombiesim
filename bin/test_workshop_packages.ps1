@@ -133,11 +133,14 @@ try {
     Write-Fixture 'content\materials\zombiesim\skies\imported_tropo_night_1ft.vmt' 'retired sky material'
     Write-Fixture 'content\data_static\sky_licences\imported_fixture\README.txt' 'Artist licence fixture: retain this README.'
     Write-Fixture 'content\data_static\launcher_earth.json' '{"schemaVersion":1,"ownedNoticeFiles":["data_static\\launcher_earth\\NOTICE.txt"]}'
-    Write-Fixture 'content\data_static\launcher_earth\NOTICE.txt' 'Natural Earth public-domain fixture notice.'
+    Write-Fixture 'content\data_static\launcher_earth\NOTICE.txt' 'Natural Earth public-domain fixture notice. NASA Black Marble 2016.'
     Write-Fixture 'content\materials\zombiesim\launcher\earth_day.vmt' 'owned launcher Earth material'
+    Write-Fixture 'content\materials\zombiesim\launcher\earth_lights.vmt' 'owned blended night-light material'
     Write-Fixture 'content\data_static\clothing_citizen_calibration.json' '{"schemaVersion":1,"previewOnly":false,"models":{}}'
     Write-Fixture 'content\sounds\music\a.mp3' 'audio'
     Write-Fixture 'content\sounds\music\preview skybox 1.mp3' 'launcher preview audio'
+    Write-Fixture 'content\sounds\music\menu.mp3' 'launcher menu audio'
+    Write-Fixture 'content\sounds\music\menu 2.mp3' 'launcher menu loop audio'
     Write-Fixture 'content\data_static\consolecommands.txt' 'development command'
     Write-Fixture 'content\maps\zz_dev_zoo.bsp' 'unreferenced development fixture'
     Write-Fixture 'content\materials\models\zombiesim\clothing\catalog_0000000000000000_shirt_male.vtf' 'vtf'
@@ -216,7 +219,9 @@ try {
     })
     Assert-Package 'launcher Earth material and public-domain notice ship once in common' (
         $earthNoticePack.Count -eq 1 -and $earthNoticePack[0].id -like 'common-*' -and
-        @($fixtureReport.packages.files | Where-Object path -eq 'materials/zombiesim/launcher/earth_day.vmt').Count -eq 1)
+        @($fixtureReport.packages.files | Where-Object path -eq 'materials/zombiesim/launcher/earth_day.vmt').Count -eq 1 -and
+        @($fixtureReport.packages.files | Where-Object path -eq 'materials/zombiesim/launcher/earth_lights.vmt').Count -eq 1 -and
+        (Get-Content -LiteralPath (Join-Path $fixtureReport.stageRoot "$($earthNoticePack[0].id)\data_static\launcher_earth\notice.txt") -Raw) -match 'NASA Black Marble 2016')
     $core = Join-Path $fixtureReport.stageRoot 'core'
     $fixtureManifest = Get-Content -LiteralPath (Join-Path $core 'data_static\zombiesim_distribution.json') -Raw | ConvertFrom-Json
     Assert-Package 'manifest keeps placeholders separate from actionable Workshop IDs' (
@@ -236,6 +241,12 @@ try {
     $previewAudio = @($fixtureReport.packages | ForEach-Object { $_.files } |
         Where-Object path -eq 'sound/music/preview skybox 1.mp3')
     Assert-Package 'launcher preview soundtrack ships at canonical sound root' ($previewAudio.Count -eq 1)
+    $menuAudio = @($fixtureReport.packages | ForEach-Object { $_.files } |
+        Where-Object path -eq 'sound/music/menu.mp3')
+    Assert-Package 'one-shot launcher menu soundtrack ships at canonical sound root' ($menuAudio.Count -eq 1)
+    $menuLoopAudio = @($fixtureReport.packages | ForEach-Object { $_.files } |
+        Where-Object path -eq 'sound/music/menu 2.mp3')
+    Assert-Package 'launcher menu loop soundtrack ships at canonical sound root' ($menuLoopAudio.Count -eq 1)
     Assert-Package 'unowned files and bridge input excluded but untouched' (
         @($fixtureReport.excluded | Where-Object path -like '*orphan*').Count -eq 1 -and
         @($fixtureReport.excluded | Where-Object path -like '*consolecommands*').Count -eq 1 -and

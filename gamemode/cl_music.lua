@@ -10,12 +10,106 @@ Music.Gain = 0
 Music.Channel = nil
 Music.Profile = nil
 Music.State = nil
+Music.LauncherTracks = {
+    intro = { path = "sounds/music/menu.mp3", looping = false },
+    loop = { path = "sounds/music/menu 2.mp3", looping = true }
+}
+
+Music.LauncherTrackDuck = Music.LauncherTrackDuck or 1
+
+function Music:GetLauncherTrackGain()
+    return volume:GetFloat() * (self.LauncherTrackLowered and 0.25 or 1) * self.LauncherTrackDuck
+end
+
+// The sky-preview track replaces the menu soundtrack: fade it out over 0.6s and back in over 1.5s.
+function Music:UpdateLauncherTrackDuck()
+    local target = self.SkyPreview and 0 or 1
+    local rate = target < self.LauncherTrackDuck and 1 / 0.6 or 1 / 1.5
+    local step = math.min(FrameTime(), 0.1) * rate
+    self.LauncherTrackDuck = math.Clamp(self.LauncherTrackDuck + math.Clamp(target - self.LauncherTrackDuck, -step, step), 0, 1)
+    return self.LauncherTrackDuck
+end
 
 function Music:StopSkyPreview(owner)
     local preview = self.SkyPreview
     if not preview or (owner and preview.owner ~= owner) then return end
     self.SkyPreview = nil
     if IsValid(preview.channel) then preview.channel:Stop() end
+end
+
+function Music:StartLauncherFile(phase)
+    if not enabled:GetBool() or not ZM_LauncherMenu or not ZM_LauncherMenu.Active then return false end
+    local track = self.LauncherTracks[phase]
+    if not track then
+        ErrorNoHalt("[ZombieSim] Unknown launcher music phase: " .. tostring(phase) .. "\n")
+        return false
+    end
+    local path = track.path
+    if not file.Exists(path, "GAME") then
+        path = path:gsub("^sounds/", "sound/")
+    end
+    if not file.Exists(path, "GAME") then
+        ErrorNoHalt("[ZombieSim] Launcher music is missing: " .. track.path .. "\n")
+        return false
+    end
+
+    local previous = self.LauncherTrack
+    self.LauncherTrack = nil
+    if IsValid(previous) then previous:Stop() end
+    self.LauncherTrackGeneration = (self.LauncherTrackGeneration or 0) + 1
+    local generation = self.LauncherTrackGeneration
+    self.LauncherTrackPhase = phase .. "_loading"
+    sound.PlayFile(path, "noplay noblock", function(channel, errorId, errorName)
+        if generation ~= self.LauncherTrackGeneration
+            or not ZM_LauncherMenu or not ZM_LauncherMenu.Active or not enabled:GetBool() then
+            if IsValid(channel) then channel:Stop() end
+            return
+        end
+        if not IsValid(channel) then
+            self.LauncherTrackPhase = nil
+            ErrorNoHalt("[ZombieSim] Launcher music failed: " .. tostring(errorName) ..
+                " (" .. tostring(errorId) .. ")\n")
+            return
+        end
+        if track.looping then channel:EnableLooping(true) end
+        self.LauncherTrack = channel
+        self.LauncherTrackPhase = phase
+        channel:SetVolume(self:GetLauncherTrackGain())
+        channel:Play()
+    end)
+    return true
+end
+
+function Music:PlayLauncherTrackOnce()
+    if self.LauncherTrackStarted or not enabled:GetBool() then return end
+    self.LauncherTrackStarted = true
+    self:StartLauncherFile("intro")
+end
+
+function Music:PlayLauncherLoop()
+    if self.LauncherTrackPhase == "loop" or self.LauncherTrackPhase == "loop_loading" then return end
+    self:StartLauncherFile("loop")
+end
+
+function Music:StopLauncherTrack()
+    local channel = self.LauncherTrack
+    self.LauncherTrack = nil
+    self.LauncherTrackGeneration = (self.LauncherTrackGeneration or 0) + 1
+    self.LauncherTrackPhase = nil
+    self.LauncherTrackStarted = false
+    if IsValid(channel) then channel:Stop() end
+end
+
+function Music:SetLauncherTrackLowered(lowered)
+    self.LauncherTrackLowered = lowered == true
+    if IsValid(self.LauncherTrack) then
+        self.LauncherTrack:SetVolume(self:GetLauncherTrackGain())
+    end
+    return self.LauncherTrackLowered
+end
+
+function Music:ToggleLauncherTrackLevel()
+    return self:SetLauncherTrackLowered(not self.LauncherTrackLowered)
 end
 
 function Music:StartSkyPreview(owner)
@@ -41,6 +135,7 @@ function Music:StartSkyPreview(owner)
             return
         end
         preview.channel = channel
+        if owner.loop then channel:EnableLooping(true) end
         channel:SetVolume(0)
         channel:Play()
     end)
@@ -55,8 +150,8 @@ hook.Add("Think", "ZM.Music.SkyPreview", function()
     end
     if not IsValid(preview.channel) then return end
     local elapsed = RealTime() - preview.owner.startedAt
-    local gain = math.Clamp(elapsed / 0.6, 0, 1) *
-        math.Clamp((preview.owner.duration - elapsed) / 2, 0, 1)
+    local gain = math.Clamp(elapsed / 0.6, 0, 1) * (preview.owner.loop and 1 or
+        math.Clamp((preview.owner.duration - elapsed) / 2, 0, 1))
     preview.channel:SetVolume(volume:GetFloat() * gain)
 end)
 
@@ -213,6 +308,16 @@ end
 
 local nextContext = 0
 hook.Add("Think", "ZM.Music", function()
+    if Music.LauncherTrackPhase and (active() or not enabled:GetBool()) then
+        Music:StopLauncherTrack()
+    elseif IsValid(Music.LauncherTrack) then
+        Music:UpdateLauncherTrackDuck()
+        Music.LauncherTrack:SetVolume(Music:GetLauncherTrackGain())
+        if Music.LauncherTrackPhase == "intro" then
+            local length, position = Music.LauncherTrack:GetLength(), Music.LauncherTrack:GetTime()
+            if length > 0 and position >= length - 0.15 then Music:PlayLauncherLoop() end
+        end
+    end
     local data = registry()
     if not data or not ZM_World:IsLoaded() then return end
     if Music.Profile ~= ZM_World.ActiveProfile then

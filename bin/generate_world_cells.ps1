@@ -19,6 +19,7 @@ param(
 
 Add-Type -AssemblyName System.Drawing
 Import-Module (Join-Path $PSScriptRoot 'ps_progress_utils.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'scenery_density.psm1') -Force
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Write-ZMProgress -Activity 'Generating world cells' -Status 'Initializing world generation profile and validation.' -PercentComplete 2 -Step 'setup'
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
@@ -1467,58 +1468,6 @@ function Connect-MetroRouteThroughStops {
         }
     }
 
-    function Get-EnvironmentTags {
-        param(
-            [int]$CellX,
-            [int]$CellY
-        )
-
-        $cellKey = "$CellX,$CellY"
-        $tags = @($terrainTypes[$cellKey])
-        if ($buildingCells.ContainsKey($cellKey)) { $tags += "settlement" }
-        if ($roadCells.ContainsKey($cellKey)) { $tags += "roadside" }
-        if ($highwayCells.ContainsKey($cellKey) -or $diagonalHighwayCells.ContainsKey($cellKey)) { $tags += "highway" }
-        if ($denCells.ContainsKey($cellKey)) { $tags += "safe_zone" }
-        if ($metroStations.ContainsKey($cellKey)) { $tags += "metro_station" }
-        if (@($metroLines | Where-Object { $_.RouteCells -contains $cellKey }).Count -gt 0) { $tags += "metro_route" }
-        $radiationIntensity = Get-RadiationIntensity $CellX $CellY
-        if ($radiationIntensity -gt 0) { $tags += "radioactive" }
-        if ($radiationIntensity -ge $radiationDestroyedThreshold) { $tags += "destroyed" }
-
-        if ($landmarkCells.ContainsKey($cellKey)) {
-            foreach ($landmark in @($landmarkCells[$cellKey])) {
-                switch ($landmark.Label) {
-                    "LAB" { $tags += @("laboratory", "radioactive", "industrial") }
-                    "EPI" { $tags += @("epicenter", "radioactive", "destroyed") }
-                    "AIR" { $tags += @("airport", "transport") }
-                    "A" { $tags += "military" }
-                    "B" { $tags += @("fortified", "military") }
-                    "P" { $tags += @("civic", "security") }
-                    "H" { $tags += @("civic", "medical") }
-                    "F" { $tags += @("civic", "emergency_services") }
-                    "C" { $tags += @("civic", "religious") }
-                    "G" { $tags += @("commercial", "service_station") }
-                    "$" { $tags += @("commercial", "financial") }
-                    "L" { $tags += "recreation" }
-                    "K" { $tags += "parkland" }
-                }
-            }
-        }
-
-        foreach ($landmarkKey in $landmarkCells.Keys) {
-            $laboratoryPresent = @($landmarkCells[$landmarkKey] | Where-Object { $_.Label -eq "LAB" }).Count -gt 0
-            if (-not $laboratoryPresent) { continue }
-            $laboratoryCoordinates = $landmarkKey -split ","
-            $distance = [Math]::Sqrt([Math]::Pow($CellX - [int]$laboratoryCoordinates[0], 2) + [Math]::Pow($CellY - [int]$laboratoryCoordinates[1], 2))
-            if ($distance -le 3) {
-                $tags += "radioactive"
-                break
-            }
-        }
-
-        return @($tags | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
-    }
-
     function Get-MapCellData {
         param(
             [int]$CellX,
@@ -1624,9 +1573,12 @@ function Connect-MetroRouteThroughStops {
         $cells = @()
         for ($cellY = 0; $cellY -lt $GridCells; $cellY++) {
             for ($cellX = 0; $cellX -lt $GridCells; $cellX++) {
-                $cells += Get-MapCellData $cellX $cellY
+                $cells += [pscustomobject](Get-MapCellData $cellX $cellY)
             }
         }
+
+        # Matches the current runtime/skybox contract: only west of x=0 is actual ocean.
+        Set-ZMSceneryDensityFields $cells @($cells | Where-Object x -eq 0) @($generatorSettings.cellPlanning.environment.profilePriority)
 
         $districtData = @($zones | ForEach-Object {
             $district = $_
@@ -1653,8 +1605,8 @@ function Connect-MetroRouteThroughStops {
         })
         $mapData = [ordered]@{
             schemaVersion = 2
-            map = [ordered]@{ seed = $Seed; cityName = $cityName; gridCells = $GridCells; cellSize = $CellSize; width = $width; height = $height; origin = [ordered]@{ cellX = 0; cellY = $originCellY; worldX = 0; worldY = 0 }; environment = [ordered]@{ taggingVersion = 1; tags = @($cells | ForEach-Object { $_.environment.tags } | Sort-Object -Unique) } }
-            generation = [ordered]@{ roadDepth = $RoadDepth; branchChance = $BranchChance; blockadeChance = $BlockadeChance; bridgeChance = $BridgeChance; biomeOpacity = $biomeOpacity; safeZonePlacement = [ordered]@{ minimumSpacingCells = $safeZoneMinimumSpacingCells; actualMinimumSpacingCells = [Math]::Round($minimumSafeZoneDistance, 3); districts = @($safeZonePlacementDiagnostics) }; radiation = [ordered]@{ enabled = $radiationEnabled; epicenter = if ($radiationSources.Count -gt 0) { $radiationSources[0] } else { $null }; epicenters = @($radiationSources); falloutRadiusCells = $radiationFalloutRadiusCells; destroyedThreshold = $radiationDestroyedThreshold; damagePerSecondAtPeak = $radiationDamagePerSecondAtPeak; cellMiles = $radiationCellMiles; loreYieldMegatons = $radiationLoreYieldMegatons }; danger = [ordered]@{ enabled = $dangerEnabled; pattern = 'chevron'; origin = [ordered]@{ worldX = 0; worldY = 0; cellX = 0; cellY = $originCellY }; tierCount = $dangerTierCount } }
+            map = [ordered]@{ seed = $Seed; cityName = $cityName; gridCells = $GridCells; cellSize = $CellSize; width = $width; height = $height; origin = [ordered]@{ cellX = 0; cellY = $originCellY; worldX = 0; worldY = 0 }; environment = [ordered]@{ taggingVersion = 1; sceneryDensityPolicyVersion = 1; tags = @($cells | ForEach-Object { $_.environment.tags } | Sort-Object -Unique) } }
+            generation = [ordered]@{ roadDepth = $RoadDepth; branchChance = $BranchChance; blockadeChance = $BlockadeChance; bridgeChance = $BridgeChance; biomeOpacity = $biomeOpacity; safeZonePlacement = [ordered]@{ minimumSpacingCells = $safeZoneMinimumSpacingCells; actualMinimumSpacingCells = [Math]::Round($minimumSafeZoneDistance, 3); districts = @($safeZonePlacementDiagnostics) }; landmarkDensityShortages = @($landmarkDensityShortageDiagnostics); radiation = [ordered]@{ enabled = $radiationEnabled; epicenter = if ($radiationSources.Count -gt 0) { $radiationSources[0] } else { $null }; epicenters = @($radiationSources); placementDiagnostics = @($radiationSourcePlacementDiagnostics); falloutRadiusCells = $radiationFalloutRadiusCells; destroyedThreshold = $radiationDestroyedThreshold; damagePerSecondAtPeak = $radiationDamagePerSecondAtPeak; cellMiles = $radiationCellMiles; loreYieldMegatons = $radiationLoreYieldMegatons }; danger = [ordered]@{ enabled = $dangerEnabled; pattern = 'chevron'; origin = [ordered]@{ worldX = 0; worldY = 0; cellX = 0; cellY = $originCellY }; tierCount = $dangerTierCount } }
             statistics = [ordered]@{ population = $population; roadCells = $roadCells.Count; highwayCells = $highwayCells.Count; buildingCells = $buildingCells.Count; landmarkCells = $landmarkCells.Count; airports = $airportKeys.Count; safeZones = $denCells.Count; metroLines = $metroLines.Count; metroStops = $metroStations.Count }
             districts = $districtData
             safeZones = $safeZoneData
@@ -2437,6 +2389,10 @@ function Move-RadiationSourcesToReachableRoadCells {
         $source = $radiationSources[$sourceIndex]
         $sourceX = [int]$source['x']
         $sourceY = [int]$source['y']
+        $sourceKey = "$sourceX,$sourceY"
+        if ($highwayCells.ContainsKey($sourceKey) -or $diagonalHighwayCells.ContainsKey($sourceKey)) {
+            throw "Fixed radiation source '$($source['name'])' at ($sourceX,$sourceY) conflicts with a motorway; moving its gameplay location requires an explicit decision."
+        }
         $candidates = [System.Collections.Generic.List[object]]::new()
         foreach ($candidateKey in @($reachableRoadCells.Keys | Sort-Object)) {
             if ($candidateKey -eq $originKey -or $highwayCells.ContainsKey($candidateKey) -or $diagonalHighwayCells.ContainsKey($candidateKey)) { continue }
@@ -2467,14 +2423,28 @@ function Move-RadiationSourcesToReachableRoadCells {
         $source['y'] = [int]$selectedCandidate.y
         $source['worldX'] = [int]$selectedCandidate.x
         $source['worldY'] = [int]$selectedCandidate.y - $originCellY
-        $relocatedSources.Add([pscustomobject]@{ x = [int]$selectedCandidate.x; y = [int]$selectedCandidate.y })
+        $relocatedSources.Add([pscustomobject]@{
+            sourceIndex = $sourceIndex
+            name = [string]$source['name']
+            identity = [string]$source['name']
+            original = [ordered]@{ x = $sourceX; y = $sourceY }
+            destination = [ordered]@{ x = [int]$selectedCandidate.x; y = [int]$selectedCandidate.y }
+            moved = $sourceX -ne [int]$selectedCandidate.x -or $sourceY -ne [int]$selectedCandidate.y
+            reason = 'reachable_ordinary_road'
+            x = [int]$selectedCandidate.x
+            y = [int]$selectedCandidate.y
+        })
     }
+    return @($relocatedSources)
 }
 
-Move-RadiationSourcesToReachableRoadCells
+$radiationSourcePlacementDiagnostics = @(Move-RadiationSourcesToReachableRoadCells)
 if ($radiationSources.Count -gt 0) {
     $finalRadiationSummary = @($radiationSources | ForEach-Object { "cell=($($_.x),$($_.y)) yield=$($_.loreYieldMegatons)Mt" }) -join '; '
     Write-Host "[WorldGen][Radiation] Reachable-road placement finalized: $finalRadiationSummary"
+    foreach ($placement in $radiationSourcePlacementDiagnostics) {
+        Write-Host "[WorldGen][Relocation] Radiation source '$($placement.identity)' from ($($placement.original.x),$($placement.original.y)) to ($($placement.destination.x),$($placement.destination.y)); reason=$($placement.reason); moved=$($placement.moved)."
+    }
 }
 
 # Generate irregular district cells behind the roads.
@@ -2812,11 +2782,132 @@ for ($airportIndex = 0; $airportIndex -lt $airportCount; $airportIndex++) {
     }
 }
 
+function Get-EnvironmentTags {
+    param(
+        [int]$CellX,
+        [int]$CellY
+    )
+
+    $cellKey = "$CellX,$CellY"
+    $tags = @($terrainTypes[$cellKey])
+    if ($buildingCells.ContainsKey($cellKey)) { $tags += "settlement" }
+    if ($roadCells.ContainsKey($cellKey)) { $tags += "roadside" }
+    if ($highwayCells.ContainsKey($cellKey) -or $diagonalHighwayCells.ContainsKey($cellKey)) { $tags += "highway" }
+    if ($denCells.ContainsKey($cellKey)) { $tags += "safe_zone" }
+    if ($metroStations.ContainsKey($cellKey)) { $tags += "metro_station" }
+    if (@($metroLines | Where-Object { $_.RouteCells -contains $cellKey }).Count -gt 0) { $tags += "metro_route" }
+    $radiationIntensity = Get-RadiationIntensity $CellX $CellY
+    if ($radiationIntensity -gt 0) { $tags += "radioactive" }
+    if ($radiationIntensity -ge $radiationDestroyedThreshold) { $tags += "destroyed" }
+    if ($landmarkCells.ContainsKey($cellKey)) {
+        $tags += @(Get-ZMSceneryLandmarkTags -Landmarks @($landmarkCells[$cellKey]))
+    }
+
+    foreach ($landmarkKey in $landmarkCells.Keys) {
+        $laboratoryPresent = @($landmarkCells[$landmarkKey] | Where-Object { $_.Label -eq "LAB" }).Count -gt 0
+        if (-not $laboratoryPresent) { continue }
+        $laboratoryCoordinates = $landmarkKey -split ","
+        $distance = [Math]::Sqrt([Math]::Pow($CellX - [int]$laboratoryCoordinates[0], 2) + [Math]::Pow($CellY - [int]$laboratoryCoordinates[1], 2))
+        if ($distance -le 3) {
+            $tags += "radioactive"
+            break
+        }
+    }
+
+    return @($tags | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
+}
+
+function Get-GeneratorSceneryDensityZone {
+    param(
+        [Parameter(Mandatory = $true)][string]$CellKey,
+        [Parameter(Mandatory = $true)][hashtable]$InlandDistances
+    )
+
+    $coordinates = $CellKey -split ','
+    if ($coordinates.Count -ne 2) { throw "Invalid scenery-density cell key '$CellKey'." }
+    $cellX = [int]$coordinates[0]
+    $cellY = [int]$coordinates[1]
+    $cell = [pscustomobject]@{
+        x = $cellX
+        y = $cellY
+        environment = [pscustomobject]@{ terrain = [string]$terrainTypes[$CellKey]; tags = @(Get-EnvironmentTags $cellX $cellY) }
+        building = [pscustomobject]@{ present = $buildingCells.ContainsKey($CellKey) }
+    }
+    $profile = Get-ZMSceneryEnvironmentProfile $cell @($generatorSettings.cellPlanning.environment.profilePriority)
+    return Get-ZMSceneryDensityZone $InlandDistances[$CellKey] $profile
+}
+
+function Test-LandmarkTemplateSupportsDensityZone {
+    param(
+        [Parameter(Mandatory = $true)][object]$Pool,
+        [Parameter(Mandatory = $true)][ValidateRange(1, 3)][int]$ZoneTier
+    )
+
+    foreach ($targetTier in @(Get-ZMSceneryPossibleTargetTiers $ZoneTier)) {
+        $compatible = @($Pool.templates | Where-Object {
+            $tag = Get-ZMTemplateDensityTag $_
+            $tag -eq 0 -or $tag -eq $targetTier
+        })
+        if ($compatible.Count -eq 0) { return $false }
+    }
+    return $true
+}
+
+function Get-LandmarkDensityShortages {
+    # Physical landmarks are density-exempt: they stay where generated and keep their template family.
+    $landmarkPatterns = $generatorSettings.cellPlanning.landmarkTemplatePatterns
+    $templateDirectory = Join-Path $projectRoot $generatorSettings.paths.templateDirectory
+    $availableTemplates = @(
+        Get-ChildItem -LiteralPath $templateDirectory -Filter '*.vmf' -File -Recurse |
+            ForEach-Object { $_.FullName.Substring($templateDirectory.Length).TrimStart([char]'\').Replace('\', '/') }
+    )
+    $sceneryCells = @(
+        for ($y = 0; $y -lt $GridCells; $y++) {
+            for ($x = 0; $x -lt $GridCells; $x++) {
+                [pscustomobject]@{ x = $x; y = $y }
+            }
+        }
+    )
+    $inlandDistances = Get-ZMSceneryInlandDistances $sceneryCells @($sceneryCells | Where-Object x -eq 0)
+    $diagnostics = [System.Collections.Generic.List[object]]::new()
+    $cellKeys = @($LandmarkCells.Keys | Sort-Object {
+        [int](($_ -split ',')[1])
+    }, {
+        [int](($_ -split ',')[0])
+    })
+    foreach ($cellKey in $cellKeys) {
+        $cellLandmarks = @($LandmarkCells[$cellKey])
+        $pool = Get-ZMLandmarkTemplatePool @($cellLandmarks | ForEach-Object { [string]$_.Name }) $landmarkPatterns $availableTemplates
+        if ($null -eq $pool) { continue }
+        $zone = Get-GeneratorSceneryDensityZone $cellKey $inlandDistances
+        if (Test-LandmarkTemplateSupportsDensityZone $pool $zone.tier) { continue }
+        $feature = @($cellLandmarks | Where-Object { [string]$_.Name -ceq [string]$pool.landmark } | Select-Object -First 1)[0]
+        $coordinates = $cellKey -split ','
+        $availableTags = @($pool.templates | ForEach-Object { Get-ZMTemplateDensityTag $_ } | Sort-Object -Unique)
+        $diagnostics.Add([pscustomobject]@{
+            identity = [string]$feature.Name
+            label = [string]$feature.Label
+            cell = [ordered]@{ x = [int]$coordinates[0]; y = [int]$coordinates[1] }
+            zoneTier = [int]$zone.tier
+            zoneSource = [string]$zone.source
+            requiredTargetTiers = @(Get-ZMSceneryPossibleTargetTiers $zone.tier)
+            availableTemplateTags = @($availableTags)
+            footprint = [ordered]@{ width = [int]$pool.footprint.width; height = [int]$pool.footprint.height }
+            moved = $false
+            reason = 'density_exempt_fixed_landmark'
+        })
+    }
+    return @($diagnostics)
+}
+
 # Every detonation source is a landmark, even if it is not beside a road.
 foreach ($source in $radiationSources) {
     $sourceKey = "$($source.x),$($source.y)"
     $landmarkCells[$sourceKey] = @($epicenterLandmark)
 }
+$landmarkDensityShortageDiagnostics = @(Get-LandmarkDensityShortages)
+Write-Host "[WorldGen][Landmarks] Density-exempt landmark shortages=$($landmarkDensityShortageDiagnostics.Count); landmarks remain where generated with their existing template family."
+
 $landmarkNameCounts = @{}
 foreach ($landmarkGroup in $landmarkCells.Values) {
     foreach ($landmark in $landmarkGroup) {

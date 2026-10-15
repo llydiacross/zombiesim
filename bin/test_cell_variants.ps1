@@ -15,6 +15,14 @@ function Assert {
     $script:passed++
 }
 
+function Get-PlanCellPropertyJson {
+    param([object]$Cell, [string]$PropertyName)
+
+    $property = $Cell.PSObject.Properties[$PropertyName]
+    if ($null -eq $property) { return 'null' }
+    return ConvertTo-Json -InputObject $property.Value -Depth 20 -Compress
+}
+
 $pool = @('edges/tile_edge_wall_1a.vmf', 'edges/tile_edge_wall_1aa.vmf', 'edges/tile_edge_wall_1aaa.vmf', 'edges/tile_edge_wall_2aaa.vmf')
 $route = [pscustomobject]@{ tileX = 2; tileY = -2 }
 foreach ($offset in @(@(1, 0), @(-1, 0), @(0, 1), @(0, -1))) {
@@ -88,7 +96,7 @@ if ($BaselinePlanData) {
     foreach ($old in $baseline.cells) {
         $cell = $cells["$($old.x),$($old.y)"]
         foreach ($property in @('worldX', 'worldY', 'topology', 'orientation', 'transportFeature', 'rampExits', 'bridgeRampDirections', 'activeEntrances', 'safeZoneEntrance', 'suppressedBorderTiles', 'waterBorderSides', 'skyboxOceanSides')) {
-            Assert (($cell.$property | ConvertTo-Json -Depth 20 -Compress) -ceq ($old.$property | ConvertTo-Json -Depth 20 -Compress)) "Cell $($old.x),$($old.y) preserves $property."
+            Assert ((Get-PlanCellPropertyJson $cell $property) -ceq (Get-PlanCellPropertyJson $old $property)) "Cell $($old.x),$($old.y) preserves $property."
         }
     }
 }
@@ -96,9 +104,10 @@ if ($LayoutDirectory) {
     foreach ($file in @(Get-ChildItem -LiteralPath $LayoutDirectory -Filter '*.layout.json' -File)) {
         $layout = Get-Content -Raw -LiteralPath $file.FullName | ConvertFrom-Json
         $placements = @($layout.corePlacements) + @($layout.borderPlacements) + @($layout.outerPlacements)
-        $routes = @($placements | Where-Object { [string]$_.template -match '^roads[\\/]' })
+        $leases = Get-ZMRecipeRouteLeases $layout
+        $routes = @(Get-ZMRouteFootprintSlots $placements $leases)
         foreach ($wall in @($placements | Where-Object template -match '^(border|edges)[\\/].*_\d+aaa\.vmf$')) {
-            Assert (@($routes | Where-Object { [Math]::Abs($_.tileX - $wall.tileX) + [Math]::Abs($_.tileY - $wall.tileY) -eq 1 }).Count -eq 0) "$($file.Name) keeps aaa away from road corridors."
+            Assert (@($routes | Where-Object { [Math]::Abs($_.tileX - $wall.tileX) + [Math]::Abs($_.tileY - $wall.tileY) -eq 1 }).Count -eq 0) "$($file.Name) keeps aaa away from the complete occupied route footprint."
         }
     }
 }

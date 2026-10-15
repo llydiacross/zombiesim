@@ -471,6 +471,63 @@ function ZM_Options:BuildPanel(panel, options)
         globeQuality:SetConVar("zombiesim_globe_quality")
     end
 
+    if ZM_CSM then
+        local csmDescription = vgui.Create("DLabel", graphics)
+        csmDescription:Dock(TOP)
+        csmDescription:DockMargin(4, 8, 4, 4)
+        csmDescription:SetTall(48)
+        csmDescription:SetWrap(true)
+        csmDescription:SetTextColor(ZM_DermaSkin.Palette.muted)
+        csmDescription:SetText("Experimental client-local projected shadows for generated city cells. " ..
+            "CSM is off by default and leaves baked lighting unchanged. Cascade layers overlap without seam masks; review the image before relying on them.")
+
+        local csmEnabled = vgui.Create("DCheckBoxLabel", graphics)
+        csmEnabled:Dock(TOP)
+        csmEnabled:DockMargin(4, 0, 4, 6)
+        csmEnabled:SetText("Enable cascaded shadows (CSM)")
+        csmEnabled:SetTextColor(ZM_DermaSkin.Palette.text)
+        csmEnabled:SetTooltip("Adds local projected sunlight shadows. This may reduce performance and does not alter the native baked light.")
+        csmEnabled:SetConVar("zombiesim_csm_enabled")
+
+        local csmQualityLabel = vgui.Create("DLabel", graphics)
+        csmQualityLabel:Dock(TOP)
+        csmQualityLabel:DockMargin(4, 0, 4, 2)
+        csmQualityLabel:SetTall(18)
+        csmQualityLabel:SetText("CSM quality")
+        csmQualityLabel:SetTextColor(ZM_DermaSkin.Palette.text)
+
+        local csmQuality = ZM_DermaSkin.StyleComboBox(vgui.Create("DComboBox", graphics))
+        csmQuality:Dock(TOP)
+        csmQuality:DockMargin(4, 0, 4, 8)
+        csmQuality:SetTall(24)
+        csmQuality:SetTooltip("Low: 1 cascade / 15 Hz; Medium: 2 / 30 Hz; High: 3 / every rendered frame.")
+        for _, quality in ipairs(ZM_CSM.QualityOrder) do
+            local profile = ZM_CSM:GetQualityProfile(quality)
+            if profile then csmQuality:AddChoice(profile.label, quality) end
+        end
+        local selectedQuality = ZM_CSM:GetQualityProfile(ZM_CSM:GetQuality())
+        csmQuality:SetValue(selectedQuality and selectedQuality.label or "Low (1 cascade / 15 Hz)")
+        csmQuality.OnSelect = function(_, _, _, quality)
+            ZM_CSM.ConVars.quality:SetString(quality)
+        end
+
+        local csmStatus = vgui.Create("DLabel", graphics)
+        csmStatus:Dock(TOP)
+        csmStatus:DockMargin(4, 0, 4, 8)
+        csmStatus:SetTall(34)
+        csmStatus:SetWrap(true)
+        csmStatus:SetTextColor(ZM_DermaSkin.Palette.muted)
+        local nextCSMStatusRefresh = 0
+        csmStatus.Think = function(control)
+            local now = SysTime()
+            if nextCSMStatusRefresh > now then return end
+            nextCSMStatusRefresh = now + 0.5
+            local status = ZM_CSM:GetStatus()
+            control:SetText("CSM status: " .. status.state ..
+                (status.reason and (" - " .. status.reason) or ""))
+        end
+    end
+
     panel = zombies
     local activeCap = vgui.Create("DNumSlider", panel)
     activeCap:Dock(TOP)

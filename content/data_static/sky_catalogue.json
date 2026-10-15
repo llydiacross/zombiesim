@@ -2310,6 +2310,666 @@
                                                  "sha256":  "42cf7246afc4a112998854c8069f7ccb329f69307a97fbad646a66a3744ffcc5"
                                              }
                                   }
+                    },
+                    {
+                        "id":  "imported_space_1",
+                        "label":  "Deep space 1",
+                        "context":  "night",
+                        "material":  "zombiesim/skies/imported_space_1",
+                        "credit":  "Keen Software House (original Space Engineers artwork); ported by Mr.Who, Space Skybox Pack (GameBanana 7222)",
+                        "permission":  "No licence supplied. Project owner confirmed permission on 2026-10-14 covering the original Keen artwork and the port for use and redistribution in this non-commercial project.",
+                        "licence":  "Space Skybox Pack\r\n=================\r\n\r\nSource: GameBanana mod 7222, \"Space Skybox Pack\"\r\n        https://gamebanana.com/mods/7222\r\n        Files space_1.7z through space_10.7z (file IDs 449154-449163).\r\nPorted/converted by: Mr.Who\r\nOriginal creator: Keen Software House (Space Engineers skyboxes)\r\n\r\nNo licence text was supplied with the download.\r\n\r\nPermission record: the ZombieSim project owner confirmed on 2026-10-14 that\r\npermission covers use, conversion and redistribution of these ten skyboxes,\r\nincluding the original Keen Software House artwork and Mr.Who\u0027s port, in this\r\nnon-commercial ZombieSim project. This is a user-confirmed permission notice,\r\nnot an independently verified licence.\r\n\r\nZombieSim copies the original VTF faces unchanged and writes its own sky\r\nmaterials for them.\r\n",
+                        "licenceFile":  "data_static\\sky_licences\\imported_space_1\\README.txt",
+                        "faces":  {
+                                      "ft":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_1ft.vtf",
+                                                 "sha256":  "1d16f6f70499c82499793ee9f967f18f17bbaf353e03669374ce87cd44e1ac29"
+                                             },
+                                      "bk":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_1bk.vtf",
+                                                 "sha256":  "7e73f25321a08104a0cb0a98716da0384eafc012a0ca6d972d82a789f732d2fc"
+                                             },
+                                      "lf":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_1lf.vtf",
+                                                 "sha256":  "373ea7e1129b16298397a16f4c200ea0a288df1608b98762c2eb997410ce97c2"
+                                             },
+                                      "rt":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_1rt.vtf",
+                                                 "sha256":  "29eaa65d0fa0c69947cd6725e5c330438a655402acb15b11348a7014e6e88764"
+                                             },
+                                      "up":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_1up.vtf",
+                                                 "sha256":  "9ad2d5b6285aadbc67f0e2b39e3ff006d8095355bb8f491cdfa4ef1458698cb2"
+                                             },
+                                      "dn":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_1dn.vtf",
+                                                 "sha256":  "9dfc9677a8a5de4345674d8418f35a8263a368d568397b5c48a20718500f7917"
+                                             }
+                                  }
+                    },
+                    {
+                        "id":  "imported_space_2",
+                        "label":  "Deep space 2",
+                        "context":  "night",
+                        "material":  "zombiesim/skies/imported_space_2",
+                        "credit":  "Keen Software House (original Space Engineers artwork); ported by Mr.Who, Space Skybox Pack (GameBanana 7222)",
+                        "permission":  "No licence supplied. Project owner confirmed permission on 2026-10-14 covering the original Keen artwork and the port for use and redistribution in this non-commercial project.",
+                        "licence":  "Space Skybox Pack\r\n=================\r\n\r\nSource: GameBanana mod 7222, \"Space Skybox Pack\"\r\n        https://gamebanana.com/mods/7222\r\n        Files space_1.7z through space_10.7z (file IDs 449154-449163).\r\nPorted/converted by: Mr.Who\r\nOriginal creator: Keen Software House (Space Engineers skyboxes)\r\n\r\nNo licence text was supplied with the download.\r\n\r\nPermission record: the ZombieSim project owner confirmed on 2026-10-14 that\r\npermission covers use, conversion and redistribution of these ten skyboxes,\r\nincluding the original Keen Software House artwork and Mr.Who\u0027s port, in this\r\nnon-commercial ZombieSim project. This is a user-confirmed permission notice,\r\nnot an independently verified licence.\r\n\r\nZombieSim copies the original VTF faces unchanged and writes its own sky\r\nmaterials for them.\r\n",
+                        "licenceFile":  "data_static\\sky_licences\\imported_space_2\\README.txt",
+                        "faces":  {
+                                      "ft":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_2ft.vtf",
+                                                 "sha256":  "8a75da37461b8d035f0059b8a1b15d45d0d201432a4563ee22444a7110a0ff29"
+                                             },
+                                      "bk":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_2bk.vtf",
+                                                 "sha256":  "5173c21e8793d0af997a7da9f6cf45d383b8f8390f59b353a7893d0503497292"
+                                             },
+                                      "lf":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_2lf.vtf",
+                                                 "sha256":  "262f29cb82a229038e647eea309ecb06a98ee3acce0fb6e1578fa1d20f404878"
+                                             },
+                                      "rt":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_2rt.vtf",
+                                                 "sha256":  "24a9cee3863f06c5c5c2f3cb478192805ec214137bef95eca38932e8fed4fed9"
+                                             },
+                                      "up":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_2up.vtf",
+                                                 "sha256":  "554370ba4cf6dd5b90ef60aed0e34d5b287270eeb6e8f0de1e501c2c99d96d7d"
+                                             },
+                                      "dn":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_2dn.vtf",
+                                                 "sha256":  "77530cfc44a71db65e1144ac074f9ccc4ccbc0a0f2d57c0fb53857824d394c71"
+                                             }
+                                  }
+                    },
+                    {
+                        "id":  "imported_space_3",
+                        "label":  "Deep space 3",
+                        "context":  "night",
+                        "material":  "zombiesim/skies/imported_space_3",
+                        "credit":  "Keen Software House (original Space Engineers artwork); ported by Mr.Who, Space Skybox Pack (GameBanana 7222)",
+                        "permission":  "No licence supplied. Project owner confirmed permission on 2026-10-14 covering the original Keen artwork and the port for use and redistribution in this non-commercial project.",
+                        "licence":  "Space Skybox Pack\r\n=================\r\n\r\nSource: GameBanana mod 7222, \"Space Skybox Pack\"\r\n        https://gamebanana.com/mods/7222\r\n        Files space_1.7z through space_10.7z (file IDs 449154-449163).\r\nPorted/converted by: Mr.Who\r\nOriginal creator: Keen Software House (Space Engineers skyboxes)\r\n\r\nNo licence text was supplied with the download.\r\n\r\nPermission record: the ZombieSim project owner confirmed on 2026-10-14 that\r\npermission covers use, conversion and redistribution of these ten skyboxes,\r\nincluding the original Keen Software House artwork and Mr.Who\u0027s port, in this\r\nnon-commercial ZombieSim project. This is a user-confirmed permission notice,\r\nnot an independently verified licence.\r\n\r\nZombieSim copies the original VTF faces unchanged and writes its own sky\r\nmaterials for them.\r\n",
+                        "licenceFile":  "data_static\\sky_licences\\imported_space_3\\README.txt",
+                        "faces":  {
+                                      "ft":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_3ft.vtf",
+                                                 "sha256":  "1ebff412e18fcb9daab874510d685015c76ae5ffe3a10ebf635e038f1ab3fbc4"
+                                             },
+                                      "bk":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_3bk.vtf",
+                                                 "sha256":  "5b283806a24fddd10c237136680ebde450899de55a0ec1b01a146d64b49fc375"
+                                             },
+                                      "lf":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_3lf.vtf",
+                                                 "sha256":  "6bb1cab012d0839c7505d5aa3223045ce6c134e20028f611381ca117b1df76bd"
+                                             },
+                                      "rt":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_3rt.vtf",
+                                                 "sha256":  "20ac02fb61dabe35ce05b1daf031797ef2f486283b719792e26b57bb8f77386e"
+                                             },
+                                      "up":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_3up.vtf",
+                                                 "sha256":  "e3569b639a7821c7f51e9ab652539553ef5a69f9206ba6d7180c688d781e2d25"
+                                             },
+                                      "dn":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_3dn.vtf",
+                                                 "sha256":  "d0c6855cf1609c651a045130873e22cb98db74bd9fc6c3f16c1d3af5eeaa1779"
+                                             }
+                                  }
+                    },
+                    {
+                        "id":  "imported_space_4",
+                        "label":  "Deep space 4",
+                        "context":  "night",
+                        "material":  "zombiesim/skies/imported_space_4",
+                        "credit":  "Keen Software House (original Space Engineers artwork); ported by Mr.Who, Space Skybox Pack (GameBanana 7222)",
+                        "permission":  "No licence supplied. Project owner confirmed permission on 2026-10-14 covering the original Keen artwork and the port for use and redistribution in this non-commercial project.",
+                        "licence":  "Space Skybox Pack\r\n=================\r\n\r\nSource: GameBanana mod 7222, \"Space Skybox Pack\"\r\n        https://gamebanana.com/mods/7222\r\n        Files space_1.7z through space_10.7z (file IDs 449154-449163).\r\nPorted/converted by: Mr.Who\r\nOriginal creator: Keen Software House (Space Engineers skyboxes)\r\n\r\nNo licence text was supplied with the download.\r\n\r\nPermission record: the ZombieSim project owner confirmed on 2026-10-14 that\r\npermission covers use, conversion and redistribution of these ten skyboxes,\r\nincluding the original Keen Software House artwork and Mr.Who\u0027s port, in this\r\nnon-commercial ZombieSim project. This is a user-confirmed permission notice,\r\nnot an independently verified licence.\r\n\r\nZombieSim copies the original VTF faces unchanged and writes its own sky\r\nmaterials for them.\r\n",
+                        "licenceFile":  "data_static\\sky_licences\\imported_space_4\\README.txt",
+                        "faces":  {
+                                      "ft":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_4ft.vtf",
+                                                 "sha256":  "0988aa219befc7fabbed1a91ec1e326640614e5d652fdbb37b914abce769d692"
+                                             },
+                                      "bk":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_4bk.vtf",
+                                                 "sha256":  "4164bacd698cdc7bb04eb3adb67644aa17bccaf50ecbf5fe63974de7400cdb84"
+                                             },
+                                      "lf":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_4lf.vtf",
+                                                 "sha256":  "891d818975cb3b1b5abe24484d925a4e34b030cc0f377089752af3aa56c6c90f"
+                                             },
+                                      "rt":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_4rt.vtf",
+                                                 "sha256":  "50f497deb9c9fa21e81acd1050a31167d8e4467f1a6e77cf6a34cedb0c962226"
+                                             },
+                                      "up":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_4up.vtf",
+                                                 "sha256":  "e883135025801df5c030af090fb82f6b7e95cf16fd3688d17307a8e4f7817626"
+                                             },
+                                      "dn":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_4dn.vtf",
+                                                 "sha256":  "a1a59136098402023cf806321888c3246bb1382b9bcb46fd456cba125672bb4d"
+                                             }
+                                  }
+                    },
+                    {
+                        "id":  "imported_space_5",
+                        "label":  "Deep space 5",
+                        "context":  "night",
+                        "material":  "zombiesim/skies/imported_space_5",
+                        "credit":  "Keen Software House (original Space Engineers artwork); ported by Mr.Who, Space Skybox Pack (GameBanana 7222)",
+                        "permission":  "No licence supplied. Project owner confirmed permission on 2026-10-14 covering the original Keen artwork and the port for use and redistribution in this non-commercial project.",
+                        "licence":  "Space Skybox Pack\r\n=================\r\n\r\nSource: GameBanana mod 7222, \"Space Skybox Pack\"\r\n        https://gamebanana.com/mods/7222\r\n        Files space_1.7z through space_10.7z (file IDs 449154-449163).\r\nPorted/converted by: Mr.Who\r\nOriginal creator: Keen Software House (Space Engineers skyboxes)\r\n\r\nNo licence text was supplied with the download.\r\n\r\nPermission record: the ZombieSim project owner confirmed on 2026-10-14 that\r\npermission covers use, conversion and redistribution of these ten skyboxes,\r\nincluding the original Keen Software House artwork and Mr.Who\u0027s port, in this\r\nnon-commercial ZombieSim project. This is a user-confirmed permission notice,\r\nnot an independently verified licence.\r\n\r\nZombieSim copies the original VTF faces unchanged and writes its own sky\r\nmaterials for them.\r\n",
+                        "licenceFile":  "data_static\\sky_licences\\imported_space_5\\README.txt",
+                        "faces":  {
+                                      "ft":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_5ft.vtf",
+                                                 "sha256":  "6d8864e5dde3e72c1bd1828b2d0772b7e60607c0a52bb1ba1f75432ad51d30dc"
+                                             },
+                                      "bk":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_5bk.vtf",
+                                                 "sha256":  "e32daac2acaf80e2a1506d93baab2fe0523a259cb52a71d566cf2c39acfa9d30"
+                                             },
+                                      "lf":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_5lf.vtf",
+                                                 "sha256":  "f134188d79dcfa8f75b82cb9090189de80d9b466868fbc5b67f273e9aeedbb73"
+                                             },
+                                      "rt":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_5rt.vtf",
+                                                 "sha256":  "578691eab8e27b24eee14a94576327efba83f0098d40ca1bbf010eb4a43b313d"
+                                             },
+                                      "up":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_5up.vtf",
+                                                 "sha256":  "1899e5943887e9ea6d868d9c671c09517b48806bdb0f592df29d2a4faf07d806"
+                                             },
+                                      "dn":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_5dn.vtf",
+                                                 "sha256":  "b7c5d68bf5728c8b4c61a2d3439c7e42cb3419014b18ecbd4c3e1b2f68aa0dd8"
+                                             }
+                                  }
+                    },
+                    {
+                        "id":  "imported_space_6",
+                        "label":  "Deep space 6",
+                        "context":  "night",
+                        "material":  "zombiesim/skies/imported_space_6",
+                        "credit":  "Keen Software House (original Space Engineers artwork); ported by Mr.Who, Space Skybox Pack (GameBanana 7222)",
+                        "permission":  "No licence supplied. Project owner confirmed permission on 2026-10-14 covering the original Keen artwork and the port for use and redistribution in this non-commercial project.",
+                        "licence":  "Space Skybox Pack\r\n=================\r\n\r\nSource: GameBanana mod 7222, \"Space Skybox Pack\"\r\n        https://gamebanana.com/mods/7222\r\n        Files space_1.7z through space_10.7z (file IDs 449154-449163).\r\nPorted/converted by: Mr.Who\r\nOriginal creator: Keen Software House (Space Engineers skyboxes)\r\n\r\nNo licence text was supplied with the download.\r\n\r\nPermission record: the ZombieSim project owner confirmed on 2026-10-14 that\r\npermission covers use, conversion and redistribution of these ten skyboxes,\r\nincluding the original Keen Software House artwork and Mr.Who\u0027s port, in this\r\nnon-commercial ZombieSim project. This is a user-confirmed permission notice,\r\nnot an independently verified licence.\r\n\r\nZombieSim copies the original VTF faces unchanged and writes its own sky\r\nmaterials for them.\r\n",
+                        "licenceFile":  "data_static\\sky_licences\\imported_space_6\\README.txt",
+                        "faces":  {
+                                      "ft":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_6ft.vtf",
+                                                 "sha256":  "b99750d8461f526ce47e69ae23ca59ce3e9d36b76625aaa58a58dd96558d63ed"
+                                             },
+                                      "bk":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_6bk.vtf",
+                                                 "sha256":  "a0ef2ab29eac007608899ba42ca6607f7ba98f5f4cdaa55b964162996f94ceed"
+                                             },
+                                      "lf":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_6lf.vtf",
+                                                 "sha256":  "30cc92eb0d4cef9d63d12501a13300dec8cabc52717662084ff9cdf183f5c510"
+                                             },
+                                      "rt":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_6rt.vtf",
+                                                 "sha256":  "1c2528b3371eb5bad625077574d1637d122a2a721a40ebf4145f2d6a46fe1a0e"
+                                             },
+                                      "up":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_6up.vtf",
+                                                 "sha256":  "6adf82066b6dc2db82345ff4c2fc1a3e2ce6d0b956a5cee4b0003e315a19978c"
+                                             },
+                                      "dn":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_6dn.vtf",
+                                                 "sha256":  "628d69704277b69de860b5acc9a5704ad9c93ba60778997687446501919a7a1f"
+                                             }
+                                  }
+                    },
+                    {
+                        "id":  "imported_space_7",
+                        "label":  "Deep space 7",
+                        "context":  "night",
+                        "material":  "zombiesim/skies/imported_space_7",
+                        "credit":  "Keen Software House (original Space Engineers artwork); ported by Mr.Who, Space Skybox Pack (GameBanana 7222)",
+                        "permission":  "No licence supplied. Project owner confirmed permission on 2026-10-14 covering the original Keen artwork and the port for use and redistribution in this non-commercial project.",
+                        "licence":  "Space Skybox Pack\r\n=================\r\n\r\nSource: GameBanana mod 7222, \"Space Skybox Pack\"\r\n        https://gamebanana.com/mods/7222\r\n        Files space_1.7z through space_10.7z (file IDs 449154-449163).\r\nPorted/converted by: Mr.Who\r\nOriginal creator: Keen Software House (Space Engineers skyboxes)\r\n\r\nNo licence text was supplied with the download.\r\n\r\nPermission record: the ZombieSim project owner confirmed on 2026-10-14 that\r\npermission covers use, conversion and redistribution of these ten skyboxes,\r\nincluding the original Keen Software House artwork and Mr.Who\u0027s port, in this\r\nnon-commercial ZombieSim project. This is a user-confirmed permission notice,\r\nnot an independently verified licence.\r\n\r\nZombieSim copies the original VTF faces unchanged and writes its own sky\r\nmaterials for them.\r\n",
+                        "licenceFile":  "data_static\\sky_licences\\imported_space_7\\README.txt",
+                        "faces":  {
+                                      "ft":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_7ft.vtf",
+                                                 "sha256":  "fd87f91cd0fa752f5a0d9eba509c09f5d73ad5df183a6f75afee42547887946d"
+                                             },
+                                      "bk":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_7bk.vtf",
+                                                 "sha256":  "77abff5515941843acf8f898c8f8a28397b5a7330db6d2dae3398ec8677ba7b1"
+                                             },
+                                      "lf":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_7lf.vtf",
+                                                 "sha256":  "8d7b567e814321abd66368a6d8ac713b22214afadbbe871df7980f224e214101"
+                                             },
+                                      "rt":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_7rt.vtf",
+                                                 "sha256":  "d63b199ac80387d26b34a393ace2aa1f8782f8d6c1c34e740afa05db76213c4c"
+                                             },
+                                      "up":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_7up.vtf",
+                                                 "sha256":  "59d657c4db0f974b5d8727f0d6c10fd93395d33e0bae83558e31a7ee90fd0c06"
+                                             },
+                                      "dn":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_7dn.vtf",
+                                                 "sha256":  "289a859c4f74bcf55c9dca36545e3f9b90b3fa470ce1024347df5d3d7a63a48f"
+                                             }
+                                  }
+                    },
+                    {
+                        "id":  "imported_space_8",
+                        "label":  "Deep space 8",
+                        "context":  "night",
+                        "material":  "zombiesim/skies/imported_space_8",
+                        "credit":  "Keen Software House (original Space Engineers artwork); ported by Mr.Who, Space Skybox Pack (GameBanana 7222)",
+                        "permission":  "No licence supplied. Project owner confirmed permission on 2026-10-14 covering the original Keen artwork and the port for use and redistribution in this non-commercial project.",
+                        "licence":  "Space Skybox Pack\r\n=================\r\n\r\nSource: GameBanana mod 7222, \"Space Skybox Pack\"\r\n        https://gamebanana.com/mods/7222\r\n        Files space_1.7z through space_10.7z (file IDs 449154-449163).\r\nPorted/converted by: Mr.Who\r\nOriginal creator: Keen Software House (Space Engineers skyboxes)\r\n\r\nNo licence text was supplied with the download.\r\n\r\nPermission record: the ZombieSim project owner confirmed on 2026-10-14 that\r\npermission covers use, conversion and redistribution of these ten skyboxes,\r\nincluding the original Keen Software House artwork and Mr.Who\u0027s port, in this\r\nnon-commercial ZombieSim project. This is a user-confirmed permission notice,\r\nnot an independently verified licence.\r\n\r\nZombieSim copies the original VTF faces unchanged and writes its own sky\r\nmaterials for them.\r\n",
+                        "licenceFile":  "data_static\\sky_licences\\imported_space_8\\README.txt",
+                        "faces":  {
+                                      "ft":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_8ft.vtf",
+                                                 "sha256":  "4d5467f95d46a6a9cf09d4af7bc904666fa69bdc5a49b6290344a25ba0a62a9a"
+                                             },
+                                      "bk":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_8bk.vtf",
+                                                 "sha256":  "a5a23b0f032642568053210b90526af0fafcf27f732e8305edad8b57b54c6af7"
+                                             },
+                                      "lf":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_8lf.vtf",
+                                                 "sha256":  "9e09ff12433a5b6f938f053b11460b72d08be8d1b425dd90aac787c3505a83df"
+                                             },
+                                      "rt":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_8rt.vtf",
+                                                 "sha256":  "fc75b7de9682765f4b6b1c3baa3f04e773ce47fc01d13e257df9e159f8e100f6"
+                                             },
+                                      "up":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_8up.vtf",
+                                                 "sha256":  "35b0fbd73be3ea8022e4faf54ab4abe91bd1f898d00ca5e56d35c96a1fe0ca54"
+                                             },
+                                      "dn":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_8dn.vtf",
+                                                 "sha256":  "dc58fcb9cb4bae1447c168dfb93abbc6871d814fbf6367e14d1edd7e916005cf"
+                                             }
+                                  }
+                    },
+                    {
+                        "id":  "imported_space_9",
+                        "label":  "Deep space 9",
+                        "context":  "night",
+                        "material":  "zombiesim/skies/imported_space_9",
+                        "credit":  "Keen Software House (original Space Engineers artwork); ported by Mr.Who, Space Skybox Pack (GameBanana 7222)",
+                        "permission":  "No licence supplied. Project owner confirmed permission on 2026-10-14 covering the original Keen artwork and the port for use and redistribution in this non-commercial project.",
+                        "licence":  "Space Skybox Pack\r\n=================\r\n\r\nSource: GameBanana mod 7222, \"Space Skybox Pack\"\r\n        https://gamebanana.com/mods/7222\r\n        Files space_1.7z through space_10.7z (file IDs 449154-449163).\r\nPorted/converted by: Mr.Who\r\nOriginal creator: Keen Software House (Space Engineers skyboxes)\r\n\r\nNo licence text was supplied with the download.\r\n\r\nPermission record: the ZombieSim project owner confirmed on 2026-10-14 that\r\npermission covers use, conversion and redistribution of these ten skyboxes,\r\nincluding the original Keen Software House artwork and Mr.Who\u0027s port, in this\r\nnon-commercial ZombieSim project. This is a user-confirmed permission notice,\r\nnot an independently verified licence.\r\n\r\nZombieSim copies the original VTF faces unchanged and writes its own sky\r\nmaterials for them.\r\n",
+                        "licenceFile":  "data_static\\sky_licences\\imported_space_9\\README.txt",
+                        "faces":  {
+                                      "ft":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_9ft.vtf",
+                                                 "sha256":  "0e645e10365b5fdd53b94895319ec737496b4b78873535d73f0fc894213fd6c8"
+                                             },
+                                      "bk":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_9bk.vtf",
+                                                 "sha256":  "10b2591e6ed61d14d710961f9c1af3b232d6aefc129354f65e4d5ca5c7010f08"
+                                             },
+                                      "lf":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_9lf.vtf",
+                                                 "sha256":  "8c6b5019d5d212d1b4fd393eafb15b7b441edd1eb446cbde322adbe5f1b22b59"
+                                             },
+                                      "rt":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_9rt.vtf",
+                                                 "sha256":  "0c5820d72e97fceaff378b5b74df57c9b27fc5c88c36900b648f73c3fb8f8295"
+                                             },
+                                      "up":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_9up.vtf",
+                                                 "sha256":  "7ad34397f9285d356ba6b88d66ace1fd916a85013394e721be534dfb881ef6b9"
+                                             },
+                                      "dn":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_9dn.vtf",
+                                                 "sha256":  "19c0ade2fe810924caf52255014f38a5c46dfb2435409873a9b0af231c50273e"
+                                             }
+                                  }
+                    },
+                    {
+                        "id":  "imported_space_10",
+                        "label":  "Deep space 10",
+                        "context":  "night",
+                        "material":  "zombiesim/skies/imported_space_10",
+                        "credit":  "Keen Software House (original Space Engineers artwork); ported by Mr.Who, Space Skybox Pack (GameBanana 7222)",
+                        "permission":  "No licence supplied. Project owner confirmed permission on 2026-10-14 covering the original Keen artwork and the port for use and redistribution in this non-commercial project.",
+                        "licence":  "Space Skybox Pack\r\n=================\r\n\r\nSource: GameBanana mod 7222, \"Space Skybox Pack\"\r\n        https://gamebanana.com/mods/7222\r\n        Files space_1.7z through space_10.7z (file IDs 449154-449163).\r\nPorted/converted by: Mr.Who\r\nOriginal creator: Keen Software House (Space Engineers skyboxes)\r\n\r\nNo licence text was supplied with the download.\r\n\r\nPermission record: the ZombieSim project owner confirmed on 2026-10-14 that\r\npermission covers use, conversion and redistribution of these ten skyboxes,\r\nincluding the original Keen Software House artwork and Mr.Who\u0027s port, in this\r\nnon-commercial ZombieSim project. This is a user-confirmed permission notice,\r\nnot an independently verified licence.\r\n\r\nZombieSim copies the original VTF faces unchanged and writes its own sky\r\nmaterials for them.\r\n",
+                        "licenceFile":  "data_static\\sky_licences\\imported_space_10\\README.txt",
+                        "faces":  {
+                                      "ft":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_10ft.vtf",
+                                                 "sha256":  "9aa9f6f49b1fe69c135ac387b80746386971b108aeea390314bd9c103033efbf"
+                                             },
+                                      "bk":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_10bk.vtf",
+                                                 "sha256":  "167112f84bb24cb9391c4f1aec0ef1660610d08e5fa85faaa6e6d12744505f22"
+                                             },
+                                      "lf":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_10lf.vtf",
+                                                 "sha256":  "d995f460b4cfdd255a156beffac9f01f33ecd5806e620e04f2bb1c02c718f819"
+                                             },
+                                      "rt":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_10rt.vtf",
+                                                 "sha256":  "4f437072859660882eb366d537f15ddc9b68fa16cab7eace13c3a0dc81840f55"
+                                             },
+                                      "up":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_10up.vtf",
+                                                 "sha256":  "4d12e6f10845c699e40352c4aa9bc338b161f36b72fe326455affaefc2d9007c"
+                                             },
+                                      "dn":  {
+                                                 "width":  1024,
+                                                 "height":  1024,
+                                                 "scaleX":  1,
+                                                 "scaleY":  1,
+                                                 "transform":  "",
+                                                 "source":  "space_skybox_pack\\materials\\skybox\\space_10dn.vtf",
+                                                 "sha256":  "378ae8a8c0620a21ac03cfb3a47bdc7bd559c728e5f0844d8569c5bc7b040104"
+                                             }
+                                  }
                     }
                 ],
     "ownedFiles":  [
@@ -2732,7 +3392,127 @@
                        "materials\\zombiesim\\skies\\imported_tropo_night_2up.vtf",
                        "materials\\zombiesim\\skies\\imported_tropo_night_2up.vmt",
                        "materials\\zombiesim\\skies\\imported_tropo_night_2dn.vtf",
-                       "materials\\zombiesim\\skies\\imported_tropo_night_2dn.vmt"
+                       "materials\\zombiesim\\skies\\imported_tropo_night_2dn.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_1ft.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_1ft.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_1bk.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_1bk.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_1lf.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_1lf.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_1rt.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_1rt.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_1up.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_1up.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_1dn.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_1dn.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_2ft.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_2ft.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_2bk.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_2bk.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_2lf.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_2lf.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_2rt.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_2rt.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_2up.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_2up.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_2dn.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_2dn.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_3ft.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_3ft.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_3bk.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_3bk.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_3lf.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_3lf.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_3rt.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_3rt.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_3up.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_3up.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_3dn.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_3dn.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_4ft.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_4ft.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_4bk.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_4bk.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_4lf.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_4lf.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_4rt.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_4rt.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_4up.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_4up.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_4dn.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_4dn.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_5ft.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_5ft.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_5bk.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_5bk.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_5lf.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_5lf.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_5rt.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_5rt.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_5up.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_5up.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_5dn.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_5dn.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_6ft.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_6ft.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_6bk.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_6bk.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_6lf.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_6lf.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_6rt.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_6rt.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_6up.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_6up.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_6dn.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_6dn.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_7ft.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_7ft.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_7bk.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_7bk.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_7lf.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_7lf.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_7rt.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_7rt.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_7up.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_7up.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_7dn.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_7dn.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_8ft.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_8ft.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_8bk.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_8bk.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_8lf.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_8lf.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_8rt.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_8rt.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_8up.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_8up.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_8dn.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_8dn.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_9ft.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_9ft.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_9bk.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_9bk.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_9lf.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_9lf.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_9rt.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_9rt.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_9up.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_9up.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_9dn.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_9dn.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_10ft.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_10ft.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_10bk.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_10bk.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_10lf.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_10lf.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_10rt.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_10rt.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_10up.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_10up.vmt",
+                       "materials\\zombiesim\\skies\\imported_space_10dn.vtf",
+                       "materials\\zombiesim\\skies\\imported_space_10dn.vmt"
                    ],
     "ownedLicenceFiles":  [
                               "data_static\\sky_licences\\imported_moonlit\\README.txt",
@@ -2769,7 +3549,17 @@
                               "data_static\\sky_licences\\imported_tropo_dusk_4\\README.txt",
                               "data_static\\sky_licences\\imported_tropo_dusk_5\\README.txt",
                               "data_static\\sky_licences\\imported_tropo_dusk_6\\README.txt",
-                              "data_static\\sky_licences\\imported_tropo_night_2\\README.txt"
+                              "data_static\\sky_licences\\imported_tropo_night_2\\README.txt",
+                              "data_static\\sky_licences\\imported_space_1\\README.txt",
+                              "data_static\\sky_licences\\imported_space_2\\README.txt",
+                              "data_static\\sky_licences\\imported_space_3\\README.txt",
+                              "data_static\\sky_licences\\imported_space_4\\README.txt",
+                              "data_static\\sky_licences\\imported_space_5\\README.txt",
+                              "data_static\\sky_licences\\imported_space_6\\README.txt",
+                              "data_static\\sky_licences\\imported_space_7\\README.txt",
+                              "data_static\\sky_licences\\imported_space_8\\README.txt",
+                              "data_static\\sky_licences\\imported_space_9\\README.txt",
+                              "data_static\\sky_licences\\imported_space_10\\README.txt"
                           ],
     "excludedEntries":  [
                             "imported_tropo_night_1"

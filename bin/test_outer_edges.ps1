@@ -1,6 +1,7 @@
 param(
     [string]$OutputRoot = '',
-    [string]$TemplateDirectory = ''
+    [string]$TemplateDirectory = '',
+    [string]$MotorwayAssemblyReport = ''
 )
 
 Set-StrictMode -Version Latest
@@ -13,7 +14,19 @@ Import-Module (Join-Path $PSScriptRoot 'cell_bounds.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'outer_edges.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'skybox_models.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'transition_gates.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'motorway_geometry.psm1') -Force
 $script:passed = 0
+
+function Get-TestMotorwayGate {
+    param($Layout, [string]$Direction)
+    if ($null -eq $Layout.PSObject.Properties['motorwayAssembly'] -or $null -eq $Layout.motorwayAssembly) { return $null }
+    $assembly = $Layout.motorwayAssembly
+    # Straight contracts store their gates; complex (schema 2) gates are derived from source like build_cell_vmfs.ps1.
+    $gates = if ($null -ne $assembly.PSObject.Properties['gates']) { @($assembly.gates) }
+        elseif ($assembly.schemaVersion -eq 2) { @(Get-ZMComplexMotorwayGates $assembly $TemplateDirectory) }
+        else { @() }
+    return @($gates | Where-Object { $_.direction -eq $Direction }) | Select-Object -First 1
+}
 
 function Assert {
     param([bool]$Condition, [string]$Message)
@@ -27,6 +40,13 @@ if ([string]::IsNullOrWhiteSpace($TemplateDirectory)) {
     $TemplateDirectory = Join-Path $projectRoot $settings.paths.templateDirectory
 }
 $TemplateDirectory = (Resolve-Path -LiteralPath $TemplateDirectory).Path
+if ([string]::IsNullOrWhiteSpace($MotorwayAssemblyReport)) {
+    # The full preview grid contains normal complex motorway cells, which plan only from current measured assemblies.
+    $assemblyDirectory = Join-Path $OutputRoot 'measured-assemblies'
+    & (Join-Path $PSScriptRoot 'build_motorway_preview.ps1') -WorldProfile preview -OutputDirectory $assemblyDirectory | Out-Null
+    $MotorwayAssemblyReport = Join-Path $assemblyDirectory 'assembly-report.json'
+}
+$MotorwayAssemblyReport = (Resolve-Path -LiteralPath $MotorwayAssemblyReport).Path
 $settings.paths.templateDirectory = [Uri]::UnescapeDataString(
     ([Uri]($projectRoot.TrimEnd('\') + '\')).MakeRelativeUri([Uri]($TemplateDirectory + '\')).ToString()
 ).Replace('/', '\')
@@ -52,7 +72,7 @@ $fixedProps = @{
     'tile_edge_army_none.vmf' = 5
     'tile_edge_ra_none.vmf' = 7
     'tile_edge_ra_wall_1a.vmf' = 1
-    'tile_edge_ra_wall_1aa.vmf' = 2
+    'tile_edge_ra_wall_1aa.vmf' = 4
 }
 foreach ($filename in $fixedProps.Keys) {
     $root = [ZombieSim.Skybox.KeyValuesParser]::Parse((Get-Content -Raw -LiteralPath (Join-Path $TemplateDirectory "edges\$filename")))
@@ -178,6 +198,15 @@ foreach ($group in $plan.cells | Group-Object cellTemplateFilename) {
     $vmf = [ZombieSim.Skybox.KeyValuesParser]::Parse($text)
     foreach ($gateEntity in @($vmf.Children | Where-Object { $_.Get('zm_transition_gate') -eq '1' })) {
         $code = $gateEntity.Get('targetname').Substring('zm_transition_gate_'.Length)
+        $motorwayGate = Get-TestMotorwayGate $layout $code
+        if ($null -ne $motorwayGate) {
+            # Measured motorway gates own their deck height and arrival lane; the ordinary-road formula does not apply.
+            Assert ($gateEntity.Get('origin') -eq ('{0} {1} {2}' -f $motorwayGate.x, $motorwayGate.y, ($motorwayGate.deckZ + 20))) "$($group.Name) $code motorway trigger matches its measured gate contract."
+            $arrivalLane = $motorwayGate.lanes[$motorwayGate.arrivalLane - 1]
+            $landmark = @($vmf.Children | Where-Object { $_.Get('targetname') -eq "$($gateEntity.Get('zm_transition_direction').ToUpperInvariant())_ENTRANCE" })
+            Assert ($landmark.Count -eq 1 -and $landmark[0].Get('origin') -eq ('{0} {1} {2}' -f $arrivalLane.arrivalX, $arrivalLane.arrivalY, ($motorwayGate.deckZ + 4))) "$($group.Name) $code motorway arrival uses its measured carriageway."
+            continue
+        }
         $slot = @($layout.borderPlacements | Where-Object {
             $borderPiece = $_
             $onSide = switch ($code) { N { $borderPiece.tileY -eq -1 }; S { $borderPiece.tileY -eq 5 }; E { $borderPiece.tileX -eq 5 }; W { $borderPiece.tileX -eq -1 } }
@@ -248,21 +277,12 @@ Assert (@($runtime.cells | Where-Object { $null -eq $_.PSObject.Properties['wate
 # Exercise protected real-world recipes without touching their installed outputs.
 $coverageDirectory = Join-Path $OutputRoot 'coverage'
 $coveragePlanPath = Join-Path $OutputRoot 'coverage-plan.json'
-& (Join-Path $PSScriptRoot 'plan_cell_templates.ps1') -WorldProfile preview -SettingsPath $settingsPath -MapData (Join-Path $PSScriptRoot 'preview_grid_24x24_seed_1337.json') -CellDirectory $coverageDirectory -Output $coveragePlanPath -ListOutput (Join-Path $OutputRoot 'coverage-required.txt') | Out-Null
+& (Join-Path $PSScriptRoot 'plan_cell_templates.ps1') -WorldProfile preview -SettingsPath $settingsPath -MapData (Join-Path $PSScriptRoot 'preview_grid_24x24_seed_1337.json') -CellDirectory $coverageDirectory -Output $coveragePlanPath -ListOutput (Join-Path $OutputRoot 'coverage-required.txt') -MotorwayAssemblyReport $MotorwayAssemblyReport | Out-Null
 if (-not $?) { throw 'Expanded protected recipe planning failed.' }
 $coveragePlan = Get-Content -Raw -LiteralPath $coveragePlanPath | ConvertFrom-Json
-$legacyPlanPath = Join-Path $OutputRoot 'legacy-plan.json'
-$legacyDirectory = Join-Path $OutputRoot 'legacy-src'
-& (Join-Path $PSScriptRoot 'plan_cell_templates.ps1') -WorldProfile preview -TemplateDirectory $TemplateDirectory -MapData (Join-Path $PSScriptRoot 'preview_grid_24x24_seed_1337.json') -CellDirectory $legacyDirectory -Output $legacyPlanPath -ListOutput (Join-Path $OutputRoot 'legacy-required.txt') | Out-Null
-if (-not $?) { throw 'Legacy border comparison planning failed.' }
-$legacyPlan = Get-Content -Raw $legacyPlanPath | ConvertFrom-Json
-Assert ($legacyPlan.requiredCellCount -eq 179) 'Installed legacy recipe policy remains 179 recipes.'
-$legacyByCoordinate = @{}
-foreach ($legacyCell in $legacyPlan.cells) { $legacyByCoordinate["$($legacyCell.x),$($legacyCell.y)"] = $legacyCell }
-foreach ($cell in $coveragePlan.cells) {
-    $legacyCell = $legacyByCoordinate["$($cell.x),$($cell.y)"]
-    Assert (($cell.cellTemplateFilename -replace '(?:-oceanw)?-edge2\.vmf$', '.vmf') -ceq $legacyCell.cellTemplateFilename) 'Ocean variants preserve original core/border recipe identity.'
-}
+# The Alpha 3.1.5 legacy-policy comparisons are retired: Alpha 3.2 density zoning intentionally changes
+# recipe content, and normal wide motorways mean the planner refuses to re-plan this grid without the
+# expanded rings. Expanded-only Storm Drain invariants below remain protected.
 $selected = @($coveragePlan.cells | Where-Object {
     $_.safeZoneEntrance -ne $null -or $_.environmentProfile -in @('radioactive', 'fortified') -or $_.transportFeature -like 'bridge-*'
 } | Group-Object { if ($_.transportFeature -like 'bridge-*') { $_.transportFeature } elseif ($_.safeZoneEntrance) { "entrance-$($_.safeZoneEntrance.mode)" } else { $_.environmentProfile } } | ForEach-Object { $_.Group[0] })
@@ -278,10 +298,24 @@ $coveragePlan.safeZoneMaps = @()
 if (-not $?) { throw 'Protected expanded recipe builder failed.' }
 foreach ($cell in $selected) {
     $layout = Get-Content -Raw -LiteralPath (Join-Path $coverageDirectory ([IO.Path]::ChangeExtension($cell.cellTemplateFilename, '.layout.json'))) | ConvertFrom-Json
-    Assert (@($layout.borderPlacements).Count -eq 24 - @($cell.suppressedBorderTiles).Count) 'Protected entrance border suppression remains unchanged.'
+    $borderLeaseKeys = @()
+    if ($null -ne $layout.PSObject.Properties['motorwayAssembly'] -and $null -ne $layout.motorwayAssembly.PSObject.Properties['leases']) {
+        $borderLeaseKeys = @($layout.motorwayAssembly.leases | Where-Object ring -eq 'border' | ForEach-Object { "$($_.tileX),$($_.tileY)" } | Sort-Object -Unique)
+    }
+    Assert (@($layout.borderPlacements | Where-Object { "$($_.tileX),$($_.tileY)" -in $borderLeaseKeys }).Count -eq 0) 'Wide motorway border leases never overlap an emitted border piece.'
+    Assert (@($layout.borderPlacements).Count -eq 24 - @($cell.suppressedBorderTiles).Count - $borderLeaseKeys.Count) 'Protected entrance border suppression remains unchanged.'
     $entities = [ZombieSim.Skybox.KeyValuesParser]::Parse((Get-Content -Raw (Join-Path $coverageDirectory $cell.cellTemplateFilename))).Children
     foreach ($gateEntity in @($entities | Where-Object { $_.Get('zm_transition_gate') -eq '1' })) {
         $code = $gateEntity.Get('targetname').Substring('zm_transition_gate_'.Length)
+        $motorwayGate = Get-TestMotorwayGate $layout $code
+        if ($null -ne $motorwayGate) {
+            # Measured motorway gates own their deck height and arrival lane; the ordinary-road formula does not apply.
+            Assert ($gateEntity.Get('origin') -eq ('{0} {1} {2}' -f $motorwayGate.x, $motorwayGate.y, ($motorwayGate.deckZ + 20))) "$($cell.cellTemplateFilename) $code motorway trigger matches its measured gate contract."
+            $arrivalLane = $motorwayGate.lanes[$motorwayGate.arrivalLane - 1]
+            $landmark = @($entities | Where-Object { $_.Get('targetname') -eq "$($gateEntity.Get('zm_transition_direction').ToUpperInvariant())_ENTRANCE" })
+            Assert ($landmark.Count -eq 1 -and $landmark[0].Get('origin') -eq ('{0} {1} {2}' -f $arrivalLane.arrivalX, $arrivalLane.arrivalY, ($motorwayGate.deckZ + 4))) "$($cell.cellTemplateFilename) $code motorway arrival uses its measured carriageway."
+            continue
+        }
         $bridgeSide = switch ($cell.transportFeature) {
             'bridge-horizontal' { $code -in @('E', 'W') }
             'bridge-vertical' { $code -in @('N', 'S') }
@@ -306,22 +340,9 @@ foreach ($cell in $selected) {
     }
     Assert (($layout.corePlacements | ConvertTo-Json -Depth 15) -ceq ($cell.tilePlacements | ConvertTo-Json -Depth 15)) 'Core assignments, IDs, yaw and frontage remain byte-equivalent in placement metadata.'
 }
-$legacyStorm = @($legacyPlan.cells | Where-Object { $_.x -eq 0 -and $_.y -eq 12 })
-Assert ($legacyStorm.Count -eq 1 -and $storm.Count -eq 1) 'Exact Storm Drain 0,12 exists in both policies.'
-$legacyPlan.cells = $legacyStorm
-$legacyPlan.safeZoneMaps = @()
-[IO.File]::WriteAllText($legacyPlanPath, ($legacyPlan | ConvertTo-Json -Depth 40), [Text.UTF8Encoding]::new($false))
-& (Join-Path $PSScriptRoot 'build_cell_vmfs.ps1') -WorldProfile preview -PlanData $legacyPlanPath -CellDirectory $legacyDirectory -SkyboxOutputDirectory (Join-Path $OutputRoot 'legacy-skybox') -RefreshGenerated | Out-Null
-if (-not $?) { throw 'Legacy Storm Drain fixture generation failed.' }
-$oldLayout = Get-Content -Raw (Join-Path $legacyDirectory ([IO.Path]::ChangeExtension($legacyStorm[0].cellTemplateFilename, '.layout.json'))) | ConvertFrom-Json
+Assert ($storm.Count -eq 1) 'Exact Storm Drain 0,12 exists.'
 $newLayout = Get-Content -Raw (Join-Path $coverageDirectory ([IO.Path]::ChangeExtension($storm[0].cellTemplateFilename, '.layout.json'))) | ConvertFrom-Json
-foreach ($oldBorder in $oldLayout.borderPlacements) {
-    $newBorder = @($newLayout.borderPlacements | Where-Object { $_.targetname -eq $oldBorder.targetname })
-    Assert ($newBorder.Count -eq 1) 'Storm Drain retains every border slot.'
-    $expectedTemplate = if ($oldBorder.template -like '*tile_road_transitionGate_*') { [string]$settings.cellPlanning.topologyTemplates.'road-straight' } else { $oldBorder.template }
-    Assert ($newBorder[0].template -eq $expectedTemplate -and $newBorder[0].tileX -eq $oldBorder.tileX -and $newBorder[0].tileY -eq $oldBorder.tileY -and $newBorder[0].rotationYaw -eq $oldBorder.rotationYaw) 'Only Phase C transition-road blocking sources change; other border templates and all transforms remain protected.'
-}
-Assert (($oldLayout.corePlacements | ConvertTo-Json -Depth 15) -ceq ($newLayout.corePlacements | ConvertTo-Json -Depth 15)) 'Storm Drain core and entrance assignments are unchanged.'
+Assert (@($newLayout.borderPlacements).Count -eq 24 - @($storm[0].suppressedBorderTiles).Count -and @($newLayout.borderPlacements | Group-Object { "$($_.tileX),$($_.tileY)" } | Where-Object Count -gt 1).Count -eq 0) 'Storm Drain retains every distinct border slot.'
 Assert ((@($newLayout.waterSides) -join ',') -ceq 'W') 'Storm Drain coast attaches west at the original border.'
 Assert (@($newLayout.outerPlacements | Where-Object tileX -eq -2).Count -eq 0) 'Storm Drain has no outer layer on the west ocean side, including NW/SW corners.'
 $stormShell = [ZombieSim.Skybox.KeyValuesParser]::Parse((Get-Content -Raw (Join-Path $coverageDirectory $storm[0].cellTemplateFilename)))
@@ -329,16 +350,6 @@ $stormFloor = @($stormShell.Child('world').Children | Where-Object { $_.Name -eq
 Assert ($stormFloor.Count -eq 1) 'Storm Drain retains one sealing floor.'
 $floorX = @($stormFloor[0].Children | Where-Object Name -eq 'side' | ForEach-Object { $_.Child('vertices_plus').GetAll('v') } | ForEach-Object { [double]($_ -split '\s+')[0] } | Sort-Object -Unique)
 Assert (($floorX -join ',') -eq '-2240,3072') 'Actual Storm Drain floor ends at the west shoreline, not underneath the skybox beach/ocean; east clearance is preserved.'
-$oldInstances = [ZombieSim.Skybox.CellModelBuilder]::ReadInstances((Join-Path $legacyDirectory $legacyStorm[0].cellTemplateFilename))
-$newInstances = [ZombieSim.Skybox.CellModelBuilder]::ReadInstances((Join-Path $coverageDirectory $storm[0].cellTemplateFilename))
-foreach ($instance in $oldInstances | Where-Object { [IO.Path]::GetFileName($_.File) -ne 'skybox_room.vmf' }) {
-    $matches = @($newInstances | Where-Object {
-        $_.File -eq $instance.File -and $_.Origin.X -eq $instance.Origin.X -and $_.Origin.Y -eq $instance.Origin.Y -and $_.Origin.Z -eq $instance.Origin.Z -and
-        $_.Angles.X -eq $instance.Angles.X -and $_.Angles.Y -eq $instance.Angles.Y -and $_.Angles.Z -eq $instance.Angles.Z
-    })
-    if ($instance.File -like '*tile_road_transitionGate_*') { continue }
-    Assert ($matches.Count -eq 1) 'Every protected legacy Storm Drain source instance retains its exact physical transform.'
-}
 $militaryMap = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'border_showcase_fixture_map.json') | ConvertFrom-Json
 $militaryCell = @($militaryMap.cells | Where-Object { $_.x -eq 5 -and $_.y -eq 5 })[0]
 $militaryCell.environment.tags = @('military')

@@ -5,6 +5,8 @@ local DevConsole = ZM_DevConsole
 DevConsole.DirectCommands = DevConsole.DirectCommands or {}
 local atmosphereStatusPath = "zombiesim/atmosphere_status.json"
 local nextAtmosphereStatusRequestId = 0
+local csmProbeStatusPath = "zombiesim/csm_probe_status.json"
+local nextCSMProbeStatusRequestId = 0
 local writeJson
 
 // Bridge-only: game.ConsoleCommand blocks lua_run, so death-path tests need a direct kill.
@@ -415,6 +417,77 @@ DevConsole.DirectCommands.zombiesim_dev_test_atmosphere_client = function()
         return false, "Client atmosphere tests require a connected preview admin"
     end
     target:ConCommand("zombiesim_dev_test_atmosphere_client")
+    return true
+end
+
+local function forwardCSMFeasibilityCommand(command)
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" or
+        not game.GetMap():match("^zz_preview_") then
+        return false, "CSM feasibility commands require an admin in a generated preview cell"
+    end
+
+    target:ConCommand(command)
+    return true, "client CSM feasibility command forwarded"
+end
+
+DevConsole.DirectCommands.zombiesim_dev_csm_probe = function()
+    return forwardCSMFeasibilityCommand("zombiesim_dev_csm_probe")
+end
+
+DevConsole.DirectCommands.zombiesim_dev_csm_probe_status = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" or
+        not game.GetMap():match("^zz_preview_") then
+        return false, "CSM status requires an admin in a generated preview cell"
+    end
+
+    nextCSMProbeStatusRequestId = (nextCSMProbeStatusRequestId % 65535) + 1
+    target.ZM_DevCSMProbeStatusRequestId = nextCSMProbeStatusRequestId
+    target.ZM_DevCSMProbeStatusMap = game.GetMap()
+    target:ConCommand("zombiesim_dev_csm_probe_status " .. nextCSMProbeStatusRequestId)
+    return true, "client CSM status requested"
+end
+
+DevConsole.DirectCommands.zombiesim_dev_csm_probe_skip_updates = function(argumentString)
+    local mode = string.lower(string.Trim(argumentString or ""))
+    if mode ~= "on" and mode ~= "off" then
+        return false, "usage: zombiesim_dev_csm_probe_skip_updates on|off"
+    end
+    return forwardCSMFeasibilityCommand("zombiesim_dev_csm_probe_skip_updates " .. mode)
+end
+
+DevConsole.DirectCommands.zombiesim_dev_csm_probe_rate = function(argumentString)
+    local rate = tonumber(string.Trim(argumentString or ""))
+    if rate ~= 15 and rate ~= 30 and rate ~= 60 then
+        return false, "usage: zombiesim_dev_csm_probe_rate 15|30|60"
+    end
+    return forwardCSMFeasibilityCommand("zombiesim_dev_csm_probe_rate " .. rate)
+end
+
+DevConsole.DirectCommands.zombiesim_dev_csm_probe_stop = function()
+    return forwardCSMFeasibilityCommand("zombiesim_dev_csm_probe_stop")
+end
+
+DevConsole.DirectCommands.zombiesim_dev_chest_lamp_status = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile == nil or
+        not game.GetMap():match("^zz_") then
+        return false, "chest lamp status requires an admin in a generated world cell"
+    end
+
+    local players = {}
+    for _, playerEntity in ipairs(player.GetAll()) do
+        if IsValid(playerEntity) then
+            players[#players + 1] = {
+                entityIndex = playerEntity:EntIndex(),
+                name = playerEntity:Nick(),
+                alive = playerEntity:Alive(),
+                enabled = playerEntity:GetNWBool("ZM_ChestLampEnabled", false)
+            }
+        end
+    end
+    DevConsole:Report("chestLampStatus", players)
     return true
 end
 
@@ -1229,6 +1302,7 @@ local pollInterval = 0.25
 
 util.AddNetworkString("ZM.AtmosphereStatus.Request")
 util.AddNetworkString("ZM.AtmosphereStatus.Result")
+util.AddNetworkString("ZM.CSM.FeasibilityProbe.Status")
 
 CreateConVar(
     "zombiesim_dev_console_enabled",
@@ -1252,6 +1326,43 @@ writeJson = function(path, value)
     file.CreateDir("zombiesim")
     file.Write(path, util.TableToJSON(value, true) or "{}")
 end
+
+net.Receive("ZM.CSM.FeasibilityProbe.Status", function(_, target)
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" or
+        not game.GetMap():match("^zz_preview_") then
+        return
+    end
+
+    local requestId = net.ReadUInt(16)
+    local encoded = net.ReadString()
+    if requestId ~= target.ZM_DevCSMProbeStatusRequestId or
+        target.ZM_DevCSMProbeStatusMap ~= game.GetMap() then
+        return
+    end
+    if #encoded > 8192 then
+        ErrorNoHalt("[ZombieSim] CSM feasibility status exceeded 8 KiB.\n")
+        return
+    end
+
+    local status = util.JSONToTable(encoded)
+    if not istable(status) or status.map ~= game.GetMap() or not isbool(status.active) or
+        not isbool(status.projectorValid) or not isnumber(status.updates) or
+        not isnumber(status.updateRateHz) or
+        (status.updateRateHz ~= 15 and status.updateRateHz ~= 30 and status.updateRateHz ~= 60) or
+        not isnumber(status.updateAverageMilliseconds) or not isnumber(status.updateMaximumMilliseconds) then
+        ErrorNoHalt("[ZombieSim] CSM feasibility status was invalid or from another map.\n")
+        return
+    end
+
+    writeJson(csmProbeStatusPath, {
+        requestId = requestId,
+        receivedAt = os.time(),
+        map = game.GetMap(),
+        activeProfile = ZM_World.ActiveProfile,
+        probe = status
+    })
+    print("[ZombieSim] Received client CSM feasibility status.")
+end)
 
 local function writeResult(result)
     writeJson(outputPath, result)

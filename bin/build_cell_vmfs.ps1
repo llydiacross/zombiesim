@@ -10,6 +10,10 @@ param(
     [switch]$PruneStaleGenerated,
     [switch]$ClearCellDirectory,
     [switch]$WhatIf,
+    [switch]$MotorwayCellInspection,
+    [switch]$SizedTerrainInfill,
+    [switch]$CompleteTerrainInfill,
+    [switch]$MeasureCompleteTerrainInfill,
     [string]$WorldProfile = '',
     [switch]$Preview,
     [string]$SettingsPath = '',
@@ -18,6 +22,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+if ($CompleteTerrainInfill -and -not $SizedTerrainInfill) { throw 'Complete infill requires sized terrain infill.' }
+if ($MeasureCompleteTerrainInfill -and ($SizedTerrainInfill -or $CompleteTerrainInfill)) { throw 'Complete infill measurement cannot be combined with partial-source emission.' }
 Import-Module (Join-Path $PSScriptRoot 'ps_progress_utils.psm1') -Force
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Write-ZMProgress -Activity 'Building cell VMFs' -Status 'Loading recipe plan and source template inventory.' -PercentComplete 2 -Step 'setup'
@@ -37,9 +43,12 @@ $transportTemplates = $generatorSettings.cellPlanning.transportTemplates
 if (-not $PSBoundParameters.ContainsKey('PruneStaleGenerated')) { $PruneStaleGenerated = $true }
 Import-Module (Join-Path $PSScriptRoot 'carpark_endcaps.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'vmf_source_dependencies.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'tile_ground_grid.psm1')
 Import-Module (Join-Path $PSScriptRoot 'cell_bounds.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'outer_edges.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'transition_gates.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'motorway_geometry.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'scenery_density.psm1') -Force
 
 # Writes the shared 3D skybox room (sealed sky shell, ground plane, sky_camera) above the playable cell volume and
 # returns its repository-relative path. It holds no props: cl_skybox.lua draws each cell's neighbour models at runtime.
@@ -155,6 +164,16 @@ if ([string]::IsNullOrWhiteSpace($PlanData) -or -not (Test-Path $PlanData)) {
 }
 
 $plan = Get-Content -Raw $PlanData | ConvertFrom-Json
+$inspectionRecipes = @($plan.cells | Where-Object { $null -ne $_.PSObject.Properties['motorwayCellInspection'] })
+if ($inspectionRecipes.Count -gt 0 -or $MotorwayCellInspection) {
+    $generatedRoot = [IO.Path]::GetFullPath((Join-Path $projectRoot 'generated')).TrimEnd('\') + '\'
+    if (-not $MotorwayCellInspection -or $worldGenerationProfile.Name -ne 'preview' -or
+        $inspectionRecipes.Count -ne $plan.cells.Count -or $inspectionRecipes.Count -lt 1 -or $inspectionRecipes.Count -gt 8 -or
+        [string]::IsNullOrWhiteSpace($CellDirectory) -or -not [IO.Path]::GetFullPath($CellDirectory).StartsWith($generatedRoot, [StringComparison]::OrdinalIgnoreCase) -or
+        [string]::IsNullOrWhiteSpace($SkyboxOutputDirectory) -or -not [IO.Path]::GetFullPath($SkyboxOutputDirectory).StartsWith($generatedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Motorway inspection requires explicit isolated preview cell/skybox output directories and -MotorwayCellInspection; never stage it as a normal recipe.'
+    }
+}
 if ($outerEdgesEnabled -and ($null -eq $plan.PSObject.Properties['cellBounds'] -or $plan.cellBounds.revision -ne 2)) {
     throw 'Outer-edge generation requires a fresh expanded plan from matching settings.'
 }
@@ -305,6 +324,7 @@ function Get-VmfInstancePath {
     if (-not (Test-Path $fullTemplatePath)) {
         throw "Tile template was not found: $fullTemplatePath"
     }
+    Write-ZMTileGroundGridWarnings $fullTemplatePath
     $sourcePath = (Resolve-Path $SourceDirectory).Path.TrimEnd('\') + '\'
     $sourceUri = [System.Uri]$sourcePath
     $templateUri = [System.Uri](Resolve-Path $fullTemplatePath).Path
@@ -318,8 +338,15 @@ function Get-PlacementFootprint {
     $heightProperty = $Placement.PSObject.Properties['footprintHeight']
     $width = if ($null -eq $widthProperty) { 1 } else { [int]$widthProperty.Value }
     $height = if ($null -eq $heightProperty) { 1 } else { [int]$heightProperty.Value }
-    if ($width -lt 1 -or $height -lt 1 -or $width -ne $height -or $width -gt 3) {
-        throw "Placement '$($Placement.template)' must define a square footprint from 1x1 through 3x3."
+    if ($null -ne $Placement.PSObject.Properties['role'] -and [string]$Placement.role -eq 'motorway_assembly') {
+        $authored = Get-ZMMotorwayFootprint ([string]$Placement.template)
+        $expectedWidth = if ([int]$Placement.rotationYaw -in @(90, 270)) { $authored.height } else { $authored.width }
+        $expectedHeight = if ([int]$Placement.rotationYaw -in @(90, 270)) { $authored.width } else { $authored.height }
+        if ($width -ne $expectedWidth -or $height -ne $expectedHeight) { throw 'Motorway rectangle differs from its authored/rotated footprint.' }
+        return [pscustomobject]@{ width = $width; height = $height }
+    }
+    if ($width -lt 1 -or $height -lt 1 -or $width -gt 3 -or $height -gt 3) {
+        throw "Placement '$($Placement.template)' must define a footprint from 1 through 3 tiles per axis."
     }
     return [pscustomobject]@{ width = $width; height = $height }
 }
@@ -349,6 +376,59 @@ function Get-PlacementDebugTargetname {
     $role = $role.ToLowerInvariant() -replace '[^a-z0-9_]+', '_'
     if ([string]::IsNullOrWhiteSpace($role)) { $role = 'tile' }
     return "zm_tile_${role}_$([int]$Placement.tileX)_$([int]$Placement.tileY)"
+}
+
+function New-PlacementInstanceLines {
+    param(
+        [object]$Placement,
+        [int]$TileGridSize,
+        [int]$TileWidth,
+        [int]$TileVerticalOffset,
+        [int]$EntityId,
+        [string]$InstancePath,
+        [string]$Targetname,
+        [switch]$Interior
+    )
+
+    if (-not (Test-PlacementEmitsInstance $Placement)) { throw 'Occupied placement cannot emit a VMF instance.' }
+    $footprint = Get-PlacementFootprint $Placement
+    $originProperty = $Placement.PSObject.Properties['originCellLocal']
+    if ($null -ne $Placement.PSObject.Properties['role'] -and $Placement.role -eq 'motorway_assembly') {
+        if ($TileGridSize -ne 5 -or $TileWidth -ne 640 -or $TileVerticalOffset -ne 0) {
+            throw 'Measured motorway origins require the approved 5x5/640-unit cell frame with zero tile Z offset.'
+        }
+        if ($null -eq $originProperty -or $null -eq $originProperty.Value) {
+            throw 'Motorway emitting owner requires an explicit cell-local physical origin.'
+        }
+        $origin = Convert-ZMMotorwayPoint $originProperty.Value 0
+    } else {
+        if ($null -ne $originProperty) { throw 'Explicit cell-local origins are currently limited to measured motorway owners.' }
+        $center = [int][Math]::Floor($TileGridSize / 2)
+        $origin = [pscustomobject]@{
+            x = (([int]$Placement.tileX - $center) + ($footprint.width - 1) / 2.0) * $TileWidth
+            y = (($center - [int]$Placement.tileY) - ($footprint.height - 1) / 2.0) * $TileWidth
+            z = $TileVerticalOffset
+        }
+        if ($Interior) {
+            $origin.x = [int]$origin.x
+            $origin.y = [int]$origin.y
+        }
+    }
+    $originText = '{0} {1} {2}' -f ([double]$origin.x).ToString('R', [Globalization.CultureInfo]::InvariantCulture),
+        ([double]$origin.y).ToString('R', [Globalization.CultureInfo]::InvariantCulture),
+        ([double]$origin.z).ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+    return [string[]]@(
+        'entity',
+        '{',
+        ('    "id" "{0}"' -f $EntityId),
+        '    "classname" "func_instance"',
+        ('    "origin" "{0}"' -f $originText),
+        ('    "angles" "0 {0} 0"' -f [int]$Placement.rotationYaw),
+        ('    "file" "{0}"' -f $InstancePath),
+        ('    "targetname" "{0}"' -f $Targetname),
+        '    "fixup_style" "0"',
+        '}'
+    )
 }
 
 function Get-PlacementOwnerCoordinate {
@@ -391,6 +471,33 @@ function Test-RecipeTilePlacements {
     if ($placements.Count -ne $expectedTileCount) {
         throw "$($Recipe.cellTemplateFilename) has $($placements.Count) occupancy records; expected $expectedTileCount."
     }
+    if (-not $MotorwayCellInspection -and @($placements | Where-Object {
+        $_.template.Replace('/', '\') -match '(?i)(^|\\)motorway_3x1\\'
+    }).Count -gt 0) {
+        if ($null -ne $Recipe.PSObject.Properties['motorwayCellInspection'] -or
+            $null -eq $Recipe.PSObject.Properties['motorwayAssembly'] -or $Recipe.motorwayAssembly.schemaVersion -ne 1) {
+            throw 'Normal wide motorway emission requires a complete measured straight assembly contract.'
+        }
+        $current = New-ZMNormalStraightMotorwayContract $Recipe $TileDirectory
+        if (($current | ConvertTo-Json -Depth 30 -Compress) -cne
+            ($Recipe.motorwayAssembly | ConvertTo-Json -Depth 30 -Compress)) {
+            throw 'Normal wide motorway emission contract differs from current source.'
+        }
+        Get-TransitionGatePlacements $Recipe | Out-Null
+    }
+    $normalComplex = if ($null -ne $Recipe.PSObject.Properties['motorwayAssembly'] -and $Recipe.motorwayAssembly.schemaVersion -eq 2) { $Recipe.motorwayAssembly } else { $null }
+    if ($null -ne $normalComplex) {
+        if ($MotorwayCellInspection -or $null -ne $Recipe.PSObject.Properties['motorwayCellInspection'] -or
+            $normalComplex.status -ne 'normal_complex_travel_pending') {
+            throw 'Normal complex motorway emission requires a unique travel-pending schema-2 contract.'
+        }
+        foreach ($property in $normalComplex.sourceFingerprints.PSObject.Properties) {
+            if ($property.Value -cne (Get-FileHash -LiteralPath (Join-Path $TileDirectory $property.Name) -Algorithm SHA256).Hash) {
+                throw "Normal complex motorway source changed; replan before emission: $($property.Name)"
+            }
+        }
+        Get-TransitionGatePlacements $Recipe | Out-Null
+    }
 
     $placementByCoordinate = @{}
     foreach ($placement in $placements) {
@@ -404,13 +511,31 @@ function Test-RecipeTilePlacements {
     }
 
     $ownerByCoordinate = @{}
-    $suppressedInterior = @($placements | Where-Object { $_.role -eq 'safezone_entrance_occupied' })
+    $suppressedInterior = @($placements | Where-Object { $_.role -eq 'safezone_entrance_occupied' -or $_.role -eq 'motorway_external_occupied' })
+    $external = @($placements | Where-Object role -eq motorway_external_occupied)
+    if ($external.Count -gt 0) {
+        $complex = Get-ZMComplexMotorwayContract $Recipe
+        $inspectionComplex = $null -ne $Recipe.PSObject.Properties['motorwayCellInspection'] -and $MotorwayCellInspection
+        if ($null -eq $complex -or ($null -eq $normalComplex -and -not $inspectionComplex)) {
+            throw 'External motorway occupancy requires a complex measured assembly contract.'
+        }
+        foreach ($record in $external) {
+            $owner = @($complex.assemblies | Where-Object owner -eq $record.placementId)
+            $lease = @($complex.leases | Where-Object { $_.tileX -eq $record.tileX -and $_.tileY -eq $record.tileY -and $_.owner -eq $record.placementId })
+            if ($owner.Count -ne 1 -or $lease.Count -ne 1 -or $record.emitsInstance) { throw 'External occupied core slot has no unique measured assembly owner/lease.' }
+        }
+    }
+    $ownerById = @{}
     foreach ($placement in $placements) {
         if (-not (Test-PlacementEmitsInstance $placement)) { continue }
         $tileX = [int]$placement.tileX
         $tileY = [int]$placement.tileY
         $footprint = Get-PlacementFootprint $placement
         $placementId = Get-PlacementId $placement
+        if ($ownerById.ContainsKey($placementId)) {
+            throw "$($Recipe.cellTemplateFilename) has duplicate emitting footprint owner '$placementId'."
+        }
+        $ownerById[$placementId] = $placement
         foreach ($coordinate in @(Get-PlacementCoordinates $tileX $tileY $footprint.width $footprint.height)) {
             $key = "$($coordinate.tileX),$($coordinate.tileY)"
             if (-not $placementByCoordinate.ContainsKey($key) -or $ownerByCoordinate.ContainsKey($key)) {
@@ -425,7 +550,7 @@ function Test-RecipeTilePlacements {
     }
     foreach ($key in $placementByCoordinate.Keys) {
         $occupancyRecord = $placementByCoordinate[$key]
-        if ($occupancyRecord.role -eq 'safezone_entrance_occupied') { continue }
+        if ($occupancyRecord.role -in @('safezone_entrance_occupied', 'motorway_external_occupied')) { continue }
         $owner = $ownerByCoordinate[$key]
         $ownerId = Get-PlacementId $owner
         if ((Get-PlacementId $occupancyRecord) -ne $ownerId -or
@@ -433,13 +558,25 @@ function Test-RecipeTilePlacements {
             (Get-PlacementOwnerCoordinate $occupancyRecord 'ownerTileY' ([int]$occupancyRecord.tileY)) -ne [int]$owner.tileY) {
             throw "$($Recipe.cellTemplateFilename) has inconsistent footprint ownership at $key."
         }
+        $ownerFootprint = Get-PlacementFootprint $owner
+        $recordWidth = $occupancyRecord.PSObject.Properties['footprintWidth']
+        $recordHeight = $occupancyRecord.PSObject.Properties['footprintHeight']
+        if (($null -ne $recordWidth -and [int]$recordWidth.Value -ne $ownerFootprint.width) -or
+            ($null -ne $recordHeight -and [int]$recordHeight.Value -ne $ownerFootprint.height) -or
+            [string]$occupancyRecord.template -cne [string]$owner.template -or
+            [int]$occupancyRecord.rotationYaw -ne [int]$owner.rotationYaw) {
+            throw "$($Recipe.cellTemplateFilename) has inconsistent footprint geometry at $key."
+        }
     }
 }
 
 function Get-RecipeInteriorInstanceCount {
     param([object]$Recipe)
 
-    return @($Recipe.tilePlacements | Where-Object { Test-PlacementEmitsInstance $_ }).Count
+    $complex = Get-ZMComplexMotorwayContract $Recipe
+    $externalCount = if ($null -ne $complex) { $complex.assemblies.Count } else { 0 }
+    if ($null -ne $Recipe.PSObject.Properties['terrainInfill']) { $externalCount += $Recipe.terrainInfill.placements.Count }
+    return @($Recipe.tilePlacements | Where-Object { Test-PlacementEmitsInstance $_ }).Count + $externalCount
 }
 
 # VBSP remaps instance entity origins/angles only for classes in the game's FGD (garrysmod.fgd), so ZombieSim point
@@ -573,6 +710,19 @@ function Remove-TemplateCubemaps {
     return [regex]::Replace($Vmf, $pattern, '', 1)
 }
 
+$longCubemapPatchTemplates = @{}
+function Test-TemplateUsesLongCubemapPatch {
+    param([string]$Template)
+
+    if ([string]::IsNullOrWhiteSpace($Template)) { return $false }
+    if (-not $longCubemapPatchTemplates.ContainsKey($Template)) {
+        $path = if ([IO.Path]::IsPathRooted($Template)) { $Template } else { Join-Path $TileDirectory $Template }
+        $longCubemapPatchTemplates[$Template] = (Test-Path -LiteralPath $path) -and
+            [bool](Select-String -LiteralPath $path -Pattern 'CONCRETE/BLENDCONCRETEDEBRIS001A' -SimpleMatch -Quiet)
+    }
+    return $longCubemapPatchTemplates[$Template]
+}
+
 function Get-CubemapAnchors {
     param([object]$Recipe, [int]$TileGridSize, [int]$TileWidth, [int]$TileVerticalOffset)
 
@@ -625,6 +775,20 @@ function Get-CubemapAnchors {
     if ($anchors.Count -eq 0) {
         $anchors = @([ordered]@{ priority = 5; distance = 0; x = 0; y = 0; z = $TileVerticalOffset + 128 })
     }
+    # VBSP rejects cubemap patch names over 126 characters. A patched WVT blend lives under
+    # maps/<map>/ already, so its cubemap patch repeats that prefix. The longest instanced
+    # envmap blend is concrete/blendconcretedebris001a_wvt_patch (42 characters); pull an
+    # anchor inward to three-digit coordinates only when that worst case would overflow.
+    $mapName = [IO.Path]::GetFileNameWithoutExtension([string]$Recipe.cellTemplateFilename)
+    $prefixLength = 2 * ('maps/'.Length + $mapName.Length + 1) + 42
+    $usesLongPatch = @($placements | Where-Object { Test-TemplateUsesLongCubemapPatch ([string]$_.template) }).Count -gt 0
+    foreach ($anchor in $anchors) {
+        if (-not $usesLongPatch) { break }
+        foreach ($axis in @('x', 'y')) {
+            if (($prefixLength + ('_{0}_{1}_{2}' -f $anchor.x, $anchor.y, $anchor.z).Length) -le 126) { break }
+            if ([Math]::Abs([int]$anchor[$axis]) -gt 999) { $anchor[$axis] = [Math]::Sign([int]$anchor[$axis]) * 999 }
+        }
+    }
     return $anchors
 }
 
@@ -659,20 +823,158 @@ function Get-BorderTemplateSet {
 
     $wallTemplates = @($borderSettings.wallVariationTemplates)
     $cornerTemplate = [string]$borderSettings.cornerTemplate
+    $cornerVariationTemplates = if ($borderSettings.ContainsKey('cornerVariationTemplates')) { @($borderSettings.cornerVariationTemplates) } else { @() }
+    $cornerDensityFallbacks = if ($borderSettings.ContainsKey('cornerDensityFallbacks')) { $borderSettings.cornerDensityFallbacks } else { @{} }
+    $useCornerDensitySelection = $cornerVariationTemplates.Count -gt 0
     $profile = ([string]$Recipe.environmentProfile).ToLowerInvariant()
     if ($borderSettings.ContainsKey('profileTemplates') -and $borderSettings.profileTemplates.ContainsKey($profile)) {
         $profileTemplates = $borderSettings.profileTemplates[$profile]
         if ($profileTemplates.ContainsKey('wallVariationTemplates') -and @($profileTemplates.wallVariationTemplates).Count -gt 0) {
             $wallTemplates = @($profileTemplates.wallVariationTemplates)
         }
-        if ($profileTemplates.ContainsKey('cornerTemplate') -and -not [string]::IsNullOrWhiteSpace([string]$profileTemplates.cornerTemplate)) {
+        if ($profileTemplates.ContainsKey('cornerVariationTemplates') -and @($profileTemplates.cornerVariationTemplates).Count -gt 0) {
+            $cornerVariationTemplates = @($profileTemplates.cornerVariationTemplates)
+            $cornerDensityFallbacks = if ($profileTemplates.ContainsKey('cornerDensityFallbacks')) { $profileTemplates.cornerDensityFallbacks } else { @{} }
+            $cornerTemplate = if ($profileTemplates.ContainsKey('cornerTemplate') -and -not [string]::IsNullOrWhiteSpace([string]$profileTemplates.cornerTemplate)) {
+                [string]$profileTemplates.cornerTemplate
+            } else { [string]$cornerVariationTemplates[0] }
+            $useCornerDensitySelection = $true
+        } elseif ($profileTemplates.ContainsKey('cornerTemplate') -and -not [string]::IsNullOrWhiteSpace([string]$profileTemplates.cornerTemplate)) {
             $cornerTemplate = [string]$profileTemplates.cornerTemplate
+            $cornerVariationTemplates = @()
+            $cornerDensityFallbacks = @{}
+            $useCornerDensitySelection = $false
         }
     }
 
     return [ordered]@{
         wallTemplates = $wallTemplates
         cornerTemplate = $cornerTemplate
+        cornerVariationTemplates = if ($cornerVariationTemplates.Count -gt 0) { $cornerVariationTemplates } else { @($cornerTemplate) }
+        cornerDensityFallbacks = $cornerDensityFallbacks
+        useCornerDensitySelection = $useCornerDensitySelection
+    }
+}
+
+function Get-BorderCornerTemplate {
+    param(
+        [object]$Recipe,
+        [string]$CornerPosition,
+        [string[]]$CornerTemplates,
+        [System.Collections.IDictionary]$CornerDensityFallbacks,
+        [string]$LegacyTemplate,
+        [int]$MapSeed,
+        [bool]$UseDensitySelection
+    )
+
+    if (-not $UseDensitySelection) { return [pscustomobject]@{ template = $LegacyTemplate; selection = $null } }
+    $density = Get-ZMStoredSceneryDensity $Recipe
+    if ($null -eq $density) { return [pscustomobject]@{ template = $LegacyTemplate; selection = $null } }
+
+    $landmarks = @($Recipe.landmarks) -join '+'
+    $cellPolicy = '{0}|{1}|{2}|{3}|{4}' -f `
+        $Recipe.environmentProfile, $Recipe.topology, $Recipe.orientation, $density.sceneryDensityTier, $landmarks
+    $selectionContext = @{
+        Seed = $MapSeed
+        CellPolicy = $cellPolicy
+        Ring = 'border'
+        Slot = $CornerPosition
+        Role = 'border_corner'
+        Variant = [int]$Recipe.cellVariant
+    }
+    $tierHash = Get-ZMScenerySelectionHash @selectionContext -Purpose tier
+    $templateHash = Get-ZMScenerySelectionHash @selectionContext -Purpose template
+    $context = 'cell={0},{1} corner={2} role=border_corner' -f $Recipe.x, $Recipe.y, $CornerPosition
+    $selection = Select-ZMSceneryTemplate $CornerTemplates $density.sceneryDensityTier ([int]($tierHash % 100)) $templateHash $context
+    if ($selection.status -eq 'selected') {
+        return [pscustomobject]@{
+            template = [string]$selection.template
+            selection = [ordered]@{
+                policyVersion = 1
+                source = $density.sceneryDensitySource
+                status = 'selected'
+                zoneTier = $selection.zoneTier
+                targetTier = $selection.targetTier
+                template = [string]$selection.template
+                actualTag = $selection.actualTag
+                densityException = $null
+            }
+        }
+    }
+
+    $fallbackKey = [string]$selection.targetTier
+    if ($CornerDensityFallbacks.Contains($fallbackKey)) {
+        $fallbackTemplate = [string]$CornerDensityFallbacks[$fallbackKey]
+        return [pscustomobject]@{
+            template = $fallbackTemplate
+            selection = [ordered]@{
+                policyVersion = 1
+                source = $density.sceneryDensitySource
+                status = 'selected_explicit_exception'
+                zoneTier = $selection.zoneTier
+                targetTier = $selection.targetTier
+                template = $fallbackTemplate
+                actualTag = Get-ZMTemplateDensityTag $fallbackTemplate
+                densityException = "target_tier_$($selection.targetTier)_fallback"
+                excluded = @($selection.excluded)
+            }
+        }
+    }
+    throw "Required scenery pool unavailable at ${context}: zone=$($selection.zoneTier) target=$($selection.targetTier) routeAdjacentWall=false."
+}
+
+function Assert-BorderCornerVariationSettings {
+    param(
+        [System.Collections.IDictionary]$Settings,
+        [string]$SettingPath,
+        [string]$TileDirectory
+    )
+
+    if (-not $Settings.Contains('cornerVariationTemplates')) { return }
+    $templates = @($Settings.cornerVariationTemplates | ForEach-Object { [string]$_ })
+    if ($templates.Count -eq 0) { throw "$SettingPath.cornerVariationTemplates must not be empty." }
+    $tags = @{}
+    $seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($template in $templates) {
+        if ([string]::IsNullOrWhiteSpace($template) -or -not $seen.Add($template.Replace('\', '/'))) {
+            throw "$SettingPath.cornerVariationTemplates contains an empty or duplicate source."
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $TileDirectory $template) -PathType Leaf)) {
+            throw "$SettingPath.cornerVariationTemplates references a missing source: $template"
+        }
+        $tags[$template.Replace('\', '/').ToLowerInvariant()] = Get-ZMTemplateDensityTag $template
+    }
+
+    $fallbacks = if ($Settings.Contains('cornerDensityFallbacks')) { $Settings.cornerDensityFallbacks } else { @{} }
+    if (-not ($fallbacks -is [System.Collections.IDictionary])) {
+        throw "$SettingPath.cornerDensityFallbacks must be a target-tier-to-template object."
+    }
+    foreach ($key in $fallbacks.Keys) {
+        $target = 0
+        if (-not [int]::TryParse([string]$key, [ref]$target) -or $target -notin 1..3) {
+            throw "$SettingPath.cornerDensityFallbacks has an invalid target tier '$key'."
+        }
+        $fallback = ([string]$fallbacks[$key]).Replace('\', '/').ToLowerInvariant()
+        if (-not $tags.ContainsKey($fallback)) {
+            throw "$SettingPath.cornerDensityFallbacks[$key] must reference a member of cornerVariationTemplates."
+        }
+        if ($tags[$fallback] -eq 0 -or $tags[$fallback] -eq $target) {
+            throw "$SettingPath.cornerDensityFallbacks[$key] must be a tagged template outside target tier $target."
+        }
+    }
+
+    foreach ($target in 1..3) {
+        $hasCompatibleTemplate = @($tags.Values | Where-Object { $_ -eq 0 -or $_ -eq $target }).Count -gt 0
+        if (-not $hasCompatibleTemplate -and -not $fallbacks.Contains([string]$target)) {
+            throw "$SettingPath.cornerVariationTemplates has no compatible or explicit fallback source for target tier $target."
+        }
+    }
+}
+
+Assert-BorderCornerVariationSettings -Settings $borderSettings -SettingPath 'vmfBuild.border' -TileDirectory $TileDirectory
+if ($borderSettings.ContainsKey('profileTemplates')) {
+    foreach ($profileName in $borderSettings.profileTemplates.Keys) {
+        Assert-BorderCornerVariationSettings -Settings $borderSettings.profileTemplates[$profileName] -SettingPath "vmfBuild.border.profileTemplates.$profileName" -TileDirectory $TileDirectory
     }
 }
 
@@ -703,7 +1005,7 @@ function Get-BorderPlacements {
     $borderTemplates = Get-BorderTemplateSet $Recipe
     $waterSides = Get-WaterBorderPlan $Recipe
     $center = [int][Math]::Floor($TileGridSize / 2)
-    $routeSlots = @($Recipe.tilePlacements | Where-Object { [string]$_.template -match '^roads[\\/]' })
+    $routeSlots = @(Get-ZMRouteFootprintSlots @($Recipe.tilePlacements) (Get-ZMRecipeRouteLeases $Recipe) @('core', 'border'))
     foreach ($routeSide in @($edgeConnections + $rampExits | Sort-Object -Unique)) {
         $routeSlots += [pscustomobject]@{
             tileX = $(if ($routeSide -eq 'W') { -1 } elseif ($routeSide -eq 'E') { $TileGridSize } else { $center })
@@ -743,13 +1045,22 @@ function Get-BorderPlacements {
                 $eastWest = if ($tileX -eq -1) { 'W' } else { 'E' }
                 $cornerKey = "$northSouth-$eastWest"
                 $isWaterCorner = $waterSides.ContainsKey($northSouth) -and $waterSides.ContainsKey($eastWest)
-                $placements.Add([ordered]@{
+                $cornerSelection = if ($isWaterCorner) {
+                    $null
+                } else {
+                    Get-BorderCornerTemplate -Recipe $Recipe -CornerPosition $cornerKey -CornerTemplates $borderTemplates.cornerVariationTemplates -CornerDensityFallbacks $borderTemplates.cornerDensityFallbacks -LegacyTemplate $borderTemplates.cornerTemplate -MapSeed ([int]$plan.mapSeed) -UseDensitySelection ([bool]$borderTemplates.useCornerDensitySelection)
+                }
+                $cornerPlacement = [ordered]@{
                     tileX = $tileX
                     tileY = $tileY
-                    template = if ($isWaterCorner) { [string]$waterSettings.cornerTemplate } else { $borderTemplates.cornerTemplate }
+                    template = if ($isWaterCorner) { [string]$waterSettings.cornerTemplate } else { [string]$cornerSelection.template }
                     rotationYaw = $cornerYawByPosition[$cornerKey]
                     targetname = "zm_border_corner_$northSouth$eastWest"
-                })
+                }
+                if ($null -ne $cornerSelection -and $null -ne $cornerSelection.selection) {
+                    $cornerPlacement.sceneryDensitySelection = $cornerSelection.selection
+                }
+                $placements.Add($cornerPlacement)
                 continue
             }
 
@@ -772,16 +1083,27 @@ function Get-BorderPlacements {
             # Only the single center slot caps the run; the rest of a tip cell's side is plain wall, not a repeating water strip.
             $usesWaterDeadend = $usesWaterSide -and $waterPlan.isFarTip -and $isCenterEdgeSlot
             $usesWaterFill = $usesWaterSide -and -not $waterPlan.isFarTip
+            $routeAdjacentWall = @($routeSlots | Where-Object {
+                [Math]::Abs([int]$_.tileX - $tileX) + [Math]::Abs([int]$_.tileY - $tileY) -eq 1
+            }).Count -gt 0
             $wallTemplates = if (-not ($usesRoad -or $null -ne $carparkEndcap -or $usesWaterDeadend -or $usesWaterFill)) {
                 @(Get-ZMRoadAdjacentWallPool $borderTemplates.wallTemplates $routeSlots $tileX $tileY)
             } else { @($borderTemplates.wallTemplates) }
-            $placements.Add([ordered]@{
+            $wallSelection = $null
+            if (-not ($usesRoad -or $null -ne $carparkEndcap -or $usesWaterDeadend -or $usesWaterFill)) {
+                $wallSelection = Get-ZMSceneryWallTemplateSelection $Recipe $wallTemplates ([int]$plan.mapSeed) 'border' "$tileX,$tileY" 'border_wall' $routeAdjacentWall
+            }
+            $placement = [ordered]@{
                 tileX = $tileX
                 tileY = $tileY
-                template = if ($isBridgeSide) { $bridgeRoadTemplate } elseif ($usesTransitionGateRoad) { $transitionGateRoadTemplate } elseif ($usesRampRoad) { $rampRoadTemplate } elseif ($usesPrimaryRoad) { $primaryRoadTemplate } elseif ($null -ne $carparkEndcap) { $carparkEndcap.template } elseif ($usesWaterDeadend) { [string]$waterSettings.deadendTemplate } elseif ($usesWaterFill) { Get-WaterWallTemplate $waterIndex } else { Get-RandomWallVariationTemplate $wallTemplates $placementSeed $tileX $tileY }
+                template = if ($isBridgeSide) { $bridgeRoadTemplate } elseif ($usesTransitionGateRoad) { $transitionGateRoadTemplate } elseif ($usesRampRoad) { $rampRoadTemplate } elseif ($usesPrimaryRoad) { $primaryRoadTemplate } elseif ($null -ne $carparkEndcap) { $carparkEndcap.template } elseif ($usesWaterDeadend) { [string]$waterSettings.deadendTemplate } elseif ($usesWaterFill) { Get-WaterWallTemplate $waterIndex } elseif ($null -ne $wallSelection) { [string]$wallSelection.template } else { Get-RandomWallVariationTemplate $wallTemplates $placementSeed $tileX $tileY }
                 rotationYaw = if ($usesRoad) { $roadYawBySide[$side] } elseif ($null -ne $carparkEndcap) { $carparkEndcap.rotationYaw } elseif ($usesWaterDeadend) { $waterDeadendYawBySide[$side] } else { $wallYawBySide[$side] }
                 targetname = if ($usesTransitionGateRoad) { "zm_transition_road_$side" } else { "zm_border_$side`_$tileX`_$tileY" }
-            })
+            }
+            if ($null -ne $wallSelection -and $null -ne $wallSelection.selection) {
+                $placement.sceneryDensitySelection = $wallSelection.selection
+            }
+            $placements.Add($placement)
         }
     }
 
@@ -796,6 +1118,47 @@ function Get-BorderPlacements {
 function Get-TransitionGatePlacements {
     param([object]$Recipe)
 
+    if ($null -ne $Recipe.PSObject.Properties['motorwayCellInspection']) { return @() }
+    if ($null -ne $Recipe.PSObject.Properties['motorwayAssembly'] -and $Recipe.motorwayAssembly.schemaVersion -eq 2) {
+        $complexGates = @(Get-ZMComplexMotorwayGates $Recipe.motorwayAssembly $TileDirectory)
+        if ((@($Recipe.activeEntrances | Sort-Object -Unique) -join ',') -ne (@($complexGates.direction | Sort-Object) -join ',')) {
+            throw "Normal complex measured gates disagree with active entrances: $($Recipe.cellTemplateFilename)"
+        }
+        return @(foreach ($gate in $complexGates) {
+            $arrival = $gate.lanes[$gate.arrivalLane - 1]
+            [pscustomobject]@{
+                direction = $gate.direction
+                directionName = @{ N = 'north'; E = 'east'; S = 'south'; W = 'west' }[$gate.direction]
+                x = $gate.x; y = $gate.y
+                yaw = @{ N = 90; E = 0; S = 270; W = 180 }[$gate.direction]
+                zOffset = $gate.deckZ - 36
+                arrivalX = $arrival.arrivalX; arrivalY = $arrival.arrivalY; arrivalZ = $gate.deckZ + 4
+                route = $gate.route; lanes = $gate.lanes; lateralMin = $gate.lateralMin; lateralMax = $gate.lateralMax
+            }
+        })
+    }
+    if ($null -ne $Recipe.PSObject.Properties['motorwayAssembly']) {
+        $fresh = New-ZMNormalStraightMotorwayContract $Recipe $TileDirectory
+        if (($fresh.gates | ConvertTo-Json -Depth 10 -Compress) -cne
+            ($Recipe.motorwayAssembly.gates | ConvertTo-Json -Depth 10 -Compress)) {
+            throw 'Normal measured gate records differ from current source; replan.'
+        }
+        if ((@($Recipe.activeEntrances | Sort-Object -Unique) -join ',') -ne ($fresh.gates.direction -join ',')) {
+            throw 'Normal measured gates disagree with active entrances.'
+        }
+        return @(foreach ($gate in $fresh.gates) {
+            $arrival = $gate.lanes[$gate.arrivalLane - 1]
+            [pscustomobject]@{
+                direction = $gate.direction
+                directionName = @{ N = 'north'; E = 'east'; S = 'south'; W = 'west' }[$gate.direction]
+                x = $gate.x; y = $gate.y
+                yaw = @{ N = 90; E = 0; S = 270; W = 180 }[$gate.direction]
+                zOffset = $gate.deckZ - 36
+                arrivalX = $arrival.arrivalX; arrivalY = $arrival.arrivalY; arrivalZ = $gate.deckZ + 4
+                lanes = $gate.lanes; lateralMin = $gate.lateralMin; lateralMax = $gate.lateralMax
+            }
+        })
+    }
     $activeEntrancesProperty = $Recipe.PSObject.Properties['activeEntrances']
     $directions = if ($null -ne $activeEntrancesProperty) {
         @($activeEntrancesProperty.Value)
@@ -863,17 +1226,33 @@ function Set-CellPlayerStart {
         @{ Expression = { [Math]::Abs([int]$_.tileX - $centerTile) + [Math]::Abs([int]$_.tileY - $centerTile) } },
         @{ Expression = { [int]$_.tileY } },
         @{ Expression = { [int]$_.tileX } })
-    if ($terrainTiles.Count -eq 0) { throw "Recipe '$($Recipe.cellTemplateFilename)' has no unobstructed terrain tile for the player start." }
-
-    $spawnTile = $terrainTiles[0]
-    $spawnX = [int](([int]$spawnTile.tileX - $centerTile) * $TileWidth)
-    $spawnY = [int](($centerTile - [int]$spawnTile.tileY) * $TileWidth)
+    $complexContract = Get-ZMComplexMotorwayContract $Recipe
+    $candidate = if ($null -ne $complexContract -and $null -ne $complexContract.PSObject.Properties['insertionSeam']) {
+        $complexContract.insertionSeam.playerStartCandidate
+    } else { $null }
+    if ($null -ne $candidate) {
+        if ((-not $MotorwayCellInspection -and $complexContract.status -ne 'normal_complex_travel_pending') -or $TileGridSize -ne 5 -or $TileWidth -ne 640 -or
+            $candidate.status -ne 'measured_floor_candidate_clearance_pending') {
+            throw 'Measured motorway spawn candidate is limited to combined inspection fixtures.'
+        }
+        $point = Convert-ZMMotorwayPoint $candidate 0
+        $spawnX = $point.x
+        $spawnY = $point.y
+    } else {
+        if ($terrainTiles.Count -eq 0) { throw "Recipe '$($Recipe.cellTemplateFilename)' has no unobstructed terrain tile for the player start." }
+        $spawnTile = $terrainTiles[0]
+        $spawnX = [int](([int]$spawnTile.tileX - $centerTile) * $TileWidth)
+        $spawnY = [int](($centerTile - [int]$spawnTile.tileY) * $TileWidth)
+    }
     $originPropertyIndex = $Vmf.IndexOf('"origin"', $playerStartIndex, [System.StringComparison]::Ordinal)
     if ($originPropertyIndex -lt 0) { throw 'Base cell info_player_start must define an origin.' }
     $originMatch = [regex]::Match($Vmf.Substring($originPropertyIndex), '^"origin"\s+"(?<origin>-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?)"')
     if (-not $originMatch.Success) { throw 'Base cell info_player_start must define a numeric origin.' }
     $sourceCoordinates = @($originMatch.Groups['origin'].Value -split '\s+')
-    $spawnOrigin = '{0} {1} {2}' -f $spawnX, $spawnY, $sourceCoordinates[2]
+    $spawnZ = if ($null -ne $candidate) {
+        ([double]$sourceCoordinates[2] + $point.z).ToString([Globalization.CultureInfo]::InvariantCulture)
+    } else { $sourceCoordinates[2] }
+    $spawnOrigin = '{0} {1} {2}' -f $spawnX.ToString([Globalization.CultureInfo]::InvariantCulture), $spawnY.ToString([Globalization.CultureInfo]::InvariantCulture), $spawnZ
     $updatedOrigin = '"origin" "{0}"' -f $spawnOrigin
     $absoluteLength = $originMatch.Length
     return $Vmf.Substring(0, $originPropertyIndex) + $updatedOrigin + $Vmf.Substring($originPropertyIndex + $absoluteLength)
@@ -904,6 +1283,25 @@ function New-CellVmf {
     $baseVmf = Remove-TemplateCubemaps $baseVmf
     $baseVmf = Set-VmfLightingProfile $baseVmf (Get-RecipeLightingProfile $Recipe)
     $baseVmf = Set-CellPlayerStart $baseVmf $Recipe $TileGridSize $TileWidth
+    if ($null -ne $Recipe.PSObject.Properties['motorwayCellInspection']) {
+        $inspectionCameras = @'
+cameras
+{
+    "activecamera" "0"
+    camera
+    {
+        "position" "[-2600 -2600 1700]"
+        "look" "[0 0 68]"
+    }
+    camera
+    {
+        "position" "[-850 -1700 180]"
+        "look" "[-512 0 68]"
+    }
+}
+'@
+        $baseVmf = [regex]::Replace($baseVmf, '(?ms)^cameras\r?\n\{.*?^\}', $inspectionCameras)
+    }
     $cameraMatch = [regex]::Match($baseVmf, '(?m)^cameras\r?$')
     if (-not $cameraMatch.Success) {
         throw "Base cell template must contain a cameras block: $BaseTemplatePath"
@@ -914,23 +1312,37 @@ function New-CellVmf {
     $lines = [System.Collections.Generic.List[string]]::new()
     foreach ($placement in ($placements | Where-Object { Test-PlacementEmitsInstance $_ } | Sort-Object tileY, tileX)) {
         $instancePath = Get-VmfInstancePath $SourceDirectory $TemplateDirectory $placement.template
-        $footprint = Get-PlacementFootprint $placement
-        $originX = [int]((([int]$placement.tileX - $center) + (($footprint.width - 1) / 2.0)) * $TileWidth)
-        $originY = [int]((($center - [int]$placement.tileY) - (($footprint.height - 1) / 2.0)) * $TileWidth)
         $targetname = Get-PlacementDebugTargetname $placement
-        $lines.AddRange([string[]]@(
-            'entity',
-            '{',
-            ('    "id" "{0}"' -f $entityId),
-            '    "classname" "func_instance"',
-            ('    "origin" "{0} {1} {2}"' -f $originX, $originY, $TileVerticalOffset),
-            ('    "angles" "0 {0} 0"' -f [int]$placement.rotationYaw),
-            ('    "file" "{0}"' -f $instancePath),
-            ('    "targetname" "{0}"' -f $targetname),
-            '    "fixup_style" "0"',
-            '}'
-        ))
+        $lines.AddRange([string[]](New-PlacementInstanceLines $placement $TileGridSize $TileWidth $TileVerticalOffset $entityId $instancePath $targetname -Interior))
         $entityId++
+    }
+    $complexContract = Get-ZMComplexMotorwayContract $Recipe
+    if ($null -ne $complexContract) {
+        foreach ($assembly in $complexContract.assemblies) {
+            $instancePath = Get-VmfInstancePath $SourceDirectory $TemplateDirectory $assembly.template
+            $origin = $assembly.origin
+            $originText = '{0} {1} {2}' -f ([double]$origin.x).ToString('R', [Globalization.CultureInfo]::InvariantCulture), ([double]$origin.y).ToString('R', [Globalization.CultureInfo]::InvariantCulture), ([double]$origin.z).ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+            $lines.AddRange([string[]]@(
+                'entity', '{', ('    "id" "{0}"' -f $entityId),
+                '    "classname" "func_instance"', ('    "origin" "{0}"' -f $originText),
+                ('    "angles" "0 {0} 0"' -f $assembly.yaw), ('    "file" "{0}"' -f $instancePath),
+                ('    "targetname" "zm_assembly_{0}"' -f $assembly.owner), '    "fixup_style" "0"', '}'
+            ))
+            $entityId++
+        }
+    }
+    if ($null -ne $Recipe.PSObject.Properties['terrainInfill']) {
+        foreach ($placement in $Recipe.terrainInfill.placements) {
+            $instancePath = Get-VmfInstancePath $SourceDirectory $TemplateDirectory $placement.template
+            $originText = '{0} {1} {2}' -f ([double]$placement.origin.x).ToString('R', [Globalization.CultureInfo]::InvariantCulture), ([double]$placement.origin.y).ToString('R', [Globalization.CultureInfo]::InvariantCulture), ([double]$placement.origin.z).ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+            $lines.AddRange([string[]]@(
+                'entity', '{', ('    "id" "{0}"' -f $entityId), '    "classname" "func_instance"',
+                ('    "origin" "{0}"' -f $originText),
+                ('    "angles" "0 {0} 0"' -f $placement.yaw), ('    "file" "{0}"' -f $instancePath),
+                ('    "targetname" "zm_terrain_{0}"' -f $placement.owner), '    "fixup_style" "0"', '}'
+            ))
+            $entityId++
+        }
     }
     if (-not [string]::IsNullOrWhiteSpace($SkyboxRoomTemplate)) {
         $instancePath = Get-VmfInstancePath $SourceDirectory $projectRoot $SkyboxRoomTemplate
@@ -976,31 +1388,14 @@ function New-CellVmf {
     }
     foreach ($placement in $BorderPlacements) {
         $instancePath = Get-VmfInstancePath $SourceDirectory $TemplateDirectory $placement.template
-        $originX = ([int]$placement.tileX - $center) * $TileWidth
-        $originY = ($center - [int]$placement.tileY) * $TileWidth
-        $lines.AddRange([string[]]@(
-            'entity',
-            '{',
-            ('    "id" "{0}"' -f $entityId),
-            '    "classname" "func_instance"',
-            ('    "origin" "{0} {1} {2}"' -f $originX, $originY, $TileVerticalOffset),
-            ('    "angles" "0 {0} 0"' -f [int]$placement.rotationYaw),
-            ('    "file" "{0}"' -f $instancePath),
-            ('    "targetname" "{0}"' -f $placement.targetname),
-            '    "fixup_style" "0"',
-            '}'
-        ))
+        $lines.AddRange([string[]](New-PlacementInstanceLines $placement $TileGridSize $TileWidth $TileVerticalOffset $entityId $instancePath $placement.targetname))
         $entityId++
     }
     foreach ($gate in @(Get-TransitionGatePlacements $Recipe)) {
-        $halfWidth = if ($gate.direction -in @('N', 'S')) { 128 } else { 32 }
-        $halfDepth = if ($gate.direction -in @('N', 'S')) { 32 } else { 128 }
-        $minX = $gate.x - $halfWidth
-        $maxX = $gate.x + $halfWidth
-        $minY = $gate.y - $halfDepth
-        $maxY = $gate.y + $halfDepth
-        $minZ = $gate.zOffset
-        $maxZ = 112 + $gate.zOffset
+        $triggerBounds = Get-ZMTransitionTriggerBounds $gate
+        $minX = $triggerBounds.minX; $maxX = $triggerBounds.maxX
+        $minY = $triggerBounds.minY; $maxY = $triggerBounds.maxY
+        $minZ = $triggerBounds.minZ; $maxZ = $triggerBounds.maxZ
         $solidId = $entityId + 1
         $sideId = $solidId + 1
         $planes = @(
@@ -1049,12 +1444,7 @@ function New-CellVmf {
         ))
         $entityId = $sideId
 
-        $barricadeProps = @(
-            @{ model = 'models/props/de_nuke/car_nuke_red.mdl'; across = -192; outward = -32; z = 44; yaw = 339 },
-            @{ model = 'models/props/de_nuke/car_nuke_glass.mdl'; across = -192.499; outward = -30.74; z = 42.898; yaw = 339 },
-            @{ model = 'models/props/de_nuke/car_nuke_glass.mdl'; across = 192.233; outward = -65.31; z = 42.898; yaw = 152 },
-            @{ model = 'models/props/de_nuke/car_nuke_red.mdl'; across = 191.892; outward = -64; z = 44; yaw = 152 }
-        )
+        $barricadeProps = @(Get-ZMTransitionBarricadeProps $gate)
         foreach ($index in 0..($barricadeProps.Count - 1)) {
             $prop = $barricadeProps[$index]
             $placement = Convert-NorthGateOffset $gate $prop.across $prop.outward $prop.yaw
@@ -1171,21 +1561,58 @@ foreach ($recipe in $recipes) {
     $outputPath = Join-Path $CellDirectory $recipe.cellTemplateFilename
     Test-RecipeTilePlacements $recipe $plan.cellTileGridSize
     $hasSafeZoneEntrance = $null -ne $recipe.PSObject.Properties['safeZoneEntrance'] -and $null -ne $recipe.safeZoneEntrance
-    $expectedInteriorInstanceCount = (Get-RecipeInteriorInstanceCount $recipe) +
-        $(if ($hasSafeZoneEntrance) { 1 } else { 0 }) +
-        $(if ($skyboxEnabled) { 1 } else { 0 })
     $cubemapAnchors = Get-CubemapAnchors $recipe $plan.cellTileGridSize $TileSize $TileZOffset
     $borderPlacements = Get-BorderPlacements $recipe $plan.cellTileGridSize
     $outerPlacements = @()
     if ($outerEdgesEnabled) {
         $roadTemplates = Get-ZMOuterEdgeRoadTemplates $borderPlacements $plan.cellTileGridSize ([string]$topologyTemplates['road-straight']) ([string]$topologyTemplates['motorway-straight']) ([string]$transportTemplates.bridgeRoad)
-        $outerPlacements = @(Get-ZMOuterEdgePlacements $recipe $plan.cellTileGridSize $outerEdgeSettings $borderPlacements (Get-SkyboxOceanPlan $recipe) $roadTemplates)
+        $outerPlacements = @(Get-ZMOuterEdgePlacements $recipe $plan.cellTileGridSize $outerEdgeSettings $borderPlacements (Get-SkyboxOceanPlan $recipe) $roadTemplates ([int]$plan.mapSeed))
         foreach ($placement in $outerPlacements) {
             if (-not (Test-Path -LiteralPath (Join-Path $TileDirectory $placement.template) -PathType Leaf)) {
                 throw "Required outer-edge source is missing: $($placement.template)"
             }
         }
     }
+    $complexContract = Get-ZMComplexMotorwayContract $recipe
+    if ($null -ne $recipe.PSObject.Properties['motorwayAssembly'] -and $null -eq $complexContract) {
+        $rings = Resolve-ZMNormalStraightMotorwayRings $recipe $TileDirectory $borderPlacements $outerPlacements
+        $borderPlacements = $rings.borderPlacements
+        $outerPlacements = $rings.outerPlacements
+    }
+    if ($null -ne $recipe.PSObject.Properties['motorwayCellInspection'] -or $null -ne $complexContract) {
+        $inspection = if ($null -ne $complexContract) { $complexContract } else { $recipe.motorwayCellInspection }
+        if ($inspection.schemaVersion -eq 2) {
+            $expectedStatus = if ($null -ne $recipe.PSObject.Properties['motorwayCellInspection']) { 'complex_cell_diagnostic_not_live_travel' } else { 'normal_complex_travel_pending' }
+            if ($inspection.status -ne $expectedStatus) { throw 'Invalid complex motorway contract status.' }
+            foreach ($property in $inspection.sourceFingerprints.PSObject.Properties) {
+                if ($property.Value -cne (Get-FileHash -LiteralPath (Join-Path $TileDirectory $property.Name) -Algorithm SHA256).Hash) { throw "Complex inspection source changed: $($property.Name). Replan." }
+            }
+            $leased = @{}
+            foreach ($lease in $inspection.leases) { $leased["$($lease.tileX),$($lease.tileY)"] = $true }
+            $borderPlacements = @($borderPlacements | Where-Object { -not $leased.ContainsKey("$($_.tileX),$($_.tileY)") })
+            $outerPlacements = @($outerPlacements | Where-Object { -not $leased.ContainsKey("$($_.tileX),$($_.tileY)") })
+            $borderPlacements = @(Resolve-ZMCentredRoadBorderPlacements $recipe $borderPlacements)
+        } else {
+        if ($inspection.schemaVersion -ne 1 -or $inspection.status -ne 'cell_geometry_inspection_not_live_travel' -or
+            $recipe.topology -ne 'motorway-straight' -or $recipe.transportFeature -ne 'none' -or
+            $inspection.sourceSha256 -cne (Get-FileHash -LiteralPath (Join-Path $TileDirectory $inspection.template) -Algorithm SHA256).Hash) {
+            throw 'Motorway cell inspection metadata is unsupported or its source fingerprint is stale; replan from current sources.'
+        }
+        $leased = Assert-ZMStraightMotorwayCellContract $recipe
+        $borderPlacements = @($borderPlacements | Where-Object { -not $leased.ContainsKey("$($_.tileX),$($_.tileY)") }) +
+            @($inspection.ringPlacements | Where-Object ring -eq border)
+        $outerPlacements = @($outerPlacements | Where-Object { -not $leased.ContainsKey("$($_.tileX),$($_.tileY)") }) +
+            @($inspection.ringPlacements | Where-Object ring -eq outer)
+        }
+    }
+    if ($null -ne $complexContract) {
+        Import-Module (Join-Path $PSScriptRoot 'terrain_infill.psm1')
+        $infill = Set-ZMInspectionTerrainInfill $recipe $TileDirectory $borderPlacements $outerPlacements -SizedPatches:$SizedTerrainInfill -CompletePatches:$CompleteTerrainInfill -MeasureCompletePatches:$MeasureCompleteTerrainInfill
+        $recipe | Add-Member -NotePropertyName terrainInfill -NotePropertyValue $infill
+    }
+    $expectedInteriorInstanceCount = (Get-RecipeInteriorInstanceCount $recipe) +
+        $(if ($hasSafeZoneEntrance) { 1 } else { 0 }) +
+        $(if ($skyboxEnabled) { 1 } else { 0 })
     $layout = [ordered]@{
         schemaVersion = 1
         recipe = $recipe.cellTemplateFilename
@@ -1196,6 +1623,11 @@ foreach ($recipe in $recipes) {
         borderPlacements = @($borderPlacements)
         outerPlacements = @($outerPlacements)
     }
+    if ($null -ne $recipe.PSObject.Properties['motorwayCellInspection']) {
+        $layout.motorwayCellInspection = $recipe.motorwayCellInspection
+    }
+    if ($null -ne $recipe.PSObject.Properties['motorwayAssembly']) { $layout.motorwayAssembly = $recipe.motorwayAssembly }
+    if ($null -ne $Recipe.PSObject.Properties['terrainInfill']) { $layout.terrainInfill = $recipe.terrainInfill }
     $legacyBorderCount = $borderPlacements.Count
     $borderPlacements = @($borderPlacements) + @($outerPlacements)
     $transitionGates = @(Get-TransitionGatePlacements $recipe)
@@ -1218,6 +1650,12 @@ foreach ($recipe in $recipes) {
                 $previousLayout.bounds.revision -eq 2 -and $previousLayout.recipe -eq $recipe.cellTemplateFilename) {
                 $previousBorderCount = @($previousLayout.borderPlacements).Count + @($previousLayout.outerPlacements).Count
                 $matchesPreviousLayout = Test-GeneratedCellVmf $outputPath $expectedInteriorInstanceCount $previousBorderCount $transitionGates.Count
+                if ($null -ne $recipe.PSObject.Properties['terrainInfill'] -and
+                    $null -ne (Get-ZMComplexMotorwayContract $previousLayout)) {
+                    $previousInfillCount = if ($null -ne $previousLayout.PSObject.Properties['terrainInfill']) { $previousLayout.terrainInfill.placements.Count } else { 0 }
+                    $priorCount = $expectedInteriorInstanceCount - $recipe.terrainInfill.placements.Count + $previousInfillCount
+                    $matchesPreviousLayout = $matchesPreviousLayout -or (Test-GeneratedCellVmf $outputPath $priorCount $previousBorderCount $transitionGates.Count)
+                }
             }
         }
         if (-not $RefreshGenerated -or (-not $matchesExpectedStructure -and -not $matchesSkyboxToggle -and -not $matchesLegacyRing -and -not $matchesPreviousLayout)) {

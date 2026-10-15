@@ -49,4 +49,50 @@ function Set-ZMTransitionArrivalLandmarks {
     return $Vmf
 }
 
-Export-ModuleMember -Function Get-ZMTransitionDeckHeight, Get-ZMTransitionGateCoordinates, Set-ZMTransitionArrivalLandmarks
+function Get-ZMTransitionTriggerBounds {
+    param([object]$Gate)
+
+    $measured = $null -ne $Gate.PSObject.Properties['lanes']
+    $min = if ($measured) { [double]$Gate.lateralMin } else { -128 }
+    $max = if ($measured) { [double]$Gate.lateralMax } else { 128 }
+    $road = $null -ne $Gate.PSObject.Properties['route'] -and $Gate.route -eq 'road'
+    if ($measured -and ($Gate.lanes.Count -ne $(if ($road) { 1 } else { 2 }) -or $min -ge 0 -or $max -le 0 -or
+        [double]::IsNaN($min) -or [double]::IsInfinity($min) -or
+        [double]::IsNaN($max) -or [double]::IsInfinity($max))) {
+        throw 'Measured transition trigger requires finite extents for its route lane count.'
+    }
+    $range = switch ($Gate.direction) {
+        'N' { @($min, $max, -32, 32) }
+        'E' { @(-32, 32, -$max, -$min) }
+        'S' { @(-$max, -$min, -32, 32) }
+        'W' { @(-32, 32, $min, $max) }
+        default { throw 'Invalid transition trigger direction.' }
+    }
+    return [pscustomobject]@{
+        minX = $Gate.x + $range[0]; maxX = $Gate.x + $range[1]
+        minY = $Gate.y + $range[2]; maxY = $Gate.y + $range[3]
+        minZ = $Gate.zOffset; maxZ = 112 + $Gate.zOffset
+    }
+}
+
+function Get-ZMTransitionBarricadeProps {
+    param([object]$Gate)
+
+    $props = @(
+        @{ model = 'models/props/de_nuke/car_nuke_red.mdl'; across = -192; outward = -32; z = 44; yaw = 339 },
+        @{ model = 'models/props/de_nuke/car_nuke_glass.mdl'; across = -192.499; outward = -30.74; z = 42.898; yaw = 339 },
+        @{ model = 'models/props/de_nuke/car_nuke_glass.mdl'; across = 192.233; outward = -65.31; z = 42.898; yaw = 152 },
+        @{ model = 'models/props/de_nuke/car_nuke_red.mdl'; across = 191.892; outward = -64; z = 44; yaw = 152 }
+    )
+    if ($null -ne $Gate.PSObject.Properties['lanes'] -and
+        -not ($null -ne $Gate.PSObject.Properties['route'] -and $Gate.route -eq 'road')) {
+        if ($Gate.lanes.Count -ne 2) { throw 'Measured barricades require two carriageway centres.' }
+        foreach ($prop in $props) {
+            $lane = if ($prop.across -lt 0) { $Gate.lanes[0] } else { $Gate.lanes[1] }
+            $prop.across += [double]$lane.lateral - $(if ($prop.across -lt 0) { -192 } else { 192 })
+        }
+    }
+    return $props
+}
+
+Export-ModuleMember -Function Get-ZMTransitionDeckHeight, Get-ZMTransitionGateCoordinates, Set-ZMTransitionArrivalLandmarks, Get-ZMTransitionTriggerBounds, Get-ZMTransitionBarricadeProps

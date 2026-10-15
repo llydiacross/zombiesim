@@ -29,6 +29,7 @@ def main():
                     GetTravelMode = function(_, exit) return exit and exit.highway end
                 }
                 env.math, env.string, env.table = math, string, table
+                env.type = type
                 env.bit = require("bit")
                 env.IN_FORWARD, env.IN_BACK, env.IN_MOVELEFT, env.IN_MOVERIGHT, env.IN_JUMP = 8, 16, 512, 1024, 2
                 env.util = {
@@ -232,6 +233,7 @@ def main():
                     local service, state, env = fixture()
                     state.surface = 36
                     env.util.TraceHull = function() return { StartSolid = false } end
+                    env.MASK_PLAYERSOLID = 2
                     function state.player:GetHull() return env.Vector(-16, -16, 0), env.Vector(16, 16, 72) end
                     state:Gate("S", env.Vector(0, -2208, 56), "road")
                     service:InitializeGates()
@@ -239,6 +241,137 @@ def main():
                         "single-arrow road arrival unchanged")
                     check(service:ResolveGateArrivalPosition(state.player, "N") == nil,
                         "absent gate arrival unchanged")
+                end)
+                suite:Add("measured_wide_gates_use_explicit_axis_lanes_and_arrivals", function(check)
+                    local forwards = { N = { 0, 1 }, E = { 1, 0 }, S = { 0, -1 }, W = { -1, 0 } }
+                    for code, xy in pairs(forwards) do
+                        local service, state, env = fixture()
+                        state.surface = 68
+                        local forward = env.Vector(xy[1], xy[2], 0)
+                        local right = forward:Cross(env.Vector(0, 0, 1))
+                        local flipped = code == "S" or code == "E"
+                        local gate = { direction = code, x = forward.x * 2208, y = forward.y * 2208,
+                            deckZ = 68, arrivalLane = 1, lanes = {},
+                            status = "measured_source_gate_not_compiled_or_live" }
+                        for _, lateral in ipairs(flipped and { -528, 512 } or { -512, 528 }) do
+                            local arrow = forward * 1952 + right * lateral
+                            local arrival = forward * 1824 + right * lateral
+                            gate.lanes[#gate.lanes + 1] = { lateral = lateral, width = 416, deckZ = 68,
+                                arrowX = arrow.x, arrowY = arrow.y, arrivalX = arrival.x, arrivalY = arrival.y }
+                        end
+                        state.mapCells = { { motorwayGates = { gate } }, { motorwayGates = { gate } } }
+                        state:Gate(code, forward * 2208 + right * (flipped and -8 or 8) + env.Vector(0, 0, 88), "any")
+                        service:InitializeGates()
+                        local key = "ZMTransitionGate_" .. code .. "_1"
+                        check(state.globals[key] == forward * 2208 + env.Vector(0, 0, 88),
+                            code .. " corrects asymmetric brush centre to logical axis")
+                        for index, lane in ipairs(gate.lanes) do
+                            local suffix = index == 1 and "" or "_Lane2"
+                            check(state.globals[key .. suffix .. "_Surface"] == env.Vector(lane.arrowX, lane.arrowY, 70),
+                                code .. " publishes measured lane " .. index)
+                        end
+                        env.util.TraceHull = function() return { StartSolid = false } end
+                        env.MASK_PLAYERSOLID = 2
+                        function state.player:GetHull() return env.Vector(-16, -16, 0), env.Vector(16, 16, 72) end
+                        local lane = gate.lanes[1]
+                        check(service:ResolveGateArrivalPosition(state.player, code) == env.Vector(lane.arrivalX, lane.arrivalY, 69),
+                            code .. " arrival follows measured selected lane")
+                        state.surface = 36
+                        service:InitializeGates()
+                        check(state.globals[key .. "_SurfaceReady"] == false
+                            and state.globals[key .. "_Lane2_SurfaceReady"] == false,
+                            code .. " legacy or terrain deck cannot masquerade as a measured carriageway")
+                        check(service:ResolveGateArrivalPosition(state.player, code) == nil and #state.errors == 3,
+                            code .. " wrong arrow and arrival decks are explicitly reported")
+                        state.surface, state.errors = 68, {}
+                        state.mapCells[2] = {}
+                        service:InitializeGates()
+                        check(#service.GateMarkers == 0 and #state.errors == 1,
+                            code .. " mixed metadata invalidates gate rather than guessing")
+                    end
+                end)
+                suite:Add("measured_ordinary_roads_publish_one_arrow_and_use_their_arrival", function(check)
+                    for code, xy in pairs({ N = { 0, 1 }, E = { 1, 0 }, S = { 0, -1 }, W = { -1, 0 } }) do
+                        local service, state, env = fixture()
+                        local forward = env.Vector(xy[1], xy[2], 0)
+                        state.surface = 36
+                        local gate = { direction = code, route = "road", x = forward.x * 2720,
+                            y = forward.y * 2720, deckZ = 36, arrivalLane = 1,
+                            status = "measured_source_gate_not_compiled_or_live",
+                            lanes = { { lateral = 0, width = 256, deckZ = 36,
+                                arrowX = forward.x * 2624, arrowY = forward.y * 2624,
+                                arrivalX = forward.x * 2592, arrivalY = forward.y * 2592 } } }
+                        state.mapCells = { { motorwayGates = { gate } }, { motorwayGates = { gate } } }
+                        state:Gate(code, forward * 2720 + env.Vector(0, 0, 88), "highway")
+                        service:InitializeGates()
+                        local key = "ZMTransitionGate_" .. code .. "_1"
+                        check(#state.errors == 0 and #state.traces == 1 and #service.GateMarkers == 1,
+                            code .. " ordinary measured route ignores legacy motorway classification")
+                        check(state.globals[key .. "_ArrowCount"] == 1
+                            and state.globals[key .. "_Surface"] == forward * 2624 + env.Vector(0, 0, 38)
+                            and state.globals[key .. "_Lane2_SurfaceReady"] == false,
+                            code .. " publishes exactly one supported centred arrow")
+                        check(service:ResolveGateArrivalPosition(state.player, code) == forward * 2592 + env.Vector(0, 0, 37),
+                            code .. " road arrival stays behind its arrow on the centred approach")
+                        state.surface = 68
+                        check(service:ResolveGateArrivalPosition(state.player, code) == nil and #state.errors == 1,
+                            code .. " road arrival rejects an incorrect deck")
+                    end
+                end)
+                suite:Add("mixed_measured_route_types_and_bad_road_lanes_are_rejected", function(check)
+                    for _, reason in ipairs({ "route", "count", "lateral", "unknown" }) do
+                        local service, state, env = fixture()
+                        local gate = { direction = "N", route = "road", x = 0, y = 2720, deckZ = 36,
+                            arrivalLane = 1, status = "measured_source_gate_not_compiled_or_live",
+                            lanes = { { lateral = 0, width = 256, deckZ = 36,
+                                arrowX = 0, arrowY = 2624, arrivalX = 0, arrivalY = 2592 } } }
+                        state.mapCells = { { motorwayGates = { gate } } }
+                        if reason == "route" then
+                            state.mapCells[2] = { motorwayGates = { { direction = "N", x = 0, y = 2720, deckZ = 36,
+                                arrivalLane = 1, status = gate.status, lanes = {
+                                    { lateral = -512, width = 416, deckZ = 36, arrowX = -512, arrowY = 2464, arrivalX = -512, arrivalY = 2336 },
+                                    { lateral = 528, width = 416, deckZ = 36, arrowX = 528, arrowY = 2464, arrivalX = 528, arrivalY = 2336 }
+                                } } } }
+                        elseif reason == "count" then gate.lanes[2] = gate.lanes[1]
+                        elseif reason == "lateral" then gate.lanes[1].lateral = 1
+                        elseif reason == "unknown" then gate.route = "footpath" end
+                        state:Gate("N", env.Vector(0, 2720, 88), "any")
+                        service:InitializeGates()
+                        check(#service.GateMarkers == 0 and #state.traces == 0 and #state.errors == 1,
+                            reason .. " fails closed before any surface sampling")
+                    end
+                end)
+                suite:Add("invalid_measured_gate_contracts_are_reported_without_legacy_fallback", function(check)
+                    for _, reason in ipairs({ "missing", "nan", "duplicate", "moved", "conflict" }) do
+                        local service, state, env = fixture()
+                        local gate = { direction = "N", x = 0, y = 2208, deckZ = 68, arrivalLane = 1,
+                            status = "measured_source_gate_not_compiled_or_live",
+                            lanes = {
+                                { lateral = -512, width = 416, deckZ = 68, arrowX = -512, arrowY = 1952, arrivalX = -512, arrivalY = 1824 },
+                                { lateral = 528, width = 416, deckZ = 68, arrowX = 528, arrowY = 1952, arrivalX = 528, arrivalY = 1824 }
+                            } }
+                        state.mapCells = { { motorwayGates = { gate } } }
+                        if reason == "missing" then state.mapCells[1].motorwayGates = {} end
+                        if reason == "nan" then gate.lanes[1].arrowX = 0 / 0 end
+                        if reason == "duplicate" then state.mapCells[1].motorwayGates[2] = gate end
+                        if reason == "conflict" then
+                            local other = { direction = "N", x = 0, y = 2208, deckZ = 68, arrivalLane = 1,
+                                status = gate.status, lanes = {
+                                    { lateral = -160, width = 416, deckZ = 68, arrowX = -512, arrowY = 1952, arrivalX = -512, arrivalY = 1824 },
+                                    gate.lanes[2]
+                                } }
+                            state.mapCells[2] = { motorwayGates = { other } }
+                        end
+                        state:Gate("N", env.Vector(reason == "moved" and 100 or 0, 2208, 88), "any")
+                        service:InitializeGates()
+                        check(#service.GateMarkers == 0 and #state.traces == 0 and #state.errors == 1,
+                            reason .. " rejects malformed source/map contract before traces")
+                        env.HUD_PRINTCENTER = 4
+                        function state.player:PrintMessage(_, text) state.lastMessage = text end
+                        check(service:TryUseGate(state.player, state.gates[1]) == false
+                            and state.lastMessage == "This route's map data is invalid.",
+                            reason .. " travel rejects invalid metadata with a player-visible error")
+                    end
                 end)
                 return suite:Run()
             end

@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "product": "Z-Nation",
   "stage": "Alpha",
-  "version": "3.1.5",
+  "version": "3.2",
   "status": "in development",
-  "currentPhase": "Phase H accepted - Phase I integration planning; expensive preview output batch deferred",
-  "nextMilestone": "Alpha 3.2 - CSM implementation",
-  "started": "2026-10-06",
+  "currentPhase": "Alpha 3.2 density/motorways first; 0/A/B/D accepted with retained limits; Phase E normal straight core/ring/measured gate metadata and VMF trigger/landmark/barricade consumers implemented, motorway1405/density2633 pass; complex assemblies/runtime/derivatives unfinished, normal VMF emission blocked until integration; rectangular-building live validation deferred until asset exists; bounded preview batch approved, crossroads repair uncompiled; CSM deferred; M cancelled; final 3.1.5 closure remains J/K",
+  "nextMilestone": null,
+  "started": "2026-10-13",
   "released": null,
   "previousRelease": "3.0"
 }

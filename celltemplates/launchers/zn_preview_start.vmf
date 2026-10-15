@@ -7058,6 +7058,7 @@ entity
 {
 	"id" "4091"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 21.5 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -7090,6 +7091,7 @@ entity
 {
 	"id" "4081"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 52 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -7122,6 +7124,7 @@ entity
 {
 	"id" "4077"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 111.5 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -7154,6 +7157,7 @@ entity
 {
 	"id" "4095"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 322 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -7186,6 +7190,7 @@ entity
 {
 	"id" "4109"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 142 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -7218,6 +7223,7 @@ entity
 {
 	"id" "4057"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 291.5 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -7250,6 +7256,7 @@ entity
 {
 	"id" "4071"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 232 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -7282,6 +7289,7 @@ entity
 {
 	"id" "4105"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 201.5 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -7314,6 +7322,7 @@ entity
 {
 	"id" "4231"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 358.5 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -7346,6 +7355,7 @@ entity
 {
 	"id" "4235"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 88.5 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -7378,6 +7388,7 @@ entity
 {
 	"id" "4237"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 299 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -7410,6 +7421,7 @@ entity
 {
 	"id" "4239"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 119 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -7442,6 +7454,7 @@ entity
 {
 	"id" "4241"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 268.5 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -7474,6 +7487,7 @@ entity
 {
 	"id" "4243"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 209 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -7506,6 +7520,7 @@ entity
 {
 	"id" "4245"
 	"classname" "npc_gman"
+	"parentname" "launcher_gman_carousel"
 	"angles" "0 178.5 0"
 	"disableflashlight" "0"
 	"disablereceiveshadows" "0"
@@ -12728,6 +12743,108 @@ entity
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "4568"
+	"classname" "func_rotating"
+	"targetname" "launcher_gman_carousel"
+	"angles" "0 0 0"
+	"disablereceiveshadows" "1"
+	"disableshadows" "1"
+	"dmg" "0"
+	"fanfriction" "20"
+	"maxspeed" "6"
+	"renderamt" "255"
+	"rendercolor" "255 255 255"
+	"rendermode" "0"
+	"solidbsp" "0"
+	"spawnflags" "65"
+	"volume" "0"
+	"origin" "-7168 2096 -152"
+	solid
+	{
+		"id" "4569"
+		side
+		{
+			"id" "4570"
+			"plane" "(-7176 2104 -144) (-7160 2104 -144) (-7160 2088 -144)"
+			"material" "TOOLS/TOOLSNODRAW"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 -1 0 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "4571"
+			"plane" "(-7176 2088 -160) (-7160 2088 -160) (-7160 2104 -160)"
+			"material" "TOOLS/TOOLSNODRAW"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 -1 0 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "4572"
+			"plane" "(-7176 2104 -144) (-7176 2088 -144) (-7176 2088 -160)"
+			"material" "TOOLS/TOOLSNODRAW"
+			"uaxis" "[0 1 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "4573"
+			"plane" "(-7160 2104 -160) (-7160 2088 -160) (-7160 2088 -144)"
+			"material" "TOOLS/TOOLSNODRAW"
+			"uaxis" "[0 1 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "4574"
+			"plane" "(-7160 2104 -144) (-7176 2104 -144) (-7176 2104 -160)"
+			"material" "TOOLS/TOOLSNODRAW"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "4575"
+			"plane" "(-7160 2088 -160) (-7176 2088 -160) (-7176 2088 -144)"
+			"material" "TOOLS/TOOLSNODRAW"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "220 30 220"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 17000]"
 	}
 }
 cameras

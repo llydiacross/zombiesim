@@ -1,11 +1,26 @@
 {
     "schemaVersion":  1,
     "source":  {
-                   "title":  "Natural Earth I",
+                   "title":  "Natural Earth I and NASA Black Marble 2016",
                    "sourcePage":  "https://www.naturalearthdata.com/downloads/50m-raster-data/50m-natural-earth-1/",
                    "terms":  "https://www.naturalearthdata.com/about/terms-of-use/",
                    "permission":  "Public domain; use, modification and redistribution permitted without required credit.",
                    "sourceSha256":  "55745a3b4ccad41db9ed42314de2bf6fce87b6d3990ede7db1730320e1aa2e04",
+                   "highDetailSource":  {
+                                            "archive":  "https://naciscdn.org/naturalearth/50m/raster/NE1_50M_SR_W.zip",
+                                            "archiveSha256":  "9e85417223414bbed425aea5dca0f0b4c5661fc94d4f14494140a21a08dfa450",
+                                            "image":  "NE1_50M_SR_W.tif (10800x5400), resampled to 4096x2048 for close zoom"
+                                        },
+                   "nightLights":  {
+                                       "title":  "Black Marble 2016",
+                                       "sourcePage":  "https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/",
+                                       "sourceImage":  "https://assets.science.nasa.gov/dynamicimage/assets/science/esd/eo/images/imagerecords/144000/144898/BlackMarble_2016_01deg.jpg?w=3600\u0026h=1800\u0026fit=clip",
+                                       "sourceSha256":  "1785ebc5f476b658df7f7c84cff4ba4ecf997c9331756de370ba8ef1daba575a",
+                                       "highDetailImage":  "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/imagerecords/144000/144898/BlackMarble_2016_3km.jpg",
+                                       "highDetailSha256":  "230aac448ae68c358be433dd518888cccb3a85ccf66f7b44326441c324ad6725",
+                                       "highDetailDescription":  "BlackMarble_2016_3km.jpg (13500x6750), normalized and resampled to 4096x2048 for close zoom",
+                                       "credit":  "NASA Goddard Space Flight Center; scientist Miguel Roman; image processing Joshua Stevens (SSAI); Suomi NPP VIIRS."
+                                   },
                    "noticeFile":  "data_static/launcher_earth/NOTICE.txt"
                },
     "textures":  [
@@ -13,8 +28,8 @@
                          "id":  "earth_day",
                          "width":  2048,
                          "height":  1024,
-                         "sourceSha256":  "d4c2d6e997a66c0e67f7b7840f7996c499068c36d854e1bd78550f5f38319035",
-                         "vtfSha256":  "cc1afa814755f41b5a9f070bc110c9f39f51af6e39f17e2f673066008796e618",
+                         "sourceSha256":  "63cab4a2ab077ac113cbd18f2a014ff0a4afacf5ce004e406fe197ffbda58a67",
+                         "vtfSha256":  "05c43147530355f86f927d2f54adc0396d832a010b62c472b732161efa407807",
                          "compressedBytes":  1398288,
                          "estimatedRgbaBytes":  8388608
                      },
@@ -22,17 +37,35 @@
                          "id":  "earth_lights",
                          "width":  2048,
                          "height":  1024,
-                         "sourceSha256":  "f82e69d4d11861875c690af5ae057e65d6e86fce91a094debf0324522875f728",
-                         "vtfSha256":  "1df1734a525497d769a1c0fcc425e3d35521660e28ed023e7a57e45c4d234f84",
-                         "compressedBytes":  2796408,
+                         "sourceSha256":  "d23ca4079481be163e9872c82d2bc98c2a67ec2fdddcf2031a7dd879b3f59f1b",
+                         "vtfSha256":  "a1a3824d94696c9cf017be37fc1bc6972229718f91d7b3bb74936960b306662f",
+                         "compressedBytes":  1398288,
                          "estimatedRgbaBytes":  8388608
+                     },
+                     {
+                         "id":  "earth_day_hd",
+                         "width":  4096,
+                         "height":  2048,
+                         "sourceSha256":  "4d3a303c2f83a206c5c436b72227a29926ff6410aee03744ec161e766b06d40c",
+                         "vtfSha256":  "3200264b447943c7f250ae67a6ee964c31ad038a9254ed9cc6ac036589b7cb01",
+                         "compressedBytes":  5592592,
+                         "estimatedRgbaBytes":  33554432
+                     },
+                     {
+                         "id":  "earth_lights_hd",
+                         "width":  4096,
+                         "height":  2048,
+                         "sourceSha256":  "5ca5008fa3d4c96e57f0013b974781ce67f40388925fb04b27a90fea4f88669e",
+                         "vtfSha256":  "b5374429dadce0a5e6bef97e57d562bef966742fab595d94de97b51ea8184dd0",
+                         "compressedBytes":  5592592,
+                         "estimatedRgbaBytes":  33554432
                      },
                      {
                          "id":  "earth_clouds",
                          "width":  2048,
                          "height":  1024,
-                         "sourceSha256":  "d3fc38ab689e38c7d5c6f49eb881c0d2911757c8b19a823127d01429cb137d15",
-                         "vtfSha256":  "646dbe8be4e8823f480a86e3d3fab4e6e1c5029d78b8976d845417b99c20fea5",
+                         "sourceSha256":  "5ae671d82fd7e6cc2f357a643a4d3a1f995c173428e0e5a8279c2f477668e0c0",
+                         "vtfSha256":  "7ca1d32eb4b9f27ea2305ee4bde41717f9819ace97d8a12e36d845ef83ab5c98",
                          "compressedBytes":  2796408,
                          "estimatedRgbaBytes":  8388608
                      },
@@ -40,8 +73,8 @@
                          "id":  "earth_distress",
                          "width":  2048,
                          "height":  1024,
-                         "sourceSha256":  "74a5f71f9bdb76cdee4de546d779e54cf8ee76f038e4dd79f50f68221ce529f8",
-                         "vtfSha256":  "7dbbaf04d31ae0d7d292f651b79ed897f36e72a75d6d160cd005a0cdf27f6d1e",
+                         "sourceSha256":  "efa5546f625fba2fb7cd9cf565dbdeda592d1e781d948062873813304ce38d32",
+                         "vtfSha256":  "20710964a2601234f3a7456f5862001ebe865ff5802b099a9b6250e42cc8ddf7",
                          "compressedBytes":  2796408,
                          "estimatedRgbaBytes":  8388608
                      },
@@ -49,23 +82,38 @@
                          "id":  "earth_rim",
                          "width":  256,
                          "height":  256,
-                         "sourceSha256":  "7f9617c5d06bd6076513261514d1b3af61c3c8cc824ca316ec15e92b919db741",
-                         "vtfSha256":  "f637ca46465293855ee0d52a70728d4d672a4e19ff447dbb131e995c06e3641d",
+                         "sourceSha256":  "21b58027c3cf2f54e21d13b33b0717db8b110e21144d54a5a35da1f4b2dc430b",
+                         "vtfSha256":  "6ae5d3db1904ad22b5a43cc07c5134d8eae2db13b0016d6a393306ea6c92ca90",
                          "compressedBytes":  87640,
                          "estimatedRgbaBytes":  262144
+                     },
+                     {
+                         "id":  "space_fog",
+                         "width":  512,
+                         "height":  512,
+                         "sourceSha256":  "508dcafde0be05343c0452a21e3791c588c3e4c9254416143c93ae2dd00cd5a5",
+                         "vtfSha256":  "0c3a5128bc0911a9cf9a6d7034e32a0345b36f58e3cba366562bc427c496efa6",
+                         "compressedBytes":  349784,
+                         "estimatedRgbaBytes":  1048576
                      }
                  ],
     "ownedFiles":  [
                        "materials\\zombiesim\\launcher\\earth_day.vtf",
                        "materials\\zombiesim\\launcher\\earth_lights.vtf",
+                       "materials\\zombiesim\\launcher\\earth_day_hd.vtf",
+                       "materials\\zombiesim\\launcher\\earth_lights_hd.vtf",
                        "materials\\zombiesim\\launcher\\earth_clouds.vtf",
                        "materials\\zombiesim\\launcher\\earth_distress.vtf",
                        "materials\\zombiesim\\launcher\\earth_rim.vtf",
+                       "materials\\zombiesim\\launcher\\space_fog.vtf",
                        "materials\\zombiesim\\launcher\\earth_day.vmt",
                        "materials\\zombiesim\\launcher\\earth_lights.vmt",
+                       "materials\\zombiesim\\launcher\\earth_day_hd.vmt",
+                       "materials\\zombiesim\\launcher\\earth_lights_hd.vmt",
                        "materials\\zombiesim\\launcher\\earth_clouds.vmt",
                        "materials\\zombiesim\\launcher\\earth_distress.vmt",
-                       "materials\\zombiesim\\launcher\\earth_rim.vmt"
+                       "materials\\zombiesim\\launcher\\earth_rim.vmt",
+                       "materials\\zombiesim\\launcher\\space_fog.vmt"
                    ],
     "ownedNoticeFiles":  [
                              "data_static\\launcher_earth\\NOTICE.txt"

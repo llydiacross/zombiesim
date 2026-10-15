@@ -864,9 +864,18 @@ concommand.Add("zombiesim_dev_test_sky_browser", function()
         check(LocalPlayer():GetPos():DistToSqr(position) == 0, "survivor not teleported")
         check(Inspection:Start(Browser.Frame), "preview reopens")
         if Inspection.State then
+            local looping = Inspection.State.loop
             Inspection.State.startedAt = RealTime() - Inspection.State.duration - 1
             Inspection.State.frame:Think()
-            check(not Inspection:IsActive() and Browser.Frame:IsVisible(), "timeout restores UI")
+            if looping then
+                check(Inspection:IsActive(), "launcher preview keeps looping after a full pass")
+                local cycleTime, cycle = Inspection:GetCycleTime(Inspection.State, Inspection.State.duration + 1)
+                check(cycle == 1 and math.abs(cycleTime - 1) < 0.001, "second pass restarts from the authored camera")
+                Inspection.State.frame:OnKeyCodePressed(KEY_ESCAPE)
+                check(not Inspection:IsActive() and Browser.Frame:IsVisible(), "Escape exits the looping preview")
+            else
+                check(not Inspection:IsActive() and Browser.Frame:IsVisible(), "timeout restores UI")
+            end
         end
         check(selectedConVar:GetString() == savedChoice, "preview does not change saved sky")
     end)

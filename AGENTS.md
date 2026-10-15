@@ -4,7 +4,659 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Active Task Tracker
 
-- **Expensive-work batching preference, 2026-10-12:** continue Alpha3.1.5 with
+- **Alpha3.2 normal wide-motorway cells approved, 2026-10-15:** all27
+  complex/mixed preview cells now come from the normal planner (schema-2
+  `motorwayAssembly`, measured assembly report required). Approved fixtures are
+  instance-identical; user approved new cells0,7/12,7/23,18/15,18 in Hammer++.
+  Roads stay on the5x5 grid, joins use corner/straight/corner doglegs, no bend
+  connectors, T skipped. Motorway geometry fixes are user-owned in Hammer.
+  Next is the approved Phase J full preview batch; ask before navmesh/Satellite.
+  Quick review tool: `build_motorway_cell_preview.ps1 -NormalComplex -SkipInfill`.
+  Periodically delete superseded `generated/` test folders (keep ledgers/backups).
+- **Alpha3.2 measured complex travel preparation:** user explicitly approved
+  refreshed crossroads and synthetic motorway T whole-cell geometry; do not
+  reopen those Hammer reviews. Complex contracts now retain their source
+  coordinate frame. Source-backed gate candidates check saved flat floor
+  windings across the trigger, arrow and arrival; stale source hashes,
+  unsupported decks and physical gaps reject explicitly. Normal export/emission
+  is still straight-only: these candidates do not enable diagnostic cells.
+  The centred south corner approach uses the existing ordinary-road96/128
+  arrow/arrival insets (live travel review pending). Its candidate gate is0,-2720 at deck36, arrow0,-2624,
+  arrival0,-2592; reviewed geometry is unchanged. Runtime now accepts explicit
+  one-lane `road` contracts separately from two-lane motorway contracts, rejects
+  shared-map route/count conflicts and preserves legacy markers/barricades.
+  Fresh server markers12/12, client10/10, GLua275/0 and motorway1529 pass.
+  Seven whole-cell3436 remains passing. Live ordinary-road travel, normal
+  complex planning/reservations/export and staging remain pending.
+  Full density plan still contains69 plain straights plus27 complex/mixed
+  motorway cells. Standalone single/dual on-ramp ordinary mouths remain offset
+  (512/256 units in current canonical fixtures); the approved mixed1408-unit
+  dogleg is not automatically valid there. Their mouths are also off the640
+  road grid (1920 from centre, leaving960 to the edge), so native corners and
+  straights cannot centre them. User rejected generated bend/S-bend connectors
+  (2026-10-15): never create bend connector pieces; join roads only with native
+  corner/straight pieces and do not move normal road positions. The rejected
+  bend code and sources were removed. User chose to leave standalone on-ramps
+  as they are for now and continue the rest of Alpha3.2.
+- **Alpha3.2 junction coverage refreshed:** matching full density plan has4
+  motorway crossroads,0motorway T and172ordinary road T cells. Motorway T
+  remains an explicit synthetic whole-cell fixture. Fresh seven-cell3436
+  assertions/7required VMFs pass under
+  `generated/phase_e_junction_cell_verification_20261014`; exact crossroads
+  and motorway T both pass VBSP/portals/VVIS/VRAD (preview fast/pool1).
+  The user explicitly approved both refreshed junction arrangements.
+  Other five fixtures were structurally checked, not recompiled. Diagnostic
+  fixtures are not normal gate/runtime integration or live acceptance.
+  User also approved final corner cleanup and confirmed missing corner infills
+  are expected. All four mixed layout reviews are satisfied; do not reopen.
+- **Alpha3.2 mixed correction review:** four current-source fixtures under
+  `generated/phase_e_mixed_centred_routes_20261014` pass VBSP/portals/VVIS/VRAD
+  (preview fast preset); four new Hammer++ windows are open, old work preserved.
+  Bridge dominates cell centre; south/north terminals are0,+1280 / +16,-1280.
+  Mixed ramp wide owners remain unchanged. Both ordinary-road entries snake
+  from the true central side axis through corner/768-unit straight/corner;
+  user explicitly approved the extra128 rather than moving wide pieces.
+  Source initializer preserves editable connector changes; actual floor edges
+  validate all joins. Mixed automatically uses complete rectangular infill,
+  preserving accepted corner exclusions/sub4 limits. Fresh motorway1529,
+  density2633, mixed infill27022/128 rectangles pass. User approved both bridge/
+  deadend layouts, deadend/on-ramp and the corner connecting row. The remaining
+  corner correction replaces only obsolete S-border road slot2,5 with planned
+  terrain. Fresh `generated/phase_e_corner_terrain_cleanup_20261014` passes
+  the same fast compile/portal/infill checks; all three approved control VMFs
+  are byte-identical. Do not reopen their human layout approval.
+  `ordinaryRoadApproaches.boundaryPort` is the centred road contract for later
+  gates; the south row lies at-2560, so do not blindly reuse old2208 gate axis
+  over empty floor. Normal mixed gate/runtime integration remains pending.
+  Normal straight emission/2-map compiles/4 gates+arrivals now pass; fresh
+  crossroads VBSP passes. Two-cell runtime export correctly rejects incomplete
+  24x24 data. No staged/live/player/profile changes; no Phase E acceptance.
+  This supersedes earlier guarded/no-compile/source-policy-pending notes below.
+- **Alpha3.2 measured straight gate writer, 2026-10-14:** normal straight VMF
+  gate selection remeasures source and compares planned records/active entrances.
+  Trigger extents1456x64 at Z32..144, measured lane arrival Z72 and existing
+  car/glass composition translated to carriageway centres are wired in source.
+  Legacy trigger256x64/props unchanged; inspection emits no gates. Fresh
+  motorway1405/density2633 pass. Normal-wide emission guard remains until
+  runtime markers/arrivals integrate; no VMFs/BSPs/staging/live changes.
+  Compiled barricade/trigger collision and appearance remain later batch gates.
+- **Alpha3.2 measured straight gate contract, 2026-10-14:** normal straight
+  plans derive lane/deck/arrow/arrival metadata from current saved floor faces.
+  Canonical lanes416 wide at Z68, centres-512/+528, transformed to N/W
+  -512/+528 and S/E -528/+512 outward-right offsets. Gate2208/mouth2240,
+  arrow256 inward/arrival384 inward unchanged. Straight-only stale registry
+  IDs252/258 corrected to actual342/384; no authored asset edits or bridge
+  registry changes. Fresh motorway1352/density2633 and actual two-plan/four-
+  direction records pass. Normal brush/prop/marker/runtime consumers remain
+  pending and emission guard remains. No compile/staging/live changes; CSM
+  deferred and rectangular-building live validation awaits authored asset.
+- **Alpha3.2 resumed density/motorway priority, 2026-10-14:** user approved the
+  reconciliation and resumed work. No ordinary rectangular building exists;
+  its physical/live validation waits for the user's eventual asset, not this
+  release's generator work. CSM remains deferred. Normal plain-straight core
+  planning now shares the accepted stripe geometry and reserves15 slots before
+  density decorations (five owners/ten suppressed). Two fresh normal-planner
+  recipes prove both orientations without inspection metadata; their legacy
+  fixture manifest is not new density-output evidence. Fresh motorway1082,
+  density2633, rectangle555 and entrances12+2 pass. Suppressed dimensions remain
+  consistent with owners through planner defaults and builder validation.
+  Normal VMF emission remains deliberately
+  blocked until rings/gates/runtime integration; no compile/staging/live changes.
+  Phase E remains active, not accepted. Existing bounded preview approval stands.
+- **Alpha3.2 reconciled status, 2026-10-14 - authoritative over older next-action
+  notes below:** user paused execution for a complete audit. Read the current
+  reconciled-status section at the top of `todo-alpha.3.2.md`. Phases0/A/B/D
+  accepted; both straight and all seven complex motorway cells were reviewed.
+  Accepted isolated inspection fixtures are NOT normal-world rollout: retained
+  full density-preview plan has96 motorway cells, no measured assembly metadata
+  and1x1 road placement records despite wide-source remapping. Its336/338
+  compile has only two crossroads failures; fixing them alone does not complete
+  widened reservations/rings/gates/runtime/derivatives. E helper work is isolated
+  source preparation; no ordinary rectangular buildings installed. Do not
+  reopen accepted artwork/yaws or turn historical join residuals into new
+  connector-authoring requirements; retained Phase B limits are not erased.
+  Minimal brush41926 repair and the bounded preview generation/compile/
+  derivative/backed-up staging/launch batch are now approved. Brush edit has
+  verified backup but no new compiler verification; do not call it fixed yet.
+  F/G/I integration/review and final J/K/L remain open. Full navmesh/Satellite
+  closure, production/publication remain separately gated. CSM experiment
+  accepted with further work deferred; M cancelled/removed; fixed landmarks
+  density-exempt, never relocated. Audit changed documentation/status only;
+  no generation/compiler/staging/live transition/player changes ran.
+- **Alpha 3.2 motorway origin emission, 2026-10-14:** core/ring VMF emission
+  now consumes measured owners' explicit `originCellLocal` XYZ instead of
+  recalculating the rectangle centre. Shared production writer preserves
+  fractional coordinates/invariant output and rejects missing/non-finite
+  origins, occupied-slot emission and incompatible frame/pitch/tile-Z shifts.
+  XYZ is already physical cell-local: do not rotate it again or add tile Z.
+  Isolated motorway mode remains required; ordinary centred origins/interior
+  rounding unchanged. Fresh motorway1074, rectangle555, entrance12+2 pass;
+  all18 retained straight core/border/outer VMF transforms match the writer.
+  This is entity-output/retained-artifact compatibility, not a fresh complete
+  map, compiled or live acceptance. No outputs/assets/settings/live state
+  changed. Phase E remains open for normal planner and complex assembly
+  origin/ring/gate/travel integration. CSM deferred, M cancelled; broad output
+  batches and crossroads brush repair remain separately gated.
+- **Alpha 3.2 motorway focus and straight contract, 2026-10-14:** user confirmed
+  the scope clarification and asked to continue. Prioritize motorway origins/
+  rings/travel; retain ordinary rectangle helpers without expanding building
+  features next. Builder uses shared read-only straight corridor validation:
+  nine distinct owners,27 exact leases,25 unique core slots, approved finite
+  origins and matching rotated footprints; suppressed slots cannot emit or
+  reference another owner. Inland-straight limits still reject water/ocean/
+  den cells. Fresh motorway710, rectangle555 and ordinary entrance12+2 pass;
+  both retained straight plans pass27 leases each. No output generation,
+  compiler/staging/live reload or authored edits ran. This does not enable
+  normal wide-motorway planning or accept Phase E. Complex joins, full
+  origin/ring/gate/travel integration and physical/live evidence remain open.
+  CSM deferred, M cancelled; broad batches and crossroads source repair remain
+  separately gated.
+- **Alpha 3.2 Phase E filename/inventory source slice, 2026-10-14:** shared
+  `_WxH`/legacy `_Wx` parser wired into marker inventory, height selection,
+  compact macro names and zoo/test helpers. Ordinary limit stays3 per axis;
+  forced oversized rectangles fail explicitly. N/S midpoint uses authored
+  height, E/W width; zoo spacing uses both axes and multi-tile tests distinguish
+  authored markers from rotated occupancy/origins. Fresh rectangle555,
+  density2529 and ordinary entrance12+2 pass. No new ordinary rectangle building
+  exists in inspected inventory; no authored assets/settings changed. Full
+  frontage/multi-tile output tests, end-to-end small-output and compiled/live
+  verification remain open; first E checkbox is not complete/accepted.
+  No world generation/compiler/staging/live reload ran. M cancelled, CSM
+  deferred, expensive batch and motorway source repair still separately gated.
+- **Alpha 3.2 Phase E rotated frontage source slice, 2026-10-14:** marked
+  candidates validate rotated reservations but transform markers from authored
+  dimensions; generic frontage uses authored direction and the same axis swap.
+  Building/forced/landmark reservations, caps and commercial access use those
+  dimensions. Commercial cache keys distinguish rectangles at one anchor.
+  Fresh rectangle/frontage475, density/recipe2529 and ordinary entrance12+2
+  pass;24 paired square marked/generic scenarios exactly match committed
+  candidate order/targets. An initial square tie-order discrepancy was fixed.
+  No assets selected or maps generated/compiled/staged/live-reloaded.
+  Rectangle filename parsing and authored direction-marker inventory validation
+  remain square-only and are the next boundary; first Phase E checkbox remains
+  open. Full frontage/multi-tile output tests and physical/live acceptance remain
+  unrun, not implied by helper fixtures. M stays cancelled; CSM stays deferred.
+- **Alpha 3.2 Phase E explicit occupancy source slice, 2026-10-14:** the
+  planner/builder accept explicit rectangles1..3 per axis with one emitting
+  owner. Planner rejects empty/reused IDs atomically; builder rejects duplicate
+  emitting IDs and inconsistent template/yaw/explicit occupied dimensions.
+  Legacy records without repeated dimensions retain owner geometry.
+  Fresh rectangle342, density/frontage/recipe2528 and ordinary entrance12+2
+  fixtures pass; current validator passes576 retained ordinary cells and two
+  retained straight motorway inspection cells. No maps were generated/compiled/
+  staged or live-reloaded. This is source/compatibility evidence, not Phase E
+  acceptance. Ordinary rectangle filename selection, rotation-aware frontage,
+  authored offsets and ring/travel integration remain open; do not wire new
+  user tiles or widen size limits without inspecting their actual contract.
+  Phase M stays cancelled and CSM stays deferred.
+- **Alpha 3.2 Phase M cancelled / Phase E next, 2026-10-14:** the user
+  rejected the safe-zone detail effect and the underlying idea. Do not resume
+  M0-M6, request more detail reviews, or design another neighbor-claim system.
+  Removed optional detail settings handling, two-pass scenery reservations,
+  claims/diagnostics, recipe/variant signature contributions, builder emission
+  and dedicated detail tests. Existing safe-zone entrances, identities, density,
+  roads/coast and unrelated generator work are retained. Preserve the user's
+  authored VMF/VMX files; old isolated detail fixtures are rejected history and
+  must not be staged. No detail-bearing world was staged or player data changed.
+  The user's replacement direction is larger, interesting authored tiles with
+  varied widths/heights placed through the ordinary generator. Follow Phase E
+  footprint/instance/ring/gate integration; inspect actual assets before wiring.
+  Earlier M0 design approval and M1/M2 progress below are historical and
+  superseded, not pending acceptance work. CSM remains deferred, the two prior
+  motorway VBSP failures still need author repair permission, and expensive
+  builds/staging/production/publication remain separately gated.
+  Removal validation: affected PowerShell parses/editor diagnostics pass;
+  current density/selection/recipe-identity fixtures2528/2528 and fresh ordinary
+  entrance fixtures12orientation/water +2rejection pass. `-FixturesOnly`
+  skips the full-preview entrance baseline without changing default behavior.
+  Ordinary variety/route checks4807/4807 pass on the retained576-cell/335-recipe
+  plan; this is not a new generated-world or live acceptance. No Lua or authored
+  VMF/VMX changed in removal, and no build/staging/live reload ran.
+- **Alpha 3.2 experimental CSM accepted / remaining CSM deferred:** the user
+  explicitly accepts the current default-off, client-local additive experiment
+  and its Options enable/Low/Medium/High controls. The weighted nested1/2/3
+  projectors at15/30/rendered-frame `Update` rates are not seamless conventional
+  cascades or a proven GPU refresh optimization. GLua275/0 and diagnostics pass;
+  the new runtime/Options source has not been live-loaded, and full lifecycle,
+  skybox/capture, multiplayer and matched foreground performance remain
+  unverified. This is limited-scope acceptance, not fabricated test evidence.
+  All remaining CSM work is saved in [docs/csm-implementation.md](docs/csm-implementation.md)
+  outside Alpha 3.2's completion gates. Do not resume CSM probes, optimization,
+  reloads or benchmarks unless explicitly requested. Keep default off, baked/
+  shared lighting unchanged, and the unshadowed F-toggle chest lamp separate.
+  Resume E/F/G/I/J/K/L; the rejected M system is no longer a prerequisite.
+  The336/338 isolated preview batch is not stageable:
+  the two motorway-crossroads VBSP failures require author permission before
+  geometry repair. Expensive output/staging, production and publication gates
+  remain unchanged.
+- **Historical pre-rejection Alpha 3.2 Phase D/M0/M1 evidence, 2026-10-14:**
+  M0/M1 approval and detail work below are superseded by Phase M cancellation
+  above; the density and unrelated compiler/CSM evidence remain scoped history.
+  The user
+  accepted density selection, fixed-landmark exemptions, complete occupied
+  route adjacency, the four-variant cap and current recipe growth. The isolated
+  seed-1337 preview produced a 576-cell/335-recipe plan (+24, 7.7% over the
+  311-recipe baseline), 335 layouts and no missing required VMFs. Plan-level
+  variety passes 4,807 assertions; actual layout adjacency passes 5,966;
+  required cells are 335/335. The user accepted deterministic entrance slot
+  changes at (16,0), (22,12) and (3,18). No compilation, staging, live or visual
+  review occurred; the temporary generated probe was removed. Phase M0 design
+  decisions and the two test blockouts were reviewed and accepted. M1 claim
+  planning is now authorized. Use one-tile-deep neighboring outer-ring claims;
+  approved NW, cardinal-edge and Epicenter mappings; Lab/Epicenter are
+  landmark-driven, with Lab claims anchored to its actual 2x2 footprint;
+  detail faces point toward the source, using a horizontal tie-break for
+  diagonal claims; missing family assets are diagnosed and skipped;
+  active dens use Hospital/Army Base/Bunker identity or default; details are
+  untagged, W/E-canonical, visual-only and lose to higher-priority claims.
+  Storm Drain gets N/S flanks and westward pipes ending at the existing coast;
+  piers, harbors and naval silhouettes are out of scope. Two clearly marked
+  source test blockouts (Default-den and Hospital) exist under
+  `tiletemplates/safezone_detail`; normal settings do not select them. The user
+  revised the Default-den blockout for a more generic fit and approved removal
+  of an exact duplicate brush from both its VMF and VMX. Current tile structure
+  passes balanced-brace, unique-ID/bounds, six-sided-solid, CRLF and route-marker
+  checks; the mounted material resolves from `garrysmod_dir.vpk`. The ground-grid
+  suite passes 56 assertions. The refreshed two-tile zoo is open responsively in
+  Hammer++, but the revised appearance has not received a new human acceptance.
+  M1 planning now resolves claims against a high-priority-only pass, then
+  reserves accepted incoming tiles before ordinary single-tile, macro and open
+  scenery selection, including variant rebuilds. Focused claim tests pass 43
+  assertions; entrance integration plus claim-aware variation passes 963
+  assertions across 16 cells/11 recipes/22 adjacent pairs and confirms two
+  ordinary scenery slots are reserved. The user explained that the multi-tile
+  fixture's old `tile_building_1b_2x.vmf` reference was obsolete after renames;
+  it now points to current `tile_building_2aa_2x.vmf`.
+  The user authorized a full isolated seed-1337 preview regeneration/compile.
+  Current generated data has576 cells/335 recipes, tier counts72/120/384,
+  density policy v1, plan adjacency4807/4807 and actual layout adjacency
+  5966/5966; required sources are335/335. The isolated 338-map fast compile
+  finished 336/338. The two VBSP failures,
+  `zz_preview_97dcc3127e09` and `zz_preview_99a2fd788b1e`, both instance
+  `tile_motorway_crossroads_6x3.vmf` and fail on brush41926 (`bounds out of
+  range` / `HashVec: point outside valid range`); no VVIS/VRAD ran for those
+  two. They are not staged; do not edit the user's motorway source without
+  approval. CSM feasibility was explicitly pulled forward to run alongside this
+  batch. A manually invoked local-only ProjectedTexture probe and preview-admin
+  status bridge are in `gamemode/tests/cl_csm_feasibility_probe.lua` and
+  `gamemode/sv_dev_console.lua`; GLua274/0 passes. `util.GetSunInfo` returned
+  no enabled sun, so a test-only direction is derived from the preview base
+  `light_environment` with an explicit Source-branch caveat. The user visually
+  confirmed the orthographic sunlight probe casts world/telephone-pole and
+  tree-leaf shadows in the reviewed cell. Its final CPU `Update` timing is
+  0.134ms average/1.003ms max over1718 calls, not full render cost.
+  A gameplay light-only chest lamp is implemented at the F/native-flashlight
+  bind: server NWBool state, local player center, replicated cones on every
+  client, nearest-four/2048-unit render cull, all chest cones unshadowed, and
+  death cleanup. F on/off passed on the preview survivor. A/B/A shadowed
+  chest-light profiling measured22.5/59.8/26.6 FPS; the permanent unshadowed,
+  transform-cached lamp measured59.5 FPS versus59.8 off, with captured0.262ms hook
+  average and0.675KiB/frame allocation (correcting the earlier0.081ms summary).
+  The user later noted the game may have
+  been unfocused during capture; focus was not recorded, so these FPS pairs are
+  not matched causal evidence.   No baked/shared lighting changes occurred. `SetSkipShadowUpdates` was
+  available but visually lost/staled the reviewed shadows and remains off.
+  A test-only rate limiter exposes 15/30/60Hz probe updates. Bridge-started FPS
+  profiles reported44.37FPS with one projector at60Hz,59.80FPS after removal,
+  and22.85/23.31FPS at15Hz, but a foreground-window monitor during the latter
+  run recorded GMod in0 of159 samples. The bridge workflow left VS Code active;
+  none of those profiles establishes foreground CSM cost or a rate benefit.
+  The temporary probe was stopped and verified projector-invalid.
+  `gamemode/cl_csm.lua` now owns a client-local, default-off CSM prototype and
+  Options toggle/quality selector. Low/Medium/High use1/2/3 weighted nested
+  projectors at15/30/full rendered-frame updates. The layers currently overlap
+  without seam masks; cascade appearance, dynamic-caster accuracy, lifecycle,
+  skybox behavior and performance remain unverified. It uses
+  `render.GetViewSetup(true)`, suspends for known launcher/inspection/capture
+  contexts, and removes all owned projectors when disabled. GLua275/0 and
+  Problems diagnostics pass, but the running client has not been reloaded with
+  this source; no runtime/Options live or visual test is claimed. The user
+  subsequently accepted the experimental scope with these limits, as recorded
+  above; further CSM work and a manual foreground profile are deferred. No staging or full
+  capture has run.
+  Do not alter the preserved entrance/detail walls. Other authored assets,
+  compiles, skybox model builds, staging and visual acceptance remain gated.
+- **Alpha 3.2 Phase B acceptance record, 2026-10-15:** the user
+  accepted Phase B with exact floor-mouth seams still clearance-pending and
+  incompatible motorway/road connections explicitly unsupported. All emitted
+  assembly examples stay inspection-only. The seven final bounds-based
+  complete-cell fixtures passed VBSP/VVIS/VRAD 7/7, within portal budgets
+  (maximum 370/1,064), and the user reviewed them in Hammer++ and accepted the
+  phase with those limits. The user then approved U4/U8 infill for any
+  bounds-verified rectangular gap. Fresh U4/U8 regression passes 78,498
+  assertions; complete-cell integration passes 3,579, with 390 integer
+  rectangular instances across seven cells. The observed T-junction 13x256
+  gap now emits U8 + U4 and leaves only its 1-unit remainder on the black floor.
+  Updated outputs are isolated under
+  `generated/phase_b_u4_u8_infill_20261015_176149103747430597768558764c2f0d`;
+  VBSP/VVIS/VRAD pass 7/7, with no failures or incomplete stages. Portal
+  budgets pass 7/7 (maximum 365 clusters/1,055 portals against 1,500/2,700).
+  The user reviewed and accepted the four refreshed U4/U8 cells (crossroads,
+  synthetic T-junction, deadend and single ramp) after they were opened at
+  their exact paths in Hammer++. This follow-up does not re-open accepted
+  connector policy or authorize staging/production.
+- **Alpha 3.2 Phase D source inventory, 2026-10-15:** active settings now map all
+  five motorway topologies and three motorway transports to the approved
+  `roads/motorway_3x1` files. Retained `motorway_1x1` sources are mapped
+  explicitly inside the isolated inspection wrapper only; the active wide
+  motorway variant pool is empty because the approved inventory has no
+  footprint-compatible alternatives. Removed missing untagged border paths
+  and selected the compatible `tile_border_wall_corner_1a.vmf`. Planner
+  preflight validates 67 explicit tile paths and requires all motorway
+  topology/transport keys; motorway straight, center and dead-end selection
+  cannot fall back to terrain. Inventory tests pass14/14, motorway inspection
+  568/568, source geometry614/614 and ground-grid56/56. Re-audit of the newer
+  user-edited T-junction source found one repairable 0.388-unit offset in a
+  single640x640 ground slab; the approved ground-only repair made a hash-backed
+  source backup and leaves zero reported ground-grid issues. The separate
+  `test_outer_edges.ps1` still fails before planner invocation because its
+  fixed-prop count expects2 dynamic props in `tile_edge_ra_wall_1aa.vmf`, while
+  the unchanged source contains4; this is not caused by this slice and remains
+  open. No full-world plan, map compile, staging or publication ran. Phase B's
+  accepted connector limits remain unchanged.
+- **Alpha 3.2 rectangular infill correction, 2026-10-14 (initial 16-unit minimum; superseded below):** user rejected
+  the polygon/decimal infill approach. Only recognized standard ground bases
+  generate infill. Independently, inspect each authored brush's bounds within
+  the Z0..32 fill slab and exclude intersecting candidate regions; this does
+  not turn arbitrary brushes into ground sources. Use full
+  640x640ground first, retain320x640half/320x320quarter, and use strict powers
+  of two16..512for both dimensions of extra patches. Nothing below16is emitted;
+  fractional/sub16remainders stay on the black floor and are explicit metadata.
+  Do not recreate `tile_ground_shape_*` or decimal `p` source names.
+  Proven ground-only repairs:39brushes/28sources with verified originals and
+  all other fields unchanged; subsequent audit finds zero recognized defects.
+  Explicitly removed61shape/12decimal source files with hash-backed backups,
+  then archived76unused unmodified rectangular defaults. Current power2
+  fixtures use30source templates (previously75), now472instances and36omitted
+  sub16remainders. Strict sizing increases instance count versus arbitrary
+  polygons; do not claim an instance-count reduction. Fresh infill87599,
+  complex3613/ground56checks pass; PowerShell7/7 and protected inputs pass.
+  The first decorative correction explicitly protected the concrete and
+  dirt-lip surfaces in `tile_bushes_1aa.vmf`; that source-specific exception
+  is now superseded by a material-independent geometry-bounds check described
+  below. Older fixtures referencing retired sources are stale.
+  Preserve approved roads.
+  On 2026-10-14, the user requested Phase B completion. Fresh current-source
+  geometry614, survey5696, assembly1806 and complete-cell3625 assertions pass.
+  The seven refreshed complex cells completed VBSP/VVIS/VRAD7/7 under the fast
+  preset; all are within the 1500-cluster/2700-portal budgets (maximum
+  365/1055). This bounded compile does not prove collision/travel or resolve
+  the exact/diagnostic lane joins and road approaches. Updated-infill human
+  review remains pending after Hammer++ did not retain all seven launched
+  fixtures. A later crossroads inspection traced duplicate fills to the
+  authored concrete solid1945 and adjacent dirt lip solid1946 in
+  `tile_bushes_1aa.vmf`. The exact-source signature check was only a narrow
+  interim fix; it is replaced by the regional bounds rule in the active
+  tracker. No materials or solid IDs are used to decide whether an authored
+  brush occupies candidate ground.
+  The user then confirmed checking all open Hammer cell previews and that they
+  looked fine, and closed the editors. The latest isolated bounds outputs were
+  generated afterward and were not opened by this run. Fresh infill68868and
+  complex3357 assertions pass; seven final layout fingerprints match their
+  VMFs, with344 emitted rectangles versus472 in the prior seven-cell output.
+  No new compile, staging or production build ran. At that checkpoint Phase B
+  remained active; no staging/production authorization was implied.
+  Continued connector measurement: ordinary road side54 is256wide/Z36;
+  ordinary bridge side276 is256wide/Z196, compared with the approved wide
+  bridge Z196.057. This0.057deck difference is measured, not permission to
+  move either source. Current ordinary ramp branch end floors remain Z68/96.
+  On 2026-10-15, the user chose to defer connector assets and keep incompatible
+  motorway combinations and ordinary-road approaches unsupported. The survey
+  now labels48 exact surface seams as clearance-pending candidates,24
+  mismatched motorway mouths and20 road approaches as unsupported; every
+  generated assembly instance is `inspection_only`. Fresh disposition checks
+  pass1900 survey and3487 complete-infill assertions. The final bounds-based
+  complete-infill fixtures then passed VBSP/VVIS/VRAD7/7 and portal budgets,
+  maximum370 clusters/1064 portals. That compile does not establish collision
+  clearance or live traversal. At this checkpoint acceptance was still
+  pending; the user subsequently accepted Phase B after reviewing the final
+  compile fixtures, as recorded above.
+
+- **Alpha 3.2 nine-cell visual review accepted, 2026-10-13:**
+  user checked all nine complete motorway cells, adjusted their source tiles
+  and explicitly approved the results as perfect. Preserve that artist revision;
+  do not reopen the same visual checks or revert the geometry. Current measured
+  bridge road deck is196.057; single ramp road mouth is Z80/grade-112/192,
+  dual ramp mouths remain Z96/grade-0.5. Dual upper lane face ids now
+  W3470/3518 and E3308/3314. Ordinary approach mouths are Z36 and Z68/96.
+  Fresh survey5696/assembly1806 assertions pass:48exact/24diagnostic seams
+  and20pending approaches across32rotations. These counts do not prove compiled
+  collision or fix the remaining ordinary-road grade/deck and combined topology
+  contracts. Phase B remains active; costly builds remain separately gated.
+  The earlier park whole-source centering moved its already-canonical direction
+  marker off the south midpoint; restored only that metadata marker to0,-640,32.
+  Current-source complete refresh at `generated/phase_b_approved_cells` passes
+  infill271950/complex3311/ground56/geometry614 assertions,321ground instances.
+  Protected settings/tuned plan/both runtime JSON hashes remain unchanged.
+  Cleanup audit finds75active sources and36unused byte-identical defaults;
+  these36remain pending archive to preserve references in reviewed/open old VMFs.
+  No compiler, world rollout, staging or live test ran.
+  User chose separate connector/approach authoring requirements, not deferral
+  into Phase D. The active tracker now records nine measured requirements,
+  exact exceptional edge contours, source-local coordinates and bounded
+  authoring/integration gates. Phase B stays active; next is measuring the
+  ordinary-road/bridge far endpoints and span/clearance for a proposed isolated
+  connector, then approval/authoring. Do not invent lengths, tolerances or alter
+  approved motorway art to make the existing provisional approaches fit.
+
+- **Alpha 3.2 complete infill / cleanup / building audit, 2026-10-13:**
+  complete projected ground now uses320editable instances across seven complex
+  cells. Infill271563assertions cover actual convex overlaps/planes/half-spaces
+  and six complete non-corner ground frames at four cardinal rotations; the
+  approved corner is retained, not declared newly complete. Stable round-trip
+  polygon/dimension identities prevent duplicate defaults. Fixed a shared-array
+  winding bug;34verified legacy defaults repaired with originals archived.
+  Explicit cleanup archived92unused unmodified defaults;76sources remain.
+  Artist/VMX ownership, active dependencies and half/quarter bases are protected;
+  tagged64x320and320x192sources remain used. Superseded fixtures may need archived
+  sources restored before use. Complex complete-mode3309/determinism passes;
+  no BSP/live acceptance inferred. Nine complete-cell VMFs (two straight plus
+  seven complex) are open in Hammer with exact native captions verified9/9;
+  all nine editors respond. Subsequent human review is accepted as recorded above.
+  User additionally authorized building alignment repair. Audited41building
+  sources: eight had plain ground-plane-only errors (not shifted buildings);
+  2x park's31partitions prove a full1280-square footprint at Y+32, corrected
+  by moving its entire source Y-32. Army-wall X2.542 corrected as a whole
+  source. Displaced/partial references remain explicitly limited; do not snap
+  their geometry. Ground fixtures55pass; source originals are hash-backed.
+  Keep working in Phase B; no costly/world/production/staging work authorized.
+
+- **Alpha 3.2 ground contract / origin repair, 2026-10-13:** user requested
+  shared ground-only classification and alignment warnings across tile use.
+  Use existing640x640/Z0..32 world-box bases with known top/side materials;
+  never classify other geometry from material alone. Center tiles using a
+  complete declared ground footprint, not decorative bounds or asymmetric
+  surviving ground. Move the entire source only for a confirmed common offset,
+  preserving roads/props and UVs; otherwise snap proven ground-only errors.
+  `tile_ground_grid.psm1` owns shared classification/warnings. Explicit
+  `repair_tile_ground_grid.ps1` defaults to audit-only and keeps verified
+  originals; generation never edits sources. T-junction Y-0.388 corrected
+  as a whole source, plus31ground brushes across T/dual/ordinary ramp.
+  T north continuation X306.00005 remains lane-derived; do not round it.
+  The separate army-wall X2.542 offset was initially retained as a warning;
+  its subsequent user-authorized whole-source correction is recorded above.
+  Isolated `generated/phase_b_grid_infill_cells` remeasures T nonrectangular
+  fragments64->12 and thin gaps37->0; other nonrectangular gaps remain open.
+  Accepted corner/crossroads VMFs remain byte-identical. The earlier shaped
+  build failed a missing-source identity check; corrected polygon serialization
+  is not yet a completed all-family/all-yaw or compiled acceptance.
+  Fresh ground53/infill68339/complex2843/straight568/geometry614/survey5662
+  assertions and PowerShell8/8/diff checks pass. Actual generation emits the
+  retained wall warning. No new visual/compiled review is claimed.
+
+- **Alpha 3.2 measured-size infill / corrected corner accepted, 2026-10-13:**
+  user approved the corrected corner, but reported remaining crossroads gaps.
+  Measurements304/16/48units explain why whole320quarter fills were insufficient.
+  User chose additional precisely sized editable bases. Explicit `-SizedInfill`
+  creates missing rectangular patch sources only; artist edits are preserved.
+  Corrected corner stays byte-identical and is not reopened. Seven new isolated
+  previews under `generated/phase_b_sized_infill_cells` emit261ground owners;
+  34editable sources total. Sized infill67550assertions require zero uncovered
+  actual crossroads ground area across all324quarter regions, plus source/
+  overlap/coverage preservation; straight568passes. Exact sized crossroads
+  opened/responded in Hammer PID3760; user confirmed the cell is great.
+  Corrected corner and crossroads ground/layout reviews are accepted; do not
+  repeat them. Other nonrectangular fragments and compiled clearance remain gates.
+  No normal generation/production/staging or costly batch authorization implied.
+
+- **Alpha 3.2 Phase B Hammer review complete / editable infill active,
+  2026-10-13:** user declared all original complete-cell Hammer checks complete;
+  terminal/T/crossroads explicitly fine except missing ground. Do not reopen
+  authored correctness/layout review. User chose320x640half/320x320quarter
+  editable ground templates with plain generated bases for later artist detail.
+  `create_terrain_infill_templates.ps1` creates missing sources only; never
+  overwrite those artist-owned templates. `terrain_infill.psm1` separates
+  ground-slab convex coverage from scenery leases, preserves underground
+  footprints and fills fully empty quarter slots without scaling or Z changes.
+  Seven corrected cells live separately in `generated/phase_b_infill_cells`,
+  with91ground instances. Infill22345/complex2864/straight568/required7/7pass.
+  Partial curved/fractional gaps, decorated-prop clearance and corrected visual/
+  compiled review remain gates, not implied acceptance. Normal generation,
+  motorway assets, production and runtime exports remain untouched.
+
+- **Alpha 3.2 Phase B remaining whole-cell previews, 2026-10-13:**
+  `build_motorway_cell_preview.ps1 -Complex` generates seven complete diagnostic
+  cells under `generated/phase_b_complex_cells`: corner/crossroads/T/terminal/
+  bridge/single/dual ramp, preserving approved straight fixtures. Six use real
+  cells; T is explicitly synthetic because current world has none. Exact
+  fractional XY/yaw/Z0, full shell/skybox, saved-winding leases across all rings
+  and every-instance overlap diagnostics are fixture-covered. Complex2682/
+  required7/7, straight568/geometry614/source-mouth5662/assembly1834pass.
+  Existing bridge yaw90 exposes E/W measured motorway versus N/S source route;
+  do not silently correct user-authoritative yaw or claim route support.
+  Ordinary approaches, two-lane residuals, partial boundary tiles and terminal
+  underlay remain unapproved diagnostics. Mixed corner/ramp and terminal/bridge
+  cases reject explicitly instead of losing a route. Human whole-cell review
+  and full Phase B acceptance remain pending; no compilation/staging/runtime/
+  production changes. Continue from the exact gates in the tracker, not another
+  individual-asset or approved-straight review.
+
+- **Alpha 3.2 Phase B complete-cell examples approved, 2026-10-13:** user
+  clarified that the preview must show motorway assets inside complete generated
+  cells, not an assembly zoo. `bin/build_motorway_cell_preview.ps1` now drives
+  the normal planner/builder's explicit isolated inspection mode for logical
+  (6,-11) north-south and (2,-5) east-west straights. Full5760shell, scenery,
+  border/outer rings and skybox room retained;27corridor leases/nine owners,
+  64instances per cell. Fresh cell568/geometry614/source-mouth5662/assembly1834
+  assertions and required2/2pass; normal-generation controls retain old family
+  and origins. Both cells opened/responded in Hammer; user inspected both,
+  confirmed they were fine and closed the editors deliberately. Do not reopen
+  or diagnose a crash. This is scoped straight-cell visual acceptance, not
+  whole Phase B. Complex-cell approach/clearance/topology work remains; no
+  compile/staging/runtime/default settings or authored assets changed.
+  See [the current tracker](todo-alpha.3.2.md) for exact artifacts and limits.
+
+- **Alpha 3.2 Phase B generated inspection gate, 2026-10-13:** continue-to-preview
+  authorization produced an isolated overview plus eight four-rotation VMFs
+  under `generated/phase_b_motorway`, through `bin/build_motorway_preview.ps1`.
+  Hammer PID2288 is responding with the exact overview title; prior windows
+  preserved. Geometry614/source-mouth5662/actual-preview1834assertions pass.
+  Thirty-two cases separate40exact floor joins,32diagnostic joins and20pending
+  road mouths. Diagnostic seams must never enter normal planner fallbacks.
+  Fractional edges/grades/provenance, ring coverage and conservative overlap
+  evidence are retained in the assembly report. Sources, settings, tuned plan
+  and both installed runtime exports unchanged; no compilation/staging ran.
+  Phase B is not complete/accepted: review generated joins, resolve measured
+  approach/tolerance/clearance and topology gates in
+  [the tracker](todo-alpha.3.2.md). Do not re-open individual asset correctness
+  or orientation approval; both remain user-authoritative.
+
+- **Alpha 3.2 Phase B measured straight/bridge ports, 2026-10-13:** explicit
+  source faces supply416-wide motorway floors Z68 at centres-512/+528 and
+  bridge central-road floor width256/Z232.375 at X+/-960. Physical port
+  transforms and horizontal translation solver preserve existing yaw/Z,
+  rejecting type/width/heading/grade/deck mismatches exactly. Survey/port5245
+  assertions and geometry614pass, source hashes unchanged. Algebraic seams,
+  not compiled collision/driveability. Complex ports/approaches/clearances/
+  layer-aware whole-cell fit remain next; no fallback ports, asset re-approval,
+  planner wiring, regeneration or staging.
+
+- **Alpha 3.2 Phase B rectangle helpers, 2026-10-13:** wide-only nominal
+  footprint lookup, physical Source-yaw point/envelope transforms and explicit
+  top-left-anchor slot reservations implemented.614assertions pass across all
+  eight pieces/four rotations, including even-span half-tile alignment and
+  actual unchanged1x1 planner yaw mappings. One emitting owner; overhang
+  envelopes remain separate. No planner wiring, anchor solver, ring leases or
+  collision-free assembly claim yet. Next is port/translation/layer-aware
+  assembly work. User's authored trust/orientation decisions remain authoritative;
+  no additional asset opening, geometry change, regeneration or staging.
+
+- **Alpha 3.2 Phase B authored-trust decision, 2026-10-13:** user confirms their
+  motorway assets are correct; do not request repeated individual-asset review.
+  Measure ports/decks/envelopes for generator integration directly, preserving
+  geometry. Hammer review is for generated assemblies or concrete integration
+  ambiguity. Read-only winding survey covers eight sources;5214assertions pass,
+  repeated report byte-identical. Straight floor Z68, centres-512/+528 (approved
+  authored asymmetry); crossing road floor Z232.375. Coarse bounds/overhangs
+  are evidence, not compiled collision/verified ports. Bridge editor launch
+  reports Error and is not visual evidence; no further asset opening requested.
+  Source registry/rotations/reservations remain next. Phase B incomplete; no
+  builds/staging/settings or geometry edits.
+  User further confirms all new orientations match their1x1 counterparts in
+  every circumstance. Existing topology/yaw mappings are authoritative; no
+  orientation guessing, correction or repeated human approval is needed.
+  Measure only changed footprint/port/deck/offset integration data.
+
+- **Alpha 3.2 Phase A accepted / Phase B survey next, 2026-10-13:** new manifest
+  exports resolve/store density version/tier/source/inland distance and exact
+  building alias. Planner consumes stored values for recipes/variants and
+  preserves records; runtime export rejects manifest/plan mismatch. Legacy
+  manifests retain prior policy with a planner warning; no in-place upgrade.
+  Fresh density2384assertions include actual serializer/reload144-cell fixture,
+  corrupt/legacy/header checks and production density consumers. Existing
+  skyscraper regression passes. Settings/tuned-plan/city-runtime hashes unchanged.
+  User accepted Phase A on scoped source/fixture evidence. No regeneration/
+  compile/staging occurred; D/E/G still own placement and physical integration.
+  Next is the Phase B authored motorway connector survey. No new geometry or
+  compiled-world acceptance is implied.
+
+- **Alpha 3.2 Phase 0 accepted / Phase A active, 2026-10-13:** user continued
+  after checks/baseline approval. Density policy approved: cardinal land steps
+  from actual ocean,0-2 protected low/3-7 medium/8+high; commercial/financial
+  raise inland to high, settlement at least medium, coast wins. Approved small
+  fixture recorded in [the tracker](todo-alpha.3.2.md). Pure classifier/zoning/
+  roll/hash/pool module passes1490focused assertions across88authored templates,
+  including exact roll thresholds and pinned hash/locale reproducibility,
+  without normal generator imports or output changes. Settings/tuned-plan
+  hashes unchanged. Authoritative field/legacy alias wiring remains
+  next in A; placement pools and widened-route adjacency follow D/E. Phase A
+  remains incomplete; no expensive integration work is authorized.
+
+- **Alpha 3.2 Phase 0 checks complete, 2026-10-13:** GLua271/0 and existing
+  tuned-plan variety4807assertions pass (576cells/311recipes/1104pairs).
+  Main GMod process verified with `-disableluarefresh`; fresh preview launcher
+  atmosphere/screenshot and read-only persistence evidence retained. User
+  approved the existing Home presentation baseline. No deployment, settings/
+  lighting change, generation or staging ran. Phase0 checklist complete;
+  whole-phase acceptance remains separate. Next is Phase A density contract
+  after acceptance, not CSM or carried 3.1.5 closure. Earlier closed-game/pending
+  baseline notes below are superseded by this live evidence.
+
+- **Alpha 3.2 Phase 0 started, 2026-10-13:** user authorized readiness/inventory
+  after archiving [Alpha 3.1.5](docs/todo-alpha.3.1.5.md). Read-only inventory
+  hashed158VMFs; current tuned311-recipe/576-cell plan and manifest match staged
+  preview runtime hashes. All16 original restoration backups verify; the5854
+  ledger entries have not undergone a new full staged-output audit. Thirteen
+  stale configured asset references and32orphanVMXs remain; preserve sources.
+  The border `1bb` extension is now correct; user approved renaming the industry
+  typo to `tile_industrial_3aaa.vmf` (high density), with geometry unchanged.
+  GMod is closed, so current
+  player state, native lighting baseline and running watcher-free evidence
+  remain pending. Phase0 is not accepted; no builds or source geometry changed.
+
+- **Active milestone: Alpha 3.2, generator-first scheduling, 2026-10-13.**
+  The user moved unfinished Alpha 3.1.5 Phase D output acceptance and Phase I
+  integration to the end of [the 3.2 master plan](todo-alpha.3.2.md):
+  J bundles final-revision outputs; K owns carried closure/acceptance/restoration.
+  They are not prerequisites to generator work and are not accepted by transfer.
+  Execute 0/A/B/D/E/F/G (generator), then C/H/I (CSM/integration), then J/K/L
+  (shared outputs, carried closure, documentation/acceptance). Implementation
+  remains pending; this scheduling change authorizes no expensive build, staging,
+  production or publication. Accepted 3.1.5 phases/limits remain unchanged;
+  newly authored safe-zone detail work remains deferred. Earlier active/next
+  phase notes below are chronology superseded by this scheduling decision.
+
+- **Expensive-work batching preference, retained from 2026-10-12:** prioritize
   fast source edits, focused fixtures and bounded live checks. Ask before any
   considerable process, including preview/world regeneration, VBSP/VVIS/VRAD,
   navmesh generation, full material/Satellite generation or other large staged
@@ -367,16 +1019,19 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
   Explosives, alternate fire, gravity gun and recoverable bolts are excluded.
   This side task does not accept Phase C or authorize publication.
 
-- **Next milestone: Alpha 3.2**, designated on 2026-10-10 and expanded in the
+- **Alpha 3.2 scope**, designated on 2026-10-10 and expanded in the
   user-approved planning decisions on 2026-10-13. Follow the
   [master phased plan](todo-alpha.3.2.md) for density-aware buildings,
   decorations, borders/edges and footprint-aware 3-wide motorways, plus the
-  [CSM technical tracker](docs/csm-implementation.md). Planning does not activate
-  the milestone; complete or explicitly disposition Alpha 3.1.5 first and obtain
-  start approval. CSM now requires replacement-quality lighting with acceptable
-  native fallback; an additive overlay is not an approved substitute. Do not
-  skip projector/lighting feasibility gates. Production rebuilds and publication
-  remain separately gated.
+  [CSM technical tracker](docs/csm-implementation.md). The 2026-10-13 user
+  scheduling decision makes generator work the priority and carries 3.1.5
+  closure to final phases J/K, without running implementation or builds.
+  On 2026-10-14 the user explicitly accepted an additive client-local CSM
+  overlay, superseding the earlier replacement-quality requirement. Leave baked
+  `light_environment`, lightmaps and shared server state untouched; preserve an
+  exact native path when CSM is off, keep the default off, and review additive
+  brightness/overlap, performance and multi-client behavior. Production
+  rebuilds and publication remain separately gated.
 
 - **Fixture-review preference:** when the user chooses to inspect fixtures,
   open the exact requested VMFs in the installed Hammer++ for them; do not
@@ -384,7 +1039,9 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
   fixture covers each review case. Preserve unsaved editor work and do not
   treat opening a fixture as visual acceptance.
 
-- **Active milestone: [Alpha 3.1.5](todo-alpha.3.1.5.md).** The user authorized
+- **Historical Alpha 3.1.5 implementation:** see its
+  [archived tracker](docs/todo-alpha.3.1.5.md); unfinished closure moved to 3.2 J/K.
+  The user authorized
   implementation on 2026-10-06 after adding the edge tiles. Phase 0 is accepted:
   nine edge sources inventoried, current 179-recipe baseline and verified
   restoration copies retained, focused launcher baseline captured. User carried
@@ -772,10 +1429,13 @@ Run PowerShell commands from the repository root. For changes to planning or VMF
 
 ```powershell
 .\bin\generate_world_cells.ps1 -WorldProfile preview -Seed 1337
-.\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json
+.\bin\build_motorway_preview.ps1 -WorldProfile preview -OutputDirectory .\generated\measured-assemblies
+.\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json -MotorwayAssemblyReport .\generated\measured-assemblies\assembly-report.json
 .\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json -RefreshGenerated -PruneStaleGenerated
 .\bin\build_city.ps1 -WorldProfile preview -VBSPOnly -OnlyRequiredMaps -CleanStagedCity
 ```
+
+Normal wide (3x) motorway cells plan only from current measured assemblies (`-MotorwayAssemblyReport`) and require the expanded border/outer rings. Root settings keep `vmfBuild.outerEdges.enabled` false, so full-world preview batches use an isolated settings copy with it enabled and redirected profile paths. Full terrain infill is three passes: `build_cell_vmfs.ps1 ... -MeasureCompleteTerrainInfill`, `create_terrain_infill_templates.ps1 -PartialGapLayoutDirectory <src> -CompletePatches`, then `build_cell_vmfs.ps1 ... -SizedTerrainInfill -CompleteTerrainInfill`.
 
 - After structural tile changes, run `./bin/check_vis_budgets.ps1 -WorldProfile preview -RefreshPortalData`; inspect affected layouts in Hammer, including generated developer zoos when applicable.
 - For planner yaw changes, extend and run focused regressions for the reported recipe and previously correct affected cases before broad regeneration. Building frontage changes must pass `./bin/test_building_frontage.ps1` and `./bin/test_multi_tile_templates.ps1` before refreshing the preview plan and VMFs.
