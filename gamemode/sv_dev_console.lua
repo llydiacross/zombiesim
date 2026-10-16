@@ -449,6 +449,14 @@ DevConsole.DirectCommands.zombiesim_dev_csm_probe_status = function()
     return true, "client CSM status requested"
 end
 
+DevConsole.DirectCommands.zombiesim_dev_csm_status = function()
+    return forwardCSMFeasibilityCommand("zombiesim_csm_status")
+end
+
+DevConsole.DirectCommands.zombiesim_dev_test_csm_client = function()
+    return forwardCSMFeasibilityCommand("zombiesim_dev_test_csm_client")
+end
+
 DevConsole.DirectCommands.zombiesim_dev_csm_probe_skip_updates = function(argumentString)
     local mode = string.lower(string.Trim(argumentString or ""))
     if mode ~= "on" and mode ~= "off" then
@@ -488,6 +496,83 @@ DevConsole.DirectCommands.zombiesim_dev_chest_lamp_status = function()
         end
     end
     DevConsole:Report("chestLampStatus", players)
+    return true
+end
+
+DevConsole.DirectCommands.zombiesim_dev_foliage_inspect = function(argumentString)
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" or
+        not game.GetMap():match("^zz_preview_") then
+        return false, "foliage inspection requires an admin in a generated preview cell"
+    end
+
+    local arguments = string.Explode("%s+", string.Trim(argumentString or ""), true)
+    if #arguments ~= 3 then
+        return false, "usage: zombiesim_dev_foliage_inspect <worldX> <worldY> <worldZ>"
+    end
+
+    local x, y, z = tonumber(arguments[1]), tonumber(arguments[2]), tonumber(arguments[3])
+    if not x or not y or not z or x ~= x or y ~= y or z ~= z or
+        math.abs(x) > 32768 or math.abs(y) > 32768 or math.abs(z) > 32768 then
+        return false, "foliage inspection coordinates must be finite world values within +/-32768"
+    end
+
+    local foliage = ZM_Foliage
+    local cell = foliage and foliage.Cell
+    if not cell then
+        DevConsole:Report("foliageInspection", {
+            map = game.GetMap(),
+            active = false,
+            reason = "runtime foliage is inactive"
+        })
+        return true
+    end
+
+    local targetPosition = Vector(x, y, z)
+    local nearestTree
+    for _, node in pairs(cell.nodes or {}) do
+        if node.type == "tree" and node.position then
+            local distanceSquared = node.position:DistToSqr(targetPosition)
+            if not nearestTree or distanceSquared < nearestTree.distanceSquared then
+                nearestTree = {
+                    key = node.key,
+                    position = node.position,
+                    distanceSquared = distanceSquared,
+                    entity = node.entity
+                }
+            end
+        end
+    end
+
+    local report = {
+        map = cell.map,
+        profile = cell.profile,
+        cellId = cell.cellId,
+        active = true,
+        target = { x = x, y = y, z = z }
+    }
+    if nearestTree then
+        local entity = nearestTree.entity
+        local position = IsValid(entity) and entity:GetPos() or nearestTree.position
+        local trace = util.TraceLine({
+            start = position + Vector(0, 0, 48),
+            endpos = position - Vector(0, 0, 96),
+            mask = MASK_SOLID,
+            filter = IsValid(entity) and entity or nil
+        })
+        report.nearestTree = {
+            key = nearestTree.key,
+            model = IsValid(entity) and entity:GetModel() or nil,
+            entityIndex = IsValid(entity) and entity:EntIndex() or nil,
+            position = { x = position.x, y = position.y, z = position.z },
+            distance = math.sqrt(nearestTree.distanceSquared),
+            groundHit = trace.Hit == true,
+            groundSurface = util.GetSurfacePropName(trace.SurfaceProps) or "unknown",
+            groundTexture = tostring(trace.HitTexture or "unknown")
+        }
+    end
+
+    DevConsole:Report("foliageInspection", report)
     return true
 end
 

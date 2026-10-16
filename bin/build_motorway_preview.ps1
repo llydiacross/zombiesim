@@ -41,11 +41,16 @@ if ($approachHash -cne (Get-FileHash -LiteralPath $approachPath -Algorithm SHA25
 function New-AssemblyCase {
     param([object]$Piece, [int]$Yaw, [object]$Origin, [string]$Id)
 
+    $centeredCrossroads = [IO.Path]::GetFileName($Piece.template) -eq 'tile_motorway_crossroads_3x3.vmf'
+    $mainOrigin = [pscustomobject]@{
+        x = [double]$Origin.x; y = [double]$Origin.y
+        z = [double]$Origin.z + $(if ($centeredCrossroads) { 800 } else { 0 })
+    }
     $instances = [System.Collections.Generic.List[object]]::new()
     $diagnostics = [System.Collections.Generic.List[object]]::new()
-    $instances.Add([pscustomobject]@{ template = $Piece.template; yaw = $Yaw; origin = $Origin; owner = "$Id/main"; status = 'authored_piece' })
+    $instances.Add([pscustomobject]@{ template = $Piece.template; yaw = $Yaw; origin = $mainOrigin; owner = "$Id/main"; status = 'authored_piece' })
     foreach ($mouth in $Piece.mouths) {
-        $fixedPorts = @($mouth.lanes | ForEach-Object { Convert-ZMMotorwayPort $_ $Yaw $Origin })
+        $fixedPorts = @($mouth.lanes | ForEach-Object { Convert-ZMMotorwayPort $_ $Yaw $mainOrigin })
         if ($mouth.route -eq 'road') {
             $diagnostics.Add([pscustomobject]@{
                 mouth = $mouth.outward; route = 'road'; status = 'approach_contract_pending'
@@ -57,9 +62,20 @@ function New-AssemblyCase {
             continue
         }
         $heading = $fixedPorts[0].outward
-        $continuationYaw = if ($heading -in @('N', 'S')) { [int]$profile.Settings.cellPlanning.rotations.layout.straight.vertical } else { [int]$profile.Settings.cellPlanning.rotations.layout.straight.horizontal }
+        $rampContinuation = $centeredCrossroads -and $heading -in @('E', 'W')
+        $continuationTemplate = if ($rampContinuation) {
+            @($registry | Where-Object { [IO.Path]::GetFileName($_.template) -eq 'tile_motorway_ramp.vmf' })[0]
+        } else { $straight }
+        $continuationYaw = if ($rampContinuation) {
+            $insideDirection = $opposite[$heading]
+            [int]$profile.Settings.cellPlanning.rotations.transport.bridgeRampByDirection[$insideDirection]
+        } elseif ($heading -in @('N', 'S')) {
+            [int]$profile.Settings.cellPlanning.rotations.layout.straight.vertical
+        } else {
+            [int]$profile.Settings.cellPlanning.rotations.layout.straight.horizontal
+        }
         $zero = [pscustomobject]@{ x = 0; y = 0; z = 0 }
-        $movingMouth = @($straight.mouths | Where-Object { (Convert-ZMMotorwayPort $_.lanes[0] $continuationYaw $zero).outward -eq $opposite[$heading] })
+        $movingMouth = @($continuationTemplate.mouths | Where-Object { (Convert-ZMMotorwayPort $_.lanes[0] $continuationYaw $zero).outward -eq $opposite[$heading] })
         if ($movingMouth.Count -ne 1) { throw "No mapped straight mouth for $Id/$heading." }
         $lateral = if ($heading -in @('N', 'S')) { 'x' } else { 'y' }
         $fixed = @($fixedPorts | Sort-Object { $_.position.$lateral })
@@ -90,7 +106,12 @@ function New-AssemblyCase {
         $exact = @($residuals | Where-Object { $_.dx -ne 0 -or $_.dy -ne 0 -or $_.dz -ne 0 -or $_.widthDelta -ne 0 -or $_.gradeDelta -ne 0 -or -not $_.planarCardinal -or -not $_.contiguousEdges -or -not $_.consistentGrade }).Count -eq 0
         $status = if ($exact) { 'exact_floor_seam' } else { 'diagnostic_seam_not_approved' }
         $disposition = if ($exact) { 'exact_surface_candidate_clearance_pending' } else { 'unsupported_connector_deferred' }
-        $instances.Add([pscustomobject]@{ template = $straight.template; yaw = $continuationYaw; origin = $translation; owner = "$Id/$heading/continuation"; status = $status })
+        $continuation = [pscustomobject]@{
+            template = $continuationTemplate.template; yaw = $continuationYaw; origin = $translation
+            owner = "$Id/$heading/continuation"; status = $status
+        }
+        if ($rampContinuation) { $continuation | Add-Member -NotePropertyName nextTemplate -NotePropertyValue $straight.template }
+        $instances.Add($continuation)
         $diagnostics.Add([pscustomobject]@{
             mouth = $mouth.outward; route = 'motorway'; status = $status
             disposition = $disposition; placementEligibility = 'inspection_only'
@@ -142,7 +163,11 @@ function New-AssemblyCase {
             }
         }
     })
-    return [pscustomobject]@{ id = $Id; piece = $Piece.template; yaw = $Yaw; origin = $Origin; instances = @($instances); connections = @($diagnostics); reservations = $reservations; envelopeOverlaps = $overlaps }
+    return [pscustomobject]@{
+        id = $Id; piece = $Piece.template; yaw = $Yaw; origin = $mainOrigin
+        centeredCellCore = $centeredCrossroads
+        instances = @($instances); connections = @($diagnostics); reservations = $reservations; envelopeOverlaps = $overlaps
+    }
 }
 
 function Write-AssemblyVmf {
@@ -182,7 +207,11 @@ function Write-AssemblyVmf {
 }
 
 $overviewCases = @(for ($index = 0; $index -lt $registry.Count; $index++) {
-    $origin = [pscustomobject]@{ x = [double](($index % 2) * 9000 - 4500); y = [double](10500 - [math]::Floor($index / 2) * 7000); z = 0.0 }
+    $origin = [pscustomobject]@{
+        x = [double](($index % 3) * 9000 - 9000)
+        y = [double](9000 - [math]::Floor($index / 3) * 9000)
+        z = 0.0
+    }
     New-AssemblyCase $registry[$index] 0 $origin ("case$index/" + [IO.Path]::GetFileNameWithoutExtension($registry[$index].template))
 })
 $overviewPath = Join-Path $OutputDirectory 'motorway_phase_b_preview.vmf'

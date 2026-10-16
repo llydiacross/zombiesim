@@ -460,6 +460,17 @@ if ($WhatIf) {
                     [void]$activeSlots.Remove($slot)
                     continue
                 }
+                # VBSP only warns about brushes beyond +/-16384, but GMod refuses to load the map ("Map coordinate extents are too large").
+                if ($slot.stage.name -eq 'vbsp' -and (Test-Path -LiteralPath $slot.stageRecord.log -PathType Leaf) -and
+                    (Select-String -LiteralPath $slot.stageRecord.log -SimpleMatch 'bounds out of range' -Quiet)) {
+                    $slot.stageRecord.status = 'failed-bounds-out-of-range'
+                    $slot.work.mapRecord.status = 'failed'
+                    Remove-Item -LiteralPath $slot.work.buildBspPath -Force -ErrorAction SilentlyContinue
+                    Write-Warning "$($slot.work.sourceMap.Name) VBSP reported a brush with bounds out of range; the map would not load. See $($slot.stageRecord.log)."
+                    $slot.process.Dispose()
+                    [void]$activeSlots.Remove($slot)
+                    continue
+                }
 
                 $slot.stageRecord.status = 'completed'
                 $slot.work.stageIndex++

@@ -120,6 +120,11 @@ foreach ($cell in $plan.cells) {
     $layout = Get-Content -Raw ([IO.Path]::ChangeExtension($vmf, '.layout.json')) | ConvertFrom-Json
     $infill = $layout.terrainInfill
     Assert ($layout.vmfSha256 -ceq (Get-FileHash $vmf).Hash.ToLowerInvariant()) 'Ground metadata matches the actual current VMF.'
+    if ($CompleteInfill -and [IO.Path]::GetFileName($cell.motorwayCellInspection.template) -eq 'tile_motorway_corner_5x3.vmf') {
+        Assert ($infill.placements.Count -gt 0) 'Complete infill includes the motorway corner rather than skipping its patch pass.'
+        Assert (@($infill.partialGaps | Where-Object status -eq 'unfilled_partial_slot_requires_sized_source_or_approved_clipping').Count -eq 0) 'Motorway corner has no silently skipped rectangular infill gaps.'
+        Assert (@($infill.unfilledRectangles | Where-Object { $_.width -ge 4 -and $_.height -ge 4 }).Count -eq 0) 'Motorway corner reports only the already-approved fractional/sub4 leftovers.'
+    }
     if ([IO.Path]::GetFileName($cell.motorwayCellInspection.template) -eq 'tile_motorway_tjunction_6x3.vmf') {
         $tGapPatches = @($infill.placements | Where-Object { $_.origin.x -ge 1266 -and $_.origin.x -lt 1280 -and ($_.origin.y - $_.height / 2) -lt 1216 -and ($_.origin.y + $_.height / 2) -gt 960 -and $_.width -in @(4, 8) })
         Assert (@($tGapPatches.width | Sort-Object -Unique) -contains 4 -and @($tGapPatches.width | Sort-Object -Unique) -contains 8) 'The actual T-junction gap emits both approved U4 and U8 patches.'

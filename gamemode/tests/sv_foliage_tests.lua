@@ -60,6 +60,53 @@ test("ground_filter_accepts_only_flat_green_surfaces", function(check)
     util.GetSurfacePropName = original
 end)
 
+test("upward_clearance_distinguishes_objects_from_sky", function(check)
+    check(Foliage.IsUpwardTraceBlocked({ Hit = true, HitSky = false }),
+        "a non-sky object blocks upward tree clearance")
+    check(not Foliage.IsUpwardTraceBlocked({ Hit = true, HitSky = true }),
+        "a skybox surface is not treated as an overhead object")
+    check(not Foliage.IsUpwardTraceBlocked({ Hit = false }),
+        "an unobstructed upward trace allows growth")
+    check(Foliage.IsUpwardTraceBlocked({ StartSolid = true, HitSky = true }),
+        "a trace starting inside solid geometry remains blocked")
+
+    local bounds = { minimum = Vector(-1000, -1000, -64), maximum = Vector(1000, 1000, 512) }
+    local original = util.GetSurfacePropName
+    util.GetSurfacePropName = function() return "grass" end
+    local function traceGround(x, y)
+        return {
+            Hit = true,
+            HitNormal = Vector(0, 0, 1),
+            HitPos = Vector(x, y, 0),
+            SurfaceProps = 1,
+            HitTexture = "nature/grassfloor001a"
+        }
+    end
+
+    local blockedTrees = 0
+    local skyTrees = 0
+    for seed = 1, 32 do
+        local blocked = Foliage.MakeCandidate(bounds, Generation.NewRng(seed), seed, traceGround,
+            function(_, nodeType)
+                return nodeType == "tree" and Foliage.IsUpwardTraceBlocked({ Hit = true, HitSky = false })
+            end, {})
+        if blocked and blocked.type == "tree" then
+            blockedTrees = blockedTrees + 1
+        end
+
+        local skyVisible = Foliage.MakeCandidate(bounds, Generation.NewRng(seed), seed, traceGround,
+            function(_, nodeType)
+                return nodeType == "tree" and Foliage.IsUpwardTraceBlocked({ Hit = true, HitSky = true })
+            end, {})
+        if skyVisible and skyVisible.type == "tree" then
+            skyTrees = skyTrees + 1
+        end
+    end
+    util.GetSurfacePropName = original
+    check(blockedTrees == 0, "tree candidates are rejected when a solid object blocks the upward trace")
+    check(skyTrees > 0, "tree candidates remain possible when the upward trace reaches sky")
+end)
+
 test("trees_at_paved_edges_become_shrubs", function(check)
     local bounds = { minimum = Vector(-1000, -1000, -64), maximum = Vector(1000, 1000, 512) }
     local original = util.GetSurfacePropName
@@ -87,6 +134,37 @@ test("trees_at_paved_edges_become_shrubs", function(check)
     end
     util.GetSurfacePropName = original
     check(treeCandidates > 0, "deterministic seeds exercise tree footprint filtering")
+end)
+
+test("tree_canopy_over_road_or_deck_becomes_shrub", function(check)
+    local bounds = { minimum = Vector(-1000, -1000, -64), maximum = Vector(1000, 1000, 512) }
+    local original = util.GetSurfacePropName
+    util.GetSurfacePropName = function() return "grass" end
+    local scenarios = {
+        { name = "carriageway beyond the trunk ring", texture = function(distance) return distance > 100 and "de_piranesi/pi_road" or "cs_havana/ground01grass" end, z = function() return 0 end },
+        { name = "raised deck edge", texture = function() return "cs_havana/ground01grass" end, z = function(distance) return distance > 100 and 96 or 0 end }
+    }
+    for _, scenario in ipairs(scenarios) do
+        local trees = 0
+        for seed = 1, 32 do
+            local centre
+            local traceGround = function(x, y)
+                centre = centre or Vector(x, y, 0)
+                local distance = math.sqrt((x - centre.x) ^ 2 + (y - centre.y) ^ 2)
+                return {
+                    Hit = true, HitNormal = Vector(0, 0, 1), HitPos = Vector(x, y, scenario.z(distance)),
+                    SurfaceProps = 1, HitTexture = scenario.texture(distance)
+                }
+            end
+            local candidate = Foliage.MakeCandidate(bounds, Generation.NewRng(seed), seed, traceGround,
+                function() return false end, {})
+            if candidate and candidate.type == "tree" then
+                trees = trees + 1
+            end
+        end
+        check(trees == 0, "no tree canopy overhangs " .. scenario.name)
+    end
+    util.GetSurfacePropName = original
 end)
 
 test("placement_is_deterministic_bounded_and_spaced", function(check)

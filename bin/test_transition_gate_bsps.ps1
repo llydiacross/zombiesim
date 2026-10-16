@@ -9,10 +9,11 @@ Import-Module (Join-Path $PSScriptRoot 'skybox_models.psm1') -Force
 $maps = 0
 $gates = 0
 $landmarks = 0
+$expectedLandmarks = 0
 foreach ($file in Get-ChildItem -LiteralPath $SourceDirectory -Filter '*.vmf' -File) {
     $source = [ZombieSim.Skybox.KeyValuesParser]::Parse((Get-Content -LiteralPath $file.FullName -Raw))
     $expected = @($source.Children | Where-Object {
-        $_.Get('classname') -eq 'trigger_multiple' -and $_.Get('targetname') -match '^zm_transition_gate_[NESW]$'
+        $_.Get('classname') -eq 'trigger_multiple' -and $_.Get('targetname') -match '^zm_transition_gate_[NESW](?:_lane[12])?$'
     })
     if ($expected.Count -eq 0) { continue }
     $bsp = Join-Path $BuildDirectory ([IO.Path]::ChangeExtension($file.Name, '.bsp'))
@@ -28,19 +29,26 @@ foreach ($file in Get-ChildItem -LiteralPath $SourceDirectory -Filter '*.vmf' -F
     $entities = [ZombieSim.Skybox.KeyValuesParser]::Parse(
         [Text.Encoding]::ASCII.GetString($bytes, $offset, $length).TrimEnd([char]0)
     ).Children
+    $arrivalNames = @{}
     foreach ($gate in @($expected | Where-Object { $_.Get('classname') -eq 'trigger_multiple' })) {
         $direction = $gate.Get('zm_transition_direction').ToUpperInvariant()
         $arrivalName = "${direction}_ENTRANCE"
+        if ($arrivalNames.ContainsKey($arrivalName)) {
+            $gates++
+            continue
+        }
         $arrival = @($source.Children | Where-Object { $_.Get('classname') -eq 'info_landmark' -and $_.Get('targetname') -eq $arrivalName })
         if ($arrival.Count -ne 1) { throw "Missing/duplicated source arrival $arrivalName in $($file.Name)" }
         $expected += $arrival
+        $arrivalNames[$arrivalName] = $true
+        $expectedLandmarks++
         $gates++
     }
     foreach ($entity in $expected) {
         $name = $entity.Get('targetname')
         $matches = @($entities | Where-Object { $_.Get('targetname') -eq $name })
         if ($matches.Count -ne 1) { throw "Missing/duplicated compiled gate entity $name in $bsp" }
-        foreach ($key in 'classname', 'origin', 'angles', 'model') {
+        foreach ($key in 'classname', 'origin', 'angles', 'model', 'zm_transition_gate', 'zm_transition_direction', 'zm_transition_lane', 'zm_transition_mode') {
             if ($key -eq 'model' -and $entity.Get('classname') -eq 'trigger_multiple') { continue }
             $value = $entity.Get($key)
             if (-not [string]::IsNullOrWhiteSpace($value) -and $matches[0].Get($key) -ne $value) {
@@ -54,7 +62,7 @@ foreach ($file in Get-ChildItem -LiteralPath $SourceDirectory -Filter '*.vmf' -F
     }
     $maps++
 }
-if ($maps -eq 0 -or $gates -eq 0 -or $landmarks -ne $gates) {
+if ($maps -eq 0 -or $gates -eq 0 -or $landmarks -ne $expectedLandmarks) {
     throw "Incomplete compiled gate coverage: $maps maps, $gates gates, $landmarks arrivals"
 }
 Write-Output "Compiled gate checks: $maps maps, $gates gates and $landmarks arrivals retain source placement."

@@ -11,14 +11,14 @@ function Assert {
 try {
     $summary = & (Join-Path $PSScriptRoot 'build_motorway_preview.ps1') -OutputDirectory $output
     $report = Get-Content -Raw -LiteralPath (Join-Path $output 'assembly-report.json') | ConvertFrom-Json
-    Assert ($summary.rotationFixtures -eq 8 -and $summary.cases -eq 32) 'Eight sources, each with all four rotations.'
-    Assert ($summary.exactSeams -eq 52 -and $summary.diagnosticSeams -eq 20 -and $summary.pendingApproaches -eq 20) 'Approved-source measured seams and unresolved road approaches are not conflated.'
+    Assert ($summary.rotationFixtures -eq 9 -and $summary.cases -eq 36) 'Nine current sources, each with all four rotations.'
+    Assert ($summary.exactSeams -eq 40 -and $summary.diagnosticSeams -eq 40 -and $summary.pendingApproaches -eq 20) 'The new crossings and ramp seams remain explicit diagnostics; unresolved road approaches are not conflated.'
     Assert ($report.status -eq 'Hammer_integration_inspection_not_release_generation') 'Inspection output cannot claim production acceptance.'
     Assert ($report.supportPolicy.exactMotorwaySeam -eq 'candidate_only_until_full_solid_and_clearance_validation' -and
         $report.supportPolicy.incompatibleMotorwaySeam -eq 'unsupported_connector_deferred' -and
         $report.supportPolicy.roadApproach -eq 'unsupported_approach_connector_deferred' -and
         $report.supportPolicy.diagnosticFixtures -eq 'inspection_only_never_planner_fallback') 'Only exact seams are candidates; incompatible motorway and road mouths stay explicitly unsupported.'
-    Assert ($summary.exactSurfaceCandidates -eq 52 -and $summary.unsupportedMotorwayMouths -eq 20 -and $summary.unsupportedRoadMouths -eq 20) 'Every surveyed mouth has an explicit exact-candidate or deferred-connector disposition.'
+    Assert ($summary.exactSurfaceCandidates -eq 40 -and $summary.unsupportedMotorwayMouths -eq 40 -and $summary.unsupportedRoadMouths -eq 20) 'Every surveyed mouth has an explicit exact-candidate or deferred-connector disposition.'
     Assert ($report.ordinaryRoadApproach.sha256 -ceq (Get-FileHash -LiteralPath $report.ordinaryRoadApproach.source -Algorithm SHA256).Hash) 'Existing ordinary-road approach is measured read-only with source provenance.'
     $approach = $report.ordinaryRoadApproach.faces
     Assert ($approach.Count -eq 3) 'Ordinary-road approach records its southern floor and both split northern floors.'
@@ -26,7 +26,7 @@ try {
     Assert (@($approach[1].vertices | Where-Object { $_.y -eq 320 -and $_.z -eq 68 }).Count -eq 2 -and @($approach[2].vertices | Where-Object { $_.y -eq 320 -and $_.z -eq 96 }).Count -eq 2) 'Approved split mouths retain Z68/Z96; the single ramp remains Z80 and bridge Z196.057.'
     $before = @{}
     foreach ($file in Get-ChildItem -LiteralPath $output -File) { $before[$file.Name] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash }
-    Assert ($before.Count -eq 11) 'Nine bounded VMFs plus source and assembly reports only.'
+    Assert ($before.Count -eq 12) 'Ten bounded VMFs plus source and assembly reports only.'
     & (Join-Path $PSScriptRoot 'build_motorway_preview.ps1') -OutputDirectory $output | Out-Null
     foreach ($file in Get-ChildItem -LiteralPath $output -File) {
         Assert ($before.ContainsKey($file.Name) -and $before[$file.Name] -ceq (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash) 'Repeated generation is byte-identical, including JSON and VMFs.'
@@ -55,7 +55,8 @@ try {
                 Assert ($resolved -ieq $placement.template -and (Test-Path -LiteralPath $resolved -PathType Leaf)) 'Every relative instance path resolves to the exact measured authored source.'
                 $position = [ZombieSim.Skybox.Vec3]::Parse($entity[0].Get('origin'))
                 Assert ($position.X -eq $placement.origin.x -and $position.Y -eq $placement.origin.y -and $position.Z -eq $placement.origin.z) 'VMF writer retains unsnapped measured translations.'
-                Assert ($entity[0].Get('angles') -eq "0 $($placement.yaw) 0" -and $position.Z -eq 0) 'Mapped yaw preserved; no Z correction masks an incompatible deck.'
+                $expectedZ = if ([IO.Path]::GetFileName($placement.template) -eq 'tile_motorway_crossroads_3x3.vmf' -and $placement.owner -like '*/main') { 800 } else { 0 }
+                Assert ($entity[0].Get('angles') -eq "0 $($placement.yaw) 0" -and $position.Z -eq $expectedZ) 'Mapped yaw and the approved centered-crossroads vertical offset are preserved explicitly.'
                 Assert ([Math]::Abs($position.X) -lt 12000 -and [Math]::Abs($position.Y) -lt 12000) 'Rotation fixtures remain bounded inside Hammer coordinates.'
             }
             foreach ($reservation in $case.reservations) {
@@ -85,9 +86,9 @@ try {
         }
     }
     $overview = [ZombieSim.Skybox.KeyValuesParser]::Parse([IO.File]::ReadAllText($report.overview))
-    Assert (@($overview.Child('cameras').Children | Where-Object Name -eq camera).Count -eq 8) 'Overview supplies a camera for every named assembly.'
+    Assert (@($overview.Child('cameras').Children | Where-Object Name -eq camera).Count -eq 9) 'Overview supplies a camera for every named assembly.'
     $overviewInstances = @($overview.Children | Where-Object { $_.Name -eq 'entity' -and $_.Get('classname') -eq 'func_instance' })
-    Assert ($overviewInstances.Count -eq 26) 'Overview contains all eight assemblies with the intended eighteen motorway continuations.'
+    Assert ($overviewInstances.Count -eq 29) 'Overview contains all nine assemblies and their measured motorway continuations.'
     foreach ($instance in $overviewInstances) {
         $p = [ZombieSim.Skybox.Vec3]::Parse($instance.Get('origin'))
         Assert ([Math]::Abs($p.X) -lt 12000 -and [Math]::Abs($p.Y) -lt 14000) 'Overview remains bounded within Hammer world limits.'

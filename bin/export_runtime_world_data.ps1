@@ -18,6 +18,16 @@ function Get-RuntimeMotorwayGates {
     param([object]$PlanCell, [string]$TemplateDirectory)
 
     if ($null -eq $PlanCell.PSObject.Properties['motorwayAssembly']) { return }
+    $authority = $PlanCell.motorwayAssembly.PSObject.Properties['assemblyAuthority']
+    if ($null -ne $authority -and $authority.Value -eq 'trusted_prior_approved_grid_layout') {
+        $priorGates = @($PlanCell.motorwayAssembly.gates)
+        if ($priorGates.Count -eq 0 -or
+            (@($PlanCell.activeEntrances | Sort-Object -Unique) -join ',') -ne
+            (@($priorGates.direction | Sort-Object -Unique) -join ',')) {
+            throw "Trusted prior motorway gates disagree with active entrances for $($PlanCell.cellTemplateFilename)."
+        }
+        return $priorGates
+    }
     if ($PlanCell.motorwayAssembly.schemaVersion -eq 2) {
         if ($PlanCell.motorwayAssembly.status -ne 'normal_complex_travel_pending') {
             throw "Runtime complex motorway contract has unsupported status for $($PlanCell.cellTemplateFilename)."

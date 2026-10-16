@@ -297,6 +297,7 @@ foreach ($template in $templateFiles.Values) {
     }
 }
 $buildingTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.genericBuildings } | Sort-Object)
+$armyBuildingTemplates = @($templateFiles.Values | Where-Object { $_ -match '^army/.*\.vmf$' } | Sort-Object)
 if ($plannerSettings.templatePatterns.ContainsKey('destroyedBuildings')) {
     $destroyedBuildingTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.destroyedBuildings } | Sort-Object)
 } else {
@@ -422,13 +423,13 @@ function Get-TransportFeatureRotation {
 }
 
 function Get-ActiveEntrances {
-    param([object]$Cell)
+    param([object]$Cell, [switch]$IncludeBlockades)
 
     $connections = @((@(Get-CellConnections $Cell) + @(Get-HighwayRampExits $Cell)) | Sort-Object -Unique)
     $transportFeature = Get-TransportFeature $Cell
     if ($transportFeature -eq 'bridge-vertical') { $connections += @('N', 'S') }
     if ($transportFeature -eq 'bridge-horizontal') { $connections += @('E', 'W') }
-    $blockades = if ($Cell.highway.present) { @() } else { @($Cell.road.blockades) }
+    $blockades = if ($Cell.highway.present -or $IncludeBlockades) { @() } else { @($Cell.road.blockades) }
     return @($connections | Where-Object { $_ -notin $blockades } | Sort-Object -Unique)
 }
 
@@ -1827,7 +1828,7 @@ function Get-CellTilePlacements {
         $centerCandidates = if ($usesMotorwayCornerOnrampInterchange) {
             @($plannerSettings.topologyTemplates['motorway-crossjunction'], (Get-GenericTopologyTemplate $Topology), (Get-LinearTopologyTemplate $Topology))
         } elseif ($usesRoadBridgeRamp) {
-            @($plannerSettings.topologyTemplates['road-crossjunction'], (Get-GenericTopologyTemplate 'road-crossjunction'), (Get-LinearTopologyTemplate $Topology))
+            @($plannerSettings.topologyTemplates[$Topology], (Get-GenericTopologyTemplate $Topology), (Get-LinearTopologyTemplate $Topology))
         } else {
             @($transportTemplate, (Get-GenericTopologyTemplate $Topology), (Get-LinearTopologyTemplate $Topology))
         }
@@ -1837,7 +1838,7 @@ function Get-CellTilePlacements {
             tileX = $center
             tileY = $center
             template = $centerTemplate
-            rotationYaw = if ($usesMotorwayCornerOnrampInterchange -or $usesRoadBridgeRamp) { 0 } elseif ($Topology -eq 'motorway-deadend' -and $null -eq $transportTemplate) { Get-MotorwayDeadEndRotation $Orientation } elseif ($null -eq $transportTemplate) { Get-LayoutRotation $Topology $Orientation } else { Get-TransportFeatureRotation $TransportFeature }
+            rotationYaw = if ($usesMotorwayCornerOnrampInterchange) { 0 } elseif ($Topology -eq 'motorway-deadend' -and $null -eq $transportTemplate) { Get-MotorwayDeadEndRotation $Orientation } elseif ($usesRoadBridgeRamp -or $null -eq $transportTemplate) { Get-LayoutRotation $Topology $Orientation } else { Get-TransportFeatureRotation $TransportFeature }
             role = if ($usesMotorwayCornerOnrampInterchange) { 'motorway_onramp_interchange' } elseif ($usesRoadBridgeRamp) { 'road_center' } elseif ($null -eq $transportTemplate) { 'road_center' } else { $TransportFeature }
         }
 
@@ -2644,6 +2645,10 @@ function Get-ProfileFallbackTemplates {
         [string[]]$Landmarks
     )
 
+    if ($Profile -eq 'military' -or ($Landmarks -contains 'Army Base')) {
+        if ($armyBuildingTemplates.Count -eq 0) { throw 'Army-only building placement requires VMFs under tiletemplates\army.' }
+        return @($armyBuildingTemplates)
+    }
     $candidates = [System.Collections.Generic.List[string]]::new()
     $allowCommercial = $Profile -in $plannerSettings.buildingSelection.commercialProfiles -or (Test-CommercialSpreadPlacement $Cell $Profile)
     $allowIndustry = $Cell.environment.terrain -in $plannerSettings.buildingSelection.industryTerrains -or $Profile -in $plannerSettings.buildingSelection.industryProfiles
@@ -3202,6 +3207,9 @@ foreach ($cell in $map.cells) {
         rampExits = $rampExits
         bridgeRampDirections = $bridgeRampDirections
         activeEntrances = $activeEntrances
+        # Recipes are shared by cells with different road blockades; the map carries a gate on every road
+        # connection and runtime world data marks the blocked ones per cell.
+        gateDirections = @(Get-ActiveEntrances $cell -IncludeBlockades)
         safeZoneEntrance = $safeZoneEntrance
         suppressedBorderTiles = @(if ($safeZoneEntrance) { foreach ($tile in $safeZoneEntrance.suppressedBorderTiles) { $tile } })
         environmentProfile = $profile
@@ -3369,7 +3377,7 @@ if ($outerEdgesEnabled) {
         $oceanSides = @($(if ($cell.x -eq 0) { 'W' }))
         $cell | Add-Member -NotePropertyName skyboxOceanSides -NotePropertyValue $oceanSides
         $oceanSuffix = if ($oceanSides.Count -gt 0) { '-oceanw' } else { '' }
-        $cell.cellTemplateFilename = [System.IO.Path]::GetFileNameWithoutExtension($cell.cellTemplateFilename) + $oceanSuffix + '-edge2.vmf'
+        $cell.cellTemplateFilename = [System.IO.Path]::GetFileNameWithoutExtension($cell.cellTemplateFilename) + $oceanSuffix + '.vmf'
         $cell.cellTemplatePath = Join-Path $CellDirectory $cell.cellTemplateFilename
         $cell.cellTemplateExists = Test-Path -LiteralPath $cell.cellTemplatePath
     }
@@ -3385,7 +3393,7 @@ function Resolve-PlannedComplexMotorwayCase {
 
     $name = switch ($cell.topology) {
         'motorway-corner' { 'tile_motorway_corner_5x3.vmf' }
-        'motorway-crossjunction' { 'tile_motorway_crossroads_6x3.vmf' }
+        'motorway-crossjunction' { 'tile_motorway_crossroads_3x3.vmf' }
         'motorway-tjunction' { 'tile_motorway_tjunction_6x3.vmf' }
         'motorway-deadend' { 'tile_motorway_deadend_3x3.vmf' }
         'motorway-straight' {
@@ -3396,7 +3404,11 @@ function Resolve-PlannedComplexMotorwayCase {
         }
         default { throw "Unsupported complex inspection topology '$($cell.topology)'." }
     }
-    $yaw = if ($cell.transportFeature -ne 'none') { Get-TransportFeatureRotation $cell.transportFeature } else { Get-LayoutRotation $cell.topology $cell.orientation }
+    # The measured wide bridge carries its motorway N/S at yaw0, unlike the legacy1x1 transport yaws.
+    $yaw = if ($cell.topology -eq 'motorway-straight' -and $cell.transportFeature -eq 'bridge-horizontal') { [int]$plannerSettings.rotations.layout.straight.vertical }
+        elseif ($cell.topology -eq 'motorway-straight' -and $cell.transportFeature -eq 'bridge-vertical') { [int]$plannerSettings.rotations.layout.straight.horizontal }
+        elseif ($cell.transportFeature -ne 'none') { Get-TransportFeatureRotation $cell.transportFeature }
+        else { Get-LayoutRotation $cell.topology $cell.orientation }
     $case = @($assemblyReport.cases | Where-Object { [IO.Path]::GetFileName($_.piece) -eq $name -and $_.yaw -eq $yaw })
     if ($case.Count -ne 1) { throw "Exactly one measured assembly case required for $name/yaw$yaw." }
     if ($cell.topology -ne 'motorway-straight' -and $cell.transportFeature -ne 'none') {

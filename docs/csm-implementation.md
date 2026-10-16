@@ -6,6 +6,13 @@
 work deferred outside Alpha 3.2's completion requirements.** This is acceptance
 of the limited opt-in experiment, not seamless cascade, live lifecycle or
 performance certification. No map changes or dependencies were introduced.
+The user later authorized one narrow flashlight follow-up: while sun CSM is
+ready, only the local player's F-toggle chest lamp casts dynamic shadows. Other
+players' lamps and the CSM-off path stay unshadowed; this does not reopen the
+remaining CSM backlog. A second narrow follow-up centers sun-shadow projectors
+on the local player's entity origin rather than the render camera; sun direction
+and baked lighting remain unchanged. The user then selected runtime trees as
+casters, while bushes/hedges and high-poly non-foliage models are excluded.
 The user requested a source investigation of
 [Xenthio/RealCSM](https://github.com/Xenthio/RealCSM) and a future-agent plan for
 ZombieSim's own implementation.
@@ -48,16 +55,36 @@ reloads or benchmarks merely to close Alpha 3.2.
   engine shadow-map refresh cadence or GPU saving.
 - Weighted nested projected lights with the existing mounted texture; no
   contiguous masks, seam blending or light-space snapping yet. Baked lighting,
-  shared lightstyles and server lighting remain unchanged.
+  shared lightstyles and server lighting remain unchanged. The projection
+  center follows the local player's entity origin, not the render-camera origin.
+- While CSM is ready, runtime tree models are temporarily enabled as shadow
+  casters; bush/hedge/shrub models and non-foliage models at or above 5,000
+  LOD-0 triangles are temporarily disabled. Other foliage retains its original
+  state, and every override restores its original flag when CSM suspends or
+  turns off. Models under `models/zombiesim/skybox/` are excluded before
+  polygon measurement. This also affects those entities' shadows for the local flashlight.
+  Compiled `prop_static` map models remain unchanged and are not filtered.
 - GLua syntax275/0 and editor diagnostics pass. Earlier one-projector preview
   review confirmed world/telephone-pole and tree-leaf shadows only in the
-  observed cell. The running client has not loaded the new runtime/Options
-  source; that review is not evidence for its controls or all quality tiers.
+  observed cell. The original runtime/Options acceptance did not certify the
+  current player-centered change, which still needs fresh-load visual review.
 - Live enable/tier/persistence behavior, lifecycle, secondary-view/skybox
   isolation, two-client independence and matched foreground performance remain
   unverified. Focus-unmatched bridge samples are not causal cost evidence.
-- The permanent unshadowed F-toggle chest lamp is separate; its outstanding
-  multiplayer/culling/lifecycle checks remain documented, not silently passed.
+- The F-toggle chest lamp stays unshadowed when CSM is off. With CSM ready, the
+  local player's lamp alone enables shadows; remote lamps stay unshadowed.
+  The server foliage owner normally disables tree shadows; CSM now overrides
+  those flags locally while active. The user-reported hedge performance drop
+  and shadow popping while walking remain unresolved. Authored hedge tiles use
+  compiled `prop_static` models, which this runtime filter cannot exclude, so
+  this implementation does not establish a fix for the reported hedge cost.
+  Player-centering and tree inclusion also do not prove cascade stability; the
+  nested cascades still have no light-space snapping or blend masks. The
+  documented Lua `ProjectedTexture` API exposes no per-caster filter. Do not
+  change authored static-prop shadow flags without separately verifying their
+  baked-lighting effect. See the
+  [Garry's Mod `Entity:DrawShadow` API](https://wiki.facepunch.com/gmod/Entity:DrawShadow)
+  and [`ProjectedTexture:SetTargetEntity`](https://wiki.facepunch.com/gmod/ProjectedTexture:SetTargetEntity).
 
 ### Deferred backlog transferred from Alpha 3.2
 
@@ -892,9 +919,12 @@ Proposed future files:
 - `gamemode/tests/fixtures/cl_csm_engine.lua`
 - `tests/csm/test_client_csm.py`
 
-Only create the files required by the accepted implementation. Suggested
-future suite/status commands are `zn_test_csm` and `zombiesim_csm_status`;
-they do not exist as a result of this document.
+The client status command `zombiesim_csm_status` reports active-tier and
+runtime caster-filter diagnostics to the console and
+`data/zombiesim/csm_status.json`; `zombiesim_dev_csm_status` forwards it through
+the preview bridge. `zombiesim_dev_test_csm_client` runs the focused anchor,
+tree/bush policy and shadow-flag restoration fixtures. A broader `zn_test_csm`
+suite remains future work.
 
 Required offline cases:
 

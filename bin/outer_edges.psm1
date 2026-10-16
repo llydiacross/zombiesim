@@ -255,14 +255,14 @@ function Expand-ZMOuterEdgeShell {
         $mapping = @{}
         $preservedSides = @{}
         if ($materials.Count -eq 1 -and $materials[0] -eq 'TOOLS/TOOLSSKYBOX') {
-            $mapping = @{ '2240' = 3072; '2304' = 3136 }
+            $mapping = @{ '2240' = 2880; '2304' = 2944 }
             $preservedSides = $OceanSides
             $skyCount++
         } elseif ($materials.Count -eq 1 -and $materials[0] -eq 'TOOLS/TOOLSCLIP') {
             $mapping = @{ '1984' = 2240; '2048' = 2304 }
             $clipCount++
         } elseif ($materials.Count -eq 1 -and $materials[0] -eq 'HALFLIFE/BLACK') {
-            $mapping = @{ '2240' = 3072; '2304' = 3136 }
+            $mapping = @{ '2240' = 2880; '2304' = 2944 }
             $preservedSides = $OceanSides
         } else {
             throw "Unexpected base shell solid $($solid.Get('id')); inspect its geometry before expanding it."

@@ -39,7 +39,10 @@ function Get-ZMTransitionGateCoordinates {
 function Set-ZMTransitionArrivalLandmarks {
     param([string]$Vmf, [object[]]$Gates)
 
+    $writtenDirections = @{}
     foreach ($gate in $Gates) {
+        if ($writtenDirections.ContainsKey($gate.directionName)) { continue }
+        $writtenDirections[$gate.directionName] = $true
         $name = "$($gate.directionName.ToUpperInvariant())_ENTRANCE"
         $pattern = '(?s)("classname" "info_landmark"\s+"targetname" "' + [regex]::Escape($name) + '".*?"origin" ")[^"]+(")'
         if ([regex]::Matches($Vmf, $pattern).Count -ne 1) { throw "Expected one transition arrival landmark: $name" }
@@ -49,17 +52,61 @@ function Set-ZMTransitionArrivalLandmarks {
     return $Vmf
 }
 
+function Expand-ZMTransitionGateLanes {
+    param([object[]]$Gates)
+
+    $expanded = [System.Collections.Generic.List[object]]::new()
+    foreach ($gate in $Gates) {
+        $lanes = if ($null -ne $gate.PSObject.Properties['lanes']) { @($gate.lanes) } else { @() }
+        $laneCount = @($lanes).Count
+        $route = if ($null -ne $gate.PSObject.Properties['route']) { [string]$gate.route } else { 'motorway' }
+        if ($route -notin @('road', 'motorway')) { throw "Unsupported transition gate route: $route" }
+        if ($route -eq 'road' -or $laneCount -eq 0) {
+            $expanded.Add($gate)
+            continue
+        }
+        if ($laneCount -ne 2) { throw 'Motorway transition gates require two carriageways.' }
+
+        for ($index = 0; $index -lt $laneCount; $index++) {
+            $lane = $lanes[$index]
+            $lateral = [double]$lane.lateral
+            $width = [double]$lane.width
+            if ([double]::IsNaN($lateral) -or [double]::IsInfinity($lateral) -or
+                [double]::IsNaN($width) -or [double]::IsInfinity($width) -or $width -le 0) {
+                throw 'Motorway transition lanes require finite lateral centres and positive widths.'
+            }
+            $laneGate = $gate.PSObject.Copy()
+            $laneGate | Add-Member -NotePropertyName route -NotePropertyValue motorway -Force
+            $laneGate | Add-Member -NotePropertyName laneIndex -NotePropertyValue ($index + 1) -Force
+            $laneGate | Add-Member -NotePropertyName lateralMin -NotePropertyValue ($lateral - $width / 2) -Force
+            $laneGate | Add-Member -NotePropertyName lateralMax -NotePropertyValue ($lateral + $width / 2) -Force
+            $expanded.Add($laneGate)
+        }
+    }
+    return @($expanded)
+}
+
 function Get-ZMTransitionTriggerBounds {
     param([object]$Gate)
 
     $measured = $null -ne $Gate.PSObject.Properties['lanes']
+    $laneSpecific = $null -ne $Gate.PSObject.Properties['laneIndex']
     $min = if ($measured) { [double]$Gate.lateralMin } else { -128 }
     $max = if ($measured) { [double]$Gate.lateralMax } else { 128 }
     $road = $null -ne $Gate.PSObject.Properties['route'] -and $Gate.route -eq 'road'
-    if ($measured -and ($Gate.lanes.Count -ne $(if ($road) { 1 } else { 2 }) -or $min -ge 0 -or $max -le 0 -or
-        [double]::IsNaN($min) -or [double]::IsInfinity($min) -or
-        [double]::IsNaN($max) -or [double]::IsInfinity($max))) {
-        throw 'Measured transition trigger requires finite extents for its route lane count.'
+    if ($measured) {
+        $expectedLanes = if ($road) { 1 } else { 2 }
+        if ($Gate.lanes.Count -ne $expectedLanes -or $min -ge $max -or
+            [double]::IsNaN($min) -or [double]::IsInfinity($min) -or
+            [double]::IsNaN($max) -or [double]::IsInfinity($max)) {
+            throw 'Transition trigger requires finite extents for its route lane count.'
+        }
+        if ($laneSpecific -and ($road -or $Gate.laneIndex -notin @(1, 2))) {
+            throw 'Lane-specific transition triggers are only valid for a motorway carriageway.'
+        }
+        if (-not $laneSpecific -and ($min -ge 0 -or $max -le 0)) {
+            throw 'Combined transition triggers must straddle their route axis.'
+        }
     }
     $range = switch ($Gate.direction) {
         'N' { @($min, $max, -32, 32) }
@@ -84,6 +131,19 @@ function Get-ZMTransitionBarricadeProps {
         @{ model = 'models/props/de_nuke/car_nuke_glass.mdl'; across = 192.233; outward = -65.31; z = 42.898; yaw = 152 },
         @{ model = 'models/props/de_nuke/car_nuke_red.mdl'; across = 191.892; outward = -64; z = 44; yaw = 152 }
     )
+    if ($null -ne $Gate.PSObject.Properties['laneIndex']) {
+        if ($Gate.route -eq 'road' -or $Gate.lanes.Count -ne 2 -or $Gate.laneIndex -notin @(1, 2)) {
+            throw 'Lane-specific barricades require one of two motorway carriageways.'
+        }
+        $firstIndex = if ($Gate.laneIndex -eq 1) { 0 } else { 2 }
+        $props = @($props[$firstIndex], $props[$firstIndex + 1])
+        $lane = $Gate.lanes[$Gate.laneIndex - 1]
+        $baseCentre = if ($Gate.laneIndex -eq 1) { -192 } else { 192 }
+        foreach ($prop in $props) {
+            $prop.across += [double]$lane.lateral - $baseCentre
+        }
+        return $props
+    }
     if ($null -ne $Gate.PSObject.Properties['lanes'] -and
         -not ($null -ne $Gate.PSObject.Properties['route'] -and $Gate.route -eq 'road')) {
         if ($Gate.lanes.Count -ne 2) { throw 'Measured barricades require two carriageway centres.' }
@@ -95,4 +155,4 @@ function Get-ZMTransitionBarricadeProps {
     return $props
 }
 
-Export-ModuleMember -Function Get-ZMTransitionDeckHeight, Get-ZMTransitionGateCoordinates, Set-ZMTransitionArrivalLandmarks, Get-ZMTransitionTriggerBounds, Get-ZMTransitionBarricadeProps
+Export-ModuleMember -Function Get-ZMTransitionDeckHeight, Get-ZMTransitionGateCoordinates, Set-ZMTransitionArrivalLandmarks, Expand-ZMTransitionGateLanes, Get-ZMTransitionTriggerBounds, Get-ZMTransitionBarricadeProps

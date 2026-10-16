@@ -23,7 +23,8 @@ $settingsPath = Join-Path $OutputRoot 'settings.json'
 $sourceDirectory = Join-Path $OutputRoot 'src'
 $planPath = Join-Path $OutputRoot 'plan.json'
 $listPath = Join-Path $OutputRoot 'required.txt'
-& (Join-Path $PSScriptRoot 'plan_cell_templates.ps1') -WorldProfile preview -SettingsPath $settingsPath -MapData (Join-Path $PSScriptRoot 'preview_grid_24x24_seed_1337.json') -CellDirectory $sourceDirectory -Output $planPath -ListOutput $listPath | Out-Null
+$batchRoot = Join-Path $root 'generated\phase_j_preview_20261015'
+& (Join-Path $PSScriptRoot 'plan_cell_templates.ps1') -WorldProfile preview -SettingsPath $settingsPath -MapData (Join-Path $batchRoot 'preview_grid_24x24_seed_1337.json') -MotorwayAssemblyReport (Join-Path $batchRoot 'measured-assemblies\assembly-report.json') -CellDirectory $sourceDirectory -Output $planPath -ListOutput $listPath | Out-Null
 if (-not $?) { throw 'Skyline fixture planning failed.' }
 $plan = Get-Content -Raw $planPath | ConvertFrom-Json
 $selected = @($plan.cells | Group-Object { (@($_.skyboxOceanSides) -join '') + ':' + (@($_.waterBorderSides | ForEach-Object { $_.side } | Sort-Object) -join '') } |
@@ -65,10 +66,10 @@ foreach ($cell in $plan.cells) {
         if ($material -notin @('HALFLIFE/BLACK', 'TOOLS/TOOLSSKYBOX')) { continue }
         $xCoordinates = @($solid.Children | Where-Object Name -eq 'side' | ForEach-Object { $_.Child('vertices_plus').GetAll('v') } |
             ForEach-Object { [double]($_ -split '\s+')[0] } | Sort-Object -Unique)
-        $westCoordinates = if ($cell.x -eq 0) { @(-2240, -2304) } else { @(-3072, -3136) }
+        $westCoordinates = if ($cell.x -eq 0) { @(-2240, -2304) } else { @(-2880, -2944) }
         Assert (@($xCoordinates | Where-Object { $_ -lt 0 -and $_ -notin $westCoordinates }).Count -eq 0) 'Actual recipe floor and sky seal match the west ocean attachment or expanded inland clearance.'
         if ($material -eq 'HALFLIFE/BLACK') {
-            Assert (($xCoordinates -join ',') -eq $(if ($cell.x -eq 0) { '-2240,3072' } else { '-3072,3072' })) 'No black floor extends into the omitted west skybox band.'
+            Assert (($xCoordinates -join ',') -eq $(if ($cell.x -eq 0) { '-2240,2880' } else { '-2880,2880' })) 'No black floor extends into the omitted west skybox band.'
         }
     }
     $instances = [ZombieSim.Skybox.CellModelBuilder]::ReadInstances($path)

@@ -14,6 +14,7 @@ param(
     [switch]$SizedTerrainInfill,
     [switch]$CompleteTerrainInfill,
     [switch]$MeasureCompleteTerrainInfill,
+    [switch]$MotorwayOnlyInfill,
     [string]$WorldProfile = '',
     [switch]$Preview,
     [string]$SettingsPath = '',
@@ -24,6 +25,12 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if ($CompleteTerrainInfill -and -not $SizedTerrainInfill) { throw 'Complete infill requires sized terrain infill.' }
 if ($MeasureCompleteTerrainInfill -and ($SizedTerrainInfill -or $CompleteTerrainInfill)) { throw 'Complete infill measurement cannot be combined with partial-source emission.' }
+if ($MotorwayOnlyInfill -and -not ($MeasureCompleteTerrainInfill -or $SizedTerrainInfill -or $CompleteTerrainInfill)) {
+    throw 'MotorwayOnlyInfill requires a terrain infill measurement or emission pass.'
+}
+if ($MotorwayOnlyInfill -and $ClearCellDirectory) {
+    throw 'MotorwayOnlyInfill cannot clear a shared generated source directory.'
+}
 Import-Module (Join-Path $PSScriptRoot 'ps_progress_utils.psm1') -Force
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Write-ZMProgress -Activity 'Building cell VMFs' -Status 'Loading recipe plan and source template inventory.' -PercentComplete 2 -Step 'setup'
@@ -40,7 +47,10 @@ $outerEdgesEnabled = $outerEdgeSettings.ContainsKey('enabled') -and [bool]$outer
 if ($outerEdgesEnabled -and -not $borderEnabled) { throw 'Outer edges require the existing border ring.' }
 $topologyTemplates = $generatorSettings.cellPlanning.topologyTemplates
 $transportTemplates = $generatorSettings.cellPlanning.transportTemplates
-if (-not $PSBoundParameters.ContainsKey('PruneStaleGenerated')) { $PruneStaleGenerated = $true }
+if (-not $PSBoundParameters.ContainsKey('PruneStaleGenerated')) { $PruneStaleGenerated = -not $MotorwayOnlyInfill }
+if ($MotorwayOnlyInfill -and $PruneStaleGenerated) {
+    throw 'MotorwayOnlyInfill cannot prune shared generated outputs; omit PruneStaleGenerated.'
+}
 Import-Module (Join-Path $PSScriptRoot 'carpark_endcaps.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'vmf_source_dependencies.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'tile_ground_grid.psm1')
@@ -164,6 +174,16 @@ if ([string]::IsNullOrWhiteSpace($PlanData) -or -not (Test-Path $PlanData)) {
 }
 
 $plan = Get-Content -Raw $PlanData | ConvertFrom-Json
+function Get-MotorwayInfillRecipes {
+    param([Parameter(Mandatory = $true)][object[]]$Recipes)
+
+    $motorwayRecipes = @($Recipes | Where-Object { $null -ne (Get-ZMComplexMotorwayContract $_) })
+    if ($motorwayRecipes.Count -eq 0) {
+        throw 'MotorwayOnlyInfill found no recipes with a schema-2 measured motorway contract.'
+    }
+    return $motorwayRecipes
+}
+
 $inspectionRecipes = @($plan.cells | Where-Object { $null -ne $_.PSObject.Properties['motorwayCellInspection'] })
 if ($inspectionRecipes.Count -gt 0 -or $MotorwayCellInspection) {
     $generatedRoot = [IO.Path]::GetFullPath((Join-Path $projectRoot 'generated')).TrimEnd('\') + '\'
@@ -190,7 +210,8 @@ if ($plan.schemaVersion -lt 2 -or $plan.cellTileGridSize -lt 1) {
 $skyboxSettings = if ($vmfBuildSettings.ContainsKey('skybox3d')) { $vmfBuildSettings.skybox3d } else { @{} }
 $skyboxEnabled = $skyboxSettings.ContainsKey('enabled') -and [bool]$skyboxSettings.enabled
 $skyboxRoomTemplate = ''
-$safeZoneMaps = @($plan.safeZoneMaps)
+$safeZoneMaps = @()
+if (-not $MotorwayOnlyInfill) { $safeZoneMaps = @($plan.safeZoneMaps) }
 $safeZoneTemplateDirectory = [string]$plan.safeZoneTemplateDirectory
 if ($safeZoneMaps.Count -gt 0 -and ([string]::IsNullOrWhiteSpace($safeZoneTemplateDirectory) -or -not (Test-Path -LiteralPath $safeZoneTemplateDirectory -PathType Container))) {
     throw 'The template plan defines standalone safe-zone maps but has no valid safeZoneTemplateDirectory. Re-run plan_cell_templates.ps1.'
@@ -478,10 +499,16 @@ function Test-RecipeTilePlacements {
             $null -eq $Recipe.PSObject.Properties['motorwayAssembly'] -or $Recipe.motorwayAssembly.schemaVersion -ne 1) {
             throw 'Normal wide motorway emission requires a complete measured straight assembly contract.'
         }
+        $trustedPrevious = Test-TrustedPriorMotorwayAssembly $Recipe.motorwayAssembly
         $current = New-ZMNormalStraightMotorwayContract $Recipe $TileDirectory
         if (($current | ConvertTo-Json -Depth 30 -Compress) -cne
             ($Recipe.motorwayAssembly | ConvertTo-Json -Depth 30 -Compress)) {
             throw 'Normal wide motorway emission contract differs from current source.'
+        }
+        if ($trustedPrevious -and (@($Recipe.motorwayAssembly.gates).Count -eq 0 -or
+            @($Recipe.motorwayAssembly.ringPlacements).Count -ne 4 -or
+            @($Recipe.motorwayAssembly.leases).Count -ne 27)) {
+            throw 'Trusted prior motorway plan lacks its approved gates or grid reservations.'
         }
         Get-TransitionGatePlacements $Recipe | Out-Null
     }
@@ -491,10 +518,16 @@ function Test-RecipeTilePlacements {
             $normalComplex.status -ne 'normal_complex_travel_pending') {
             throw 'Normal complex motorway emission requires a unique travel-pending schema-2 contract.'
         }
-        foreach ($property in $normalComplex.sourceFingerprints.PSObject.Properties) {
-            if ($property.Value -cne (Get-FileHash -LiteralPath (Join-Path $TileDirectory $property.Name) -Algorithm SHA256).Hash) {
-                throw "Normal complex motorway source changed; replan before emission: $($property.Name)"
+        if (-not (Test-TrustedPriorMotorwayAssembly $normalComplex)) {
+            foreach ($property in $normalComplex.sourceFingerprints.PSObject.Properties) {
+                if ($property.Value -cne (Get-FileHash -LiteralPath (Join-Path $TileDirectory $property.Name) -Algorithm SHA256).Hash) {
+                    throw "Normal complex motorway source changed; replan before emission: $($property.Name)"
+                }
             }
+        }
+        if ((Test-TrustedPriorMotorwayAssembly $normalComplex) -and
+            @($normalComplex.gates).Count -eq 0) {
+            throw 'Trusted prior complex motorway plan lacks its approved gate records.'
         }
         Get-TransitionGatePlacements $Recipe | Out-Null
     }
@@ -1115,27 +1148,56 @@ function Get-BorderPlacements {
     return @($placements)
 }
 
+function Test-TrustedPriorMotorwayAssembly {
+    param([object]$Contract)
+
+    $property = $Contract.PSObject.Properties['assemblyAuthority']
+    return $null -ne $property -and $property.Value -eq 'trusted_prior_approved_grid_layout'
+}
+
+function ConvertTo-TransitionGatePlacements {
+    param([object[]]$Gates)
+
+    $placements = [System.Collections.Generic.List[object]]::new()
+    foreach ($gate in $Gates) {
+        if ($null -eq $gate.PSObject.Properties['lanes']) {
+            $placements.Add($gate)
+            continue
+        }
+        $arrivalLane = [int]$gate.arrivalLane
+        if ($arrivalLane -lt 1 -or $arrivalLane -gt @($gate.lanes).Count) {
+            throw "Transition gate has an invalid arrival lane: $($gate.direction)"
+        }
+        $arrival = $gate.lanes[$arrivalLane - 1]
+        $route = if ($null -ne $gate.PSObject.Properties['route']) { [string]$gate.route } else { 'motorway' }
+        $placements.Add([pscustomobject]@{
+            direction = $gate.direction
+            directionName = @{ N = 'north'; E = 'east'; S = 'south'; W = 'west' }[$gate.direction]
+            x = $gate.x; y = $gate.y
+            yaw = @{ N = 90; E = 0; S = 270; W = 180 }[$gate.direction]
+            zOffset = $gate.deckZ - 36
+            arrivalX = $arrival.arrivalX; arrivalY = $arrival.arrivalY; arrivalZ = $gate.deckZ + 4
+            route = $route; lanes = @($gate.lanes); lateralMin = $gate.lateralMin; lateralMax = $gate.lateralMax
+        })
+    }
+    return @(Expand-ZMTransitionGateLanes @($placements))
+}
+
 function Get-TransitionGatePlacements {
     param([object]$Recipe)
 
     if ($null -ne $Recipe.PSObject.Properties['motorwayCellInspection']) { return @() }
     if ($null -ne $Recipe.PSObject.Properties['motorwayAssembly'] -and $Recipe.motorwayAssembly.schemaVersion -eq 2) {
-        $complexGates = @(Get-ZMComplexMotorwayGates $Recipe.motorwayAssembly $TileDirectory)
-        if ((@($Recipe.activeEntrances | Sort-Object -Unique) -join ',') -ne (@($complexGates.direction | Sort-Object) -join ',')) {
-            throw "Normal complex measured gates disagree with active entrances: $($Recipe.cellTemplateFilename)"
+        $complexGates = if (Test-TrustedPriorMotorwayAssembly $Recipe.motorwayAssembly) {
+            @($Recipe.motorwayAssembly.gates)
+        } else {
+            @(Get-ZMComplexMotorwayGates $Recipe.motorwayAssembly $TileDirectory)
         }
-        return @(foreach ($gate in $complexGates) {
-            $arrival = $gate.lanes[$gate.arrivalLane - 1]
-            [pscustomobject]@{
-                direction = $gate.direction
-                directionName = @{ N = 'north'; E = 'east'; S = 'south'; W = 'west' }[$gate.direction]
-                x = $gate.x; y = $gate.y
-                yaw = @{ N = 90; E = 0; S = 270; W = 180 }[$gate.direction]
-                zOffset = $gate.deckZ - 36
-                arrivalX = $arrival.arrivalX; arrivalY = $arrival.arrivalY; arrivalZ = $gate.deckZ + 4
-                route = $gate.route; lanes = $gate.lanes; lateralMin = $gate.lateralMin; lateralMax = $gate.lateralMax
-            }
-        })
+        if ((@($Recipe.activeEntrances | Sort-Object -Unique) -join ',') -ne
+            (@($complexGates.direction | Sort-Object -Unique) -join ',')) {
+            throw "Normal complex motorway gates disagree with active entrances: $($Recipe.cellTemplateFilename)"
+        }
+        return @(ConvertTo-TransitionGatePlacements $complexGates)
     }
     if ($null -ne $Recipe.PSObject.Properties['motorwayAssembly']) {
         $fresh = New-ZMNormalStraightMotorwayContract $Recipe $TileDirectory
@@ -1146,21 +1208,13 @@ function Get-TransitionGatePlacements {
         if ((@($Recipe.activeEntrances | Sort-Object -Unique) -join ',') -ne ($fresh.gates.direction -join ',')) {
             throw 'Normal measured gates disagree with active entrances.'
         }
-        return @(foreach ($gate in $fresh.gates) {
-            $arrival = $gate.lanes[$gate.arrivalLane - 1]
-            [pscustomobject]@{
-                direction = $gate.direction
-                directionName = @{ N = 'north'; E = 'east'; S = 'south'; W = 'west' }[$gate.direction]
-                x = $gate.x; y = $gate.y
-                yaw = @{ N = 90; E = 0; S = 270; W = 180 }[$gate.direction]
-                zOffset = $gate.deckZ - 36
-                arrivalX = $arrival.arrivalX; arrivalY = $arrival.arrivalY; arrivalZ = $gate.deckZ + 4
-                lanes = $gate.lanes; lateralMin = $gate.lateralMin; lateralMax = $gate.lateralMax
-            }
-        })
+        return @(ConvertTo-TransitionGatePlacements $fresh.gates)
     }
+    $gateDirectionsProperty = $Recipe.PSObject.Properties['gateDirections']
     $activeEntrancesProperty = $Recipe.PSObject.Properties['activeEntrances']
-    $directions = if ($null -ne $activeEntrancesProperty) {
+    $directions = if ($null -ne $gateDirectionsProperty) {
+        @($gateDirectionsProperty.Value)
+    } elseif ($null -ne $activeEntrancesProperty) {
         @($activeEntrancesProperty.Value)
     } else {
         @((Get-RecipeEdgeConnections $Recipe) + @($Recipe.rampExits))
@@ -1173,7 +1227,7 @@ function Get-TransitionGatePlacements {
             (Get-ZMTransitionDeckHeight (Join-Path $TileDirectory ([string]$topologyTemplates['road-straight'])) $TileSize)
     } else { 0 }
 
-    return @($directions |
+    $gates = @($directions |
         Where-Object { $_ -in @('N', 'E', 'S', 'W') } |
         Sort-Object -Unique |
         ForEach-Object {
@@ -1190,6 +1244,7 @@ function Get-TransitionGatePlacements {
                 arrivalZ = [double]$center.arrivalZ
             }
         })
+    return @(Expand-ZMTransitionGateLanes $gates)
 }
 
 function Convert-NorthGateOffset {
@@ -1398,6 +1453,12 @@ cameras
         $minZ = $triggerBounds.minZ; $maxZ = $triggerBounds.maxZ
         $solidId = $entityId + 1
         $sideId = $solidId + 1
+        $gateTargetName = if ($null -ne $gate.PSObject.Properties['laneIndex']) {
+            'zm_transition_gate_{0}_lane{1}' -f $gate.direction, $gate.laneIndex
+        } else {
+            'zm_transition_gate_{0}' -f $gate.direction
+        }
+        $gateEntityStart = $lines.Count
         $planes = @(
             "($minX $minY $maxZ) ($maxX $maxY $maxZ) ($maxX $minY $maxZ)",
             "($minX $maxY $minZ) ($maxX $minY $minZ) ($maxX $maxY $minZ)",
@@ -1413,7 +1474,7 @@ cameras
             '    "classname" "trigger_multiple"',
             ('    "origin" "{0} {1} {2}"' -f $gate.x, $gate.y, (56 + $gate.zOffset)),
             ('    "angles" "0 {0} 0"' -f $gate.yaw),
-            ('    "targetname" "zm_transition_gate_{0}"' -f $gate.direction),
+            ('    "targetname" "{0}"' -f $gateTargetName),
             '    "zm_transition_gate" "1"',
             ('    "zm_transition_direction" "{0}"' -f $gate.directionName),
             '    "zm_transition_mode" "any"',
@@ -1422,6 +1483,9 @@ cameras
             '    {'
             ('        "id" "{0}"' -f $solidId)
         ))
+        if ($null -ne $gate.PSObject.Properties['laneIndex']) {
+            $lines.Insert($gateEntityStart + 10, ('    "zm_transition_lane" "{0}"' -f $gate.laneIndex))
+        }
         foreach ($plane in $planes) {
             $lines.AddRange([string[]]@(
                 '        "side"',
@@ -1448,12 +1512,17 @@ cameras
         foreach ($index in 0..($barricadeProps.Count - 1)) {
             $prop = $barricadeProps[$index]
             $placement = Convert-NorthGateOffset $gate $prop.across $prop.outward $prop.yaw
+            $barricadeTargetName = if ($null -ne $gate.PSObject.Properties['laneIndex']) {
+                'zm_transition_gate_{0}_lane{1}_barricade_{2}' -f $gate.direction, $gate.laneIndex, $index
+            } else {
+                'zm_transition_gate_{0}_barricade_{1}' -f $gate.direction, $index
+            }
             $lines.AddRange([string[]]@(
                 'entity',
                 '{',
                 ('    "id" "{0}"' -f $entityId),
                 '    "classname" "prop_static"',
-                ('    "targetname" "zm_transition_gate_{0}_barricade_{1}"' -f $gate.direction, $index),
+                ('    "targetname" "{0}"' -f $barricadeTargetName),
                 ('    "angles" "0 {0} 0"' -f $placement.yaw),
                 '    "fademindist" "-1"',
                 '    "fadescale" "1"',
@@ -1488,6 +1557,9 @@ $recipes = @($plan.cells |
     Group-Object cellTemplateFilename |
     Sort-Object Name |
     ForEach-Object { $_.Group[0] })
+if ($MotorwayOnlyInfill) {
+    $recipes = @(Get-MotorwayInfillRecipes $recipes)
+}
 $requiredRecipeNames = @{}
 foreach ($recipe in $recipes) {
     $requiredRecipeNames[$recipe.cellTemplateFilename.ToLowerInvariant()] = $true
@@ -1546,7 +1618,7 @@ if ($PruneStaleGenerated) {
         $pruned++
     }
 }
-if (($RefreshGenerated -or $Force -or $PruneStaleGenerated)) {
+if (-not $MotorwayOnlyInfill -and ($RefreshGenerated -or $Force -or $PruneStaleGenerated)) {
     foreach ($existingDenMap in (Get-ChildItem -Path $CellDirectory -File | Where-Object { $_.Name -like 'zn_den_*' -or $_.Name -like 'zz_den_*' })) {
         if ($safeZoneMapNames.ContainsKey([System.IO.Path]::ChangeExtension($existingDenMap.Name, '.vmf').ToLowerInvariant())) {
             continue
@@ -1584,8 +1656,10 @@ foreach ($recipe in $recipes) {
         if ($inspection.schemaVersion -eq 2) {
             $expectedStatus = if ($null -ne $recipe.PSObject.Properties['motorwayCellInspection']) { 'complex_cell_diagnostic_not_live_travel' } else { 'normal_complex_travel_pending' }
             if ($inspection.status -ne $expectedStatus) { throw 'Invalid complex motorway contract status.' }
-            foreach ($property in $inspection.sourceFingerprints.PSObject.Properties) {
-                if ($property.Value -cne (Get-FileHash -LiteralPath (Join-Path $TileDirectory $property.Name) -Algorithm SHA256).Hash) { throw "Complex inspection source changed: $($property.Name). Replan." }
+            if (-not (Test-TrustedPriorMotorwayAssembly $inspection)) {
+                foreach ($property in $inspection.sourceFingerprints.PSObject.Properties) {
+                    if ($property.Value -cne (Get-FileHash -LiteralPath (Join-Path $TileDirectory $property.Name) -Algorithm SHA256).Hash) { throw "Complex inspection source changed: $($property.Name). Replan." }
+                }
             }
             $leased = @{}
             foreach ($lease in $inspection.leases) { $leased["$($lease.tileX),$($lease.tileY)"] = $true }
@@ -1714,4 +1788,5 @@ if ($WhatIf) {
         Write-Output $line
     }
 }
-Write-Output "Cell recipes: $($recipes.Count); cubemap probes: $cubemapProbeCount; written: $created; unchanged: $unchanged; refreshed generated: $refreshed; skipped existing: $skipped; safe-room entrances: $($safeZoneMaps.Count); reusable safe-room maps: $($safeZoneSourceMaps.Count); maps copied: $safeZoneMapsWritten; maps skipped: $safeZoneMapsSkipped; pruned stale safe-room files: $prunedStandaloneDenMaps; pruned stale generated: $pruned; cleared source items: $clearedItems; output: $CellDirectory"
+$scope = if ($MotorwayOnlyInfill) { 'motorway-only infill' } else { 'full plan' }
+Write-Output "Cell recipes ($scope): $($recipes.Count); cubemap probes: $cubemapProbeCount; written: $created; unchanged: $unchanged; refreshed generated: $refreshed; skipped existing: $skipped; safe-room entrances: $($safeZoneMaps.Count); reusable safe-room maps: $($safeZoneSourceMaps.Count); maps copied: $safeZoneMapsWritten; maps skipped: $safeZoneMapsSkipped; pruned stale safe-room files: $prunedStandaloneDenMaps; pruned stale generated: $pruned; cleared source items: $clearedItems; output: $CellDirectory"

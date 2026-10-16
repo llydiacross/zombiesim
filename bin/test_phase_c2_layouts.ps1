@@ -45,8 +45,18 @@ foreach ($cell in $bridgeRampCells) {
         if (@($cell.tilePlacements | Where-Object { $_.role -eq 'carpark_road_junction' -and $_.template -eq 'roads/tile_road_tjunction.vmf' }).Count -eq 0) {
             throw "Carpark bridge-ramp recipe $($cell.cellTemplateFilename) must preserve its carpark T-junction."
         }
-    } elseif ($null -eq $centerPlacement -or $centerPlacement.role -ne 'road_center' -or $centerPlacement.template -ne 'roads/tile_road_crossjunction.vmf') {
-        throw "Bridge-ramp recipe $($cell.cellTemplateFilename) must preserve a road cross-junction at the center."
+    } else {
+        $expectedCenterTemplate = $profile.Settings.cellPlanning.topologyTemplates[[string]$cell.topology]
+        $expectedCenterYaw = switch ([string]$cell.topology) {
+            'road-straight' { [int]$profile.Settings.cellPlanning.rotations.layout.straight[[string]$cell.orientation] }
+            'road-corner' { [int]$profile.Settings.cellPlanning.rotations.layout.corner[[string]$cell.orientation] }
+            'road-tjunction' { [int]$profile.Settings.cellPlanning.rotations.layout.tjunction[[string]$cell.orientation] }
+            default { 0 }
+        }
+        if ($null -eq $centerPlacement -or $centerPlacement.role -ne 'road_center' -or
+            $centerPlacement.template -ne $expectedCenterTemplate -or $centerPlacement.rotationYaw -ne $expectedCenterYaw) {
+            throw "Bridge-ramp recipe $($cell.cellTemplateFilename) must keep the $($cell.topology) center without adding unrelated turnoffs."
+        }
     }
     if ($null -eq $rampPlacement -or $rampPlacement.role -notin @('bridge_ramp', 'carpark_bridge_ramp')) {
         throw "Bridge-ramp recipe $($cell.cellTemplateFilename) must place its ramp one tile along $direction."

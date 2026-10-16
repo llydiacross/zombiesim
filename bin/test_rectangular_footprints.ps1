@@ -2,6 +2,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'scenery_density.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'tile_ground_grid.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'motorway_geometry.psm1') -Force
 $passed = 0
 $maximumMultiTileFootprint = 3
 $MotorwayCellInspection = $false
@@ -132,7 +133,7 @@ foreach ($case in @(
     @('tile_1aa_3x.vmf', 3, 3), @('tile_1aa_2x2.vmf', 2, 2),
     @('tile_1aa_3x3.vmf', 3, 3), @('tile_1aa_2x3.vmf', 2, 3),
     @('tile_1aa_3x2.vmf', 3, 2), @('tile_1aa_1x3.vmf', 1, 3),
-    @('TILE_1AA_3X1.VMF', 3, 1), @('tile_motorway_crossroads_6x3.vmf', 6, 3)
+    @('TILE_1AA_3X1.VMF', 3, 1), @('tile_motorway_crossroads_3x3.vmf', 3, 3)
 )) {
     $footprint = Get-ZMTemplateFootprint $case[0]
     Assert ($footprint.width -eq $case[1] -and $footprint.height -eq $case[2]) 'Filename dimensions preserve width then height and legacy square shorthand.'

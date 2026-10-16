@@ -1,4 +1,4 @@
-param([string]$WorldProfile = 'preview', [string]$SettingsPath = '', [string]$PartialGapLayoutDirectory = '', [switch]$CompletePatches, [switch]$RepairUnmodifiedShapeWinding)
+param([string]$WorldProfile = 'preview', [string]$SettingsPath = '', [string]$PartialGapLayoutDirectory = '', [switch]$CompletePatches, [switch]$MotorwayOnly, [switch]$RepairUnmodifiedShapeWinding)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -23,6 +23,7 @@ if (-not [string]::IsNullOrWhiteSpace($PartialGapLayoutDirectory)) {
         $layout = Get-Content -Raw -LiteralPath $file.FullName | ConvertFrom-Json
         $contract = @(foreach ($name in @('motorwayCellInspection', 'motorwayAssembly')) { if ($null -ne $layout.PSObject.Properties[$name] -and $layout.$name.schemaVersion -eq 2) { $layout.$name } })
         if ($contract.Count -gt 1) { throw "Complete infill layout has more than one complex motorway contract: $($file.FullName)" }
+        if ($MotorwayOnly -and $contract.Count -eq 0) { continue }
         if ($contract.Count -eq 1 -and [IO.Path]::GetFileName($contract[0].template) -eq 'tile_motorway_corner_5x3.vmf') { continue }
         if ($null -eq $layout.PSObject.Properties['terrainInfill']) { continue }
         if ($CompletePatches -and $null -ne $layout.terrainInfill.PSObject.Properties['requiredRectangles']) {

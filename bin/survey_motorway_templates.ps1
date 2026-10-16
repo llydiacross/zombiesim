@@ -12,7 +12,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $directory = Join-Path (Join-Path $root $profile.Settings.paths.templateDirectory) 'roads\motorway_3x1'
 $names = @(
     'tile_motorway.vmf', 'tile_motorway_road_bridge.vmf',
-    'tile_motorway_corner_5x3.vmf', 'tile_motorway_crossroads_6x3.vmf',
+    'tile_motorway_corner_5x3.vmf', 'tile_motorway_crossroads_3x3.vmf', 'tile_motorway_ramp.vmf',
     'tile_motorway_tjunction_6x3.vmf', 'tile_motorway_deadend_3x3.vmf',
     'tile_motorway_onramp_3x4.vmf', 'tile_motorway_onramp_dual_3x4.vmf'
 )

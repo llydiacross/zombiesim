@@ -62,14 +62,16 @@ def main():
                     return state.available[code .. "_" .. mode]
                 end
                 state.travelCalls, state.available = {}, {}
-                function state:Gate(code, position, mode)
+                function state:Gate(code, position, mode, laneIndex)
                     local names = { N = "north", E = "east", S = "south", W = "west" }
                     local entity = { valid = true }
                     function entity:GetClass() return "trigger_multiple" end
-                    function entity:GetName() return "zm_transition_gate_" .. code end
+                    function entity:GetName()
+                        return "zm_transition_gate_" .. code .. (laneIndex and "_lane" .. laneIndex or "")
+                    end
                     function entity:GetKeyValues()
                         return { zm_transition_gate = "1", zm_transition_direction = names[code],
-                            zm_transition_mode = mode or "road" }
+                            zm_transition_mode = mode or "road", zm_transition_lane = laneIndex }
                     end
                     function entity:WorldSpaceCenter() return position end
                     function entity:SetNWBool() end
@@ -146,6 +148,43 @@ def main():
                                 and state.globals[key .. "_Lane2_SurfaceReady"] == false, "road restores one arrow")
                         end
                     end
+                end)
+                suite:Add("separate_motorway_triggers_publish_one_arrow_each_and_keep_384_arrival", function(check)
+                    local service, state, env = fixture()
+                    state.surface = 68
+                    state.mapCells = { { motorwayGates = { {
+                        direction = "N", route = "motorway", x = 0, y = 2208, deckZ = 68,
+                        arrivalLane = 1, status = "trusted_prior_grid_gate_not_compiled_or_live",
+                        lanes = {
+                            { lateral = -512, width = 416, deckZ = 68, arrowX = -512, arrowY = 1952,
+                                arrivalX = -512, arrivalY = 1824 },
+                            { lateral = 528, width = 416, deckZ = 68, arrowX = 528, arrowY = 1952,
+                                arrivalX = 528, arrivalY = 1824 }
+                        }
+                    } } } }
+                    state:Gate("N", env.Vector(-512, 2208, 88), "any", 1)
+                    state:Gate("N", env.Vector(528, 2208, 88), "any", 2)
+                    service:InitializeGates()
+                    check(#service.GateMarkers == 2 and #state.traces == 2
+                        and service.GateMarkers[1].surfaceReady and service.GateMarkers[2].surfaceReady,
+                        "each carriageway gets one trigger and one surface trace")
+                    check(state.globals.ZMTransitionGateCount_N == 2
+                        and state.globals.ZMTransitionGate_N_1_ArrowCount == 1
+                        and state.globals.ZMTransitionGate_N_2_ArrowCount == 1, "one arrow is published per physical trigger")
+                    check(state.globals.ZMTransitionGate_N_1_Surface == env.Vector(-512, 1952, 70)
+                        and state.globals.ZMTransitionGate_N_2_Surface == env.Vector(528, 1952, 70),
+                        "each trigger publishes its own carriageway surface")
+
+                    env.MASK_PLAYERSOLID = 2
+                    state.hulls = {}
+                    env.util.TraceHull = function(spec)
+                        state.hulls[#state.hulls + 1] = spec
+                        return { StartSolid = false }
+                    end
+                    function state.player:GetHull() return env.Vector(-16, -16, 0), env.Vector(16, 16, 72) end
+                    local arrival = service:ResolveGateArrivalPosition(state.player, "N")
+                    check(arrival == env.Vector(-512, 1824, 69), "arrival remains 384 units inward on the approved lane")
+                    check(#state.hulls == 1 and state.hulls[1].mask == env.MASK_PLAYERSOLID, "arrival still validates player hull clearance")
                 end)
                 suite:Add("initialization_waits_for_world_profile_and_map_cleanup_republishes", function(check)
                     local service, state, env = fixture()

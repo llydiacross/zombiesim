@@ -10,8 +10,9 @@ function Assert {
 $pieces = @(
     @('tile_motorway.vmf', 3, 1),
     @('tile_motorway_road_bridge.vmf', 3, 1),
+    @('tile_motorway_ramp.vmf', 3, 1),
     @('tile_motorway_corner_5x3.vmf', 5, 3),
-    @('tile_motorway_crossroads_6x3.vmf', 6, 3),
+    @('tile_motorway_crossroads_3x3.vmf', 3, 3),
     @('tile_motorway_tjunction_6x3.vmf', 6, 3),
     @('tile_motorway_deadend_3x3.vmf', 3, 3),
     @('tile_motorway_onramp_3x4.vmf', 3, 4),
@@ -34,8 +35,10 @@ foreach ($piece in $pieces) {
         }
     }
 }
-$six = Get-ZMMotorwayReservation 'tile_motorway_crossroads_6x3.vmf' 0 0 0 'cross'
-Assert ($six.centerTileX -eq 2.5 -and $six.centerTileY -eq 1 -and $six.originOffset.x -eq 1600) '6x3 uses half-tile physical-origin alignment.'
+$crossroads = Get-ZMMotorwayReservation 'tile_motorway_crossroads_3x3.vmf' 0 3 3 'crossroads'
+Assert ($crossroads.centerTileX -eq 4 -and $crossroads.centerTileY -eq 4 -and $crossroads.originOffset.x -eq 640 -and $crossroads.originOffset.y -eq -640) '3x3 crossroads stays centered in the cell on whole-tile slots.'
+$rampPiece = Get-ZMMotorwayReservation 'tile_motorway_ramp.vmf' 0 3 2 'motorway-ramp'
+Assert ($rampPiece.width -eq 3 -and $rampPiece.height -eq 1 -and $rampPiece.centerTileX -eq 4 -and $rampPiece.centerTileY -eq 2) 'Motorway ramp occupies one 3x1 slot with north as its authored raised side.'
 $ramp = Get-ZMMotorwayReservation 'tile_motorway_onramp_3x4.vmf' 90 0 0 'ramp'
 Assert ($ramp.centerTileX -eq 1.5 -and $ramp.centerTileY -eq 1) 'Rotated even-height ramp retains half-tile alignment.'
 $point = [pscustomobject]@{ x = -512; y = 320; z = 68 }

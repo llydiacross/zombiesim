@@ -17,7 +17,7 @@ $report = Get-Content -Raw -LiteralPath (Join-Path $OutputDirectory 'cell-report
 $plan = Get-Content -Raw -LiteralPath $report.plan | ConvertFrom-Json
 Assert ($plan.cells.Count -eq 7 -and $report.cells.Count -eq 7) 'Seven complete cells cover the seven remaining source pieces.'
 Assert ($report.fixtureChanges.Count -eq 1 -and $report.fixtureChanges[0] -like '*T-junction*') 'Missing real T-junction is an explicitly declared synthetic fixture, never fabricated world evidence.'
-$expectedNames = @('tile_motorway_corner_5x3.vmf', 'tile_motorway_crossroads_6x3.vmf', 'tile_motorway_tjunction_6x3.vmf', 'tile_motorway_deadend_3x3.vmf', 'tile_motorway_road_bridge.vmf', 'tile_motorway_onramp_3x4.vmf', 'tile_motorway_onramp_dual_3x4.vmf')
+$expectedNames = @('tile_motorway_corner_5x3.vmf', 'tile_motorway_crossroads_3x3.vmf', 'tile_motorway_tjunction_6x3.vmf', 'tile_motorway_deadend_3x3.vmf', 'tile_motorway_road_bridge.vmf', 'tile_motorway_onramp_3x4.vmf', 'tile_motorway_onramp_dual_3x4.vmf')
 $sourceRoot = $plan.chunkTemplateDirectory
 $byPiece = @{}
 $sourceBounds = @{}
@@ -42,6 +42,12 @@ foreach ($cell in $plan.cells) {
     Assert ($cell.tilePlacements.Count -eq 25 -and @($cell.tilePlacements | Where-Object role -eq terrain).Count -gt 0) 'Every core slot represented and a real free terrain spawn preserved.'
     $assemblyEntities = @($instances | Where-Object { $_.Get('targetname') -like 'zm_assembly_*' })
     Assert ($assemblyEntities.Count -eq $inspection.assemblies.Count) 'Each measured transport owner emits exactly one actual instance.'
+    if ($name -eq 'tile_motorway_crossroads_3x3.vmf') {
+        $core = @($inspection.assemblies | Where-Object owner -like '*/main')
+        $ramps = @($inspection.assemblies | Where-Object { [IO.Path]::GetFileName($_.template) -eq 'tile_motorway_ramp.vmf' })
+        Assert ($core.Count -eq 1 -and $core[0].origin.x -eq 0 -and $core[0].origin.y -eq 0 -and $core[0].origin.z -eq 800) 'New crossroads remains centered and uses the approved +800 source offset.'
+        Assert ($ramps.Count -eq 2 -and @($ramps | Where-Object { $_.owner -like '*/E/*' -and $_.yaw -eq 90 }).Count -eq 1 -and @($ramps | Where-Object { $_.owner -like '*/W/*' -and $_.yaw -eq 270 }).Count -eq 1) 'East and west ramps face their raised ends inward toward the crossing.'
+    }
     $owners = @($inspection.assemblies.owner)
     Assert (@($owners | Sort-Object -Unique).Count -eq $owners.Count) 'Assembly owners never duplicate.'
     foreach ($assembly in $inspection.assemblies) {
@@ -58,7 +64,8 @@ foreach ($cell in $plan.cells) {
         $entity = @($assemblyEntities | Where-Object { $_.Get('targetname') -eq "zm_assembly_$($assembly.owner)" })
         Assert ($entity.Count -eq 1) 'Exact emitting assembly owner exists in the written VMF.'
         $origin = [ZombieSim.Skybox.Vec3]::Parse($entity[0].Get('origin'))
-        Assert ($origin.X -eq $assembly.origin.x -and $origin.Y -eq $assembly.origin.y -and $origin.Z -eq $assembly.origin.z -and $origin.Z -eq 0) 'Fractional XY survives serialization; no elevation correction hides grade/deck mismatch.'
+        $expectedZ = if ($name -eq 'tile_motorway_crossroads_3x3.vmf' -and $assembly.owner -like '*/main') { 800 } else { 0 }
+        Assert ($origin.X -eq $assembly.origin.x -and $origin.Y -eq $assembly.origin.y -and $origin.Z -eq $assembly.origin.z -and $origin.Z -eq $expectedZ) 'Centered-crossroads offset and every measured instance origin survive serialization.'
         Assert ($entity[0].Get('angles') -eq "0 $($assembly.yaw) 0") 'Authored mapped yaw is preserved.'
         $resolved = [IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $vmf) $entity[0].Get('file').Replace('/', '\')))
         Assert ($resolved -ieq (Join-Path $sourceRoot $assembly.template)) 'Written instance resolves to exact measured authored source.'
@@ -141,9 +148,9 @@ foreach ($cell in $plan.cells) {
     }
     Assert (@($tree.Child('cameras').Children | Where-Object Name -eq camera).Count -eq 2) 'Full cell supplies both overview and road-height cameras.'
 }
-Assert ($byPiece['tile_motorway_road_bridge.vmf'].motorwayCellInspection.yaw -eq 90) 'Existing bridge-horizontal transport yaw retained, not guessed from the new source.'
+Assert ($byPiece['tile_motorway_road_bridge.vmf'].motorwayCellInspection.yaw -eq 0) 'Vertical bridge-horizontal cell uses the measured wide bridge yaw that carries the motorway N/S (confirmed in game).'
 $bridge = $byPiece['tile_motorway_road_bridge.vmf'].motorwayCellInspection
-Assert (($bridge.measuredMotorwayDirections -join ',') -eq 'E,W') 'Measured bridge motorway direction exposes the mapped-yaw/declared-N-S integration mismatch rather than hiding it.'
+Assert ((@($bridge.measuredMotorwayDirections | Sort-Object) -join ',') -eq 'N,S') 'Measured bridge motorway continues the cell''s N/S motorway; the road crosses E/W.'
 Assert ($byPiece['tile_motorway_onramp_3x4.vmf'].motorwayCellInspection.yaw -eq 90 -and $byPiece['tile_motorway_onramp_dual_3x4.vmf'].motorwayCellInspection.yaw -eq 270) 'Both existing ramp mappings unchanged.'
 $terminal = $byPiece['tile_motorway_deadend_3x3.vmf'].motorwayCellInspection
 Assert ($terminal.connections.Count -eq 1 -and $terminal.connections[0].ports[0].outward -eq 'S') 'Terminal has no invented northern through exit.'

@@ -973,7 +973,7 @@ Plan its recipes and write the required-map list:
 .\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json -MotorwayAssemblyReport .\generated\measured-assemblies\assembly-report.json
 ```
 
-Normal wide (3x) motorway cells plan only from current measured assemblies (`-MotorwayAssemblyReport`) and require the expanded border/outer rings. Root settings keep `vmfBuild.outerEdges.enabled` false, so full-world preview batches use an isolated settings copy with it enabled and redirected profile paths. Full terrain infill is three passes: `build_cell_vmfs.ps1 ... -MeasureCompleteTerrainInfill`, `create_terrain_infill_templates.ps1 -PartialGapLayoutDirectory <src> -CompletePatches`, then `build_cell_vmfs.ps1 ... -SizedTerrainInfill -CompleteTerrainInfill`. An explicit `-ContentMapDirectory` (isolated batch) also disables copying and stale-map cleanup in the live engine `garrysmod/maps` folder unless `-StageEngineMaps` is passed; stage isolated outputs through a backed-up ledger instead.
+Normal wide (3x) motorway cells plan only from current measured assemblies (`-MotorwayAssemblyReport`) and require the expanded border/outer rings. Root settings keep `vmfBuild.outerEdges.enabled` false, so full-world preview batches use an isolated settings copy with it enabled and redirected profile paths. Terrain infill is calculated only for schema-2 measured motorway recipes; ordinary preview recipes do not receive infill. For the infill stages, first build the ordinary full plan without infill switches, then restrict each of the three passes to motorways: `build_cell_vmfs.ps1 ... -MotorwayOnlyInfill -MeasureCompleteTerrainInfill`, `create_terrain_infill_templates.ps1 -PartialGapLayoutDirectory <src> -CompletePatches -MotorwayOnly`, then `build_cell_vmfs.ps1 ... -MotorwayOnlyInfill -SizedTerrainInfill -CompleteTerrainInfill`. The scoped builder preserves ordinary recipes and safe-room maps and refuses stale-output pruning. An explicit `-ContentMapDirectory` (isolated batch) also disables copying and stale-map cleanup in the live engine `garrysmod/maps` folder unless `-StageEngineMaps` is passed; stage isolated outputs through a backed-up ledger instead.
 
 Refresh the generated recipe VMFs, prune obsolete generated files, and verify every required recipe exists:
 
@@ -1006,6 +1006,19 @@ Run a complete clean preview build, including fresh BSPs, visibility, lighting, 
 ```powershell
 .\bin\build_city.ps1 -WorldProfile preview -OnlyRequiredMaps -Force  -CleanStagedCity -VvisTimeoutSeconds 1800 -VradTimeoutSeconds 3600
 ```
+
+After a compile report passes, replace only the selected preview BSPs in
+`content/maps` without rebuilding or staging navmeshes, map materials,
+Satellite, wireframe, or runtime-world data:
+
+```powershell
+.\bin\build_city.ps1 -WorldProfile preview -OnlyRequiredMaps -SkipRecipeRefresh -SkipCompile -MapsOnly -CleanStagedCity -ContentMapDirectory .\content\maps
+```
+
+`-MapsOnly` requires an explicit content-map destination and skips engine-map,
+navmesh, material, and runtime-world writes unless `-StageEngineMaps` is
+explicitly requested. It preserves other profiles while removing stale BSPs
+and nav files for the selected profile.
 
 Preview builds default to Hammer's `-fast` VVIS/VRAD preset. Production `city` builds default to the `final` preset (full VVIS plus VRAD `-final -staticproplighting -staticproppolys`). Override the preset with `-Fast` or `-Final`, and tune the bounded compile pool with `-MaxParallelProcesses`; its default is `4`. Stock Hammer tools do not accept a numeric `-threads` value, so the runner uses the process-pool limit rather than passing an invalid argument.
 
@@ -1137,7 +1150,7 @@ Run this from an in-game admin console to print your saved raw grid cell, logica
 zombiesim_player_status
 ```
 
-City exit arrows point outward on the traced road surface: ordinary roads have one arrow, motorways have one on each carriageway rather than the median. They retain green/yellow/red eligibility/waypoint colours, depth occlusion and a1280-unit world range; E travel and nearby prompts are unchanged. The HUD minimap (live and cell-texture modes) and satellite/Level view draw live arrow overlays using their existing pan/zoom transforms, clipped to the map bounds. These overlays are not baked into cached captures and do not use the world camera's distance limit. The world-map window and waypoint diamond are unchanged. `zombiesim_transition_arrows_status` reports meshes, material/shader and texture availability. Preview admins can run `zombiesim_dev_test_transition_markers_client` for isolated client tests; `zombiesim_dev_gate_report` through the bridge reports independently traced gate arrow surfaces. Offline regressions are `tests/transitions/test_client_transition_markers.py` and `tests/transitions/test_server_transition_markers.py`, using the optional shared GLua harness. These fixtures do not prove rendered appearance or actual travel.
+City exit arrows point outward on traced road surfaces. Ordinary roads keep one trigger and arrow; refreshed Phase J motorways use two lane-specific triggers, one per carriageway, with one arrow each. Legacy motorways with a combined trigger and paired arrows remain supported. The existing 256-unit arrow inset and 384-unit inward arrival remain unchanged. Arrows retain green/yellow/red eligibility/waypoint colours, depth occlusion and a1280-unit world range; E travel and nearby prompts are unchanged. The HUD minimap (live and cell-texture modes) and satellite/Level view draw live arrow overlays using their existing pan/zoom transforms, clipped to the map bounds. These overlays are not baked into cached captures and do not use the world camera's distance limit. The world-map window and waypoint diamond are unchanged. `zombiesim_transition_arrows_status` reports meshes, material/shader and texture availability. Preview admins can run `zombiesim_dev_test_transition_markers_client` for isolated client tests; `zombiesim_dev_gate_report` through the bridge reports independently traced gate arrow surfaces. Offline regressions are `tests/transitions/test_client_transition_markers.py` and `tests/transitions/test_server_transition_markers.py`, using the optional shared GLua harness. These fixtures do not prove rendered appearance or actual travel.
 
 Motorway gate arrivals do not use the authored `<SIDE>_ENTRANCE` landmark, which sits on the cell axis inside the concrete central reservation. `ZM_Transitions:ResolveGateArrivalPosition` traces the right-hand carriageway (the same lane as the first travel arrow) 384 units inside the gate, 128 past the arrows, and validates the player hull before placing. Ordinary roads, den exits, unsupported surfaces and an obstructed carriageway keep the authored landmark unchanged. Arrow positions, arrival yaw, the 160 u/s arrival walk and the fade timing are unchanged.
 
@@ -1281,12 +1294,21 @@ Alpha 3.2 includes an experimental client-local CSM overlay in the in-game
 Options > Graphics section. It defaults off and leaves baked lighting
 unchanged. Low uses1 cascade/15Hz, Medium2/30Hz, and High3/every rendered
 frame. The current tiers use weighted overlapping projected lights without
-seam-blending masks; the user accepted this experimental scope, not proven
-seamless cascades or performance. Further work and validation are saved in the
+seam-blending masks, with shadow coverage centered on the local player's entity
+origin rather than the render camera. While CSM is ready, runtime tree entities
+cast shadows; bushes/hedges and non-foliage models with 5,000 or more LOD-0
+triangles do not. Other foliage keeps its existing shadow state. Compiled
+`models/zombiesim/skybox/` models are excluded before mesh measurement.
+Compiled `prop_static` objects are not filtered, and baked lighting is unchanged. The
+user accepted this experimental scope, not proven seamless cascades or
+performance. Further work and validation are saved in the
 [deferred CSM tracker](docs/csm-implementation.md), not required to complete
-Alpha 3.2. The new runtime/Options source has not yet been live-loaded.
+Alpha 3.2. The original acceptance did not certify lifecycle or performance;
+the player-centered change still needs fresh-load visual review.
 Only generated preview/city cells are supported. The F-toggle chest lamp is a
-separate unshadowed feature.
+separate feature and remains unshadowed when CSM is off. While sun CSM is ready,
+only the local player's chest lamp casts dynamic shadows; lamps for other
+survivors remain unshadowed.
 
 CSM has retained manually invoked diagnostic probes for a future explicitly
 authorized investigation; they are not the next milestone action:
@@ -1300,10 +1322,19 @@ separate from the permanent F-toggle chest lamp. The chest lamp replaces the
 native flashlight bind in gameplay cells; its client-local cone is positioned at the survivor's
 `ValveBiped.Bip01_Spine2` bone and follows eye direction. Every client sees
 active lamps within2048 units; each client renders at most the nearest four.
-For frame cost, every permanent chest cone is unshadowed; directional sun
-shadows belong to the separate opt-in CSM path. The lamp has no battery, model
-prop or saved preference; it turns off on death. Neither test probe nor lamp
-changes baked or shared server lighting.
+For frame cost, only the local chest cone gains shadows while sun CSM is ready;
+all other chest cones remain unshadowed. The lamp has no battery, model prop or
+saved preference; it turns off on death. Neither test probe nor lamp changes
+baked or shared server lighting. Run
+`zombiesim_dev_test_chest_lamp_client` in the client console for the focused
+shadow-selection fixture; its result is saved to
+`data/zombiesim/chest-lamp-client-tests.json`. Run
+`zombiesim_dev_test_csm_client` for player-anchor, foliage and caster-state
+fixtures; its result is saved to `data/zombiesim/csm-client-tests.json`.
+`zombiesim_csm_status` prints and writes active-tier, caster-filter and model
+measurement diagnostics to `data/zombiesim/csm_status.json`.
+`zombiesim_dev_csm_status` forwards that client command through the preview
+bridge.
 Bridge-started performance samples did not keep GMod foreground, so their FPS
 results are not valid acceptance evidence. `ProjectedTexture:Update` timings
 are diagnostic operation data, not a performance acceptance claim.
@@ -1765,11 +1796,11 @@ Through the bridge these add `reports.lootSpots`, `reports.lootSpotTests`, and `
 
 # Runtime Foliage and Ambient Debris
 
-`ZM_Foliage` places a bounded, deterministic set of server-owned trees and berry bushes in each outdoor city cell. It traces ground, places up to 30 nodes on flat grass/dirt/mud/gravel/sand surface properties (rocky `rock`/`boulder` ground grows bushes only), stays inside the 5x5 playable tile grid so the inaccessible border ring is excluded, and rejects road/building materials and occupied spaces. Trees also require suitable ground at four points around their base; edge placements that would overlap paving become shrubs instead. Foliage never edits or regenerates map files. Each full cell has 10 interspersed harvestable resource plants and 20 decorative plants; only available harvestable plants are tinted yellow, depleted harvestables are grey, and decorative foliage keeps its natural color and cannot be harvested. Press E near a harvestable bush to pick Berries by hand; harvestable trees require any equipped melee weapon and yield Wood. Decorative plants do not intercept nearby harvest interactions. The server validates range, life state, tool, season and cooldown before granting through the inventory service.
+`ZM_Foliage` places a bounded, deterministic set of server-owned trees and berry bushes in each outdoor city cell. It traces ground, places up to 30 nodes on flat grass/dirt/mud/gravel/sand surface properties (rocky `rock`/`boulder` ground grows bushes only), stays inside the 5x5 playable tile grid so the inaccessible border ring is excluded, and rejects road/building materials and occupied spaces. Trees also require suitable ground at eight points on both the 48-unit trunk ring and the 192-unit canopy ring; edge placements that would overlap paving become shrubs instead. An upward clearance hull rejects trees blocked by non-sky geometry while allowing a trace that reaches a sky surface. Foliage never edits or regenerates map files. Each full cell has 10 interspersed harvestable resource plants and 20 decorative plants; only available harvestable plants are tinted yellow, depleted harvestables are grey, and decorative foliage keeps its natural color and cannot be harvested. Press E near a harvestable bush to pick Berries by hand; harvestable trees require any equipped melee weapon and yield Wood. Decorative plants do not intercept nearby harvest interactions. The server validates range, life state, tool, season and cooldown before granting through the inventory service.
 
 Each node picks a model deterministically from mounted HL2/CS:S pools in `ZM_Foliage.Models`: trees include `de_inferno/tree_small`, `props_foliage/tree_dry01`/`02`, `tree_dead01`/`03` and `cs_militia/trees1`; bushes include `bushgreensmall`, `largebush01`/`03`, `de_train/bush`/`bush2`, `props_foliage/bush2` and `pi_shrub`. Unmounted models are dropped from the pool with a console warning. Fallen bodies share the same playable-grid bounds. Wood is available year-round. Berries are plentiful March-August, scarce September-November and unavailable December-February, based on server-local time. Harvest cooldowns are shared per profile and logical cell, persisted in SQLite and survive restarts: one day for bushes, seven days for trees. Wood and Berries are generic material items with no sale value or food effects assigned yet.
 
-Ambient debris is client-local, limited to nearby deterministic sites, does not collide with players, and cannot be harvested. Kinds: paper (`props_c17/paper01`, newspaper) flutters and lifts in gusts; bottles and cans (`cs_militia/bottle01`, HL2 glass/plastic bottles, cans) lie on their side and roll; cartons and cardboard slide; rare tumbleweeds (HL2 `props_foliage/bramble001a`, scaled 0.5) roll and bounce with the prevailing wind within a leash of their site. Moving players kick nearby debris, and bullet impacts from any player's `ZM.WeaponShot` broadcast throw debris away from the hit point. Debris only simulates (gravity, wall collision, ground following) while moving and within 2000 units. The client setting `zombiesim_ambient_debris_amount` (0 disables, 1 default, up to 3; quick-menu **Debris amount** slider) scales site density and the model cap (20 × amount, at most 60). `zn_foliage_status` reports current server placement, rejection reasons and the most-sampled surface props/textures; `zn_foliage_rebuild` clears and re-places foliage for the current cell without a map reload. `zombiesim_ambient_debris_status` reports client debris amount, counts per kind and how many are moving. `zn_test_foliage` covers deterministic placement filters, the 10/20 harvestable/decorative split, seasonal rewards, cooldowns, tool checks, duplicate harvests and persistence; run `zn_test_inventory` for inventory regression. Live model, appearance, exclusion, sharing and repeat-visit checks remain required.
+Ambient debris is client-local, limited to nearby deterministic sites, does not collide with players, and cannot be harvested. Kinds: paper (`props_c17/paper01`, newspaper) flutters and lifts in gusts; bottles and cans (`cs_militia/bottle01`, HL2 glass/plastic bottles, cans) lie on their side and roll; cartons and cardboard slide; rare tumbleweeds (HL2 `props_foliage/bramble001a`, scaled 0.5) roll and bounce with the prevailing wind within a leash of their site. Moving players kick nearby debris, and bullet impacts from any player's `ZM.WeaponShot` broadcast throw debris away from the hit point. Debris only simulates (gravity, wall collision, ground following) while moving and within 2000 units. The client setting `zombiesim_ambient_debris_amount` (0 disables, 1 default, up to 3; quick-menu **Debris amount** slider) scales site density and the model cap (20 × amount, at most 60). `zn_foliage_status` reports current server placement, rejection reasons and the most-sampled surface props/textures; `zn_foliage_rebuild` clears and re-places foliage for the current cell without a map reload. `zombiesim_dev_foliage_inspect <worldX> <worldY> <worldZ>` reports the nearest runtime tree and a fresh ground surface/texture trace through the dev bridge. `zombiesim_ambient_debris_status` reports client debris amount, counts per kind and how many are moving. `zn_test_foliage` covers deterministic placement filters, the 10/20 harvestable/decorative split, seasonal rewards, cooldowns, tool checks, duplicate harvests and persistence; run `zn_test_inventory` for inventory regression. Live model, appearance, exclusion, sharing and repeat-visit checks remain required.
 
 # Client Graphics Quality Presets
 

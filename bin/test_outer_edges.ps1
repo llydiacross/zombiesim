@@ -17,15 +17,45 @@ Import-Module (Join-Path $PSScriptRoot 'transition_gates.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'motorway_geometry.psm1') -Force
 $script:passed = 0
 
-function Get-TestMotorwayGate {
-    param($Layout, [string]$Direction)
+function Get-TestMotorwayGates {
+    param($Layout)
+
     if ($null -eq $Layout.PSObject.Properties['motorwayAssembly'] -or $null -eq $Layout.motorwayAssembly) { return $null }
     $assembly = $Layout.motorwayAssembly
-    # Straight contracts store their gates; complex (schema 2) gates are derived from source like build_cell_vmfs.ps1.
-    $gates = if ($null -ne $assembly.PSObject.Properties['gates']) { @($assembly.gates) }
-        elseif ($assembly.schemaVersion -eq 2) { @(Get-ZMComplexMotorwayGates $assembly $TemplateDirectory) }
-        else { @() }
-    return @($gates | Where-Object { $_.direction -eq $Direction }) | Select-Object -First 1
+    if ($null -ne $assembly.PSObject.Properties['gates']) { return @($assembly.gates) }
+    if ($assembly.schemaVersion -eq 2) { return @(Get-ZMComplexMotorwayGates $assembly $TemplateDirectory) }
+    return @()
+}
+
+function Get-TestMotorwayGate {
+    param($Layout, [string]$Direction)
+    return @(Get-TestMotorwayGates $Layout | Where-Object { $_.direction -eq $Direction }) | Select-Object -First 1
+}
+
+function Get-TestGateTarget {
+    param([object]$GateEntity)
+
+    $match = [regex]::Match([string]$GateEntity.Get('targetname'), '^zm_transition_gate_(?<direction>[NESW])(?:_lane(?<lane>[12]))?$')
+    if (-not $match.Success) { throw "Invalid transition gate target name: $($GateEntity.Get('targetname'))" }
+    $laneIndex = if ($match.Groups['lane'].Success) { [int]$match.Groups['lane'].Value } else { $null }
+    return [pscustomobject]@{ direction = $match.Groups['direction'].Value; laneIndex = $laneIndex }
+}
+
+function Get-TestExpectedGateCount {
+    param([object]$Layout, [string[]]$Directions)
+
+    $gates = @(Get-TestMotorwayGates $Layout)
+    if ($gates.Count -eq 0) { return $Directions.Count }
+    $count = 0
+    foreach ($gate in $gates) {
+        $route = if ($null -ne $gate.PSObject.Properties['route']) { [string]$gate.route } else { 'motorway' }
+        if ($route -eq 'motorway' -and @($gate.lanes).Count -eq 2) {
+            $count += 2
+        } else {
+            $count++
+        }
+    }
+    return $count
 }
 
 function Assert {
@@ -153,7 +183,7 @@ foreach ($solid in $parsed.Child('world').Children | Where-Object Name -eq 'soli
     if ($material -eq 'TOOLS/TOOLSCLIP') {
         foreach ($axis in $axes) { foreach ($value in $axis) { Assert ([Math]::Abs($value) -in @(2240, 2304)) 'Clip perimeter must release the existing border and exclude the new scenery ring.' } }
     } elseif ($material -eq 'TOOLS/TOOLSSKYBOX') {
-        foreach ($axis in $axes) { foreach ($value in $axis) { Assert ([Math]::Abs($value) -in @(3072, 3136)) 'Sky seals must contain approved brush overhangs beyond the 2880 visual bound.' } }
+        foreach ($axis in $axes) { foreach ($value in $axis) { Assert ([Math]::Abs($value) -in @(2880, 2944)) 'Sky seals close exactly at the 2880 visual bound so the neighbour skybox meets the outer ring without a black strip.' } }
     }
 }
 
@@ -168,7 +198,7 @@ foreach ($mask in 0..15) {
         foreach ($axis in 0..1) {
             foreach ($value in @($vertices | ForEach-Object { [double]($_ -split '\s+')[$axis] } | Sort-Object -Unique)) {
                 $side = $shellSides[$axis * 2 + $(if ($value -lt 0) { 0 } else { 1 })]
-                $allowed = if ($material -eq 'TOOLS/TOOLSCLIP') { @(2240, 2304) } elseif ($ocean.ContainsKey($side)) { @(2240, 2304) } else { @(3072, 3136) }
+                $allowed = if ($material -eq 'TOOLS/TOOLSCLIP') { @(2240, 2304) } elseif ($ocean.ContainsKey($side)) { @(2240, 2304) } else { @(2880, 2944) }
                 Assert ([Math]::Abs($value) -in $allowed) "Shell mask $mask keeps floor/sky at the original ocean border and expands only land-facing sides; clips unchanged."
             }
         }
@@ -183,7 +213,10 @@ if (-not $?) { throw 'Expanded fixture planner failed.' }
 $plan = Get-Content -Raw -LiteralPath $planPath | ConvertFrom-Json
 Assert (@($plan.cells | Where-Object { $_.x -eq 0 -and (@($_.skyboxOceanSides) -join ',') -ne 'W' }).Count -eq 0) 'West boundary cells omit only the skybox ocean side.'
 Assert (@($plan.cells | Where-Object { $_.x -gt 0 -and @($_.skyboxOceanSides).Count -gt 0 }).Count -eq 0) 'Authored water corners do not change outer-edge omission policy.'
-Assert (@($plan.cells | Where-Object { $_.cellTemplateFilename -notlike '*-edge2.vmf' }).Count -eq 0) 'Expanded maps must have a distinct geometry revision identity.'
+$expandedRecipeNames = @($plan.cells | ForEach-Object { [string]$_.cellTemplateFilename })
+Assert (@($expandedRecipeNames | Where-Object { $_ -match '-edge2\.vmf$' }).Count -eq 0) 'Expanded maps must not retain the retired test-only edge2 suffix.'
+Assert ($expandedRecipeNames.Count -eq @($expandedRecipeNames | Sort-Object -Unique).Count) 'Expanded recipe names remain unique without the retired suffix.'
+Assert (@($expandedRecipeNames | Where-Object { $_ -match '-oceanw\.vmf$' }).Count -gt 0) 'West-ocean recipe identity remains in the active filename.'
 & (Join-Path $PSScriptRoot 'build_cell_vmfs.ps1') -WorldProfile preview -SettingsPath $settingsPath -PlanData $planPath -CellDirectory $cellDirectory -SkyboxOutputDirectory (Join-Path $OutputRoot 'skybox') -RefreshGenerated | Out-Null
 if (-not $?) { throw 'Expanded fixture builder failed.' }
 foreach ($group in $plan.cells | Group-Object cellTemplateFilename) {
@@ -194,19 +227,28 @@ foreach ($group in $plan.cells | Group-Object cellTemplateFilename) {
     Assert ($layout.vmfSha256 -eq (Get-FileHash -LiteralPath $vmfPath -Algorithm SHA256).Hash.ToLowerInvariant()) 'Layout must identify the exact current VMF.'
     Assert ([regex]::Matches($text, '"targetname" "zm_outer_').Count -eq @($layout.outerPlacements).Count) 'VMF and artwork placement metadata must agree.'
     Assert ([regex]::Matches($text, '"targetname" "(?:zm_border_|zm_transition_road_)').Count -eq @($layout.borderPlacements).Count) 'Original border remains independent of outer-ring count.'
-    Assert ([regex]::Matches($text, '"zm_transition_gate" "1"').Count -eq @($cell.activeEntrances).Count) 'Phase A must not duplicate or remove travel gates.'
+    $gateDirections = if ($null -ne $cell.PSObject.Properties['gateDirections']) { @($cell.gateDirections) } else { @($cell.activeEntrances) }
+    $expectedGateCount = Get-TestExpectedGateCount $layout $gateDirections
+    Assert ([regex]::Matches($text, '"zm_transition_gate" "1"').Count -eq $expectedGateCount) 'Each motorway route emits one trigger per carriageway; ordinary routes retain one.'
     $vmf = [ZombieSim.Skybox.KeyValuesParser]::Parse($text)
     foreach ($gateEntity in @($vmf.Children | Where-Object { $_.Get('zm_transition_gate') -eq '1' })) {
-        $code = $gateEntity.Get('targetname').Substring('zm_transition_gate_'.Length)
+        $target = Get-TestGateTarget $gateEntity
+        $code = $target.direction
         $motorwayGate = Get-TestMotorwayGate $layout $code
         if ($null -ne $motorwayGate) {
-            # Measured motorway gates own their deck height and arrival lane; the ordinary-road formula does not apply.
-            Assert ($gateEntity.Get('origin') -eq ('{0} {1} {2}' -f $motorwayGate.x, $motorwayGate.y, ($motorwayGate.deckZ + 20))) "$($group.Name) $code motorway trigger matches its measured gate contract."
+            Assert ($gateEntity.Get('origin') -eq ('{0} {1} {2}' -f $motorwayGate.x, $motorwayGate.y, ($motorwayGate.deckZ + 20))) "$($group.Name) $code trigger matches its planned gate contract."
+            $route = if ($null -ne $motorwayGate.PSObject.Properties['route']) { [string]$motorwayGate.route } else { 'motorway' }
+            if ($route -ne 'road') {
+                Assert ($null -ne $target.laneIndex -and $gateEntity.Get('zm_transition_lane') -eq [string]$target.laneIndex) "$($group.Name) $code trigger identifies its carriageway."
+            } else {
+                Assert ($null -eq $target.laneIndex) "$($group.Name) ordinary-road trigger remains combined."
+            }
             $arrivalLane = $motorwayGate.lanes[$motorwayGate.arrivalLane - 1]
             $landmark = @($vmf.Children | Where-Object { $_.Get('targetname') -eq "$($gateEntity.Get('zm_transition_direction').ToUpperInvariant())_ENTRANCE" })
-            Assert ($landmark.Count -eq 1 -and $landmark[0].Get('origin') -eq ('{0} {1} {2}' -f $arrivalLane.arrivalX, $arrivalLane.arrivalY, ($motorwayGate.deckZ + 4))) "$($group.Name) $code motorway arrival uses its measured carriageway."
+            Assert ($landmark.Count -eq 1 -and $landmark[0].Get('origin') -eq ('{0} {1} {2}' -f $arrivalLane.arrivalX, $arrivalLane.arrivalY, ($motorwayGate.deckZ + 4))) "$($group.Name) $code arrival uses its planned lane."
             continue
         }
+        if ($null -ne $target.laneIndex) { throw "Ordinary transition gate unexpectedly has a lane tag: $($group.Name) $code" }
         $slot = @($layout.borderPlacements | Where-Object {
             $borderPiece = $_
             $onSide = switch ($code) { N { $borderPiece.tileY -eq -1 }; S { $borderPiece.tileY -eq 5 }; E { $borderPiece.tileX -eq 5 }; W { $borderPiece.tileX -eq -1 } }
@@ -306,16 +348,23 @@ foreach ($cell in $selected) {
     Assert (@($layout.borderPlacements).Count -eq 24 - @($cell.suppressedBorderTiles).Count - $borderLeaseKeys.Count) 'Protected entrance border suppression remains unchanged.'
     $entities = [ZombieSim.Skybox.KeyValuesParser]::Parse((Get-Content -Raw (Join-Path $coverageDirectory $cell.cellTemplateFilename))).Children
     foreach ($gateEntity in @($entities | Where-Object { $_.Get('zm_transition_gate') -eq '1' })) {
-        $code = $gateEntity.Get('targetname').Substring('zm_transition_gate_'.Length)
+        $target = Get-TestGateTarget $gateEntity
+        $code = $target.direction
         $motorwayGate = Get-TestMotorwayGate $layout $code
         if ($null -ne $motorwayGate) {
-            # Measured motorway gates own their deck height and arrival lane; the ordinary-road formula does not apply.
-            Assert ($gateEntity.Get('origin') -eq ('{0} {1} {2}' -f $motorwayGate.x, $motorwayGate.y, ($motorwayGate.deckZ + 20))) "$($cell.cellTemplateFilename) $code motorway trigger matches its measured gate contract."
+            Assert ($gateEntity.Get('origin') -eq ('{0} {1} {2}' -f $motorwayGate.x, $motorwayGate.y, ($motorwayGate.deckZ + 20))) "$($cell.cellTemplateFilename) $code trigger matches its planned gate contract."
+            $route = if ($null -ne $motorwayGate.PSObject.Properties['route']) { [string]$motorwayGate.route } else { 'motorway' }
+            if ($route -ne 'road') {
+                Assert ($null -ne $target.laneIndex -and $gateEntity.Get('zm_transition_lane') -eq [string]$target.laneIndex) "$($cell.cellTemplateFilename) $code trigger identifies its carriageway."
+            } else {
+                Assert ($null -eq $target.laneIndex) "$($cell.cellTemplateFilename) ordinary-road trigger remains combined."
+            }
             $arrivalLane = $motorwayGate.lanes[$motorwayGate.arrivalLane - 1]
             $landmark = @($entities | Where-Object { $_.Get('targetname') -eq "$($gateEntity.Get('zm_transition_direction').ToUpperInvariant())_ENTRANCE" })
-            Assert ($landmark.Count -eq 1 -and $landmark[0].Get('origin') -eq ('{0} {1} {2}' -f $arrivalLane.arrivalX, $arrivalLane.arrivalY, ($motorwayGate.deckZ + 4))) "$($cell.cellTemplateFilename) $code motorway arrival uses its measured carriageway."
+            Assert ($landmark.Count -eq 1 -and $landmark[0].Get('origin') -eq ('{0} {1} {2}' -f $arrivalLane.arrivalX, $arrivalLane.arrivalY, ($motorwayGate.deckZ + 4))) "$($cell.cellTemplateFilename) $code arrival uses its planned lane."
             continue
         }
+        if ($null -ne $target.laneIndex) { throw "Ordinary transition gate unexpectedly has a lane tag: $($cell.cellTemplateFilename) $code" }
         $bridgeSide = switch ($cell.transportFeature) {
             'bridge-horizontal' { $code -in @('E', 'W') }
             'bridge-vertical' { $code -in @('N', 'S') }
@@ -349,7 +398,7 @@ $stormShell = [ZombieSim.Skybox.KeyValuesParser]::Parse((Get-Content -Raw (Join-
 $stormFloor = @($stormShell.Child('world').Children | Where-Object { $_.Name -eq 'solid' -and ($_.Children | Where-Object Name -eq 'side' | Select-Object -First 1).Get('material') -eq 'HALFLIFE/BLACK' })
 Assert ($stormFloor.Count -eq 1) 'Storm Drain retains one sealing floor.'
 $floorX = @($stormFloor[0].Children | Where-Object Name -eq 'side' | ForEach-Object { $_.Child('vertices_plus').GetAll('v') } | ForEach-Object { [double]($_ -split '\s+')[0] } | Sort-Object -Unique)
-Assert (($floorX -join ',') -eq '-2240,3072') 'Actual Storm Drain floor ends at the west shoreline, not underneath the skybox beach/ocean; east clearance is preserved.'
+Assert (($floorX -join ',') -eq '-2240,2880') 'Actual Storm Drain floor ends at the west shoreline, not underneath the skybox beach/ocean; east clearance is preserved.'
 $militaryMap = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'border_showcase_fixture_map.json') | ConvertFrom-Json
 $militaryCell = @($militaryMap.cells | Where-Object { $_.x -eq 5 -and $_.y -eq 5 })[0]
 $militaryCell.environment.tags = @('military')
@@ -366,10 +415,10 @@ Assert ($militaryPlan.cells.Count -eq 1) 'An actual military recipe must be exer
 if (-not $?) { throw 'Military fixture generation failed.' }
 [IO.File]::WriteAllLines((Join-Path $OutputRoot 'coverage-required.txt'), [string[]]@((Get-ChildItem -LiteralPath $coverageDirectory -Filter '*.vmf').Name), [Text.UTF8Encoding]::new($false))
 $compileMaps = @(
-    'zz_preview_d4cbfaa03e4b-v1-edge2.vmf',
-    'zz_preview_d4cbfaa03e4b-wtrnw-oceanw-edge2.vmf',
-    'zz_preview_d4cbfaa03e4b-wtrnt-edge2.vmf',
-    'zz_preview_a51608af6980-cp-edge2.vmf'
+    'zz_preview_d4cbfaa03e4b-v1.vmf',
+    'zz_preview_d4cbfaa03e4b-wtrnw-oceanw.vmf',
+    'zz_preview_d4cbfaa03e4b-wtrnt.vmf',
+    'zz_preview_a51608af6980-cp.vmf'
 )
 [IO.File]::WriteAllLines((Join-Path $OutputRoot 'compile-required.txt'), [string[]]$compileMaps, [Text.UTF8Encoding]::new($false))
 Write-Output "Outer edges: $script:passed assertions passed; isolated fixtures: $cellDirectory"

@@ -21,7 +21,7 @@ $expectedMotorwayTopologies = @{
     'motorway-straight' = 'roads/motorway_3x1/tile_motorway.vmf'
     'motorway-corner' = 'roads/motorway_3x1/tile_motorway_corner_5x3.vmf'
     'motorway-tjunction' = 'roads/motorway_3x1/tile_motorway_tjunction_6x3.vmf'
-    'motorway-crossjunction' = 'roads/motorway_3x1/tile_motorway_crossroads_6x3.vmf'
+    'motorway-crossjunction' = 'roads/motorway_3x1/tile_motorway_crossroads_3x3.vmf'
     'motorway-deadend' = 'roads/motorway_3x1/tile_motorway_deadend_3x3.vmf'
 }
 $expectedMotorwayTransports = @{

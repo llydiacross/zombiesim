@@ -154,6 +154,24 @@ return function(createEngine, loadFactory)
             markers:Cleanup()
             for _, mesh in ipairs(state.meshes) do check(mesh.destroyed == 1, "each owned mesh destroyed exactly once") end
         end)
+        suite:Add("separate_motorway_carriageway_gates_publish_one_arrow_each", function(check)
+            local markers, state, env = Tests.NewFixture()
+            local first = state:Gate("N", 1, env.Vector(-512, 1952, 70))
+            local second = state:Gate("N", 2, env.Vector(528, 1952, 70))
+            check(state.globals[first .. "_ArrowCount"] == 1 and state.globals[second .. "_ArrowCount"] == 1,
+                "each physical carriageway gate publishes one arrow")
+            markers:Reconcile()
+            check(#state.meshes == 2 and markers:GetDiagnosticSnapshot().markers == 2,
+                "separate triggers create one owned mesh per carriageway")
+            state.eye = env.Vector(0, 1952, 150)
+            state.route = "N"
+            markers:Draw(false, false)
+            for _, mesh in ipairs(state.meshes) do
+                check(mesh.vertices[1].color.r == 246, "both carriageway gates share the route colour")
+            end
+            markers:Cleanup()
+            for _, mesh in ipairs(state.meshes) do check(mesh.destroyed == 1, "each carriageway mesh is released once") end
+        end)
         suite:Add("reinitialization_cleanup_and_material_failure_are_explicit", function(check)
             local markers, state, env, initialize = Tests.NewFixture()
             state:Gate("N", 1, env.Vector())

@@ -27,6 +27,17 @@ local function IsFiniteVector(value)
 	return isvector(value) and IsFiniteNumber(value.x) and IsFiniteNumber(value.y) and IsFiniteNumber(value.z)
 end
 
+local function ShouldShadowOwner(owner, localPlayer, csm)
+	if owner ~= localPlayer or not istable(csm) or csm.State ~= "ready" then return false end
+	if not istable(csm.Projectors) or #csm.Projectors == 0 then return false end
+
+	local conVars = csm.ConVars
+	local enabled = istable(conVars) and conVars.enabled or nil
+	return enabled ~= nil and isfunction(enabled.GetBool) and enabled:GetBool()
+end
+
+ChestLamp.ShouldShadowOwner = ShouldShadowOwner
+
 local function RemoveLight(owner, reason)
 	local state = states[owner]
 	if not state then return end
@@ -97,7 +108,8 @@ local function CreateLight(owner, bone, model)
 		bone = bone,
 		model = model,
 		lastPosition = nil,
-		lastDirection = nil
+		lastDirection = nil,
+		shadowsEnabled = false
 	}
 end
 
@@ -168,12 +180,20 @@ end
 
 function ChestLamp:GetDiagnosticSnapshot()
 	local active = {}
+	local localPlayer = LocalPlayer()
+	local shadowedProjectors = 0
+	local localLampShadowEnabled = false
 	for owner, state in pairs(states) do
 		if IsValid(state.light) then
 			active[#active + 1] = {
 				player = IsValid(owner) and owner:Nick() or "disconnected",
-				model = state.model
+				model = state.model,
+				shadowsEnabled = state.shadowsEnabled == true
 			}
+			if state.shadowsEnabled then
+				shadowedProjectors = shadowedProjectors + 1
+				if owner == localPlayer then localLampShadowEnabled = true end
+			end
 		end
 	end
 
@@ -181,8 +201,9 @@ function ChestLamp:GetDiagnosticSnapshot()
 		map = game.GetMap(),
 		profile = ZM_World and ZM_World.ActiveProfile or nil,
 		localLampEnabled = IsValid(LocalPlayer()) and LocalPlayer():GetNWBool(enabledNetworkKey, false) or false,
+		localLampShadowEnabled = localLampShadowEnabled,
 		activeProjectors = #active,
-		shadowedProjectors = 0,
+		shadowedProjectors = shadowedProjectors,
 		maximumVisibleProjectors = maximumVisibleLamps,
 		maximumDistance = maximumRenderDistance,
 		frameUpdates = frameUpdates,
@@ -212,12 +233,16 @@ end)
 hook.Add("PreDrawOpaqueRenderables", "ZM.ChestLamp.Project", function(depth, skybox)
 	if depth or skybox or not next(states) then return end
 
+	local localPlayer = LocalPlayer()
+	local csm = ZM_CSM
 	for owner, state in pairs(states) do
 		if not IsValid(owner) or not owner:Alive() or not IsValid(state.light) then
 			RemoveLight(owner)
 			continue
 		end
 
+		local shadowsEnabled = ShouldShadowOwner(owner, localPlayer, csm)
+		local shadowsChanged = state.shadowsEnabled ~= shadowsEnabled
 		local updated, elapsedOrError = pcall(function()
 			local chestPosition = owner:GetBonePosition(state.bone)
 			local aimAngles = owner:EyeAngles()
@@ -229,14 +254,16 @@ hook.Add("PreDrawOpaqueRenderables", "ZM.ChestLamp.Project", function(depth, sky
 			local lightPosition = chestPosition + aimDirection * 8
 			local positionChanged = not state.lastPosition or state.lastPosition:DistToSqr(lightPosition) > 0.25
 			local directionChanged = not state.lastDirection or state.lastDirection:Dot(aimDirection) < 0.999999
-			if not positionChanged and not directionChanged then return 0 end
+			if not positionChanged and not directionChanged and not shadowsChanged then return 0 end
 
+			if shadowsChanged then state.light:SetEnableShadows(shadowsEnabled) end
 			state.light:SetPos(lightPosition)
 			state.light:SetAngles(aimAngles)
 			local startedAt = SysTime()
 			state.light:Update()
 			state.lastPosition = lightPosition
 			state.lastDirection = aimDirection
+			state.shadowsEnabled = shadowsEnabled
 			return SysTime() - startedAt
 		end)
 		if not updated then

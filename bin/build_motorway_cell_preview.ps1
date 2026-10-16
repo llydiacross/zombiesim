@@ -31,7 +31,7 @@ $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $generatedRoot = [IO.Path]::GetFullPath((Join-Path $root 'generated')).TrimEnd('\') + '\'
 if (-not $OutputDirectory.StartsWith($generatedRoot, [StringComparison]::OrdinalIgnoreCase)) { throw 'Motorway cell outputs must remain below generated.' }
 if ([string]::IsNullOrWhiteSpace($MapData)) {
-    $MapData = Join-Path $root 'generated\preview_variety_tuned_20261012\preview_grid_24x24_seed_1337.json'
+    $MapData = Join-Path $root 'generated\phase_j_preview_20261015\preview_grid_24x24_seed_1337.json'
 }
 if (-not (Test-Path -LiteralPath $MapData -PathType Leaf)) { throw 'Current matching preview manifest required; pass -MapData explicitly.' }
 $sourceHash = (Get-FileHash -LiteralPath $MapData -Algorithm SHA256).Hash

@@ -39,6 +39,8 @@ include( "cl_wardrobe.lua" )
 include( "utils/test_harness.lua" )
 include( "tests/cl_character_cards_tests.lua" )
 include( "tests/cl_launcher_presentation_tests.lua" )
+include( "tests/cl_chest_lamp_tests.lua" )
+include( "tests/cl_csm_tests.lua" )
 include( "tests/cl_transition_markers_tests.lua" )(
     include( "tests/fixtures/cl_transition_markers_engine.lua" ),
     function(path)

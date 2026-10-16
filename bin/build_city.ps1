@@ -27,6 +27,7 @@ param(
     [switch]$Final,
     [switch]$FinalizeWithIncomplete,
     [switch]$CleanStagedCity,
+    [switch]$MapsOnly,
     [switch]$StageEngineMaps,
     [switch]$WhatIf,
     [string]$SettingsPath = ''
@@ -42,6 +43,11 @@ $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_p
 $profileSettings = $worldGenerationProfile.Config
 if ($Fast -and $Final) { throw 'Fast and Final cannot be selected together.' }
 if (-not $PSBoundParameters.ContainsKey('CleanStagedCity')) { $CleanStagedCity = $true }
+if ($MapsOnly -and -not $SkipCompile) { throw 'MapsOnly requires SkipCompile; compile and validate the current required set first.' }
+if ($MapsOnly -and -not $SkipRecipeRefresh) { throw 'MapsOnly requires SkipRecipeRefresh; do not regenerate VMFs during staging.' }
+if ($MapsOnly -and -not $PSBoundParameters.ContainsKey('ContentMapDirectory')) {
+    throw 'MapsOnly requires an explicit ContentMapDirectory so the staging target is unambiguous.'
+}
 # Isolated builds redirect -ContentMapDirectory; they must not clean or copy into the live engine maps folder.
 if (-not $PSBoundParameters.ContainsKey('StageEngineMaps')) { $StageEngineMaps = -not $PSBoundParameters.ContainsKey('ContentMapDirectory') }
 if ([string]::IsNullOrWhiteSpace($MapData)) {
@@ -121,6 +127,10 @@ if ($WhatIf) {
     Write-Output "WhatIf: required city recipe BSPs: $($cityVmfNames.Count)"
     Write-Output "WhatIf: required standalone den BSPs: $($safeZoneVmfNames.Count)"
     Write-Output "WhatIf: stage BSPs in: $ContentMapDirectory"
+    if ($MapsOnly) {
+        Write-Output 'WhatIf: skip navmesh, map-material, Satellite, wireframe, and runtime-world staging.'
+        return
+    }
     Write-Output "WhatIf: prepare navmesh directory: $navmeshMapDirectory"
     & (Join-Path $PSScriptRoot 'stage_world_navmeshes.ps1') -PlanData $PlanData -SourceDirectory $navmeshMapDirectory -DestinationDirectory $ContentMapDirectory -WorldProfile $worldGenerationProfile.Name -WhatIf -SettingsPath $SettingsPath
     & (Join-Path $PSScriptRoot 'stage_world_map_materials.ps1') -MapData $MapData -DestinationDirectory $mapLayerMaterialDirectory -WorldProfile $worldGenerationProfile.Name -WhatIf -SettingsPath $SettingsPath
@@ -209,7 +219,6 @@ if ($CleanStagedCity -and (Test-Path -LiteralPath $ContentMapDirectory)) {
     }
 }
 [System.IO.Directory]::CreateDirectory($ContentMapDirectory) | Out-Null
-[System.IO.Directory]::CreateDirectory($navmeshMapDirectory) | Out-Null
 if ($StageEngineMaps) { [System.IO.Directory]::CreateDirectory($gameMapDirectory) | Out-Null }
 if ($CleanStagedCity -and $StageEngineMaps) {
     foreach ($stagedProfileMap in (Get-ChildItem -LiteralPath $gameMapDirectory -File | Where-Object {
@@ -226,6 +235,11 @@ foreach ($bspName in $requiredBspNames) {
         Copy-Item -LiteralPath (Join-Path $BuildDirectory $bspName) -Destination (Join-Path $gameMapDirectory $bspName) -Force
     }
 }
+if ($MapsOnly) {
+    Write-Output "Staged preview maps only: $($requiredBspNames.Count) required BSPs in $ContentMapDirectory; no navmesh, materials, Satellite, wireframe, or runtime-world data changed."
+    return
+}
+[System.IO.Directory]::CreateDirectory($navmeshMapDirectory) | Out-Null
 & (Join-Path $PSScriptRoot 'stage_world_navmeshes.ps1') -PlanData $PlanData -SourceDirectory $navmeshMapDirectory -DestinationDirectory $ContentMapDirectory -WorldProfile $worldGenerationProfile.Name -SettingsPath $SettingsPath
 
 & (Join-Path $PSScriptRoot 'stage_world_map_materials.ps1') -MapData $MapData -DestinationDirectory $mapLayerMaterialDirectory -WorldProfile $worldGenerationProfile.Name -SettingsPath $SettingsPath

@@ -1,6 +1,6 @@
 # Alpha 3.2 - Phased Implementation Plan
 
-**Status: ACTIVE - PHASES 0/A/B/D ACCEPTED (B WITH EXPLICIT LIMITS); EXPERIMENTAL CSM ACCEPTED; PHASE M CANCELLED; NORMAL WIDE-MOTORWAY CELL INTEGRATION APPROVED 2026-10-15; PHASE J FULL PREVIEW BATCH NEXT; GENERATOR FIRST.**
+**Status: ACTIVE - PHASES 0/A/B/D ACCEPTED (B WITH EXPLICIT LIMITS); EXPERIMENTAL CSM ACCEPTED; PHASE M CANCELLED; NORMAL WIDE-MOTORWAY CELL INTEGRATION APPROVED 2026-10-15; PRIOR PHASE J COMPILE COMPLETE; TRUSTED LANE-GATE REFRESH SOURCE-VALIDATED; OUTPUT REFRESH/COMPILE/STAGING/VISUAL PENDING APPROVAL; GENERATOR FIRST.**
 
 ## Current reconciled status - 2026-10-14
 
@@ -10,6 +10,71 @@ The reconciliation is complete and the user resumed implementation, prioritizing
 density and motorways. No additional phase is accepted by that audit.
 Historical "next", "pending" and permission
 notes below describe their own checkpoint, not today's instruction.
+
+### Phase J trusted-plan and lane-gate source update - 2026-10-16 (focused checks pass; no world outputs refreshed)
+
+After the user-authored ramp `func_detail` edit changed face IDs, the active
+refresh no longer calls `build_motorway_preview.ps1` or remeasures motorway
+geometry. `bin/reuse_approved_preview_plan.ps1 -ValidateOnly` confirms the
+same seed/grid and exact prior placements:576 cells,336 recipe names,96
+approved motorway contracts (69 straight,27 complex) and214 reused directional
+gate records (192 motorway,22 ordinary-road). It removes only the final
+`-edge2` suffix, retains `-oceanw`, removes stale source fingerprints and the
+insertion-seam spawn candidate, and verifies that tile placements, origins,
+yaws, leases and grid shifts remain identical. The migrated plan and
+required-map list have now been written. The installed runtime export hashes do not match
+the current plan/manifest hashes. Cell-ID reconciliation finds eight stale
+recipe names only on ordinary cells without `motorwayGates`; topology and
+entrances agree for all576 cells. All96 current motorway assembly cells have
+matching prior runtime gate records and active directions. Those eight
+ordinary map names are not reused; the new runtime export will be regenerated
+from the migrated plan.
+
+The VMF writer now splits each motorway direction into two lane-tagged
+triggers, one per carriageway; saved gate positions and the256 arrow/384 inward
+arrival offsets are retained. Ordinary-road gates remain single and unchanged.
+Runtime and client fixtures cover separate lane markers, legacy combined
+markers, route colours and the 384-unit arrival. Checks pass: PowerShell parse,
+56 lane-gate assertions, server transition fixtures13/13, client marker
+fixtures11/11, GLua277/0, trusted-plan dry validation and `git diff --check`.
+The user authorized the full preview VMF/skybox/runtime refresh, 339-map
+compile and map-only staging on 2026-10-16. The full refresh is now underway.
+Navmesh, Satellite/material capture, production and live visual acceptance
+remain outside that authorization. The previous compile above does not contain
+the new lane-specific trigger layout and is not Phase J acceptance. Motorway
+alignment remains a visual in-game review, not a mathematical proof.
+
+### Phase J refresh progress - 2026-10-16 (compiled; staging/visual pending; not accepted)
+
+The user-authorized current-source refresh regenerated the seed-1337 preview
+manifest and measured motorway assembly report. The matching plan contains576
+cells,336 unique city recipes,96 motorway assembly contracts and3 reusable
+safe-room maps (339 required maps). The user-labelled Cell15,11 (plan grid
+14,23) selects a straight `roads/tile_road.vmf` center, the east road ramp and
+the bridge continuation; it no longer inserts a crossjunction on the straight
+route. East `onramp-e` motorway cells17,10 and6,23 each carry one640-unit
+northward shift scoped to the ordinary road approach and following tiles; the
+motorway piece stays at its existing position. The Army Base landmark cell
+23,19 now uses `tiletemplates/army` for all three fallback building slots.
+
+Focused checks pass: bridge-ramp layout12, Army pool9, on-ramp shift20 and
+complex gates234. The full complete-infill measurement completed, and the
+initializer preserved all existing artist-owned infill sources. Complete VMF
+emission finished for336 recipes (335 refreshed,1 retained); required VMFs
+pass336/336. Visibility preflight covers339 maps with0 over-budget and0 missing
+or invalid portal files. Incremental VVIS/VRAD covers all339 required maps:
+33 compiled,306 skipped as current,0 failed,0 incomplete. No skyline-model
+refresh, runtime export, staging or live/visual review has run for this refresh.
+This is not Phase J acceptance. Ask before further expensive skyline/material/
+staging work; do not run navmesh or full Satellite capture without separate
+approval.
+
+The CSM caster filter now skips `models/zombiesim/skybox/` before model-mesh
+measurement, clears stale skybox failure entries, and disables any matching
+runtime entity while sun CSM is ready. GLua277/0 and the focused offline CSM
+fixture suite pass. The fresh GMod session is still at `zn_preview_start`; the
+bridge requires an admin in a generated cell, so no live CSM/foliage visual
+check has occurred.
 
 ### Normal wide-motorway cell integration approved - 2026-10-15
 
@@ -36,10 +101,10 @@ for the quick review by request; the measured/complete infill pipeline is
 already accepted and runs in the full batch. Full planning now requires
 `-MotorwayAssemblyReport` whenever the world has complex motorway cells.
 
-Next: the already-approved Phase J full preview batch (regenerate with density
-zoning, assembly report, plan, VMFs with complete infill, compile, runtime/
-skyline/materials, ledgered staging, demo), then Phases K and L. Ask before
-navmesh refresh or a full Satellite capture.
+The Phase J source refresh and incremental compile are recorded above. Runtime/
+skyline/materials, staging and visual review remain pending; ask before further
+long processing. Phases K and L remain later. Ask before navmesh refresh or a
+full Satellite capture.
 
 ### Resumed source work - normal straight core reservations
 
@@ -286,7 +351,7 @@ without reopening approved artwork, yaws or retained single-piece limits.
 | Phase D generator source | Density selection for scenery/boundaries, decoration-only motorway rules, occupied-route adjacency, fixed-landmark density exemptions, filename/content guard and adaptive variation cap. Isolated576-cell/335-recipe plan/layout checks pass; three changed den-entrance slots were approved. | Accepted on source/isolated-output evidence; not full deployed-world acceptance. |
 | Phase E ordinary helpers | Rectangle1..3-per-axis occupancy, rotated frontage, filename/marker parsing and square compatibility fixtures. | Implemented supporting source only; no ordinary rectangular building content added. Do not expand building features as the next task. |
 | Phase E motorway helpers | Straight core/border/outer owner/lease validation and explicit physical-origin VMF emission. Latest focused motorway1074 and rectangle555 assertions;18 retained straight transforms match. | Implemented in the isolated straight path, not normal motorway rollout. |
-| C/H CSM and chest lamp | Default-off additive CSM runtime/Options, Low1/15Hz, Medium2/30Hz, High3/rendered-frame updates; permanent unshadowed F chest lamp. Shadows and single-client lamp behavior observed earlier. | Experimental CSM accepted; remaining CSM work deferred to its dedicated tracker. New runtime/Options live verification is not implied. |
+| C/H CSM and chest lamp | Default-off additive CSM runtime/Options, Low1/15Hz, Medium2/30Hz, High3/rendered-frame updates. The F chest lamp is unshadowed while CSM is off; only the local player's lamp shadows while CSM is ready. Sun coverage follows the local player. Runtime trees cast; bushes/hedges and high-poly non-foliage models are suppressed with original flags restored on CSM off. Static props remain unchanged. | Experimental CSM accepted; flashlight, player-centered anchor, and runtime caster-policy follow-ups are fixture-covered. Static hedge cost, shadow popping, and broader CSM work remain in the dedicated tracker. |
 | Launcher side work | Globe controls/HD layers, space presentation, fog/strikes, G-Man carousel, looping sky inspection and music handling recorded separately with prior review. | Retain approved presentation; not unfinished motorway or CSM work. |
 | Phase M safe-zone details | Experiment rejected; claim/reservation/emission integration and dedicated tests removed, authored assets preserved. | Cancelled, not pending redesign or integration. |
 
@@ -2605,11 +2670,51 @@ sources before proper staging. Staging went through the Phase B ledger:
 9667 entries and 339 content/engine maps hash-verify. GMod was relaunched with
 `-disableluarefresh` for human review.
 
+Cleanup (user directive): 1153 stale preview maps/navs, 6660 stale skybox
+model files, 490 stale artwork files and all superseded `generated/` batches,
+including `workshop`, were deleted (33 GB). The old staging ledger and its
+backups are retired, so the Phase J world is the installed baseline.
+
 Still open:
 - full-preview human review;
 - navmesh refresh (per-cell wireframes depend on it) and the complete
   Satellite capture, both still require approval;
 - the perimeter/variation validation listed above.
+
+Crossroads load fix: the four motorway crossroads cells (6,4), (17,-5), (6,-5)
+and (15,6) failed in game with "Map coordinate extents are too large". A
+0.39-unit sloped sliver brush in the crossroads tile made VBSP report
+"bounds out of range" (only a warning), which stretched the map's world bounds
+to -65536. The user's Hammer save had already removed that brush from the
+source. Replanning changed only those four cells' source hashes; all recipes
+were unchanged. The four maps were recompiled (fast VBSP/VVIS/VRAD,
+extents +/-10240) and staged into both map folders, with hashes verified.
+`compile_cell_vmfs.ps1` now fails a map (`failed-bounds-out-of-range`) and
+deletes its BSP when VBSP logs that warning. The T-junction tile still has a
+similar sliver (id 41926); it is unused in the world and left for the user to
+fix in Hammer.
+
+In-game review fixes (2026-10-15, source only; full recompile and visual
+re-check pending). The user reviewed the motorways in game and reported:
+- **Misaligned motorways.** Complex pieces were centred, so even-span pieces
+  sat half a slot off and their straights left cells 304/320/640 off centre.
+  The whole assembly now moves in 320 steps until its arms leave on the centre
+  line, and continuation straights snap to whole 640 slots (`gridSnap` in each
+  contract). (13,6) moves 640 north. Small authored mouth jogs (14-48 units)
+  remain for Hammer.
+- **Black strip past the outer ring.** On land sides, the sky seal and black
+  floor now end at 2880/2944 instead of 3072/3136. Ocean sides are unchanged.
+- **Missing gates.** Recipes shared by cells with different road blockades
+  only had the first cell's gates (49 recipes / 98 cells affected). Maps now
+  get a gate on every road connection (`gateDirections`), and runtime blocks
+  them per cell.
+- **Trees on roads and motorways.** Trees now need natural, level ground
+  across a 192-unit canopy ring; otherwise they become shrubs.
+
+Focused checks pass: motorway geometry 1529, outer edges 1602, skybox edges
+529, complex cells 2919, gates 232 (south mixed gate now at the standard
+-2208), GLua 275/0. The user rule is to verify by sight in game, not with
+geometry proofs.
 
 ### Phase K - Carried Alpha 3.1.5 closure and integrated acceptance
 

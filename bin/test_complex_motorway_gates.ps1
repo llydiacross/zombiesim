@@ -51,7 +51,14 @@ foreach ($cell in $plan.cells) {
             Assert ($along - ($lane.arrivalX * $forward[0] + $lane.arrivalY * $forward[1]) -eq $(if ($gate.route -eq 'motorway') { 384 } else { 128 })) 'Arrival remains behind the arrow on its actual route.'
         }
         if ($gate.route -eq 'road' -and @($contract.ordinaryRoadApproaches | Where-Object heading -eq $gate.direction).Count -gt 0) {
-            Assert ($axis -eq 0) 'Approved centred approaches retain the true central entrance axis.'
+            $approach = @($contract.ordinaryRoadApproaches | Where-Object heading -eq $gate.direction)[0]
+            $boundary = $approach.boundaryPort.position
+            $expectedAxis = $boundary.x * $right[0] + $boundary.y * $right[1]
+            Assert ($axis -eq $expectedAxis) 'Road gate axis follows the emitted ordinary-road boundary mouth.'
+            if ($cell.transportFeature -eq 'onramp-e' -and $gate.direction -eq 'E') {
+                Assert ($approach.boundaryPort.position.y -eq 640 -and $approach.entryAxis -eq -640) 'East on-ramp road dogleg shifts one whole tile north without moving its motorway piece.'
+                Assert (@($contract.ordinaryRoadPlacementShifts | Where-Object { $_.heading -eq 'E' -and $_.axis -eq 'y' -and $_.units -eq 640 }).Count -eq 1) 'The east on-ramp road-only offset is explicit in the contract.'
+            }
         }
         $writerGate = $gate | ConvertTo-Json -Depth 12 | ConvertFrom-Json
         $writerGate | Add-Member -NotePropertyName zOffset -NotePropertyValue ($gate.deckZ - 36)
@@ -64,7 +71,7 @@ foreach ($cell in $plan.cells) {
     }
     if ($cell.topology -eq 'motorway-corner' -and $contract.ordinaryRoadApproaches.Count -gt 0) {
         $south = @($gates | Where-Object direction -eq S)[0]
-        Assert ($south.y -eq -2720 -and $south.x -eq 0 -and $south.deckZ -eq 36) 'South gate, arrow -2624 and arrival -2592 all fit the centred corner approach.'
+        Assert ($south.y -eq -2208 -and $south.x -eq 0 -and $south.deckZ -eq 36) 'After the whole-tile grid snap the centred corner approach uses the standard south gate at -2208.'
     }
     $stale = $before | ConvertFrom-Json
     @($stale.sourceFingerprints.PSObject.Properties)[0].Value = 'stale'
@@ -85,6 +92,10 @@ foreach ($cell in $plan.cells) {
         foreach ($approach in $rotated.ordinaryRoadApproaches) {
             $headingPort = Convert-ZMMotorwayPort $approach.boundaryPort $yaw ([pscustomobject]@{ x = 0; y = 0; z = 0 })
             $approach.heading = $headingPort.outward
+            $approach.boundaryPort = $headingPort
+            $forward = @{ N = @(0, 1); E = @(1, 0); S = @(0, -1); W = @(-1, 0) }[$approach.heading]
+            $right = @($forward[1], -$forward[0])
+            $approach.entryAxis = $headingPort.position.x * $right[0] + $headingPort.position.y * $right[1]
             foreach ($instance in $approach.instances) {
                 $instance.origin = Convert-ZMMotorwayPoint $instance.origin $yaw
                 $instance.yaw = ($instance.yaw + $yaw) % 360

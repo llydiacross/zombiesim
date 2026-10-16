@@ -9,11 +9,11 @@ function Get-ZMMotorwayFootprint {
         throw "Expected a wide motorway VMF, not a legacy/other asset: '$Template'."
     }
     $name = [System.IO.Path]::GetFileNameWithoutExtension($canonical)
-    if ($name -eq 'tile_motorway' -or $name -eq 'tile_motorway_road_bridge') {
+    if ($name -in @('tile_motorway', 'tile_motorway_road_bridge', 'tile_motorway_ramp')) {
         return [pscustomobject]@{ width = 3; height = 1 }
     }
     if ($name -notin @(
-        'tile_motorway_corner_5x3', 'tile_motorway_crossroads_6x3',
+        'tile_motorway_corner_5x3', 'tile_motorway_crossroads_3x3',
         'tile_motorway_tjunction_6x3', 'tile_motorway_deadend_3x3',
         'tile_motorway_onramp_3x4', 'tile_motorway_onramp_dual_3x4'
     )) { throw "Unsupported wide motorway template '$Template'." }
@@ -241,7 +241,20 @@ function Get-ZMMotorwayMouthRegistry {
         'tile_motorway' { @(@('N', 'motorway', '120,126', '342,384'), @('S', 'motorway', '120,126', '342,384')) }
         'tile_motorway_road_bridge' { @(@('N', 'motorway', '120,126', '252,258'), @('S', 'motorway', '120,126', '252,258'), @('E', 'road', '738'), @('W', 'road', '642')) }
         'tile_motorway_corner_5x3' { @(@('E', 'motorway', '5556,5562', '4314,4320'), @('S', 'motorway', '6594,6600', '6401,6443')) }
-        'tile_motorway_crossroads_6x3' { @(@('N', 'motorway', '10417,10429', '6594,6600'), @('S', 'motorway', '10417,10429', '6594,6600'), @('W', 'motorway', '4314,4320', '9565,9571'), @('E', 'motorway', '10157,10163', '7212,7218')) }
+        'tile_motorway_crossroads_3x3' {
+            @(
+                @('N', 'motorway', '11641,11635', '11731,11701'),
+                @('S', 'motorway', '11161,11155', '11251,11221'),
+                @('W', 'motorway', '12769,12811', '12709,12715'),
+                @('E', 'motorway', '12985,13027', '12925,12931')
+            )
+        }
+        'tile_motorway_ramp' {
+            @(
+                @('N', 'motorway', '450,456', '120,126'),
+                @('S', 'motorway', '450,456', '120,126')
+            )
+        }
         'tile_motorway_tjunction_6x3' { @(@('N', 'motorway', '7463,7493', '6594,6600'), @('W', 'motorway', '4314,4320', '5556,5562'), @('E', 'motorway', '7164,7170', '7212,7218')) }
         'tile_motorway_deadend_3x3' { ,@('S', 'motorway', '120,126', '2442,2448') }
         'tile_motorway_onramp_3x4' { @(@('W', 'motorway', '2114,2120', '2066,2072'), @('E', 'motorway', '3307,3313', '2248,2254'), @('N', 'road', '2350')) }
@@ -465,6 +478,17 @@ function New-ZMNormalStraightMotorwayContract {
         [Parameter(Mandatory = $true)][string]$TemplateDirectory
     )
 
+    $existing = $Recipe.PSObject.Properties['motorwayAssembly']
+    $authority = if ($null -ne $existing) { $existing.Value.PSObject.Properties['assemblyAuthority'] } else { $null }
+    if ($null -ne $authority -and $authority.Value -eq 'trusted_prior_approved_grid_layout') {
+        if ($existing.Value.schemaVersion -ne 1 -or
+            $existing.Value.status -ne 'normal_reservations_travel_pending' -or
+            @($existing.Value.gates).Count -eq 0) {
+            throw 'Trusted prior straight motorway plan lacks its approved grid and gate contract.'
+        }
+        return $existing.Value
+    }
+
     $owners = @($Recipe.tilePlacements | Where-Object role -eq motorway_assembly)
     if ($owners.Count -ne 5) { throw 'Normal straight motorway requires five planned core owners.' }
     $template = [string]$owners[0].template
@@ -516,7 +540,9 @@ function Resolve-ZMNormalStraightMotorwayRings {
         $contract.schemaVersion -ne 1 -or $contract.status -ne 'normal_reservations_travel_pending') {
         throw 'Normal straight ring replacement requires a unique travel-pending normal contract.'
     }
-    if ($contract.sourceSha256 -cne (Get-FileHash -LiteralPath (Join-Path $TemplateDirectory $contract.template) -Algorithm SHA256).Hash) {
+    $authority = $contract.PSObject.Properties['assemblyAuthority']
+    if (($null -eq $authority -or $authority.Value -ne 'trusted_prior_approved_grid_layout') -and
+        $contract.sourceSha256 -cne (Get-FileHash -LiteralPath (Join-Path $TemplateDirectory $contract.template) -Algorithm SHA256).Hash) {
         throw 'Normal straight motorway source changed; replan before ring replacement.'
     }
     $validation = $Recipe.PSObject.Copy()
@@ -1071,6 +1097,13 @@ function Get-ZMComplexMotorwayGates {
     param([Parameter(Mandatory = $true)][object]$Contract, [Parameter(Mandatory = $true)][string]$TemplateDirectory)
 
     if ($Contract.schemaVersion -ne 2 -or $Contract.assemblies.Count -eq 0 -or $Contract.connections.Count -eq 0) { throw 'Complex measured gates require a complete assembly contract.' }
+    $authority = $Contract.PSObject.Properties['assemblyAuthority']
+    if ($null -ne $authority -and $authority.Value -eq 'trusted_prior_approved_grid_layout') {
+        if (@($Contract.gates).Count -eq 0) {
+            throw 'Trusted prior complex motorway plan lacks its approved gate records.'
+        }
+        return @($Contract.gates)
+    }
     Import-Module (Join-Path $PSScriptRoot 'skybox_models.psm1')
     Import-Module (Join-Path $PSScriptRoot 'transition_gates.psm1')
     foreach ($assembly in $Contract.assemblies) {
@@ -1116,7 +1149,10 @@ function Get-ZMComplexMotorwayGates {
             }
         } elseif ($route -eq 'road') {
             if ($null -eq $outside) { throw "Complex road gate has no authored flat approach: $direction" }
-            $axis = if ($centred.Count -eq 1) { 0 } else { $outside.origin.x * $right[0] + $outside.origin.y * $right[1] }
+            $axis = if ($centred.Count -eq 1) {
+                $boundary = $centred[0].boundaryPort.position
+                $boundary.x * $right[0] + $boundary.y * $right[1]
+            } else { $outside.origin.x * $right[0] + $outside.origin.y * $right[1] }
             $ports = @([pscustomobject]@{
                 id = "$direction/road"; width = 256
                 position = [pscustomobject]@{ x = $right[0] * $axis; y = $right[1] * $axis; z = $(if ([IO.Path]::GetFileName($outside.template) -eq 'tile_road_bridge.vmf') {
@@ -1235,22 +1271,51 @@ function Set-ZMComplexMotorwayCellInspection {
     if ($null -ne $AssemblyCase.PSObject.Properties['insertionSeam']) {
         Assert-ZMMotorwaySpawnFloor $AssemblyCase.instances[0] $AssemblyCase.insertionSeam.playerStartCandidate
     }
+    # Whole-tile snap: shift the assembly in 320-unit steps so every motorway arm leaves the cell on its centre line,
+    # then place continuation straights in whole 640 slots. Residual authored mouth offsets stay visible for Hammer review.
+    $gridShift = [pscustomobject]@{ x = 0; y = 0; z = 0 }
+    $shiftDiagnostics = [System.Collections.Generic.List[object]]::new()
+    $continuations = @($AssemblyCase.instances | Where-Object { $_.owner -match '/(N|E|S|W)/continuation$' })
+    $centeredCellCore = $null -ne $AssemblyCase.PSObject.Properties['centeredCellCore'] -and [bool]$AssemblyCase.centeredCellCore
+    if (-not $centeredCellCore) {
+        foreach ($crossAxis in @('x', 'y')) {
+            $arms = @($continuations | Where-Object { ($_.owner -match '/(N|S)/continuation$') -eq ($crossAxis -eq 'x') })
+            $offsets = @($arms | ForEach-Object { $_.origin.$crossAxis - $AssemblyCase.origin.$crossAxis })
+            if ($offsets.Count -eq 0) { continue }
+            $gridShift.$crossAxis = -320 * [Math]::Round($offsets[0] / 320, [MidpointRounding]::AwayFromZero)
+            foreach ($offset in $offsets) {
+                $shiftDiagnostics.Add([pscustomobject]@{ axis = $crossAxis; measuredArmOffset = $offset; residualAfterShift = $offset + $gridShift.$crossAxis })
+            }
+        }
+    }
+    $frame = [pscustomobject]@{ x = $AssemblyCase.origin.x - $gridShift.x; y = $AssemblyCase.origin.y - $gridShift.y; z = $AssemblyCase.origin.z }
     $instances = [System.Collections.Generic.List[object]]::new()
     $gaps = [System.Collections.Generic.List[object]]::new()
     $roadApproaches = [System.Collections.Generic.List[object]]::new()
+    $roadPlacementShifts = [System.Collections.Generic.List[object]]::new()
     foreach ($instance in $AssemblyCase.instances) {
         $relative = [Uri]::UnescapeDataString(([Uri]($TemplateDirectory.TrimEnd('\') + '\')).MakeRelativeUri([Uri]$instance.template).ToString()).Replace('/', '\')
-        if ($null -ne $AssemblyCase.PSObject.Properties['insertionSeam'] -and $instance.owner -like '*/continuation') {
+        $origin = [pscustomobject]@{ x = $instance.origin.x - $frame.x; y = $instance.origin.y - $frame.y; z = $instance.origin.z }
+        if ($instance.owner -match '/(N|E|S|W)/continuation$') {
+            if ($instance.yaw -in @(0, 180)) {
+                $origin.x = 0; $origin.y = 640 * [Math]::Round($origin.y / 640, [MidpointRounding]::AwayFromZero)
+            } else {
+                $origin.y = 0; $origin.x = 640 * [Math]::Round($origin.x / 640, [MidpointRounding]::AwayFromZero)
+            }
             $halfX = if ($instance.yaw -in @(0, 180)) { 960 } else { 320 }
             $halfY = if ($instance.yaw -in @(0, 180)) { 320 } else { 960 }
-            if ([Math]::Abs($instance.origin.x - $AssemblyCase.origin.x) + $halfX -gt 2880 -or
-                [Math]::Abs($instance.origin.y - $AssemblyCase.origin.y) + $halfY -gt 2880) { continue }
+            if ([Math]::Abs($origin.x) + $halfX -gt 2880 -or [Math]::Abs($origin.y) + $halfY -gt 2880) { continue }
         }
         $disposition = if ($instance.status -eq 'exact_floor_seam') { 'exact_surface_candidate_clearance_pending' } elseif ($instance.status -eq 'authored_piece') { 'authored_source' } else { 'unsupported_connector_deferred' }
+        $nextTemplate = ''
+        if ($null -ne $instance.PSObject.Properties['nextTemplate'] -and -not [string]::IsNullOrWhiteSpace([string]$instance.nextTemplate)) {
+            $nextTemplate = [Uri]::UnescapeDataString(([Uri]($TemplateDirectory.TrimEnd('\') + '\')).MakeRelativeUri([Uri]$instance.nextTemplate).ToString()).Replace('/', '\')
+        }
         $instances.Add([pscustomobject]@{
             template = $relative; yaw = $instance.yaw; owner = $instance.owner
-            origin = [pscustomobject]@{ x = $instance.origin.x - $AssemblyCase.origin.x; y = $instance.origin.y - $AssemblyCase.origin.y; z = $instance.origin.z }
+            origin = $origin
             status = $instance.status; disposition = $disposition; placementEligibility = 'inspection_only'
+            nextTemplate = $nextTemplate
         })
     }
     foreach ($connection in $AssemblyCase.connections) {
@@ -1260,20 +1325,26 @@ function Set-ZMComplexMotorwayCellInspection {
         if ($connection.route -eq 'motorway') {
             $axis = if ($heading -in @('N', 'S')) { 'y' } else { 'x' }
             if ($null -ne $AssemblyCase.PSObject.Properties['insertionSeam'] -and
-                [Math]::Abs($port.position.$axis - $AssemblyCase.origin.$axis) -eq 2880) {
+                [Math]::Abs($port.position.$axis - $frame.$axis) -ge 2880) {
                 $gaps.Add([pscustomobject]@{ heading = $heading; gapToVisualBoundary = 0; status = 'reaches_boundary' })
                 continue
             }
             $last = @($instances | Where-Object owner -eq "$($AssemblyCase.id)/$heading/continuation")[0]
+            if ($null -eq $last) {
+                $gaps.Add([pscustomobject]@{ heading = $heading; gapToVisualBoundary = 0; status = 'continuation_outside_cell_after_grid_snap' })
+                continue
+            }
             for ($index = 1; $index -le 8; $index++) {
                 $next = [pscustomobject]@{ x = $last.origin.x + $step[0]; y = $last.origin.y + $step[1]; z = 0 }
                 $halfX = if ($last.yaw -in @(0, 180)) { 960 } else { 320 }
                 $halfY = if ($last.yaw -in @(0, 180)) { 320 } else { 960 }
                 if ([Math]::Abs($next.x) + $halfX -gt 2880 -or [Math]::Abs($next.y) + $halfY -gt 2880) { break }
+                $nextTemplate = if (-not [string]::IsNullOrWhiteSpace([string]$last.nextTemplate)) { [string]$last.nextTemplate } else { $last.template }
                 $last = [pscustomobject]@{
-                    template = $last.template; yaw = $last.yaw; owner = "$($AssemblyCase.id)/$heading/stripe$index"
+                    template = $nextTemplate; yaw = $last.yaw; owner = "$($AssemblyCase.id)/$heading/stripe$index"
                     origin = $next; status = 'continuation_floor_seam'
                     disposition = $connection.disposition; placementEligibility = 'inspection_only'
+                    nextTemplate = $nextTemplate
                 }
                 $instances.Add($last)
             }
@@ -1291,7 +1362,18 @@ function Set-ZMComplexMotorwayCellInspection {
             } else {
                 [pscustomobject]@{ x = -$step[0] / 2; y = -$step[1] / 2; z = 0 }
             }
-            $origin = [pscustomobject]@{ x = $port.position.x - $AssemblyCase.origin.x - $mouth.x; y = $port.position.y - $AssemblyCase.origin.y - $mouth.y; z = 0 }
+            $origin = [pscustomobject]@{ x = $port.position.x - $frame.x - $mouth.x; y = $port.position.y - $frame.y - $mouth.y; z = 0 }
+            $shiftNorth = $ramp -and $heading -eq 'E' -and
+                $null -ne $Recipe.PSObject.Properties['topology'] -and $Recipe.topology -in @('motorway-straight', 'motorway-deadend') -and
+                $null -ne $Recipe.PSObject.Properties['transportFeature'] -and $Recipe.transportFeature -eq 'onramp-e'
+            $northOffset = if ($shiftNorth) { 640 } else { 0 }
+            if ($shiftNorth) {
+                $roadPlacementShifts.Add([pscustomobject]@{
+                    heading = $heading; axis = 'y'; units = $northOffset
+                    scope = 'ordinary_onramp_road_and_following_tiles_only'
+                    status = 'north_grid_shift_hammer_alignment_review_pending'
+                })
+            }
             $instances.Add([pscustomobject]@{
                 template = $template; yaw = $yaw; origin = $origin
                 owner = "$($AssemblyCase.id)/$heading/road_approach"
@@ -1300,11 +1382,28 @@ function Set-ZMComplexMotorwayCellInspection {
             })
             if ($ramp -and $null -ne $AssemblyCase.PSObject.Properties['insertionSeam']) {
                 $centred = New-ZMCentredRoadApproach $origin $heading "$($AssemblyCase.id)/$heading" $TemplateDirectory
+                if ($northOffset -ne 0) {
+                    $instances[-1].origin.y += $northOffset
+                    foreach ($piece in $centred.instances) { $piece.origin.y += $northOffset }
+                    foreach ($join in $centred.joins) {
+                        $join.position.y += $northOffset
+                        if ($join.first -eq "$($AssemblyCase.id)/$heading") {
+                            $join.status = 'onramp_road_moved_north_hammer_alignment_pending'
+                        }
+                    }
+                    $centred.boundaryPort.position.y += $northOffset
+                    $forward = @{ N = @(0, 1); E = @(1, 0); S = @(0, -1); W = @(-1, 0) }[$heading]
+                    $right = @($forward[1], -$forward[0])
+                    $centred.entryAxis = $centred.boundaryPort.position.x * $right[0] + $centred.boundaryPort.position.y * $right[1]
+                    $centred.status = 'north_shifted_onramp_road_hammer_alignment_pending'
+                    $centred | Add-Member -NotePropertyName northGridShift -NotePropertyValue $northOffset
+                }
                 foreach ($piece in $centred.instances) { $instances.Add($piece) }
                 $roadApproaches.Add($centred)
                 $gaps.Add([pscustomobject]@{ heading = $heading; gapToVisualBoundary = 0; status = 'centred_road_gate_integration_pending' })
                 continue
             }
+            if ($northOffset -ne 0) { $origin.y += $northOffset }
             $end = 0
             for ($index = 1; $index -le 8; $index++) {
                 $origin = [pscustomobject]@{ x = $origin.x + $step[0]; y = $origin.y + $step[1]; z = 0 }
@@ -1404,16 +1503,20 @@ function Set-ZMComplexMotorwayCellInspection {
         schemaVersion = 2; status = $(if ($Normal) { 'normal_complex_travel_pending' } else { 'complex_cell_diagnostic_not_live_travel' }); template = $instances[0].template
         sourceSha256 = $fingerprints[$instances[0].template]; sourceFingerprints = $fingerprints; yaw = $instances[0].yaw
         assemblies = @($instances); leases = @($leases); connections = $AssemblyCase.connections; boundaryGaps = @($gaps)
-        sourceFrameOrigin = [pscustomobject]@{ x = $AssemblyCase.origin.x; y = $AssemblyCase.origin.y; z = $AssemblyCase.origin.z }
+        sourceFrameOrigin = [pscustomobject]@{ x = $frame.x; y = $frame.y; z = $frame.z }
+        gridSnap = [pscustomobject]@{ shift = $gridShift; arms = @($shiftDiagnostics); status = 'whole_tile_snap_visual_review_pending' }
         declaredMotorwayDirections = @($Recipe.activeEntrances | Where-Object { $_ -notin $Recipe.rampExits })
         measuredMotorwayDirections = @($AssemblyCase.connections | Where-Object route -eq motorway | ForEach-Object { $_.ports[0].outward } | Sort-Object)
         mappedYawStatus = 'existing_topology_yaw_preserved_compare_measured_route_directions_before_acceptance'
         envelopeOverlaps = $overlaps
         ordinaryRoadApproaches = @($roadApproaches)
+        ordinaryRoadPlacementShifts = @($roadPlacementShifts)
         limits = @('Explicit diagnostic cell: unresolved seams/approach grades and partial boundary tiles are not approved connections.', 'Incompatible motorway mouths and road approaches remain unsupported until separately authorized connector assets are validated.', 'Exact floor seams are candidates only; conservative winding coverage suppresses scenery but does not establish full-solid collision clearance.', 'Conservative winding coverage suppresses scenery; shared leases do not authorize solid overlap.', 'No legacy transition triggers, geometry scaling, source modification or Z correction.')
     })
     if ($null -ne $AssemblyCase.PSObject.Properties['insertionSeam']) {
-        $Recipe.$contractProperty | Add-Member -NotePropertyName insertionSeam -NotePropertyValue $AssemblyCase.insertionSeam
+        $seam = $AssemblyCase.insertionSeam | ConvertTo-Json -Depth 12 | ConvertFrom-Json
+        foreach ($axis in @('x', 'y', 'z')) { $seam.playerStartCandidate.$axis += $gridShift.$axis }
+        $Recipe.$contractProperty | Add-Member -NotePropertyName insertionSeam -NotePropertyValue $seam
     }
 }
 

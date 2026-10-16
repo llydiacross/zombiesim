@@ -524,7 +524,7 @@ function Set-ZMInspectionTerrainInfill {
             } else { $available["$x,$y"] = $true }
         }
     }
-    if (($CompletePatches -or $MeasureCompletePatches) -and [IO.Path]::GetFileName($inspection.template) -ne 'tile_motorway_corner_5x3.vmf') {
+    if ($CompletePatches -or $MeasureCompletePatches) {
         foreach ($y in 0..17) {
             foreach ($x in 0..17) {
                 if (-not $available.ContainsKey("$x,$y")) { continue }
@@ -544,7 +544,7 @@ function Set-ZMInspectionTerrainInfill {
         $available.Clear()
     }
     $unmergedGapCount = $partialGaps.Count
-    if (($CompletePatches -or $MeasureCompletePatches) -and [IO.Path]::GetFileName($inspection.template) -ne 'tile_motorway_corner_5x3.vmf') {
+    if ($CompletePatches -or $MeasureCompletePatches) {
         $baseText = [IO.File]::ReadAllText((Join-Path $TemplateDirectory 'terrain\tile_grass.vmf'))
         $mergeable = [System.Collections.Generic.List[ZombieSim.Infill.Point[]]]::new()
         $retained = [System.Collections.Generic.List[object]]::new()
@@ -617,7 +617,7 @@ function Set-ZMInspectionTerrainInfill {
     }
     $fingerprints = @{}
     $unfilled = [Collections.Generic.List[object]]::new()
-    if (($SizedPatches -or $MeasureCompletePatches) -and [IO.Path]::GetFileName($inspection.template) -ne 'tile_motorway_corner_5x3.vmf') {
+    if ($SizedPatches -or $MeasureCompletePatches) {
         $index = 0
         foreach ($gap in $partialGaps | Where-Object rectangular) {
             $split = Get-ZMInfillRectanglePieces $gap

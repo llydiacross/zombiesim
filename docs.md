@@ -135,38 +135,38 @@ arrows are256 inward and arrivals384 inward. Metadata records lane extents
 and the negative-right arrival lane. Brushes/props/runtime consumers remain
 source-wired below; the normal-wide emission guard is unchanged.
 
-The normal straight branch in `Get-TransitionGatePlacements` now remeasures
-source gates and rejects differing planned records/active entrances. The VMF
-writer uses `Get-ZMTransitionTriggerBounds` for asymmetric extents (1456 across,
-64 deep at Z32..144), and arrival landmarks consume the measured negative-right
-lane at Z72. `Get-ZMTransitionBarricadeProps` translates each existing car/glass
-pair to its measured lane centre without changing models, relative offsets,
-yaw or deck-relative height. Legacy triggers remain256x64 and legacy props
-retain their original values. Inspection still emits no gates. These writer
-paths are fixture-tested, not compiled/live: normal-wide emission remains
-authorized only for complete measured normal straights; other normal wide
-assemblies remain blocked pending their contracts and travel integration.
+The active Phase J refresh reuses the previously approved seed-1337 plan via
+`bin/reuse_approved_preview_plan.ps1`. It verifies the matching seed/grid and
+prior runtime gate records, removes only the retired `-edge2` recipe suffix,
+and preserves each cell's tile placements, motorway origins/yaws, leases and
+grid shifts. It removes stale source fingerprints and the old AABB-derived
+inspection spawn candidate; no motorway source geometry, face ID or bounding
+box is remeasured to plan or align these approved placements. The tool is for
+this same approved plan, not for choosing a new world layout.
 
-Runtime export rederives the complete normal straight assembly from current
-source and rejects changed fingerprints, reservations or gate records before
-publishing `motorwayGates` on its existing profile-scoped cell records.
-`ZM_Transitions` resolves those records through `ZM_World:GetCellsForMap`.
-Shared-map cells must agree; malformed, conflicting or mixed legacy/measured
-records invalidate that gate and show an error on attempted travel.
-Gate centres use the explicit logical axis, not the asymmetric brush AABB
-centre. Arrows and arrivals use measured lane coordinates and brush-only surface
-traces; measured surfaces must remain within2 units of the recorded deck.
-Arrival hull clearance and the existing client Global2 API are preserved.
-Maps without this metadata retain legacy160-unit motorway lanes and ordinary
-road behavior. Offline fixtures cover all cardinals and both paths; these
-results do not establish compiled collision or live travel.
+The VMF writer emits two separately named, lane-tagged `trigger_multiple`
+entities per motorway-connected side, one trigger for each saved carriageway.
+Each has its own carriageway-width bounds, arrow and barricades; the existing
+256-unit arrow inset and 384-unit inward arrival remain unchanged. The arrival
+landmark is written once per direction. Ordinary-road connections retain one
+trigger and their existing bounds, arrows, barricades and arrival. A trusted
+plan starts players on the nearest available terrain tile in the 640-unit grid;
+the former measured insertion-seam spawn is not used.
 
-`build_motorway_cell_preview.ps1 -Normal` now emits the two straight recipes
-without inspection flags or metadata. Recipe validation rederives the full
-current-source assembly and gate contract before emission; merely remapping a
-wide template into legacy1x1 records is rejected. Both isolated normal maps
-pass VBSP, portal budgets and VVIS/VRAD. BSP checks retain four gates/four
-measured arrival landmarks. This is not a staged full-world rollout.
+Runtime export copies the trusted gate records from that same approved plan
+instead of rederiving them from current tile sources. `ZM_Transitions` resolves
+those records through `ZM_World:GetCellsForMap`; shared-map cells must agree.
+At load time, a lane-tagged trigger is matched to its planned carriageway, then
+arrows and arrivals use the saved lane coordinates and brush-only surface
+traces. Arrival hull clearance and the client Global2 API are preserved.
+Legacy maps without lane tags keep the existing combined-marker behavior.
+Offline plan and gate fixtures do not establish compiled collision, live
+traversal or visual alignment; the refreshed compiled maps and in-game sight
+review remain separate checks.
+
+`build_motorway_cell_preview.ps1 -Normal` and the source-survey helpers remain
+diagnostic tools; they are not part of this trusted Phase J refresh and must not
+be treated as mathematical proof of the user-approved motorway alignment.
 
 `build_motorway_cell_preview.ps1 -Mixed` covers the four actual bend/deadend
 plus bridge/on-ramp combinations. `Join-ZMMotorwayAssemblyCases` inserts the
@@ -180,11 +180,10 @@ retains a2-unit lane-centre difference and36-unit width difference.
 These new arrangements are inspection candidates, not approved production
 connections. They do not reopen the seven previously accepted examples.
 
-When combined coverage leaves no free core terrain, the inspection spawn is
-explicitly measured128 units inside the main motorway mouth. Its four16-unit
-hull-footprint corners must lie on saved flat source floor polygons; the base
-cell's terrain-floor spawn clearance is added above the measured deck.
-This does not establish full-height entity clearance.
+Historical isolated inspection fixtures used a measured insertion-seam spawn
+when no terrain slot was available. The active trusted plan strips that
+candidate and uses a 640-grid terrain tile instead; it performs no AABB spawn
+selection and does not claim full-height entity-clearance proof.
 
 The user's mixed-layout corrections keep each bridge at physical `(0,0,0)`
 and rebase its terminal around the exact insertion seam. South deadend origin
@@ -198,21 +197,13 @@ VMF transform for the original straight's longitudinal endpoints only;
 width, deck and texture axes are unchanged. It creates
 `tiletemplates/roads/connectors/tile_road_straight_768.vmf` once, never overwrites
 an existing editable source, and is not an automatically discovered grid tile.
-`Get-ZMOrdinaryRoadMouths` validates actual saved floor edges: contiguous256-wide
-mouths at deck36. Cardinal/mirrored helpers prove exact corner/straight/ramp
-joins. `ordinaryRoadApproaches.boundaryPort` records each true centred side
-entry; the internal on-ramp mouth does not become the transition-gate axis.
-Normal mixed gate placement/runtime arrivals remain pending. In particular,
-the south example turns in the outer row at Y-2560; the old gate axis2208
-must not be blindly used where no centred road floor exists.
-
-Complex source-floor gate preparation is owned by `Get-ZMComplexMotorwayGates`.
-Contracts retain `sourceFrameOrigin` to normalize measured overview ports.
-The helper validates current source hashes, samples saved flat windings across
-the trigger opening and both travel points, and rejects unsupported routes
-rather than placing markers on empty ground. Cardinal geometry, not diagnostic
-owner names, selects continuation sources. A gate candidate is not permission
-to export or emit an inspection recipe through the normal generator.
+`Get-ZMOrdinaryRoadMouths` and `Get-ZMComplexMotorwayGates` remain optional
+source-survey diagnostics. They can read saved floor windings and reject stale
+source fingerprints; do not invoke that measurement path for the trusted
+Phase J plan or use it to re-prove approved motorways. The active refresh uses
+the prior exported road and motorway gate records, preserving the special
+south outer-row gate and ordinary-road approach positions without recalculating
+them. Compilation and live travel review are still required.
 
 The approved south mixed-road approach uses gate Y-2720, arrow Y-2624 and
 arrival Y-2592 at X0/deck36. Ordinary-road96/128 insets keep both points on the
@@ -540,10 +531,29 @@ integer rectangle selection, positive-area exclusion, accounted ground/exclusion
 and actual written-cell evidence. Corrected inspection output is isolated under
 `generated/phase_b_infill_cells`; no whole-world generation or staging is needed.
 
+Only schema-2 recipes with a measured `motorwayAssembly` or
+`motorwayCellInspection` contract receive terrain infill. Ordinary preview
+recipes are never passed through `Set-ZMInspectionTerrainInfill`. To avoid
+reprocessing ordinary recipe VMFs during the infill stages, use
+`-MotorwayOnlyInfill` for both builder passes and `-MotorwayOnly` for source
+initialization. This mode selects the deduplicated measured motorway recipes,
+preserves existing ordinary VMFs and safe-room maps, and rejects stale-output
+pruning rather than deleting unrelated generated files. Run the ordinary
+full-plan VMF build separately without infill switches first; the
+motorway-only pass is not a replacement for full preview generation.
+
+```powershell
+.\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData <plan.json> -CellDirectory <generated-src> -SkyboxOutputDirectory <generated-skybox> -RefreshGenerated -MotorwayOnlyInfill -MeasureCompleteTerrainInfill
+.\bin\create_terrain_infill_templates.ps1 -WorldProfile preview -PartialGapLayoutDirectory <generated-src> -CompletePatches -MotorwayOnly
+.\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData <plan.json> -CellDirectory <generated-src> -SkyboxOutputDirectory <generated-skybox> -RefreshGenerated -MotorwayOnlyInfill -SizedTerrainInfill -CompleteTerrainInfill
+.\bin\test_motorway_infill_scope.ps1
+```
+
 The original corner/crossroads reviews remain accepted. `-SizedInfill`
 subtracts recognized axis-aligned ground bases from each quarter and uses
 power-of-two rectangular sources for admissible gaps. The missing-only initializer accepts
-`-PartialGapLayoutDirectory` to create those sources; an explicit second
+`-PartialGapLayoutDirectory` to create those sources; add `-MotorwayOnly` to
+restrict discovery to measured motorway layouts. An explicit second
 inspection build uses `-SizedTerrainInfill`. Neither flag enables normal or
 production generation. Names encode integer Hammer-unit dimensions
 (`u304_u320`), not nominal tile-count suffixes. Decimal-sized and polygon
@@ -1061,7 +1071,7 @@ Run `bin/analyze_world_reachability.ps1` after generating a matching manifest an
 
 `mapGeneration.safeZones.minimumSpacingCells` sets the preferred Euclidean spacing between den entrances. Placement considers only reachable local-road candidates, tries the most constrained districts first, and maximizes separation before district-center and supported-landmark preferences. If a district has no candidate at the target distance, it falls back to its best available reachable location; the manifest records the target, actual minimum separation, and per-district fallback status.
 
-For `bridge-ramp-*` recipes, the center remains a road cross-junction and the ramp occupies the first tile along the bridge direction; bridge road continues beyond it, rather than capping perpendicular ordinary-road approaches with deadends. Carpark bridge-ramp variants retain their separately-planned carpark junction. Run `bin/test_phase_c2_layouts.ps1 -WorldProfile preview` after planner changes; also inspect regenerated recipes and the developer zoo in Hammer before shipping a visual change.
+For `bridge-ramp-*` recipes, the center follows the cell's road topology; a straight road keeps a straight center rather than gaining unconnected cross-junction arms. The ramp occupies the first tile along the bridge direction, and bridge road continues beyond it rather than capping perpendicular ordinary-road approaches with deadends. Carpark bridge-ramp variants retain their separately-planned carpark junction. Run `bin/test_phase_c2_layouts.ps1 -WorldProfile preview` after planner changes; also inspect regenerated recipes and the developer zoo in Hammer before shipping a visual change.
 
 ### `highways`
 
@@ -1311,6 +1321,8 @@ Use only `0`, `90`, `180`, or `270` for the current square tiles. Test any chang
 | `commercialProfiles` | Profiles allowed to use commercial building assets, in addition to Market landmark cells. |
 | `industryTerrains` | Terrain types allowed to use industry assets. |
 | `industryProfiles` | Special profiles allowed to use industry assets. |
+
+Army Base landmark cells use only VMFs under `tiletemplates/army` for fallback building slots, in addition to the Army-only landmark template. Military-profile cells use the same exclusive pool. If the Army folder has no VMFs, planning fails explicitly rather than falling back to generic buildings.
 
 Building height is inferred from the letter count after the number in names such as `tile_building_1a.vmf`, `tile_building_1aa.vmf`, and `tile_building_1aaa.vmf`. Keep that naming convention for new ordinary building prefabs.
 
@@ -1576,10 +1588,13 @@ bridge corridors retain their bridge source. This is isolated source/structural
 validation, not permission to stage a partial Phase C runtime closure. Ground
 arrows and integrated travel acceptance remain Phase C work.
 
-Expanded recipe names end in `-edge2.vmf`, preventing reuse of old map-revision
-BSPs. West-ocean recipes additionally use `-oceanw-edge2.vmf`, so an otherwise
-shared recipe cannot reuse inland scenery. The builder writes a sibling `.layout.json` containing core, original
-border and outer placements, coast sides, bounds and the exact VMF hash.
+Expanded recipe names use the normal recipe hash without a test-only
+`-edge2` revision suffix. West-ocean recipes retain the `-oceanw` distinction
+so they cannot reuse inland scenery. When enabling or changing outer-edge
+geometry, regenerate the plan and VMFs and rebuild every required preview BSP;
+filename suffixes are not a substitute for compiling the current geometry.
+The builder writes a sibling `.layout.json` containing core, original border
+and outer placements, coast sides, bounds and the exact VMF hash.
 Artwork/skyline consumers should use that generated metadata rather than
 reconstructing a separate border policy. Expanded runtime exports require
 matching generated layouts; legacy exports without bounds remain supported.

@@ -4,6 +4,67 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Active Task Tracker
 
+- **Alpha3.2 Phase J in-game motorway review fixes, 2026-10-15 (incremental
+  compile complete; staging + visual review pending):** complex motorway assemblies now
+  shift in whole 320 steps so arms leave cells on the centre line, and
+  continuation straights snap to whole 640 slots (`gridSnap` in the contract;
+  (13,6) moves640 north). Residual authored mouth jogs (14-48) are Hammer
+  fixes for the user. Land-side sky seal/black floor now end at2880/2944 (was
+  3072/3136) so the skybox meets the outer ring. Shared recipes now emit a gate
+  on every road connection (`gateDirections`); runtime still blocks per cell
+  (49 recipes/98 cells previously lacked gates). Trees need natural, level
+  ground across a192 canopy ring. **User rule:** verify alignment by sight in
+  game; do not use motorway_geometry mathematical proofs as evidence.
+- **Alpha3.2 refresh status, 2026-10-16 (incremental compile complete; not accepted):**
+  fresh seed-1337 preview plan has576 cells,336 city recipes,96 motorway
+  assemblies and3 reusable safe-room maps. User-labelled Cell15,11 (plan grid
+  14,23) now has a straight `roads/tile_road.vmf` center, east road ramp and
+  bridge continuation; the two east `onramp-e` motorway cells shift only the
+  ordinary road branch north640 while retaining the motorway piece. The
+  Army Base landmark cell's three fallback building slots now all use
+  `tiletemplates/army`. Focused checks pass: bridge-ramp12, Army9, on-ramp20,
+  complex gates234; GLua277/0. The complete-infill VMF emission completed
+  (336 recipes; 335 refreshed, 1 retained). Required VMFs pass336/336.
+  Visibility preflight covers339 maps:0 over portal/cluster budgets and0
+  missing/invalid portal files. Incremental VVIS/VRAD covered all339 required
+  maps:33 compiled,306 current/skipped,0 failed,0 incomplete. No skyline/runtime
+  export, staging or live/visual review occurred; the compile is not phase
+  acceptance. CSM now excludes `models/zombiesim/skybox/` before model
+  measurement; GLua277/0 and focused offline CSM tests2/2 pass, but fresh
+  in-game verification awaits deployment to a generated cell. The user raised
+  the elapsed time; ask before further expensive skyline/material/staging work.
+- **Alpha3.2 trusted motorway plan and lane gates, 2026-10-16 (source/test
+  complete; no refreshed output):** the failed ramp face-ID refresh is not a
+  prerequisite and must not be retried for this batch. The approved seed-1337
+  plan and prior runtime gates are reused without current-source motorway
+  geometry comparisons; dry validation preserves576 cell placements,336
+  recipe names,96 motorway contracts and214 directional gate records. The
+  migration removes only `-edge2`, retains `-oceanw`, and drops stale source
+  fingerprints and the AABB-derived spawn candidate. Placement origins/yaws/
+  leases/shifts remain identical. Runtime export hashes differ, with eight
+  stale map names confined to ordinary cells without motorway gate metadata;
+  topology and entrances still agree across all576 cells, and no old gate data
+  is reused for those eight. New VMFs will use two lane-tagged triggers per
+  motorway connection, preserving the256 arrow and384 arrival offsets;
+  ordinary-road gates remain single. PowerShell parse, gate fixtures56/56,
+  server13/13, client11/11, GLua277/0 and `git diff --check` pass. The migrated
+  plan/list are written; the user authorized the full preview refresh, compile
+  and map-only staging. Navmesh/Satellite/material capture, production and
+  live visual acceptance remain excluded; visual alignment still requires the
+  user's in-game review.
+- **Generated-output retention, 2026-10-15 (user directive):** do not keep old
+  generated maps, BSPs, VMF batches, skyline models or map materials to compare
+  earlier phases; the current generator output supersedes them. Delete
+  superseded batch/test folders once a newer batch is staged, and do not keep
+  duplicate BSP/content copies of a staged batch. The Phase J preview (339 maps)
+  is the installed baseline; the old Phase B staging ledger and its backups
+  were deleted (record: `generated/phase_j_preview_20261015/retired-staging-ledger.json`),
+  so there is no restore path to earlier preview worlds. Keep tool caches
+  (`clothing_preview`, `sky_catalogue`, `launcher_*`) and source backups.
+  Custom test worlds (for example oceanw/edge variants or isolated fixtures)
+  are fine during a phase, but delete their maps, materials, skyline models and
+  generated folders once that phase's checks finish. Drive space is limited;
+  this cleanup once recovered ~33 GB.
 - **Alpha3.2 normal wide-motorway cells approved, 2026-10-15:** all27
   complex/mixed preview cells now come from the normal planner (schema-2
   `motorwayAssembly`, measured assembly report required). Approved fixtures are
@@ -222,8 +283,14 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
   unverified. This is limited-scope acceptance, not fabricated test evidence.
   All remaining CSM work is saved in [docs/csm-implementation.md](docs/csm-implementation.md)
   outside Alpha 3.2's completion gates. Do not resume CSM probes, optimization,
-  reloads or benchmarks unless explicitly requested. Keep default off, baked/
-  shared lighting unchanged, and the unshadowed F-toggle chest lamp separate.
+  reloads or benchmarks unless explicitly requested. Keep default off and baked/
+  shared lighting unchanged. The F-toggle chest lamp remains unshadowed while
+  CSM is off; when CSM is ready, only the local player's lamp casts dynamic
+  shadows. Sun-shadow coverage follows the local player's entity origin rather
+  than the render camera. Runtime trees cast while CSM is active; bushes/hedges
+  and high-poly non-foliage models are suppressed, with original flags restored
+  on CSM off. Compiled static props remain unchanged, so hedge cost and
+  moving-shadow popping remain unresolved.
   Resume E/F/G/I/J/K/L; the rejected M system is no longer a prerequisite.
   The336/338 isolated preview batch is not stageable:
   the two motorway-crossroads VBSP failures require author permission before

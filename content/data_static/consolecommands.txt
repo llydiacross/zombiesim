@@ -1,2 +1,3 @@
-# request: bridge-20261014-232448-589
+# request: bridge-20261016-054911-698
 zombiesim_player_status
+zombiesim_dev_csm_status

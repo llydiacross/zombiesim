@@ -36,6 +36,10 @@ Foliage.PlacementBatchSize = 6
 Foliage.PlacementInterval = 0.05
 Foliage.MinPlantSpacing = 200
 Foliage.TreeFootprintRadius = 48
+// Canopies spread well beyond the trunk; the whole canopy ring must also stand over natural ground so trees on
+// narrow road/motorway verges do not overhang the carriageway.
+Foliage.TreeCanopyRadius = 192
+Foliage.TreeFootprintMaxStep = 24
 Foliage.MapEdgeMargin = 64
 // Generated cells are a 5x5 grid of 640-unit tiles centred on the origin, wrapped by an inaccessible 640-unit
 // border ring (walls, water, gates). Placement is clamped to the playable grid before the edge margin applies.
@@ -66,12 +70,13 @@ local rewardCounts = {
 local blockedMaterialWords = {
     "asphalt", "road", "street", "parking", "carpark", "concrete", "sidewalk", "brick", "metal", "wood", "nodraw"
 }
-local treeFootprintOffsets = {
-    { x = Foliage.TreeFootprintRadius, y = 0 },
-    { x = -Foliage.TreeFootprintRadius, y = 0 },
-    { x = 0, y = Foliage.TreeFootprintRadius },
-    { x = 0, y = -Foliage.TreeFootprintRadius }
-}
+local treeFootprintOffsets = {}
+for _, radius in ipairs({ Foliage.TreeFootprintRadius, Foliage.TreeCanopyRadius }) do
+    for index = 0, 7 do
+        local angle = index * math.pi / 4
+        treeFootprintOffsets[#treeFootprintOffsets + 1] = { x = math.cos(angle) * radius, y = math.sin(angle) * radius }
+    end
+end
 local excludedClassWords = { "door", "gate", "transition", "spawn", "entrance", "exit" }
 local yellowColor = Color(255, 225, 110)
 local depletedColor = Color(135, 135, 135)
@@ -173,10 +178,22 @@ function Foliage.IsSuitableGround(trace)
     return true
 end
 
-local function hasSuitableTreeFootprint(x, y, bounds, traceGround)
+function Foliage.IsUpwardTraceBlocked(trace)
+    if type(trace) ~= "table" then
+        return true
+    end
+    return trace.StartSolid == true or trace.AllSolid == true or
+        (trace.Hit == true and trace.HitSky ~= true)
+end
+
+local function hasSuitableTreeFootprint(x, y, bounds, traceGround, groundZ)
     for _, offset in ipairs(treeFootprintOffsets) do
         local trace = traceGround(x + offset.x, y + offset.y, bounds)
         if not Foliage.IsSuitableGround(trace) then
+            return false
+        end
+        // A different floor height means a kerb, embankment or deck edge, not open ground.
+        if groundZ and trace.HitPos and math.abs(trace.HitPos.z - groundZ) > Foliage.TreeFootprintMaxStep then
             return false
         end
     end
@@ -213,7 +230,7 @@ function Foliage.MakeCandidate(bounds, rng, attempt, traceGround, isOccupied, ex
     if nodeType == "tree" and Foliage.ShrubOnlySurfaceProps[surfaceName] then
         nodeType = "berry"
     end
-    if nodeType == "tree" and not hasSuitableTreeFootprint(x, y, bounds, traceGround) then
+    if nodeType == "tree" and not hasSuitableTreeFootprint(x, y, bounds, traceGround, trace.HitPos and trace.HitPos.z) then
         nodeType = "berry"
     end
     local position = trace.HitPos + trace.HitNormal * 2
@@ -325,7 +342,8 @@ local function isOccupied(position, nodeType)
         maxs = Vector(radius, radius, 8),
         mask = MASK_SOLID
     })
-    return trace.Hit or trace.StartSolid
+    // A sky surface is clear overhead; a non-sky collision blocks growth.
+    return Foliage.IsUpwardTraceBlocked(trace)
 end
 
 // Shared with runtime fallen-body placement (sv_loot_bodies.lua).
