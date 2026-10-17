@@ -8,7 +8,7 @@ argument-hint: "Describe the changed asset or script, optional profile, and desi
 
 Use this skill to rebuild only the necessary parts of a procedural ZombieSim world and validate the changed behavior. Default to the isolated `preview` profile. Do not run a full VVIS/VRAD build or launch Garry's Mod until the focused checks pass and the requester needs a playable result.
 
-For configuration meanings, template-orientation contracts, and compiler diagnostics, consult the [generator guide](../../../docs.md). For the complete release and in-game command reference, consult the [project readme](../../../readme.md).
+For configuration meanings, template-orientation contracts, and compiler diagnostics, consult the [generator guide](../../../docs.md). For the complete release and in-game command reference, consult the [developer README](../../../docs/readme.md).
 
 ## Decide The Smallest Workflow
 

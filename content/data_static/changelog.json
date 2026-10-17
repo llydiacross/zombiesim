@@ -3,205 +3,93 @@
   "entries": [
     {
       "version": "3.2",
-      "title": "Density-Aware Generator, Wide Motorways and CSM",
+      "title": "New Motorways, Denser Districts and Sunlight",
       "status": "in development",
       "date": "2026-10-13",
-      "summary": "Alpha 3.2 remains in development. Live motorway gate/alignment and current CSM checks are accepted. Two corrected BSPs are staged and wired to logical cells 113/454 by a targeted runtime map-name update. The 336 active preview cell materials and map-browser thumbnails are refreshed, with stale -edge2 cell images removed. A read-only preview Cell Health Manager developer panel is implemented; focused tests pass and live UI review is pending. The user paused generator work and set the order to CHM review, then full-map navmeshes/screenshots and Satellite/wireframe outputs; the long carried Phase K/L checklists are deferred.",
+      "summary": "Alpha 3.2 adds new motorways, buildings that reflect local city density, and optional dynamic sun shadows.",
       "highlights": [
-        "+ Proven plain-ground precision defects repaired with verified backups; infill uses full/half/quarter bases and reusable power-of-two rectangles from4 through512, never polygon, decimal-named or sub-4 patches.",
-        "+ Phase B accepted after seven bounds-based complete-cell fixtures compiled and received user visual review; exact floor-mouth joins remain clearance-pending, mismatched motorway joins and ordinary-road approaches unsupported.",
-        "+ Global U4/U8 infill adds rectangular sources for narrow bounds-verified gaps; focused regressions and the refreshed seven-cell compile/portal checks pass, and the user accepted the four affected cells after visual review.",
-        "+ Phase D density/route-adjacency policy accepted without implying complete live generator acceptance.",
-        "+ Phase E planner/builder explicit rectangular occupancy aligned within the existing three-tile-per-axis limit; duplicate owner IDs and inconsistent occupied geometry fail explicitly, with focused source fixtures and retained-plan compatibility checks.",
-        "+ Phase E marked/unmarked frontage validates rotated rectangles; building/landmark reservations and access checks use matching dimensions, with focused source tests preserving existing square candidate order and targets.",
-        "+ Shared rectangular filename parsing, authored edge-marker validation and zoo/test geometry expectations now agree while retaining legacy square shorthand and the ordinary three-tile-per-axis limit.",
-        "+ Shared straight motorway builder contract validates exact core/border/outer leases, emitting owners, suppressed slots and approved finite origins before ring replacement; focused source fixtures cover both orientations and corrupt records.",
-        "+ Straight motorway core/ring instance emission consumes explicit physical XYZ without re-deriving reservation centres; focused entity-output fixtures preserve fractional coordinates and ordinary tile output.",
-        "+ Normal plain-straight motorway planning reserves its full three-wide core before density decorations using the reviewed stripe geometry; focused tests and two isolated normal recipes pass. Playable emission remains blocked until rings/gates/runtime are integrated.",
-        "+ Normal straight plans now declare source-fingerprinted core/border/outer leases; boundary replacement preserves unleased walls/corners and wall-density adjacency consumes the same reservations. Isolated normal plan-only workflow verifies both orientations; gates/runtime remain pending.",
-        "+ Straight normal assembly metadata now derives asymmetric gate lanes, deck heights, arrow and arrival coordinates from current authored floor windings in all four directions; source/grade/boundary checks reject invalid measurements. Brushes/runtime consumers remain pending.",
-        "+ Normal straight VMF gate writer now consumes measured trigger extents and lane-positioned arrival landmarks; existing car/glass barricades translate to measured lane centres. Legacy geometry is preserved and normal-wide emission remains guarded until runtime integration.",
-        "+ Current experimental client-local additive CSM accepted with default-off Options enable and Low1/15Hz, Medium2/30Hz, High3/rendered-frame tiers; baked/shared lighting unchanged.",
-        "+ User accepted the live motorway gate and alignment checks; transition availability follows world-data exits rather than gate-geometry validation.",
-        "+ Two corrected on-ramp comparison BSPs staged in content and engine maps with hashes matching their isolated builds.",
-        "+ User set the revised order: Cell Health Manager next, followed by full-map navmeshes and screenshots.",
-        "+ Preview cell materials and browser thumbnails now match all336 active runtime map names; 336 stale -edge2 material images were removed.",
-        "+ Read-only preview Cell Health Manager developer grid checks navmesh files and current-map captured photos without changing artifacts.",
-        "- Reconciled milestone reporting: accepted motorway fixture review is preserved; historical join limits are not new asset-authoring requirements, and compile completion is not normal-generator or live-travel acceptance.",
-        "? Safe-zone detail Phase M rejected after review; claim/reservation/emission integration removed. Authored assets and existing den entrances preserved; larger ordinary authored tiles are the replacement direction.",
-        "? Phase E end-to-end output verification, authored origins and ring/travel integration remain unfinished; no new ordinary rectangular building asset is installed. Remaining CSM work is deferred outside Alpha 3.2 completion gates.",
-        "? Weighted nested projectors are not proven seamless cascades; the user accepts the current CSM checks for now, while multiplayer isolation and matched foreground performance remain unverified and deferred.",
-        "? Alpha 3.1.5 Phase D generated-output acceptance and Phase I integration move to the final shared output and closure phases J/K, without implying completion.",
-        "? The retained preview compile completed336/338 with two motorway-crossroads failures; minimal brush repair is approved and attempted but uncompiled. That plan still lacks normal measured assembly integration and cannot be staged as a completed widened world.",
-        "? The two-cell runtime map-name overlay, refreshed cell materials/thumbnails and Cell Health Manager UI have not been live-loaded or visually reviewed; the current world revision hashes remain until the final all-map output batch.",
-        "? Cubemap completion remains unverified because BSP-packaged VTFs may be compiler defaults; the Cell Health Manager counts cubemaps as incomplete until reliable evidence exists.",
-        "? The full corrected plan still includes additional recipe-name differences that are not activated. Do not expand them while generator work is paused.",
-        "? User reports current CSM checks work and accepts them for now; no new performance, lifecycle or multiplayer evidence was collected.",
-        "? The all-map navmesh/screenshot batch is deferred until Cell Health Manager completion; production rebuild and Workshop publication remain separately gated."
+        "+ Added new motorway routes to the city.",
+        "+ Buildings now better match the density of each area.",
+        "? Motorway gates now follow reachable roads and line up with the road lanes.",
+        "+ Optional dynamic sun shadows can be enabled and adjusted in Options."
       ]
     },
     {
       "version": "3.1.5",
-      "title": "Expanded City Edges and Launcher Presentation",
+      "title": "Expanded City and Survivor Updates",
       "status": "in development",
       "date": "2026-10-06",
-      "summary": "Phases A/B/C/E/F/G/H accepted. Remaining Phase D output acceptance and Phase I integration were carried to final Alpha 3.2 phases J/K on 2026-10-13; milestone closure is not accepted.",
+      "summary": "New city-edge scenery, more equipment, and improvements to survivor selection and scavenging.",
       "highlights": [
-        "+ Gated deterministic outer-edge generation, tagged pools, coast omissions and shared core/traversal/visual bounds.",
-        "+ Isolated layout metadata, revision-distinct maps and core-only spawn eligibility for enlarged cells.",
-        "+ Corrected incompatible new-edge trees/signs without moving or replacing authored models.",
-        "+ Land/coast Hammer and isolated in-game geometry reviewed and accepted; launcher and survivor state restoration verified.",
-        "+ Phase A accepted; integrated gameplay limits carried into later phases.",
-        "+ Shared 5760 skyline pitch and versioned plan/coast compatibility; original beach and 2240 omitted-side attachment retained.",
-        "+ Corrected Storm Drain/west-ocean omission: existing border tiles retained, only western outer scenery omitted; skyline shoreline meets the old border without an intended gap.",
-        "+ Up to six stable cosmetic fires and smoke plumes on current-cell outer-edge building rooftops; existing fire toggle and distant effects retained.",
-        "+ Isolated skyline, snow, tower, recursive-cache, mesh-seam and packaging checks pass without replacing installed assets.",
-        "+ Phase B accepted on accumulated expanded-preview review, including corrected west coast, bridge continuation and current-cell edge fires.",
-        "+ Phase C accepted: expanded gates, deck-correct arrivals and road arrows passed accumulated static, compiled-map and live travel review.",
-        "+ Static depth-tested exit arrows follow road and bridge decks; motorway exits have paired carriageway arrows instead of a median arrow.",
-        "+ Live exit-arrow overlays in the HUD minimap and satellite/Level view retain carriageway placement and current route colours without baking arrows into captures.",
-        "+ Existing illustrated Satellite artwork is now Atlas; old Atlas presentation retired from the selector, with saved selections migrated.",
-        "+ Captured-world Satellite mode supports revision-gated complete imagery and saved clear/atmospheric variants; incomplete captures are not presented as a complete map.",
-        "+ Added 24 CS 1.6 firearms to the weapon loot pool using ZombieSim ammo, item scaling, holstering and effects; existing weapons retained.",
-        "+ Completed the 24-firearm CSS arsenal, including dual Berettas; added HL2 .357, SMG, pulse rifle, shotgun and projectile crossbow with inventory ammunition.",
-        "+ CS 1.6 variants now gain 25% damage, 20% range/capacity and 15% faster firing/reloads, multiplying existing random/mastercraft attributes.",
-        "+ Added imported hammer, machete, spanner and Lewis weapons; equipping the radiation suit uses HEV Gordon and hands without altering saved survivor appearance.",
-        "+ Options Third Party Licenses opens a scrollable collection of shipped original notices and clearly labelled creator-permission records.",
-        "+ Slower walk/sprint pacing with unchanged stamina capacity, drain, recovery and exhaustion rules.",
-        "+ Searchable props and fallen bodies use half activation and deterministic 320-unit 3D spacing; runtime drops are unchanged.",
-        "+ Rebuilt-map loot revisions atomically back up and reset only the affected profile/logical cell once.",
-        "+ Phase E accepted after automated persistence/rollback checks and corrected live city-cell search review.",
-        "+ Phase F read-only survivor cards show saved full-body appearance, clothing, location and active-weapon visuals through a bounded retrying client queue.",
-        "+ Phase F accepted after automated isolation/resource checks and direct review of Jim's saved full-body card, clothing and active weapon.",
-        "+ Phase G prototype uses reviewed public-domain Natural Earth art with generated night-light, cloud, distress and rim layers on bounded static meshes.",
-        "+ Selected survivor presentation can show one revision-matched saved-cell skyline model with an explicit marker and label.",
-        "+ Phase G accepted after the cache-corrected Earth and selected-cell city views passed foreground smoothness and presentation review.",
-        "+ Phase H Home now exposes exactly Play, Tools, Settings and Exit; Play opens survivor selection without deploying.",
-        "+ Home and Play now use interruptible atmospheric handoffs: a marked city location grows into a smooth descent before the daylight destination appears behind a full-cover veil.",
-        "+ The Play destination seats its bounded neighbouring-cell skyline cluster into enlarged rolling textured terrain, roads and a boundary-hiding ridge, with authored building materials and controlled daylight.",
-        "+ The authored preview launcher now places Earth and city presentation in its real scale-16 3D-skybox pass instead of an enclosed starfield room.",
-        "+ Home now uses the supplied transparent Z-Nation logo at its native aspect with bounded breathing and grunge framing.",
-        "+ Human review approved the marked descent, enlarged grounded daylight diorama and multi-weapon survivor boxes.",
-        "+ Home-only Earth controls add bounded drag rotation, wheel zoom and Reset View without changing the survivor's saved location.",
-        "+ City launcher Tools retains profile-safe Item Atlas, Content Status and Sky Browser actions while visibly disabling preview-only Map Atlas and Wardrobe.",
-        "+ Phase H accepted after human launcher presentation/control/lifecycle review and focused actual-client checks.",
-        "? Phase 0 accepted: authored edge inventory, verified restoration copies and focused launcher baseline; remaining baseline limits carried forward.",
-        "? Uncaptured individual visual cases and matched performance remain validation limits, not pending Phase B gates; expanded preview is temporarily staged with restoration backups.",
-        "? Current-cell full-footprint projection is accepted; remaining Phase D world artwork/wireframe/Satellite output review is carried to final Alpha 3.2 phases J/K.",
-        "? Options scroll height includes both footer buttons and bottom padding so Third Party Licenses remains fully reachable in the launcher.",
-        "? Consolidated approved archive imports and hash-owned packaging into import_assets.py and imported_assets.json; original CS 1.6 and machete credits retained.",
-        "? Distinct occupied-slot, legacy-state and saved-den card comparisons were unavailable and remain explicit validation limits.",
-        "? Phase G began with one distressed Earth and selected-cell city prototype after its exact asset source was approved.",
-        "? Destructive launcher confirmations, live city Settings, resolution-change review and matched foreground performance remain explicit Phase H limits.",
-        "? Planned border-aware generated map previews remain acceptance-deferred for the later bundled output pass.",
-        "? Production rebuilds and Workshop publication remain separately gated.",
-        "? Alpha 3.2 generator-first work precedes the carried Alpha 3.1.5 closure; CSM projector/replacement-lighting feasibility gates are retained.",
-        "- Fixed expanded black floor/sky enclosure beyond the west-ocean border; physical shell now follows the original 2240 shoreline attachment.",
-        "- Motorway arrivals now trace a clear carriageway behind the arrows instead of using a median-centred landmark inside the concrete reservation.",
-        "- Music duration is optional; City E now uses its full decoded replacement track instead of rejecting the stale 184.2-second duration.",
-        "- Made all CS 1.6 variants loot-only at one-hundredth of their normal counterpart's weight; removed their quartermaster stock while retaining original offers.",
-        "- Corrected generated bridge-deck gate height together with barricades and arrival landmarks; isolated structural checks pass, not yet staged.",
-        "- New loot generations place one or two fallen bodies while unexpired legacy generations retain their saved body layout.",
-        "- Fixed fingerprinted cold-start loot initialization so rebuilt-map safety cannot suppress every searchable spot.",
-        "- Fixed wide-card camera framing that cropped survivor heads and added icon-model fallback for weapons without an explicit world model.",
-        "- Character creation now rejects unknown profession input instead of authorizing it through the stored-data Civilian fallback.",
-        "- Fixed the selected-cell launcher preview reparsing full world and skyline data every frame; profile and survivor-revision caches remove the severe live stall.",
-        "- Ordinary launcher space hides only the 3D-skybox water and uses the approved night cube; sky inspection retains its separate water, selected sky and fog.",
-        "- Survivor selection now uses three compact slot tabs and one ruled dossier with a bordered backgrounded portrait, face-safe framing and an icon-backed box for every equipped weapon; the posed weapon and duplicate strip are removed.",
-        "- Cancelling Create at its first editable step now returns to the survivor grid; page changes release Earth input immediately.",
-        "- Failed content checks and request timeouts now preserve the page that initiated them instead of unexpectedly returning Home."
+        "+ Explore expanded coastlines and more detailed city edges.",
+        "+ Find additional firearms, melee weapons, and protective gear.",
+        "? Road markers and arrivals now match elevated motorway lanes.",
+        "? Choose and customize survivors through a clearer character menu.",
+        "? Movement and scavenging have been tuned for a steadier trip through the city."
       ]
     },
     {
       "version": "3.1.0",
-      "title": "Skyline, Coastline, Clothing and Skies",
-      "status": "development complete",
+      "title": "Skylines, Clothing and Skies",
+      "status": "preview",
       "date": "2026-10-06",
-      "summary": "Development accepted: city skyline and world edges, artist workflows for signs and clothing, and optional client sky palettes. Workshop publication remains deferred.",
+      "summary": "A richer city, expanded survivor wardrobe, and new sky and launcher options.",
       "highlights": [
-        "+ Skyscrapers integrated into city density with a centre-weighted skyline (Phases A-B, accepted).",
-        "+ Artist-friendly sign and billboard workflow (Phase E, accepted).",
-        "+ Wardrobe clothing catalogue: hundreds of fabrics, chest/back/thigh/cuff prints, shared blood overlays and independent outfits per citizen zombie (Phase F, accepted).",
-        "+ Integrated preview review and Workshop packaging foundations (Phase G, accepted).",
-        "+ Preview launcher Tools tab: Item Atlas, Map Atlas, Wardrobe, Sky browser and Content Status.",
-        "+ Clothing item icons show a fabric swatch with shirt/pants and pattern badges.",
-        "+ Sleeve-hem clothing prints and artist control over repeating patterns.",
-        "+ Both-arms and both-legs cuff prints; sleeve flames now climb up the arm.",
-        "+ Changelog viewer from Options, in the launcher and in game.",
-        "+ Optional sky palettes: sky browser, automatic and custom palettes, aerial sky preview and grouped Options (Phase H, accepted).",
-        "+ Authored launcher sky tours with smooth bird-like flight, context haze, preview music and an ending blackout.",
-        "? Redesigned shoreline with waves and distinct cardinal world edges (Phases C-D, accepted).",
-        "? Workshop publication remains deferred; development acceptance is not a public release.",
-        "- Tropospheric night 1 removed from selection and packaging; saved choices and affected automatic profiles use night 2."
+        "+ Added expanded skyline and coastal scenery.",
+        "+ Added more clothing choices and outfit details.",
+        "+ Added a sky browser, custom palettes, and aerial previews.",
+        "+ Added a cinematic launcher sky tour with music and atmospheric effects.",
+        "- Removed Tropospheric Night 1; affected sky choices now use Night 2."
       ]
     },
     {
       "version": "3.0",
-      "title": "City Presentation, Survival and Economy",
+      "title": "City, Survival and Trading",
       "status": "released",
       "date": "2026-10-04",
-      "summary": "Develops the city-world presentation and the survival, interaction and economy loops.",
+      "summary": "More ways to survive, explore, and trade across the city.",
       "highlights": [
-        "+ Player item protection and clearer interaction outcomes.",
-        "+ NPC interaction and service navigation in dens.",
-        "+ Economy and trading with an editor preview.",
-        "+ Radiation, damage and target feedback; radiation-responsive zombies and gore.",
-        "+ Environment and safe-zone music, movement and combat balance.",
-        "? 3D skybox prototype, city generation, tile and foliage improvements."
+        "+ Added clearer interaction feedback and improved item protection.",
+        "+ Added den services, NPC navigation, and trading.",
+        "+ Expanded radiation effects, combat feedback, zombie behavior, and gore.",
+        "? Updated safe-zone music and tuned movement and combat.",
+        "? Improved city layouts, tiles, and foliage."
       ]
     },
     {
       "version": "2.9.2",
-      "title": "Client Performance and Quality Presets",
+      "title": "Performance and Quality Options",
       "status": "released",
       "date": "2026-10-02",
-      "summary": "Reduced client frame cost of weather and atmosphere systems and added Low/Medium/High quality presets.",
+      "summary": "Choose visual quality settings and enjoy smoother weather and atmosphere effects.",
       "highlights": [
-        "+ Configurable quality presets for weaker or stronger hardware.",
-        "+ Hook profiler baselines for matched performance comparisons.",
-        "? Cheaper snow cover, compass and atmosphere hooks with less per-frame Lua allocation."
-      ]
-    },
-    {
-      "version": "2.9.1",
-      "title": "Build Pipeline and Test Organisation",
-      "status": "released",
-      "date": "2026-10-02",
-      "summary": "Faster, better-reported world builds.",
-      "highlights": [
-        "+ Bounded multi-process map compiling.",
-        "+ Fast preview and final compiler presets.",
-        "+ Step-by-step world generation logging.",
-        "? Portal budgets raised to 750 clusters / 1,350 portals.",
-        "? Lua test suites moved to gamemode/tests/."
+        "+ Added Low, Medium, and High graphics quality presets.",
+        "? Improved snow, compass, and atmosphere performance."
       ]
     },
     {
       "version": "2.9",
-      "title": "Gameplay, HUD, Transitions and Atmosphere",
+      "title": "Gameplay, HUD and Atmosphere",
       "status": "released",
       "date": "2026-10-02",
-      "summary": "Reworked den camera and gates, HUD, weapon presentation, weather and gore.",
+      "summary": "Updated combat, travel, maps, weather, and visual effects.",
       "highlights": [
-        "+ New HUD with ammo display and slot-key badges.",
-        "+ Muzzle flashes, tracers, casings and recoil.",
-        "+ Weather, puddles, snow cover, fog, film grain and cinematic cell transitions.",
-        "+ Runtime foliage and debris, dismemberment and gore, entity loot targeting.",
-        "+ World map render modes and level view.",
-        "? First-person den camera, reworked entrances and tunnel exits."
+        "+ Added an updated HUD, weapon effects, recoil, and ammo displays.",
+        "+ Added rain, puddles, snow, fog, screen effects, and smoother cell transitions.",
+        "+ Added runtime foliage, loot markers, dismemberment, and gore.",
+        "+ Added new world-map views and a level view.",
+        "? Improved den cameras, entrances, and tunnel exits."
       ]
     },
     {
       "version": "2.8.6",
-      "title": "Landmark Safe Zones and The Storm Drain",
+      "title": "Safe Zones and the Storm Drain",
       "status": "released",
       "date": "2026-10-01",
-      "summary": "Safe zones per landmark rather than per environment, with placed 3x3 entrances.",
+      "summary": "Safe zones now reflect their landmarks, with a new Storm Drain location.",
       "highlights": [
-        "+ Landmark-specific safe-zone configuration with cell_safezone as the default den.",
-        "+ Safe-zone entrance tiles placed beside roads by the planner.",
-        "? The Evac Zone renamed to The Storm Drain at 0,0.",
-        "? Preview world regenerated and staged."
+        "+ Added landmark-based safe zones and new entrance routes.",
+        "? Renamed the Evac Zone to the Storm Drain."
       ]
     },
     {
@@ -209,102 +97,80 @@
       "title": "Launcher and Character Menu",
       "status": "released",
       "date": "2026-10-01",
-      "summary": "A launcher room with a menu, rotating globe and full character creation.",
+      "summary": "Meet the launcher, survivor slots, and character creation.",
       "highlights": [
-        "+ Main menu with rotating globe, options, credits and exit to Garry's Mod.",
-        "+ Three character slots with load and edit screens.",
-        "+ Character creation: appearance, player model, profession and starting attributes."
+        "+ Added a launcher with a globe, options, credits, and an exit menu.",
+        "+ Added three survivor slots with character selection and editing.",
+        "+ Added character creation with appearance, model, profession, and starting attributes."
       ]
     },
     {
       "version": "2.8",
-      "title": "Weapons, Ammo, Food, Crafting and Trading",
+      "title": "Weapons, Crafting and Trading",
       "status": "released",
       "date": "2026-09-27",
-      "summary": "Counter-Strike: Source weapons, ammunition and the first den economy.",
+      "summary": "Expanded the weapon selection and added more ways to gather, craft, and trade supplies.",
       "highlights": [
-        "+ CSS weapon catalogue with realistic rarity and attributes.",
-        "+ Inventory-backed ammunition types and firing modes.",
-        "+ Scavenged resources and a tiered food system.",
-        "+ Validated recipes and atomic den crafting.",
-        "+ Professions with daily den deliveries, implants, mastercrafting and offline trading.",
-        "+ Mounted asset catalogue and semantic world loot."
+        "+ Added new weapons, ammunition, food, and scavenged resources.",
+        "+ Added den crafting and player trading.",
+        "+ Added professions, deliveries, implants, and mastercrafting.",
+        "+ Added more valuable loot to discover in the city."
       ]
     },
     {
       "version": "2.7",
-      "title": "Items, Loot, Enemies and Bosses",
+      "title": "Items, Loot and Enemies",
       "status": "released",
       "date": "2026-09-26",
-      "summary": "Data-driven items, loot rolls, enemies and bosses.",
+      "summary": "Scavenge persistent gear and face new enemies and bosses.",
       "highlights": [
-        "+ Static data registries for items, loot, enemies and bosses.",
-        "+ Persistent item instances with scaled attributes.",
-        "+ Loot composition and world loot spots with cell refresh.",
-        "+ Inventory and loot interface, boss lifecycle and world markers."
+        "+ Added items with persistent, individually rolled attributes.",
+        "+ Added more loot spots, enemies, and boss encounters.",
+        "+ Added inventory and loot menus with world markers."
       ]
     },
     {
       "version": "2.6",
-      "title": "World Generation Fixes",
+      "title": "Roads and City Layout",
       "status": "released",
       "date": "2026-09-26",
-      "summary": "Corrected tile orientation and the rules of procedural world generation.",
+      "summary": "Improved road connections, building orientation, and larger city structures.",
       "highlights": [
-        "? Fixed tile road-connection direction markers and building rotation toward roads.",
-        "? World generation rules and multi-tile template fixtures."
-      ]
-    },
-    {
-      "version": "2.5",
-      "title": "Item and Loot Prototypes",
-      "status": "released",
-      "date": "2026-09-22",
-      "reconstructed": true,
-      "summary": "Design groundwork for the 2.7 item system.",
-      "highlights": [
-        "+ Pseudo-prototypes for the new item, loot and spawn systems.",
-        "+ Completed prototype document with code examples.",
-        "? Assorted fixes and tweaks."
+        "? Fixed roads and buildings facing the wrong direction.",
+        "+ Added support for larger connected buildings."
       ]
     },
     {
       "version": "2.0",
-      "title": "Zombie Walker Simulator",
+      "title": "More City Areas",
       "status": "released",
       "date": "2026-09-11",
-      "reconstructed": true,
-      "summary": "The independent C++ walker population simulator.",
+      "summary": "Added more city tiles to explore.",
       "highlights": [
-        "+ Finished the portable C++ zombie walker simulator.",
-        "+ New city tiles.",
-        "- Broken tile thumbnails removed.",
-        "- Compiled city maps no longer tracked in the repository."
+        "+ Added new city tiles."
       ]
     },
     {
       "version": "1.4",
-      "title": "Scoreboard and Persistence",
+      "title": "Scoreboard and Saving",
       "status": "released",
       "date": "2026-09-08",
-      "reconstructed": true,
+      "summary": "Added a scoreboard and improved saved progress.",
       "highlights": [
-        "+ New scoreboard.",
-        "? SQL persistence fixes.",
-        "? Preview world updated."
+        "+ Added the player scoreboard.",
+        "? Improved saved progress."
       ]
     },
     {
       "version": "1.3",
-      "title": "Release City and World Map",
+      "title": "City and World Map",
       "status": "released",
       "date": "2026-09-07",
-      "reconstructed": true,
+      "summary": "Explore the first rendered city and navigate with the world map.",
       "highlights": [
-        "+ First rendered release city.",
-        "+ In-game world map.",
-        "+ Variable tile sizes.",
-        "? Improved carpark engine and city layout."
+        "+ Added the first rendered city and an in-game world map.",
+        "+ Added variable-sized city areas.",
+        "? Improved car parks and city layouts."
       ]
     },
     {
@@ -312,23 +178,19 @@
       "title": "Safe Zones and Atmosphere",
       "status": "released",
       "date": "2026-09-06",
-      "reconstructed": true,
+      "summary": "Added safe zones and changing atmospheric conditions.",
       "highlights": [
-        "+ Safe zones.",
-        "+ Atmosphere profile system.",
-        "+ Desert test profile and new FGD.",
-        "? General fixes."
+        "+ Added safe zones and atmosphere profiles."
       ]
     },
     {
       "version": "1.1",
-      "title": "City Generator",
+      "title": "Procedural City",
       "status": "released",
       "date": "2026-09-05",
-      "reconstructed": true,
+      "summary": "Introduced the first generated city and its varied layouts.",
       "highlights": [
-        "+ Procedural city generator.",
-        "+ Generator settings and expanded documentation."
+        "+ Added the first procedural city."
       ]
     },
     {
@@ -336,19 +198,15 @@
       "title": "Foundations",
       "status": "released",
       "date": "2026-09-05",
-      "reconstructed": true,
-      "summary": "The first commit of the gamemode.",
+      "summary": "The first version of Z-Nation.",
       "highlights": [
-        "+ Initial gamemode.",
-        "+ Third-person camera.",
-        "+ Attribute system.",
-        "+ First HUD elements."
+        "+ Added third-person gameplay, survivor attributes, and the first HUD."
       ]
     }
   ],
   "markers": {
     "+": "added",
     "-": "removed",
-    "?": "changed, fixed or in progress"
+    "?": "changed or fixed"
   }
 }

@@ -572,7 +572,7 @@ Status: **ACCEPTED — user confirmed on 2026-10-05 that existing checks and vis
   clothing files408.13MiB remain untouched. Only this task's obsolete offline
   package baseline was cleaned after preserving its report. Compressed upload
   size and clean mounted/download/deployment acceptance remain unverified.
-  See [Workshop distribution planning](../readme.md#workshop-distribution-planning).
+  See [Workshop distribution planning](readme.md#workshop-distribution-planning).
 - **Launcher/ID follow-up:** user accepts engineering as sufficient to continue
   development; no immediate publication is required. Both launcher BSPs now
   belong to Core, allowing content diagnostics before entering city/sandbox.

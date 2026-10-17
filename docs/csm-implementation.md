@@ -918,7 +918,7 @@ Native shader CSM/GI is not an implied extension of this GLua plan.
 Put GLua tests under `gamemode/tests`, explicit engine fixtures under
 `gamemode/tests/fixtures`, and offline entry points under `tests/csm`. Reuse
 [ZM_TestHarness](../gamemode/utils/test_harness.lua) and the
-[offline harness guide](../readme.md#shared-offline-lua-fixture-harness); do not create a second runner
+[offline harness guide](readme.md#shared-offline-lua-fixture-harness); do not create a second runner
 or move test files back into gameplay modules.
 
 Proposed future files:

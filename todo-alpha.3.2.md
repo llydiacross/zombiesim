@@ -2944,7 +2944,7 @@ in older dated notes.
 - **Final map outputs:** after the Cell Health Manager, produce the matching
   full-map runtime export, navmeshes, and all-map screenshots the user requested.
   Verify the revision hashes and actual coverage before staging or visual review.
-- Use the README and existing build/stage scripts for exact commands. Ask again
+- Use [docs/readme.md](docs/readme.md) and existing build/stage scripts for exact commands. Ask again
   before any substantially broader job than that final approved output batch.
 
 ## 5. Handoff and stop conditions

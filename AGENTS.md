@@ -1462,12 +1462,12 @@ wording is superseded by the final acceptance above, not a current task list.
 
 ## Read First
 
-- [readme.md](readme.md) contains the supported build, staging, in-game, and Walker simulator command sequences.
+- [docs/readme.md](docs/readme.md) contains the supported build, staging, in-game, and Walker simulator command sequences.
 - [docs.md](docs.md) is the generator reference, including profile behavior, authored tile orientation, Hammer checks, and compile diagnostics.
 - [docs/gdd.md](docs/gdd.md) describes intended gameplay behavior. Consult it before changing player progression or survival systems.
 - [generator-settings.json](generator-settings.json) is the authoritative configuration schema. Do not infer settings or output paths from filenames.
 - [docs/two_by_two_tile_templates_plan.md](docs/two_by_two_tile_templates_plan.md) describes multi-tile template work.
-- `bin/walker-simulator` is the portable C++ walker project; it stays isolated from Lua and generated assets, and its behavior and commands are documented in the root README.
+- `bin/walker-simulator` is the portable C++ walker project; it stays isolated from Lua and generated assets, and its behavior and commands are documented in the developer README.
 
 ## Source-First Engine and API Work
 
@@ -1485,8 +1485,8 @@ wording is superseded by the final acceptance above, not a current task list.
 - Preserve the existing Lua style: `//` comments, spaced function calls, four-space indentation in server files, and tabs where an existing shared/client file already uses tabs.
 - World data is accessed through `ZM_World`; safe-zone lookup is owned by `ZM_SafeZones`. Use their APIs rather than duplicating coordinate, map-path, or profile resolution logic.
 - Server services share small helpers through `ZM_Util` (`gamemode/utils/server.lua`: first human, profile, whole-number checks, console replies, admin gates, command registration). New `zn_test_*` suites use `ZM_TestHarness` (`gamemode/utils/test_harness.lua`). Alias these instead of redefining local copies.
-- `cl_atmosphere.lua` is the client facade; `gamemode/atmosphere/cl_core.lua` initializes the environment, weather, puddle, snow, footstep, screen-effect, fog and diagnostic owners before registering callbacks. Preserve the shared snow/puddle deadline, public table identities, emitter ownership and existing render phases. Do not rely on separate `Think` hook ordering. `zombiesim_dev_test_atmosphere_client` runs isolated fixtures and read-only live checks; visual acceptance still requires a fresh client review. See the README's client atmosphere module reference.
-- For Lua logic that can run against explicit engine fixtures, reuse `tests/glua/harness.py` and `ZM_TestHarness`; follow the README's **Shared offline Lua fixture harness** workflow. Add a focused regression alongside behavior changes when applicable. Keep mocks feature-specific and deterministic, reject unsupported calls, and never inherit live globals or use catch-all no-ops. Report offline logic, GLua syntax and actual-engine/visual results separately; LuaJIT fixtures are neither a full GLua interpreter nor proof of engine behavior.
+- `cl_atmosphere.lua` is the client facade; `gamemode/atmosphere/cl_core.lua` initializes the environment, weather, puddle, snow, footstep, screen-effect, fog and diagnostic owners before registering callbacks. Preserve the shared snow/puddle deadline, public table identities, emitter ownership and existing render phases. Do not rely on separate `Think` hook ordering. `zombiesim_dev_test_atmosphere_client` runs isolated fixtures and read-only live checks; visual acceptance still requires a fresh client review. See the client atmosphere module reference in [docs/readme.md](docs/readme.md).
+- For Lua logic that can run against explicit engine fixtures, reuse `tests/glua/harness.py` and `ZM_TestHarness`; follow the [Shared offline Lua fixture harness](docs/readme.md#shared-offline-lua-fixture-harness) workflow. Add a focused regression alongside behavior changes when applicable. Keep mocks feature-specific and deterministic, reject unsupported calls, and never inherit live globals or use catch-all no-ops. Report offline logic, GLua syntax and actual-engine/visual results separately; LuaJIT fixtures are neither a full GLua interpreter nor proof of engine behavior.
 - Work that runs behind the loading screen reports progress through `ZM_Loading` (`gamemode/sh_loading.lua`): `Step`, `Begin`/`Finish` (pending then `ok`/`warn`/`fail`/`info`), and `Reset`. Server calls take a player target; client calls are local. Use it for new load-time work, including future online services, instead of custom loading text.
 - `sh_music.lua` must load before `sh_static_data.lua`, which builds its registry during include. Music uses the engine `snd_musicvolume` control; Source effects retain native `volume_sfx`/master scaling. Do not multiply master/SFX volume again on Source audio calls.
 - Register network strings on the server before sending. Keep player persistence server-only through the SQL helpers and retain profile scoping.

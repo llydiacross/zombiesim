@@ -139,7 +139,7 @@ The 24 independent item/SWEP mappings reuse ZombieSim ammo, hitscan, scaling,
 holstering and effects. All are in the weapon loot pool; 18 optional
 quartermaster offers preserve the existing 32-offer limit and original offers.
 Archive Lua/HUD/decal/particle systems are excluded and audio is namespaced.
-Reimport/validation commands are in [readme.md](../readme.md).
+Reimport/validation commands are in [readme.md](readme.md).
 
 Static: asset/material/animation/ownership and adapter fixtures 5/5; GLua
 233/0; packaging fixtures 59/59 and report-only installed inventory pass.
@@ -465,7 +465,7 @@ line numbers and implementation details can change.
 
 ### Read before edits
 
-[AGENTS.md](../AGENTS.md), [README](../readme.md), [generator guide](../docs.md),
+[AGENTS.md](../AGENTS.md), [README](readme.md), [generator guide](../docs.md),
 [game design](gdd.md), [tile instructions](../.github/instructions/tiletemplates.instructions.md),
 [rendering instructions](../.github/instructions/client-rendering.instructions.md).
 Load the world-build skill for generator/map work. Consult current GMod/VDC

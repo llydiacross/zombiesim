@@ -4,7 +4,7 @@
   "stage": "Alpha",
   "version": "3.2",
   "status": "in development",
-  "currentPhase": "Alpha 3.2 remains in development. Motorway live checks are accepted; two corrected BSPs are staged and wired to logical cells 113/454. The 336 active preview cell materials and map-browser thumbnails are refreshed, and stale -edge2 cell images are removed. A read-only preview Cell Health Manager developer panel is implemented; focused tests pass and live UI review is pending. World generation is paused. Next: review CHM, then full-map navmeshes/screenshots and Satellite/wireframe outputs; refresh the full plan/runtime hashes at that final output step. Phase K/L closure is deferred.",
+  "currentPhase": "More updates are on the way.",
   "nextMilestone": null,
   "started": "2026-10-13",
   "released": null,

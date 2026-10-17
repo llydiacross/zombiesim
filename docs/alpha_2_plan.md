@@ -132,7 +132,7 @@ For each map, the batch must stop on a failed generation, save call, zero-area r
 ### Phase A: Freeze The Contract And Documentation
 
 1. Create `docs/walker_simulation.md` as the detailed reference for the native core, worker lifecycle, data flow, horde movement, tickets, configuration, diagnostics, known limitations, and build/test commands.
-2. Reduce the Walker section in `readme.md` to the essential install/build/run commands and link to the detailed reference.
+2. Reduce the Walker section in `docs/readme.md` to the essential install/build/run commands and link to the detailed reference.
 3. Define the Alpha 2 materialization settings and ticket API before adding any entity code. Include ownership, thread-safety, request bounds, and all terminal ticket states.
 4. Create `docs/alpha_2_test_log.md` with columns for date, profile/seed, map, build, reproduction steps, expected result, actual result, evidence, severity, and resolution.
 

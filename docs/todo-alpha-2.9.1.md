@@ -77,7 +77,7 @@
     - If a process finishes with exit code 0, advance that map to its next stage (`vvis` or `vrad`).
     - If a process finishes its last stage (or fails), finalize the map record and assign the next map from the queue to the free slot.
     - Monitor timeouts per active process slot.
-  - The installed stock Hammer tools expose `-threads` as a valueless switch, not a numeric thread limit; VBSP/VVIS reject an appended thread count. The runner therefore caps active compiler processes with the pool rather than passing an invalid or misleading argument. This compatibility deviation is documented in [docs.md](../docs.md) and [readme.md](../readme.md).
+  - The installed stock Hammer tools expose `-threads` as a valueless switch, not a numeric thread limit; VBSP/VVIS reject an appended thread count. The runner therefore caps active compiler processes with the pool rather than passing an invalid or misleading argument. This   compatibility deviation is documented in [docs.md](../docs.md) and [readme.md](readme.md).
 - [x] **Initial verification:** Compiled the same two preview maps through VBSP/VVIS/VRAD using the `fast` preset: sequential (pool 1) took 20.7s; parallel (pool 2) took 14.0s in the measured comparison and 14.7s in a repeat verification (about 29–32% faster for this small subset). Both reports show 2/2 compiled, 0 failed, 0 incomplete.
 - [x] **Pool-size benchmark (2026-10-01):** Recompiled the same eight required preview city recipes, stratified from high- to low-portal cost, with VBSP/VVIS/VRAD and the `fast` preset. Each run used a fresh isolated build directory, `-Force`, and identical inputs on an AMD Ryzen 5 5600GT (6 cores / 12 logical processors; 16 GB RAM). All runs completed 8/8 recipes with 0 failures and 0 incomplete stages.
 

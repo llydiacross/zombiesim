@@ -5,7 +5,7 @@ ZombieSim is an installed Garry's Mod gamemode with realm-specific GLua gameplay
 ## Start Here
 
 - Read [AGENTS.md](../AGENTS.md) for the active milestone, repository-specific asset boundaries, detailed validation rules, and environment constraints.
-- Read [readme.md](../readme.md) for supported in-game, build, staging, test, and Walker commands.
+- Read [docs/readme.md](../docs/readme.md) for supported in-game, build, staging, test, and Walker commands.
 - Read [docs.md](../docs.md) for generator behavior and [docs/gdd.md](../docs/gdd.md) before changing progression or survival behavior.
 - Treat the active Alpha tracker named in `AGENTS.md` as authoritative. When none is active, confirm the next scope with the user. Do not infer unfinished work from historical trackers or checkpoints.
 - Honor explicit user deferrals and tracker constraints. In particular, distinguish implementation completion from static verification, live verification, visual review, and explicitly deferred work.
@@ -55,7 +55,7 @@ Use only the relevant focused scripts for the change. For example, building fron
 .\tests\powershell\test_multi_tile_templates.ps1
 ```
 
-For planner or VMF-generation changes, follow the preview workflow and validation gates in [AGENTS.md](../AGENTS.md) and [readme.md](../readme.md). Check the active tracker for any world-generation freeze or approval requirement first. Do not regenerate maps for Lua-only changes.
+For planner or VMF-generation changes, follow the preview workflow and validation gates in [AGENTS.md](../AGENTS.md) and [docs/readme.md](../docs/readme.md). Check the active tracker for any world-generation freeze or approval requirement first. Do not regenerate maps for Lua-only changes.
 
 ### Walker simulator
 

@@ -296,7 +296,7 @@ These are the original requests, with the clarifications agreed on 2026-10-01.
   - Rewrite the `docs.md` "Standalone Dens" section and the safe-zone settings table.
   - Replace the `tile_saferoom` wording.
   - Document the entrance tile orientation contract.
-  - Update the `readme.md` safe-zone and den NPC notes (the name precedence) and the FGD entity list.
+  - Update the `docs/readme.md` safe-zone and den NPC notes (the name precedence) and the FGD entity list.
   - Update `AGENTS.md` and this tracker to show the milestone as closed and Alpha 2.9 as active.
   - Update Alpha 2.9 Phase B so it builds on the door contract, rather than on still-missing den entry and exit.
 - **Acceptance:** every live item passes, with static and live results recorded separately below, or is explicitly deferred with a reason.

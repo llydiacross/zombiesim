@@ -52,7 +52,7 @@ function Changelog:Populate(scroll, info, entries)
     local markColours = { ["+"] = good, ["-"] = colours.redBright, ["?"] = warn }
     local markOrder = { ["+"] = 1, ["?"] = 2, ["-"] = 3 }
     local markByRank, groupNames = { "+", "?", "-" }, { "ADDED", "CHANGED", "REMOVED" }
-    self:Paragraph(scroll, "+ added    ? changed, fixed or in progress    - removed", colours.muted)
+    self:Paragraph(scroll, "+ added    ? changed or fixed    - removed", colours.muted)
     if #entries == 0 then self:Paragraph(scroll, "No changelog loaded.", warn) end
     for _, entry in ipairs(entries) do
         local current = info.version == entry.version
