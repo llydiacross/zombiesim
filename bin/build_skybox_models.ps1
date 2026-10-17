@@ -425,17 +425,31 @@ foreach ($recipePath in $uniqueRecipes) {
     $towerModels[$recipePath] = $towerStamp
 }
 
-# Drop models for recipes the current plan no longer uses.
-$currentRecipeNames = @{}
-foreach ($recipePath in $recipePaths) { $currentRecipeNames[[System.IO.Path]::GetFileNameWithoutExtension($recipePath).ToLowerInvariant()] = $true }
-# Model files are shared by every profile, so only recipes with this profile's name prefix are pruned.
-$recipePrefixes = @{}
-foreach ($name in $currentRecipeNames.Keys) { if ($name -match '^(.*_)[0-9a-f]+$') { $recipePrefixes[$Matches[1]] = $true } }
+# Model files are shared by every profile. Keep the exact current recipe, snow
+# and tower part names, then prune only stale files owned by this profile.
+$currentModelNames = @{}
+foreach ($stamp in $cellModels.Values + $snowModels.Values + $towerModels.Values) {
+    foreach ($part in @($stamp.parts)) {
+        $modelName = [IO.Path]::GetFileNameWithoutExtension([string]$part.model)
+        $currentModelNames[$modelName.ToLowerInvariant()] = $true
+    }
+}
+$profileModelPrefix = "zz_$profileName`_"
 $prunedModels = 0
-foreach ($stale in @(Get-ChildItem -LiteralPath $contentModelDirectory -File | Where-Object {
-        $_.Name -match '^((.*_)[0-9a-f]+)_[pst]\d+\.' -and $recipePrefixes.ContainsKey($Matches[2].ToLowerInvariant()) -and -not $currentRecipeNames.ContainsKey($Matches[1].ToLowerInvariant()) })) {
-    Remove-Item -LiteralPath $stale.FullName -Force
-    $prunedModels++
+foreach ($modelFile in (Get-ChildItem -LiteralPath $contentModelDirectory -File | Where-Object {
+        $_.Name.StartsWith($profileModelPrefix, [System.StringComparison]::OrdinalIgnoreCase)
+    })) {
+    $inCurrentManifest = $false
+    foreach ($modelName in $currentModelNames.Keys) {
+        if ($modelFile.Name.StartsWith("$modelName.", [System.StringComparison]::OrdinalIgnoreCase)) {
+            $inCurrentManifest = $true
+            break
+        }
+    }
+    if (-not $inCurrentManifest) {
+        Remove-Item -LiteralPath $modelFile.FullName -Force
+        $prunedModels++
+    }
 }
 
 $recipeModels = [ordered]@{}

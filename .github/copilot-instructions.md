@@ -20,6 +20,8 @@ ZombieSim is an installed Garry's Mod gamemode with realm-specific GLua gameplay
 - `ZM_Util` (`gamemode/utils/server.lua`) provides shared server command helpers. New gameplay test suites should use `ZM_TestHarness` (`gamemode/utils/test_harness.lua`) rather than duplicating test-runner and reporting logic.
 - The Walker simulator in `bin/walker-simulator` is an independent C++ population system. Its worker owns simulation state; GLua consumes published snapshots and queues commands. Keep this project isolated from Lua gameplay and generated world assets.
 - Authored VMFs and templates are source assets. `generated/` contains build products and diagnostics; `content/` contains distributable addon files. Never hand-edit generated manifests, plans, VMFs, BSPs, navmeshes, runtime exports, or map materials.
+- For approved preview deliverables, staging is part of completion: stage the required BSPs, materials, thumbnails, and runtime data to their `content/` and engine destinations, then verify coverage and hashes. Do this only after compile/visibility and human-approval gates pass; honor explicit staging deferrals and never change production `city` outputs without approval.
+- A targeted runtime `cells[].map` rename is not complete by itself. Update or deliberately alias every map-keyed consumer in the same change—skyline geometry/models, captured-photo metadata, cell materials/thumbnails, and navmesh lookup—and validate that every runtime cell resolves before staging. Keep temporary aliases explicit when a full rebuild is deferred.
 
 ## Build and Test
 
@@ -30,7 +32,7 @@ Run PowerShell commands from the repository root.
 After any Lua change, run:
 
 ```powershell
-.\bin\test_glua_syntax.ps1
+.\tests\powershell\test_glua_syntax.ps1
 ```
 
 This is a syntax check using Garry's Mod's GLua parser; it does not verify realms, Garry's Mod API behavior, or runtime flows.
@@ -39,14 +41,18 @@ For fixture-compatible Lua changes, reuse the shared offline harness rather than
 duplicating a runner. Follow [AGENTS.md](../AGENTS.md) and the README's
 **Shared offline Lua fixture harness** workflow; run the relevant focused cases,
 model APIs explicitly and keep offline results separate from live acceptance.
+Client-only dev test commands should print case results and a pass/fail summary
+as well as write their `data/zombiesim/` report. If a client command appears
+silent, inspect that report before calling it failed; a server-bridge
+acknowledgement is not proof that the client test ran.
 
 ### Focused world-generation regressions
 
 Use only the relevant focused scripts for the change. For example, building frontage changes require both:
 
 ```powershell
-.\bin\test_building_frontage.ps1
-.\bin\test_multi_tile_templates.ps1
+.\tests\powershell\test_building_frontage.ps1
+.\tests\powershell\test_multi_tile_templates.ps1
 ```
 
 For planner or VMF-generation changes, follow the preview workflow and validation gates in [AGENTS.md](../AGENTS.md) and [readme.md](../readme.md). Check the active tracker for any world-generation freeze or approval requirement first. Do not regenerate maps for Lua-only changes.
@@ -72,6 +78,8 @@ zn_test_inventory
 Available suites include `zn_test_static_data`, `zn_test_weapon_catalog`, `zn_test_inventory`, `zn_test_loot`, `zn_test_loot_spots`, `zn_test_enemies`, `zn_test_bosses`, `zn_test_crafting`, `zn_test_implants`, `zn_test_professions`, `zn_test_mastercraft`, and `zn_test_trading`. Each command runs that suite's cases, writes its result under Garry's Mod `DATA` at `data/zombiesim/`, and emits a structured bridge report.
 
 For bridge-driven checks, use `.\bin\invoke_dev_bridge.ps1 -Command '<cmd>'`; it writes a fresh `# request:` identifier to `content/data_static/consolecommands.txt` and returns the acknowledgement from Garry's Mod `DATA` at `data/zombiesim/consolecommands.result.json`. Exit code 2 means the server heartbeat is stale (game paused in the Escape menu or loading): ask the player rather than waiting. Consult the README for bridge capabilities and safe development probes.
+
+- Before changing Cell Health, navmesh, photo-capture, or cubemap batching, read [docs/world-capture.md](../docs/world-capture.md) and extend its persistent composite queue instead of creating a second owner. Navmesh generation must save, reload, and validate before photos. `buildcubemaps` is a manual native-console action: never automate it through Lua or the bridge; ask the user to confirm success after reload and label that as user confirmation, not engine verification. Use the existing watcher/importer for partial photo batches.
 
 - When a gameplay contract changes, update affected test fixtures and semantic assertions in the same phase. Fixtures must supply the methods used by the real path (for example, `WorldSpaceCenter` or `GetWeapons`), and drop assertions must retain approved exceptions rather than reject them through stale category assumptions. Use isolated targets for cheat-sensitive cases; do not change the user's cheats or depend on their live notarget/AFK state to make a suite pass.
 

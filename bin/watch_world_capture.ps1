@@ -10,22 +10,36 @@ $dataRoot = Join-Path (Split-Path (Split-Path $root -Parent) -Parent) 'data'
 $statePath = Join-Path $dataRoot 'zombiesim\world_capture_state.json'
 $heartbeatPath = Join-Path $dataRoot 'zombiesim\consolecommands.heartbeat.json'
 $lastResults = -1
+$lastPhase = ''
 $lastAdvance = Get-Date
 while ($true) {
     $state = Get-Content $statePath -Raw | ConvertFrom-Json
     if ($state.runId -ne $RunId) { throw "Different run replaced monitored checkpoint." }
+    $expectedResults = if ($null -ne $state.PSObject.Properties['expectedCaptureResults']) {
+        [int]$state.expectedCaptureResults
+    } else {
+        @($state.queue).Count * 2
+    }
+    if ($expectedResults -le 0) { throw 'This maintenance run has no world-photo captures to import.' }
+    if ($state.phase -ne $lastPhase) {
+        $lastPhase = $state.phase
+        $lastAdvance = Get-Date
+        Write-Output ("{0:u} run={1} phase={2} results={3}/{4} cell={5}/{6}" -f
+            (Get-Date), $RunId, $lastPhase, $state.completedResults, $expectedResults,
+            $state.index, $state.queue.Count)
+    }
     if ($state.completedResults -ne $lastResults) {
         $lastResults = $state.completedResults
         $lastAdvance = Get-Date
         Write-Output ("{0:u} run={1} phase={2} results={3}/{4} cell={5}/{6}" -f
-            (Get-Date), $RunId, $state.phase, $lastResults, ($state.requiredCellCount * 2),
+            (Get-Date), $RunId, $state.phase, $lastResults, $expectedResults,
             $state.index, $state.queue.Count)
     }
     if (-not $state.active) {
         if ($state.phase -ne 'complete' -or -not $state.restorationVerified) {
             throw "Run stopped: $($state.phase). Check checkpoint error/restoration before retry."
         }
-        if ($lastResults -ne ($state.requiredCellCount * 2)) { throw "Run is partial; full import refused." }
+        if ($lastResults -ne $expectedResults) { throw "Run is incomplete; capture import refused." }
         $runPath = Join-Path $dataRoot ("zombiesim\world_captures\{0}\run.json" -f $RunId)
         $arguments = @((Join-Path $PSScriptRoot 'import_world_captures.py'),
             '--run', $runPath, '--data-root', $dataRoot)
@@ -43,6 +57,10 @@ while ($true) {
         $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
         if ($now - [long]$heartbeat.writtenAt -gt 90) {
             throw "Server heartbeat stale: paused/closed/loading. Durable run retained; operator intervention needed."
+        }
+        if ($state.phase -eq 'awaiting-cubemap-run' -or $state.phase -eq 'awaiting-cubemap-success') {
+            Start-Sleep -Seconds ([Math]::Max(5, $PollSeconds))
+            continue
         }
         throw "No result progress for five minutes; inspect durable phase before retry."
     }

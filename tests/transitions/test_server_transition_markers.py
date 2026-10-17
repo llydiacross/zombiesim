@@ -153,7 +153,7 @@ def main():
                     local service, state, env = fixture()
                     state.surface = 68
                     state.mapCells = { { motorwayGates = { {
-                        direction = "N", route = "motorway", x = 0, y = 2208, deckZ = 68,
+                        direction = "N", x = 0, y = 2208, deckZ = 68,
                         arrivalLane = 1, status = "trusted_prior_grid_gate_not_compiled_or_live",
                         lanes = {
                             { lateral = -512, width = 416, deckZ = 68, arrowX = -512, arrowY = 1952,
@@ -168,6 +168,9 @@ def main():
                     check(#service.GateMarkers == 2 and #state.traces == 2
                         and service.GateMarkers[1].surfaceReady and service.GateMarkers[2].surfaceReady,
                         "each carriageway gets one trigger and one surface trace")
+                    check(service.GateMarkers[1].gateData.route == nil
+                        and service.GateMarkers[2].gateData.route == nil,
+                        "missing optional route metadata is not synthesized")
                     check(state.globals.ZMTransitionGateCount_N == 2
                         and state.globals.ZMTransitionGate_N_1_ArrowCount == 1
                         and state.globals.ZMTransitionGate_N_2_ArrowCount == 1, "one arrow is published per physical trigger")
@@ -289,7 +292,8 @@ def main():
                         local forward = env.Vector(xy[1], xy[2], 0)
                         local right = forward:Cross(env.Vector(0, 0, 1))
                         local flipped = code == "S" or code == "E"
-                        local gate = { direction = code, x = forward.x * 2208, y = forward.y * 2208,
+                        local gate = { direction = code, route = "motorway",
+                            x = forward.x * 2208, y = forward.y * 2208,
                             deckZ = 68, arrivalLane = 1, lanes = {},
                             status = "measured_source_gate_not_compiled_or_live" }
                         for _, lateral in ipairs(flipped and { -528, 512 } or { -512, 528 }) do
@@ -302,8 +306,9 @@ def main():
                         state:Gate(code, forward * 2208 + right * (flipped and -8 or 8) + env.Vector(0, 0, 88), "any")
                         service:InitializeGates()
                         local key = "ZMTransitionGate_" .. code .. "_1"
-                        check(state.globals[key] == forward * 2208 + env.Vector(0, 0, 88),
-                            code .. " corrects asymmetric brush centre to logical axis")
+                        check(state.globals[key] == forward * 2208
+                            + right * (flipped and -8 or 8) + env.Vector(0, 0, 88),
+                            code .. " publishes the trigger centre without validating or correcting geometry")
                         for index, lane in ipairs(gate.lanes) do
                             local suffix = index == 1 and "" or "_Lane2"
                             check(state.globals[key .. suffix .. "_Surface"] == env.Vector(lane.arrowX, lane.arrowY, 70),
@@ -325,8 +330,8 @@ def main():
                         state.surface, state.errors = 68, {}
                         state.mapCells[2] = {}
                         service:InitializeGates()
-                        check(#service.GateMarkers == 0 and #state.errors == 1,
-                            code .. " mixed metadata invalidates gate rather than guessing")
+                        check(#service.GateMarkers == 1 and #state.errors == 0,
+                            code .. " shared-map metadata differences do not invalidate a gate")
                     end
                 end)
                 suite:Add("measured_ordinary_roads_publish_one_arrow_and_use_their_arrival", function(check)
@@ -357,60 +362,58 @@ def main():
                             code .. " road arrival rejects an incorrect deck")
                     end
                 end)
-                suite:Add("mixed_measured_route_types_and_bad_road_lanes_are_rejected", function(check)
-                    for _, reason in ipairs({ "route", "count", "lateral", "unknown" }) do
-                        local service, state, env = fixture()
-                        local gate = { direction = "N", route = "road", x = 0, y = 2720, deckZ = 36,
-                            arrivalLane = 1, status = "measured_source_gate_not_compiled_or_live",
-                            lanes = { { lateral = 0, width = 256, deckZ = 36,
-                                arrowX = 0, arrowY = 2624, arrivalX = 0, arrivalY = 2592 } } }
-                        state.mapCells = { { motorwayGates = { gate } } }
-                        if reason == "route" then
-                            state.mapCells[2] = { motorwayGates = { { direction = "N", x = 0, y = 2720, deckZ = 36,
-                                arrivalLane = 1, status = gate.status, lanes = {
-                                    { lateral = -512, width = 416, deckZ = 36, arrowX = -512, arrowY = 2464, arrivalX = -512, arrivalY = 2336 },
-                                    { lateral = 528, width = 416, deckZ = 36, arrowX = 528, arrowY = 2464, arrivalX = 528, arrivalY = 2336 }
-                                } } } }
-                        elseif reason == "count" then gate.lanes[2] = gate.lanes[1]
-                        elseif reason == "lateral" then gate.lanes[1].lateral = 1
-                        elseif reason == "unknown" then gate.route = "footpath" end
-                        state:Gate("N", env.Vector(0, 2720, 88), "any")
-                        service:InitializeGates()
-                        check(#service.GateMarkers == 0 and #state.traces == 0 and #state.errors == 1,
-                            reason .. " fails closed before any surface sampling")
+                suite:Add("west_gate_uses_world_access_not_trigger_alignment", function(check)
+                    local service, state, env = fixture()
+                    state.surface = 68
+                    state.mapCells = { { motorwayGates = { {
+                        direction = "W", x = -2208, y = 0, deckZ = 68, arrivalLane = 1,
+                        lanes = {
+                            { lateral = -512, width = 416, deckZ = 68, arrowX = -1952, arrowY = -512,
+                                arrivalX = -1824, arrivalY = -512 },
+                            { lateral = 528, width = 416, deckZ = 68, arrowX = -1952, arrowY = 528,
+                                arrivalX = -1824, arrivalY = 528 }
+                        }
+                    } } } }
+                    local westGate = env.Vector(-2208, 0, 88)
+                    state:Gate("W", westGate, "any", 1)
+                    service:InitializeGates()
+                    check(#service.GateMarkers == 1 and #state.errors == 0
+                        and state.globals.ZMTransitionGate_W_1 == westGate,
+                        "a world-space gate center mismatch does not invalidate west travel")
+                    check(service.GateMarkers[1].gateData.route == nil,
+                        "route access does not depend on a synthesized gate route")
+
+                    service.CheckDoorTransition = function() return true end
+                    service.SetPendingEntry = function(_, _, _, direction)
+                        return { landmark = direction.opposite .. "_ENTRANCE", yaw = direction.yaw }
                     end
-                end)
-                suite:Add("invalid_measured_gate_contracts_are_reported_without_legacy_fallback", function(check)
-                    for _, reason in ipairs({ "missing", "nan", "duplicate", "moved", "conflict" }) do
-                        local service, state, env = fixture()
-                        local gate = { direction = "N", x = 0, y = 2208, deckZ = 68, arrivalLane = 1,
-                            status = "measured_source_gate_not_compiled_or_live",
-                            lanes = {
-                                { lateral = -512, width = 416, deckZ = 68, arrowX = -512, arrowY = 1952, arrivalX = -512, arrivalY = 1824 },
-                                { lateral = 528, width = 416, deckZ = 68, arrowX = 528, arrowY = 1952, arrivalX = 528, arrivalY = 1824 }
-                            } }
-                        state.mapCells = { { motorwayGates = { gate } } }
-                        if reason == "missing" then state.mapCells[1].motorwayGates = {} end
-                        if reason == "nan" then gate.lanes[1].arrowX = 0 / 0 end
-                        if reason == "duplicate" then state.mapCells[1].motorwayGates[2] = gate end
-                        if reason == "conflict" then
-                            local other = { direction = "N", x = 0, y = 2208, deckZ = 68, arrivalLane = 1,
-                                status = gate.status, lanes = {
-                                    { lateral = -160, width = 416, deckZ = 68, arrowX = -512, arrowY = 1952, arrivalX = -512, arrivalY = 1824 },
-                                    gate.lanes[2]
-                                } }
-                            state.mapCells[2] = { motorwayGates = { other } }
-                        end
-                        state:Gate("N", env.Vector(reason == "moved" and 100 or 0, 2208, 88), "any")
-                        service:InitializeGates()
-                        check(#service.GateMarkers == 0 and #state.traces == 0 and #state.errors == 1,
-                            reason .. " rejects malformed source/map contract before traces")
-                        env.HUD_PRINTCENTER = 4
-                        function state.player:PrintMessage(_, text) state.lastMessage = text end
-                        check(service:TryUseGate(state.player, state.gates[1]) == false
-                            and state.lastMessage == "This route's map data is invalid.",
-                            reason .. " travel rejects invalid metadata with a player-visible error")
+                    env.HUD_PRINTCENTER = 4
+                    state.player.PrintMessage = function(_, _, message) state.lastMessage = message end
+                    env.ZM_LootSpots = {}
+                    state.available.W_any = nil
+                    service:TryUseGate(state.player, state.gates[1])
+                    check(state.travelCalls[1][1] == "W" and state.lastMessage == "This route is unavailable.",
+                        "missing west neighbor data is the only route refusal")
+
+                    local destination = { x = 11, y = 7 }
+                    state.available.W_any = destination
+                    state.player.GetWorldCellCoordinates = function() return 10, 7 end
+                    state.player.SetWorldCell = function(_, x, y)
+                        state.destination = { x = x, y = y }
+                        return true
                     end
+                    env.ZM_World.GetWorldCoordinates = function(_, cell) return cell.x, cell.y end
+                    env.GAMEMODE = {}
+                    function env.GAMEMODE:EnsurePlayerWorldMap(_, landmark, options)
+                        state.transitionRequest = { landmark = landmark, options = options }
+                        return true
+                    end
+                    state.lastMessage = nil
+                    service:TryUseGate(state.player, state.gates[1])
+                    check(state.travelCalls[2][1] == "W" and state.destination.x == 11 and state.destination.y == 7
+                        and state.transitionRequest.landmark == "EAST_ENTRANCE"
+                        and state.transitionRequest.options.forceReload == true and state.lastMessage == nil,
+                        "an accessible west neighbor follows world data into the transition")
                 end)
                 return suite:Run()
             end

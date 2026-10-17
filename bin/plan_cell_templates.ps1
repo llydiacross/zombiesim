@@ -10,6 +10,7 @@ param(
     [switch]$ForceEligibleCarparks,
     [switch]$MotorwayCellInspection,
     [string]$MotorwayAssemblyReport = '',
+    [string]$TrustedMotorwayPlan = '',
     [string]$WorldProfile = '',
     [switch]$Preview,
     [string]$SettingsPath = ''
@@ -23,6 +24,7 @@ Import-Module (Join-Path $PSScriptRoot 'scenery_density.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'tile_ground_grid.psm1')
 Import-Module (Join-Path $PSScriptRoot 'template_inventory.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'motorway_geometry.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'motorway_grid_placements.psm1') -Force
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Write-ZMProgress -Activity 'Planning cell templates' -Status 'Loading map manifest and template catalog.' -PercentComplete 2 -Step 'setup'
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
@@ -153,6 +155,31 @@ if ($map.schemaVersion -lt 2) {
 $borderWaterSettings = if ($generatorSettings.vmfBuild.ContainsKey('border') -and $generatorSettings.vmfBuild.border.ContainsKey('water')) { $generatorSettings.vmfBuild.border.water } else { @{} }
 $borderWaterEnabled = $borderWaterSettings.ContainsKey('enabled') -and [bool]$borderWaterSettings.enabled
 $mapGridCells = [int]$map.map.gridCells
+$trustedMotorwayPlanData = $null
+$trustedMotorwayCellsByCoordinate = @{}
+if (-not [string]::IsNullOrWhiteSpace($TrustedMotorwayPlan)) {
+    $trustedMotorwayPlanPath = if ([IO.Path]::IsPathRooted($TrustedMotorwayPlan)) {
+        [IO.Path]::GetFullPath($TrustedMotorwayPlan)
+    } else {
+        [IO.Path]::GetFullPath((Join-Path $projectRoot $TrustedMotorwayPlan))
+    }
+    if (-not (Test-Path -LiteralPath $trustedMotorwayPlanPath -PathType Leaf)) {
+        throw "Trusted motorway plan was not found: $trustedMotorwayPlanPath"
+    }
+    $trustedMotorwayPlanData = Get-Content -LiteralPath $trustedMotorwayPlanPath -Raw | ConvertFrom-Json
+    if ($trustedMotorwayPlanData.mapSeed -ne [int]$map.map.seed -or
+        $trustedMotorwayPlanData.mapGridCells -ne $mapGridCells -or
+        @($trustedMotorwayPlanData.cells).Count -ne @($map.cells).Count) {
+        throw 'Trusted motorway plan and map data must describe the same seed, grid and cells.'
+    }
+    foreach ($trustedCell in $trustedMotorwayPlanData.cells) {
+        $coordinate = "$($trustedCell.x),$($trustedCell.y)"
+        if ($trustedMotorwayCellsByCoordinate.ContainsKey($coordinate)) {
+            throw "Trusted motorway plan repeats logical cell $coordinate."
+        }
+        $trustedMotorwayCellsByCoordinate[$coordinate] = $trustedCell
+    }
+}
 $waterCornerSpan = if ($borderWaterSettings.ContainsKey('cornerSpan')) { [int]$borderWaterSettings.cornerSpan } else { 4 }
 $waterCornerActive = $false
 $waterCornerSides = @()
@@ -1807,16 +1834,18 @@ function Get-CellTilePlacements {
         $roadCandidates = @((Get-LinearTopologyTemplate $Topology))
         if (-not $isMotorwayTopology) { $roadCandidates += $TerrainTemplate }
         $roadTemplate = Resolve-Template $roadCandidates $AvailableTemplates
-        foreach ($direction in $connections) {
-            $coordinates = @(Get-DirectionalTileCoordinates $direction $center $TileGridSize)
-            $rotationYaw = Get-DirectionalTileRotation $direction
-            foreach ($coordinate in $coordinates) {
-                $placements["$($coordinate.tileX),$($coordinate.tileY)"] = [pscustomobject]@{
-                    tileX = $coordinate.tileX
-                    tileY = $coordinate.tileY
-                    template = $roadTemplate
-                    rotationYaw = $rotationYaw
-                    role = 'road'
+        if (-not $isMotorwayTopology) {
+            foreach ($direction in $connections) {
+                $coordinates = @(Get-DirectionalTileCoordinates $direction $center $TileGridSize)
+                $rotationYaw = Get-DirectionalTileRotation $direction
+                foreach ($coordinate in $coordinates) {
+                    $placements["$($coordinate.tileX),$($coordinate.tileY)"] = [pscustomobject]@{
+                        tileX = $coordinate.tileX
+                        tileY = $coordinate.tileY
+                        template = $roadTemplate
+                        rotationYaw = $rotationYaw
+                        role = 'road'
+                    }
                 }
             }
         }
@@ -3435,22 +3464,32 @@ function Resolve-PlannedComplexMotorwayCase {
 }
 
 if (-not $MotorwayCellInspection) {
-    $normalAssemblyReport = $null
-    foreach ($cell in $planCells) {
-        if (Test-PlannedComplexMotorwayCell $cell) {
-            if (-not $outerEdgesEnabled) { throw 'Normal complex motorway cells require expanded border and outer rings.' }
-            if ([string]::IsNullOrWhiteSpace($MotorwayAssemblyReport)) { throw 'Normal complex motorway cells require -MotorwayAssemblyReport from build_motorway_preview.ps1.' }
-            if ($null -eq $normalAssemblyReport) {
-                Import-Module (Join-Path $PSScriptRoot 'motorway_geometry.psm1') -Force
-                $normalAssemblyReport = Get-Content -Raw -LiteralPath $MotorwayAssemblyReport | ConvertFrom-Json
-            }
-            $case = Resolve-PlannedComplexMotorwayCase $cell $normalAssemblyReport
-            Set-ZMComplexMotorwayCellInspection $cell $case $TemplateDirectory $normalAssemblyReport.registry $plannerSettings.rotations.transport -Normal
-            continue
+    $motorwayCells = @($planCells | Where-Object { $_.topology -like 'motorway-*' })
+    if ($motorwayCells.Count -gt 0 -and $null -eq $trustedMotorwayPlanData) {
+        throw 'Normal motorway planning now requires -TrustedMotorwayPlan; motorway geometry reports are diagnostic-only.'
+    }
+    foreach ($cell in $motorwayCells) {
+        if (-not $outerEdgesEnabled) { throw 'Normal wide motorway cells require expanded border and outer rings.' }
+        $coordinate = "$($cell.x),$($cell.y)"
+        if (-not $trustedMotorwayCellsByCoordinate.ContainsKey($coordinate)) {
+            throw "Trusted motorway plan has no contract for logical cell $coordinate."
         }
-        if (@($cell.tilePlacements | Where-Object role -eq motorway_assembly).Count -eq 0) { continue }
-        if (-not $outerEdgesEnabled) { throw 'Normal wide motorway reservations require expanded border and outer rings.' }
-        $cell | Add-Member -NotePropertyName motorwayAssembly -NotePropertyValue (New-ZMNormalStraightMotorwayContract $cell $TemplateDirectory)
+        $trustedCell = $trustedMotorwayCellsByCoordinate[$coordinate]
+        if ($trustedCell.topology -cne $cell.topology -or $trustedCell.orientation -cne $cell.orientation -or
+            $trustedCell.transportFeature -cne $cell.transportFeature -or
+            (@($trustedCell.activeEntrances | Sort-Object -Unique) -join ',') -cne
+            (@($cell.activeEntrances | Sort-Object -Unique) -join ',')) {
+            throw "Trusted motorway topology or entrances differ at logical cell $coordinate."
+        }
+        if ($null -eq $trustedCell.PSObject.Properties['motorwayAssembly']) {
+            throw "Trusted motorway plan has no placement contract for logical cell $coordinate."
+        }
+        $motorwayAssembly = Set-ZMTrustedMotorwayGridContract $cell $trustedCell.motorwayAssembly $CellTileSize 640 `
+            $(if ($outerEdgesEnabled) { 2 } else { 0 }) `
+            ([string]$plannerSettings.topologyTemplates['road-straight']) `
+            ([string]$plannerSettings.transportTemplates.bridgeRoad) `
+            $generatorSettings.directions.linearTileYaw
+        $cell | Add-Member -NotePropertyName motorwayAssembly -NotePropertyValue $motorwayAssembly -Force
     }
 }
 if ($MotorwayCellInspection) {

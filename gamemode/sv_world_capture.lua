@@ -1,9 +1,12 @@
 // Preview-only, bounded maintenance jobs; nav-only MapBatch state is never modified.
 AddCSLuaFile("world_capture/sh_contract.lua")
+AddCSLuaFile("sh_cell_health_contract.lua")
 ZM_WorldCapture = ZM_WorldCapture or {}
 local Capture = ZM_WorldCapture
 local Contract = include("world_capture/sh_contract.lua")
+local CellHealthContract = include("sh_cell_health_contract.lua")()
 local statePath = "zombiesim/world_capture_state.json"
+local cubemapConfirmationsPath = "zombiesim/cubemap_confirmations_preview.json"
 local fields = {"XP", "Level", "MaxLevel", "Difficulty", "CellX", "CellY", "CurrentSafeZoneId",
     "SkillPoints", "Cash", "Health", "Stamina", "Hunger", "Thirst", "Job"}
 local boot = tostring(os.time()) .. "-" .. tostring(SysTime())
@@ -22,6 +25,13 @@ end
 util.AddNetworkString("ZM.WorldCapture.Request")
 util.AddNetworkString("ZM.WorldCapture.Result")
 util.AddNetworkString("ZM.WorldCapture.Cancel")
+util.AddNetworkString("ZM.WorldCapture.CancelRequest")
+util.AddNetworkString("ZM.WorldCapture.CubemapPrompt")
+util.AddNetworkString("ZM.WorldCapture.CubemapDecision")
+util.AddNetworkString("ZM.CellHealth.CubemapStatusRequest")
+util.AddNetworkString("ZM.CellHealth.CubemapStatus")
+util.AddNetworkString("ZM.CellHealth.BatchStart")
+util.AddNetworkString("ZM.CellHealth.BatchResult")
 
 local function decode(path)
     local raw = file.Read(path, "DATA")
@@ -43,6 +53,60 @@ local function save()
     assert(file.Read(statePath, "DATA") == json, "capture checkpoint write failed")
 end
 
+local function loadCubemapConfirmations()
+    local raw = file.Read(cubemapConfirmationsPath, "DATA")
+    if not raw then
+        return {schemaVersion = 1, profile = "preview", maps = {}}
+    end
+    local data = util.JSONToTable(raw)
+    if type(data) ~= "table" or data.schemaVersion ~= 1 or data.profile ~= "preview"
+        or type(data.maps) ~= "table" then
+        return nil, "Cubemap confirmation data is invalid."
+    end
+    for mapName, record in pairs(data.maps) do
+        if type(mapName) ~= "string" or not mapName:match("^[%w_%-]+$")
+            or mapName ~= string.lower(mapName) or type(record) ~= "table"
+            or record.confirmed ~= true or type(record.confirmedAt) ~= "number" then
+            return nil, "Cubemap confirmation data contains an invalid map record."
+        end
+    end
+    return data
+end
+
+local function saveCubemapConfirmations(data)
+    local json = util.TableToJSON(data, true)
+    if not json then return false, "Cubemap confirmations could not be serialized." end
+    file.CreateDir("zombiesim")
+    file.Write(cubemapConfirmationsPath, json)
+    if file.Read(cubemapConfirmationsPath, "DATA") ~= json then
+        return false, "Cubemap confirmation write failed read-back validation."
+    end
+    return true
+end
+
+local function sendCubemapStatus(target)
+    local confirmations, failure = loadCubemapConfirmations()
+    local encoded = confirmations and util.TableToJSON(confirmations.maps, false) or nil
+    if not encoded or #encoded > 60000 then
+        net.Start("ZM.CellHealth.CubemapStatus")
+            net.WriteBool(false)
+            net.WriteString(failure or "Cubemap confirmation response is too large.")
+        net.Send(target)
+        return
+    end
+    net.Start("ZM.CellHealth.CubemapStatus")
+        net.WriteBool(true)
+        net.WriteString(encoded)
+    net.Send(target)
+end
+
+local function sendCellHealthBatchResult(target, success, message)
+    net.Start("ZM.CellHealth.BatchResult")
+        net.WriteBool(success == true)
+        net.WriteString(tostring(message or ""))
+    net.Send(target)
+end
+
 local function owner()
     if not state then return end
     for _, target in ipairs(player.GetHumans()) do
@@ -50,6 +114,26 @@ local function owner()
             and target:GetCharacterKey() == state.original.characterKey
             and target.ZM_PersistentStateLoaded == true then return target end
     end
+end
+
+local function sendCubemapPrompt(target, stage, job)
+    local encoded = util.TableToJSON({
+        runId = state.runId,
+        map = job.map,
+        stage = stage
+    }, false)
+    if not encoded then
+        Capture:Restore("failed", "cubemap prompt could not be serialized")
+        return false
+    end
+    net.Start("ZM.WorldCapture.CubemapPrompt")
+        net.WriteString(encoded)
+    net.Send(target)
+    return true
+end
+
+local function mapKey(mapName)
+    return string.lower(string.match(mapName or "", "([^/]+)$") or mapName or "")
 end
 
 local function revisionMatches()
@@ -189,6 +273,42 @@ local function beginNav(job)
     return ok, reason
 end
 
+local function wantsNav(job)
+    if state.cellHealthBatch then return job.doNav == true end
+    return state.withNav == true
+end
+
+local function wantsPhotos(job)
+    if state.cellHealthBatch then return job.doPhotos == true end
+    return state.withPhotos ~= false
+end
+
+local function wantsCubemaps(job)
+    return state.withCubemaps == true and job.doCubemaps == true
+end
+
+local function advanceJob()
+    state.index, state.variantIndex, state.phase = state.index + 1, 1, "next"
+    requestSent = nil
+    save()
+end
+
+local function continueLoadedJob(target, job)
+    state.cubemapResults = state.cubemapResults or {}
+    local key = mapKey(job.map)
+    if wantsCubemaps(job) and state.cubemapResults[key] == nil then
+        state.phase = "awaiting-cubemap-run"
+        save()
+        sendCubemapPrompt(target, "run", job)
+        return
+    end
+    if wantsPhotos(job) then
+        sendRequest(target, job)
+    else
+        advanceJob()
+    end
+end
+
 function Capture:Tick()
     if not state or not state.active or not ZM_World:IsLoaded() then return end
     if state.phase == "restore-blocked" then return end
@@ -236,6 +356,17 @@ function Capture:Tick()
     end
     local job = state.queue[state.index]
     if not job then self:Restore("complete"); return end
+    if state.phase == "awaiting-cubemap-run" then
+        if not loadedMap(job.mapPath) then fail("cubemap prompt left its active map"); return end
+        return
+    elseif state.phase == "awaiting-cubemap-success" then
+        if state.cubemapPromptDeliveredBoot ~= boot then
+            state.cubemapPromptDeliveredBoot = boot
+            save()
+            sendCubemapPrompt(target, "success", job)
+        end
+        return
+    end
     if state.phase == "loading" or state.phase == "nav-reloading" then
         if state.transitionBoot == boot then
             if os.time() - state.phaseStartedAt > 60 then fail("changelevel did not complete") end
@@ -252,14 +383,14 @@ function Capture:Tick()
             local ok, reason = validateNav(job)
             if not ok then fail(reason); return end
             if state.cancelRequested then self:Restore("cancelled"); return end
-        elseif state.withNav then
+        elseif wantsNav(job) then
             local ok, reason
             if state.navmeshes[job.map] then ok, reason = validateNav(job)
             else ok, reason = beginNav(job) end
             if not ok then fail(reason); return end
             if state.phase == "nav-generating" then return end
         end
-        sendRequest(target, job)
+        continueLoadedJob(target, job)
     elseif state.phase == "nav-generating" then
         local status = ZM_MapBatch:GetNavmeshStatus()
         local elapsed = os.time() - state.phaseStartedAt
@@ -317,13 +448,12 @@ net.Receive("ZM.WorldCapture.Result", function(_, target)
     state.completedResults = state.completedResults + 1
     state.variantIndex = state.variantIndex + 1
     if state.variantIndex > #Contract.Variants then
-        state.index, state.variantIndex = state.index + 1, 1
-        state.phase = "next"
+        advanceJob()
     else
         state.phase = "capturing"
         requestSent = nil
+        save()
     end
-    save()
 end)
 
 local function buildQueue(target, arguments, fullWorld)
@@ -369,7 +499,84 @@ local function buildQueue(target, arguments, fullWorld)
     return queue
 end
 
-function Capture:Start(target, arguments, withNav, fullWorld)
+local function buildCellHealthQueue(selection)
+    if type(selection) ~= "table" then return nil, "Cell Health batch selection is invalid." end
+    local worldData = ZM_World:GetData()
+    local manifestPath = "data_static/world_captures_preview.json"
+    local manifestRaw = file.Read(manifestPath, "GAME")
+    local manifest, manifestError
+    if not manifestRaw then
+        manifestError = "Captured-world manifest is not mounted."
+    else
+        manifest = util.JSONToTable(manifestRaw)
+        if type(manifest) ~= "table" then manifestError = "Captured-world manifest is invalid JSON." end
+    end
+
+    local confirmations, confirmationError = loadCubemapConfirmations()
+    if not confirmations then return nil, confirmationError end
+    local files = {
+        Exists = function(path) return file.Exists(path, "GAME") end,
+        Size = function(path) return file.Size(path, "GAME") end,
+        Read = function(path) return file.Read(path, "GAME") end
+    }
+    local snapshot, snapshotError = CellHealthContract.BuildSnapshot(
+        worldData, manifest, files, manifestError, confirmations.maps
+    )
+    if not snapshot then return nil, snapshotError end
+    local selectedJobs, selectionError = CellHealthContract.BuildBatchSelection(snapshot, selection)
+    if not selectedJobs then return nil, selectionError end
+    if #selectedJobs == 0 then return nil, "No unhealthy cells for the selected artifacts." end
+
+    local cellsById = {}
+    for _, cell in ipairs(worldData.cells) do cellsById[tonumber(cell.id)] = cell end
+    local queue = {}
+    local firstJobByMap, navByMap, cubemapsByMap = {}, {}, {}
+    for _, selected in ipairs(selectedJobs) do
+        local id = tonumber(selected.id)
+        if not id or id ~= math.floor(id) then return nil, "Cell Health returned an invalid cell id." end
+        local cell = cellsById[id]
+        if not cell then return nil, "Cell Health selected a cell outside the authoritative preview world." end
+        local mapPath = ZM_World:GetMapPath(cell)
+        if not mapPath or not mapPath:match("^[%w_/%-]+$") or
+            not file.Exists("maps/" .. mapPath .. ".bsp", "GAME") then
+            return nil, "A selected preview cell does not have a staged BSP."
+        end
+        local worldX, worldY = ZM_World:GetWorldCoordinates(cell)
+        local job = {
+            id = id, x = cell.x, y = cell.y, worldX = worldX, worldY = worldY,
+            map = cell.map, mapPath = mapPath,
+            doNav = selected.navmesh == true,
+            doPhotos = selected.photos == true,
+            doCubemaps = selected.cubemaps == true
+        }
+        local key = string.lower(mapPath)
+        firstJobByMap[key] = firstJobByMap[key] or job
+        navByMap[key] = navByMap[key] or job.doNav
+        cubemapsByMap[key] = cubemapsByMap[key] or job.doCubemaps
+        queue[#queue + 1] = job
+    end
+
+    for key, job in pairs(firstJobByMap) do
+        job.doNav = navByMap[key] == true
+        job.doCubemaps = cubemapsByMap[key] == true
+    end
+    for _, job in ipairs(queue) do
+        local key = string.lower(job.mapPath)
+        if firstJobByMap[key] ~= job then
+            job.doNav, job.doCubemaps = false, false
+        end
+    end
+
+    local filtered = {}
+    for _, job in ipairs(queue) do
+        if job.doNav or job.doPhotos or job.doCubemaps then
+            filtered[#filtered + 1] = job
+        end
+    end
+    return filtered
+end
+
+function Capture:Start(target, arguments, withNav, fullWorld, selection, deferTick)
     if state and state.active then return false, "existing run requires cancel/status/restoration first" end
     if not ZM_World:IsLoaded() then return false, "authoritative world data is not ready" end
     if #player.GetHumans() ~= 1 or not IsValid(target) or not target:IsAdmin() or not target:Alive()
@@ -380,8 +587,17 @@ function Capture:Start(target, arguments, withNav, fullWorld)
         or GAMEMODE.OriginSafeZoneTransitionQueued then return false, "another maintenance/transition is active" end
     local revision, failure = Contract.InstalledRevision(ZM_World:GetData().world, ZM_World.ActiveProfile, file, util)
     if not revision then return false, failure end
-    local built, queue = pcall(buildQueue, target, arguments, fullWorld)
-    if not built then return false, queue end
+    local queue, queueError
+    if selection then
+        local built
+        built, queue, queueError = pcall(buildCellHealthQueue, selection)
+        if not built then return false, tostring(queue) end
+    else
+        local built
+        built, queue = pcall(buildQueue, target, arguments, fullWorld)
+        if not built then return false, queue end
+    end
+    if not queue then return false, queueError end
     local key = target:GetCharacterKey()
     local core, coreError = ZM_GetPlayerData(key, "preview")
     if not core then return false, coreError or "no persistent survivor row" end
@@ -393,12 +609,20 @@ function Capture:Start(target, arguments, withNav, fullWorld)
         or ZM_World:GetMapPath(target:GetWorldCell())
     if not originalMap or not loadedMap(originalMap) then return false, "original survivor/map identity cannot be restored safely" end
     local position, angles = target:GetPos(), target:EyeAngles()
+    local expectedCaptureResults = 0
+    for _, job in ipairs(queue) do
+        local captures = true
+        if selection then captures = job.doPhotos == true end
+        if captures then expectedCaptureResults = expectedCaptureResults + #Contract.Variants end
+    end
     state = {
         schemaVersion = 1, runId = "preview_" .. os.time() .. "_" .. util.CRC(tostring(SysTime())),
         active = true, phase = "next", index = 1, variantIndex = 1, queue = queue,
-        revision = revision, withNav = withNav == true, fullWorld = fullWorld == true, navmeshes = {},
+        revision = revision, withNav = withNav == true, withPhotos = selection == nil or selection.photos == true,
+        withCubemaps = selection ~= nil and selection.cubemaps == true, cellHealthBatch = selection ~= nil,
+        selectedArtifacts = selection, fullWorld = fullWorld == true, navmeshes = {}, cubemapResults = {},
         results = {clear = {}, atmospheric = {}}, completedResults = 0, startedAt = os.time(),
-        requiredCellCount = #ZM_World:GetData().cells,
+        requiredCellCount = #ZM_World:GetData().cells, expectedCaptureResults = expectedCaptureResults,
         original = {
             steamId64 = target:SteamID64(), characterKey = key, core = core, runtimeCore = runtime,
             mapPath = originalMap, position = {position.x, position.y, position.z},
@@ -407,9 +631,114 @@ function Capture:Start(target, arguments, withNav, fullWorld)
     }
     save()
     protect(target)
-    self:Tick()
-    return true, (#queue > 8 and "full preview capture run started: " or "bounded capture run started: ") .. state.runId
+    if not deferTick then self:Tick() end
+    local message
+    if selection then
+        message = string.format("Cell Health batch started: %d cell/map job(s), %d photo result(s), run %s.",
+            #queue, expectedCaptureResults, state.runId)
+        if expectedCaptureResults > 0 then
+            message = message .. " After completion, use watch_world_capture.ps1 to merge/stage photos."
+        end
+    else
+        message = (#queue > 8 and "full preview capture run started: " or "bounded capture run started: ") .. state.runId
+    end
+    return true, message
 end
+
+function Capture:StartCellHealth(target, selection, deferTick)
+    return self:Start(target, {}, false, false, selection, deferTick)
+end
+
+local function cancelRun(target)
+    if not state or target ~= owner() then return false, "original batch owner is required" end
+    if state.phase == "nav-generating" or state.phase == "nav-saving" then
+        state.cancelRequested = true
+        save()
+        return true, "cancellation checkpointed; restoration follows native nav save/reload boundary"
+    end
+    return Capture:Restore("cancelled")
+end
+
+net.Receive("ZM.CellHealth.CubemapStatusRequest", function(_, target)
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then return end
+    sendCubemapStatus(target)
+end)
+
+net.Receive("ZM.CellHealth.BatchStart", function(_, target)
+    if not IsValid(target) then return end
+    if not target:IsAdmin() then
+        sendCellHealthBatchResult(target, false, "Cell Health batches require an admin.")
+        return
+    end
+    local raw = net.ReadString()
+    if type(raw) ~= "string" or #raw > 2048 then
+        sendCellHealthBatchResult(target, false, "Cell Health batch request is too large or invalid.")
+        return
+    end
+    local request = util.JSONToTable(raw)
+    if type(request) ~= "table" or request.schemaVersion ~= 1 or type(request.selection) ~= "table" then
+        sendCellHealthBatchResult(target, false, "Cell Health batch request is invalid.")
+        return
+    end
+    local selection = request.selection
+    for _, key in ipairs({"navmesh", "photos", "cubemaps"}) do
+        if type(selection[key]) ~= "boolean" then
+            sendCellHealthBatchResult(target, false, "Cell Health batch selection is invalid: " .. key)
+            return
+        end
+    end
+    for key in pairs(selection) do
+        if key ~= "navmesh" and key ~= "photos" and key ~= "cubemaps" then
+            sendCellHealthBatchResult(target, false, "Cell Health batch selection contains an unsupported option.")
+            return
+        end
+    end
+
+    local started, message = Capture:StartCellHealth(target, selection, true)
+    sendCellHealthBatchResult(target, started, message)
+    if started then Capture:Tick() end
+end)
+
+net.Receive("ZM.WorldCapture.CancelRequest", function(_, target)
+    local cancelled, failure = cancelRun(target)
+    if not cancelled and IsValid(target) then
+        target:PrintMessage(HUD_PRINTCONSOLE, "[ZombieSim] " .. tostring(failure) .. "\n")
+    end
+end)
+
+net.Receive("ZM.WorldCapture.CubemapDecision", function(_, target)
+    local runId = net.ReadString()
+    local requestedMap = net.ReadString()
+    local success = net.ReadBool()
+    local job = state and state.queue[state.index]
+    if not state or not state.active or state.phase ~= "awaiting-cubemap-success"
+        or target ~= owner() or runId ~= state.runId or not job
+        or mapKey(requestedMap) ~= mapKey(job.map) or not loadedMap(job.mapPath) then return end
+
+    local confirmations, confirmationError = loadCubemapConfirmations()
+    if not confirmations then
+        Capture:Restore("failed", confirmationError)
+        return
+    end
+    local key = mapKey(job.map)
+    if success then
+        confirmations.maps[key] = {confirmed = true, confirmedAt = os.time()}
+    else
+        confirmations.maps[key] = nil
+    end
+    local saved, saveError = saveCubemapConfirmations(confirmations)
+    if not saved then
+        Capture:Restore("failed", saveError)
+        return
+    end
+
+    state.cubemapResults = state.cubemapResults or {}
+    state.cubemapResults[key] = success == true
+    state.phase, state.cubemapPromptDeliveredBoot = "loading", nil
+    save()
+    sendCubemapStatus(target)
+    Capture:Tick()
+end)
 
 function Capture:Continue(target, arguments, extend)
     if not state or state.active or not state.restorationVerified then return false, "restore interrupted run before retry/extend" end
@@ -423,6 +752,9 @@ function Capture:Continue(target, arguments, extend)
     local core, coreError = ZM_GetPlayerData(state.original.characterKey, "preview")
     if not core then return false, coreError or "cannot snapshot current survivor row" end
     if extend then
+        if state.cellHealthBatch then
+            return false, "Cell Health batches are selected from the current artifact snapshot; start a new batch after restoration."
+        end
         local ok, additions = pcall(buildQueue, target, arguments)
         if not ok then return false, additions end
         local seen = {}
@@ -432,6 +764,8 @@ function Capture:Continue(target, arguments, extend)
             if not seen[job.id] then state.queue[#state.queue + 1] = job; added = added + 1 end
         end
         if added == 0 then return false, "no new logical cells; existing results are retained" end
+        state.expectedCaptureResults = (tonumber(state.expectedCaptureResults)
+            or (#state.queue - added) * #Contract.Variants) + added * #Contract.Variants
     elseif state.index > #state.queue then return false, "run queue is complete; extend with a bounded new selection" end
     // Each explicit continuation has a fresh restoration baseline; intervening gameplay must not be rolled back.
     state.original.core, state.original.runtimeCore, state.original.mapPath = core, {}, currentMap
@@ -490,6 +824,19 @@ end)
 hook.Add("SetupPlayerVisibility", "ZM.WorldCapture.PVS", function(target)
     if state and state.active and target == owner() and state.phase ~= "restoring" then
         AddOriginToPVS(Vector(0, 0, state.revision.cameraZ))
+    end
+end)
+hook.Add("InitPostEntity", "ZM.WorldCapture.CubemapReload", function()
+    if not state or not state.active then return end
+    local job = state.queue[state.index]
+    if not job or not loadedMap(job.mapPath) then return end
+    if state.phase == "awaiting-cubemap-run" then
+        state.phase, state.phaseStartedAt, state.cubemapPromptDeliveredBoot =
+            "awaiting-cubemap-success", os.time(), nil
+        save()
+    elseif state.phase == "awaiting-cubemap-success" then
+        state.cubemapPromptDeliveredBoot = nil
+        save()
     end
 end)
 hook.Add("StartCommand", "ZM.WorldCapture.FreezeInput", function(target, command)

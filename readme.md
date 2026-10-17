@@ -19,12 +19,29 @@ is authoritative over older chronological progress notes. Both straight and
 all seven complex motorway fixtures were reviewed; Phase B remains accepted
 with its retained limits. The isolated fixture pipeline is not normal-world
 integration. The retained full density-preview plan still records1x1 motorway
-placements without measured assemblies, despite remapping to wide assets.
-Its336/338 compile has two crossroads failures, but fixing those alone does
+placements without measured assemblies at that historical reconciliation
+checkpoint. Its336/338 compile and two crossroads failures are superseded by
+the current Phase J refresh notes below; fixing those old failures alone did
 not finish widened reservations, ring ownership, gates/travel or derivatives.
 Do not reopen accepted motorway artwork or infer new connector-authoring work.
 
-Generator work is active in Phase E rectangular/ring/gate integration.
+The current Phase J correction keeps ordinary on-ramp roads on the 640-unit
+tile lattice while respecting the trusted motorway core leases. It suppresses
+leased core road tiles and carries the existing on-ramp template/yaw to the
+outermost available core slot, or to the first border continuation when the
+core branch is fully occupied. The two user-provided examples (22,18) and
+(17,4) now match their saved Hammer references; the 576-cell plan check and
+focused VMF suite pass1058 assertions. Two complete-infill VMFs are available
+under `generated/phase_j_grid_road_review_corrected/src`; the user approved
+their appearance. Isolated VBSP/portal preflight and fast VVIS/VRAD pass2/2
+with no failures/incomplete stages or portal-budget violations. Their BSPs
+remain in `generated/phase_j_grid_road_review_corrected/build`; nothing was
+staged or live-tested. A prior broad VMF-only attempt stopped at cell6,23
+because no terrain tile was available for its player start; full-batch
+acceptance remains pending.
+
+The following Phase E generator notes are chronological history; use the
+current Phase J tracker above for active work.
 The user resumed work after reconciliation: density and motorways are the
 release priority. Ordinary rectangular-building physical validation waits
 until an authored asset is supplied; CSM remains deferred. Normal plain-straight
@@ -92,7 +109,7 @@ Ordinary centred output and interior rounding remain unchanged. The focused
 motorway suite covers the actual entity writer, not complete-map compilation.
 Its first source slice aligns explicit rectangular occupancy between planner
 and builder and validates footprint owner IDs/geometry. The fast
-`.\bin\test_rectangular_footprints.ps1` fixture covers square controls and
+`.\tests\powershell\test_rectangular_footprints.ps1` fixture covers square controls and
 rectangles; new asset selection, inventory/origin and ring/travel integration
 remain unfinished. See the [occupancy contract](docs.md#alpha-32-explicit-rectangular-occupancy).
 Marked and generic frontage candidates now validate rotated dimensions, and
@@ -132,7 +149,7 @@ are excluded directly beside road, motorway and bridge corridors; `aa` and
 corner assets remain eligible. Validate a regenerated plan with:
 
 ```powershell
-.\bin\test_cell_variants.ps1 -PlanData <isolated-plan.json> -BaselinePlanData <previous-plan.json> -LayoutDirectory <isolated-src>
+.\tests\powershell\test_cell_variants.ps1 -PlanData <isolated-plan.json> -BaselinePlanData <previous-plan.json> -LayoutDirectory <isolated-src>
 ```
 
 Warnings identify authored pools unable to supply a different adjacent layout.
@@ -145,7 +162,7 @@ For **complete generated cells**, rather than an asset overview, use:
 
 ```powershell
 .\bin\build_motorway_cell_preview.ps1
-.\bin\test_motorway_cells.ps1
+.\tests\powershell\test_motorway_cells.ps1
 ```
 
 These run the normal planner/builder with an explicit isolated inspection mode
@@ -161,7 +178,7 @@ seven pieces inside complete cells:
 
 ```powershell
 .\bin\build_motorway_cell_preview.ps1 -Complex
-.\bin\test_complex_motorway_cells.ps1
+.\tests\powershell\test_complex_motorway_cells.ps1
 ```
 
 Outputs stay separate under `generated/phase_b_complex_cells`; `cell-report.json`
@@ -192,7 +209,7 @@ discovery is not enabled.
 
 ```powershell
 .\bin\create_terrain_infill_templates.ps1
-.\bin\test_terrain_infill.ps1
+.\tests\powershell\test_terrain_infill.ps1
 ```
 
 The first command creates missing sources only and **never overwrites an
@@ -210,7 +227,7 @@ than320units. The user approved additional measured-size editable bases:
 
 ```powershell
 .\bin\build_motorway_cell_preview.ps1 -Complex -SizedInfill -OutputDirectory .\generated\phase_b_sized_infill_cells
-.\bin\test_terrain_infill.ps1 -SizedInfill
+.\tests\powershell\test_terrain_infill.ps1 -SizedInfill
 ```
 
 The opt-in first measures uncovered ground, creates only missing rectangular
@@ -235,7 +252,7 @@ infill have separate contracts. See [the ground-source contract](docs.md#standar
 
 ```powershell
 .\bin\repair_tile_ground_grid.ps1
-.\bin\test_tile_ground_grid.ps1
+.\tests\powershell\test_tile_ground_grid.ps1
 # After reviewing the reported source and intended center:
 .\bin\repair_tile_ground_grid.ps1 -Paths .\tiletemplates\roads\motorway_3x1\tile_motorway_tjunction_6x3.vmf -Apply -CenterOrigin
 ```
@@ -253,8 +270,8 @@ The consolidated rectangle pass and safe cleanup are explicit:
 
 ```powershell
 .\bin\build_motorway_cell_preview.ps1 -Complex -CompleteInfill
-.\bin\test_terrain_infill.ps1 -CompleteInfill -OutputDirectory .\generated\phase_b_power2_infill_cells
-.\bin\test_complex_motorway_cells.ps1 -CompleteInfill -OutputDirectory .\generated\phase_b_power2_infill_cells
+.\tests\powershell\test_terrain_infill.ps1 -CompleteInfill -OutputDirectory .\generated\phase_b_power2_infill_cells
+.\tests\powershell\test_complex_motorway_cells.ps1 -CompleteInfill -OutputDirectory .\generated\phase_b_power2_infill_cells
 .\bin\clean_terrain_infill_templates.ps1 -LayoutDirectories .\generated\phase_b_power2_infill_cells\src
 ```
 
@@ -279,10 +296,10 @@ checks with:
 
 ```powershell
 .\bin\build_motorway_preview.ps1 -WorldProfile preview
-.\bin\test_motorway_geometry.ps1
-.\bin\test_complex_motorway_gates.ps1
-.\bin\test_motorway_survey.ps1
-.\bin\test_motorway_preview.ps1
+.\tests\powershell\test_motorway_geometry.ps1
+.\tests\powershell\test_complex_motorway_gates.ps1
+.\tests\powershell\test_motorway_survey.ps1
+.\tests\powershell\test_motorway_preview.ps1
 ```
 
 The complex gate check generates the four approved mixed fixtures in isolation,
@@ -361,8 +378,8 @@ Run the consolidated importer from the repository root:
 ```powershell
 python .\bin\import_assets.py
 python -m unittest discover -s .\tests\weapons -p "test_*.py" -v
-.\bin\test_glua_syntax.ps1
-.\bin\test_workshop_packages.ps1
+.\tests\powershell\test_glua_syntax.ps1
+.\tests\powershell\test_workshop_packages.ps1
 ```
 
 If the original CS 1.6 archive is absent, the importer verifies and retains
@@ -524,10 +541,10 @@ by these commands:
 
 # Fixtures: exact byte thresholds, companions, collisions, missing assets,
 # deterministic identity, source preservation and real gmad round trips.
-.\bin\test_workshop_packages.ps1
+.\tests\powershell\test_workshop_packages.ps1
 
 # Independently recheck a completed output, using stageRoot from the report.
-.\bin\test_workshop_packages.ps1 -StagedDirectory '.\generated\workshop\<release-prefix>'
+.\tests\powershell\test_workshop_packages.ps1 -StagedDirectory '.\generated\workshop\<release-prefix>'
 
 # Strict release gate; currently expected to fail until blockers are resolved.
 .\bin\build_workshop_packages.ps1 -Release -Pack
@@ -754,11 +771,11 @@ Run these from the project root. The preview profile is isolated from production
 
 ## Clothing model discovery
 
-Clothing-workflow discovery is read-only: `.\bin\inspect_clothing_models.ps1` inspects the fifteen installed citizen player models through mounted VPKs, reporting materials, bodygroups, UV bounds/hashes and texture dimensions under `generated\clothing_preview` without extracting models/textures. `.\bin\test_clothing_model_inspection.ps1` regenerates and validates those findings. This is not yet a clothing asset builder or an equip/appearance implementation; the active tracker records the shared-body-sheet and equipment-contract limits.
+Clothing-workflow discovery is read-only: `.\bin\inspect_clothing_models.ps1` inspects the fifteen installed citizen player models through mounted VPKs, reporting materials, bodygroups, UV bounds/hashes and texture dimensions under `generated\clothing_preview` without extracting models/textures. `.\tests\powershell\test_clothing_model_inspection.ps1` regenerates and validates those findings. This is not yet a clothing asset builder or an equip/appearance implementation; the active tracker records the shared-body-sheet and equipment-contract limits.
 
-Build the original garment UV calibration atlas with `.\bin\build_clothing_uv_probe.ps1`, then run `.\bin\test_clothing_uv_probe.ps1`. Only one diagnostic texture/material is compiled and staged into content and the development game root; no mounted artwork/models are copied. After reloading a confirmed preview map, `zombiesim_dev_clothing_uv on [current|male|female]` through the bridge creates two temporary non-solid fixtures: a stock citizen and the same mesh with the coloured A1-H8 grid on its combined body sheet. Use front/back/side views to establish garment regions and orientation; `off` removes both and they expire after five minutes. It does not change player appearance, equipment or saved inventory. The atlas PNG is at `generated\clothing_preview\uv_probe\source\uv_probe.png`; it is a diagnostic, not an accepted shirt/pants finish or a universal UV guide.
+Build the original garment UV calibration atlas with `.\bin\build_clothing_uv_probe.ps1`, then run `.\tests\powershell\test_clothing_uv_probe.ps1`. Only one diagnostic texture/material is compiled and staged into content and the development game root; no mounted artwork/models are copied. After reloading a confirmed preview map, `zombiesim_dev_clothing_uv on [current|male|female]` through the bridge creates two temporary non-solid fixtures: a stock citizen and the same mesh with the coloured A1-H8 grid on its combined body sheet. Use front/back/side views to establish garment regions and orientation; `off` removes both and they expire after five minutes. It does not change player appearance, equipment or saved inventory. The atlas PNG is at `generated\clothing_preview\uv_probe\source\uv_probe.png`; it is a diagnostic, not an accepted shirt/pants finish or a universal UV guide.
 
-Build the original masked finish prototype with `.\bin\build_clothing_prototype.ps1`, then run `.\bin\test_clothing_prototype.ps1`. Editable colours, UV-aligned image/logo inputs and independently preserved/coloured inner-shirt regions live in `assets\clothing\prototype.json`. `assets\clothing\prints.json` provides chest-left/right, sleeve-left/right, small-back, centre-front and full-back presets using the supplied deer PNG; aspect ratio/transparency are retained and split-back UV islands share one image. See [the clothing artist workflow](docs/clothing_artist_workflow.md). Reload the confirmed preview map and use `zombiesim_dev_clothing_uv on male|female shirt|pants|both [style]` to compare native clothing with artwork on `male_03` or `female_01`. `zombiesim_dev_clothing_capture <label> front|back|left|right|neckline` automatically captures the second fixture without moving your survivor. Placement searches nine nearby clear areas and rejects blocking collision before capture; inspect the PNG for non-solid visual occluders too. This is a fixture-only prototype, not clothing items/equipment or an accepted universal mask. User-supplied deer artwork has not been cleared for release.
+Build the original masked finish prototype with `.\bin\build_clothing_prototype.ps1`, then run `.\tests\powershell\test_clothing_prototype.ps1`. Editable colours, UV-aligned image/logo inputs and independently preserved/coloured inner-shirt regions live in `assets\clothing\prototype.json`. `assets\clothing\prints.json` provides chest-left/right, sleeve-left/right, small-back, centre-front and full-back presets using the supplied deer PNG; aspect ratio/transparency are retained and split-back UV islands share one image. See [the clothing artist workflow](docs/clothing_artist_workflow.md). Reload the confirmed preview map and use `zombiesim_dev_clothing_uv on male|female shirt|pants|both [style]` to compare native clothing with artwork on `male_03` or `female_01`. `zombiesim_dev_clothing_capture <label> front|back|left|right|neckline` automatically captures the second fixture without moving your survivor. Placement searches nine nearby clear areas and rejects blocking collision before capture; inspect the PNG for non-solid visual occluders too. This is a fixture-only prototype, not clothing items/equipment or an accepted universal mask. User-supplied deer artwork has not been cleared for release.
 
 The `repeat` style tiles the supplied image across both axes, not just coloured checker squares. `prints.json` has separate shirt/pants motif sizes, spacing and offsets. Build only these layers with `.\bin\build_clothing_prototype.ps1 -PrintStyles repeat`; select `zombiesim_dev_clothing_uv on male|female shirt|pants|both repeat`. Both-axis coverage, exact repeat pixels, exclusions, spacing and staged VTF alpha are covered by the prototype test. Automatic filename discovery and bloody/zombie variants remain pending.
 
@@ -771,7 +788,7 @@ For preview-admin clothing inspection, the bridge supports `zombiesim_dev_ui inv
 Generate mesh-aligned wireframe guides with `.\bin\inspect_clothing_models.ps1 -UvGuideModels @('models/player/group01/male_03.mdl', 'models/player/group01/female_01.mdl')`. The inspection test also generates/validates these two guides. The tool reads matching MDL/VVD/VTX root-LOD topology in memory and draws UV edges over the same A1-H8 grid at `generated\clothing_preview\uv_male_03.png` and `uv_female_01.png`; no mounted model or base texture is written out. These two layouts are visibly different. Wireframe guides are inspection products, not approved garment masks or proof that arbitrary artwork fits every citizen.
 
 For filename-driven clothing, run `.\bin\build_clothing_catalogue.ps1 [-PlanOnly]`
-and `.\bin\test_clothing_catalogue.ps1`. Optional artwork suffixes `_dark`/`_light`
+and `.\tests\powershell\test_clothing_catalogue.ps1`. Optional artwork suffixes `_dark`/`_light`
 select contrasting lighter/darker fabric palettes; `_notblack` and other
 `not<colour>` tags exclude named backgrounds. They combine with explicit colours
 and placement tags and apply to single-image and X/Y repeating variants.
@@ -806,11 +823,11 @@ has an independent stable outfit seed (ticket identity for ticketed walkers);
 rebels retain native bloody appearance. Corpse and severed-piece copies keep
 their original garments. Composition is frame-budgeted, not a whole-crowd
 synchronous build.
-Run `.\bin\test_clothing_fabrics.ps1 -ValidateBuilt` after the catalogue build.
-`.\bin\test_clothing_catalogue.ps1 -ValidateBuilt` checks every image finish,
+Run `.\tests\powershell\test_clothing_fabrics.ps1 -ValidateBuilt` after the catalogue build.
+`.\tests\powershell\test_clothing_catalogue.ps1 -ValidateBuilt` checks every image finish,
 flat back-print icons and owned staging hashes. The model inspector also writes
 torso topology for continuous back-print/fabric/motif projection; run
-`.\bin\test_clothing_back_projection.ps1` after inspection. Inspect the corrected
+`.\tests\powershell\test_clothing_back_projection.ps1` after inspection. Inspect the corrected
 backs and smooth dyes in a freshly reloaded preview before visual acceptance.
 Preview-only `zombiesim_dev_test_clothing_pool` exercises actual client texture
 capacity/recovery and immutable gore-reference pinning; inspect its asynchronous
@@ -878,7 +895,7 @@ behind the launcher Earth. The sky builder retains full
 licence/credit metadata and byte-identical README files under
 `content/data_static/sky_licences`; the package builder includes the latter
 in common content. Run `bin/build_sky_catalogue.ps1`, then
-`bin/test_sky_catalogue.ps1` after changing the source allowlist.
+`tests/powershell/test_sky_catalogue.ps1` after changing the source allowlist.
 Uncleared imports are not staged. Workshop publication remains a separate future task.
 
 **Preview current skybox** performs a ten-second camera-only aerial inspection
@@ -929,6 +946,30 @@ whole crop over a dim fabric fill; they never fall back to the box model.
 `zombiesim_dev_test_launcher_tools` writes
 `data/zombiesim/launcher_tools_tests.json`.
 
+Preview admins can run `zombiesim_dev_cell_health` to open the preview-only
+Cell Health Manager. Its grid covers the 576 logical preview cells; scanning
+artifacts is read-only.
+It counts a navmesh when `maps/<map>.nav` exists and is non-empty; it counts
+world photos only when both clear and atmospheric captures pass a basic PNG
+signature/header/end-marker check and their manifest map name matches the
+cell's current runtime map. It does not compare revision hashes or generate
+anything during a scan. Cubemaps are **UNVERIFIED** until the user runs
+`buildcubemaps` manually and confirms success after the map reload. A Yes is
+labelled **USER CONFIRMED** and counts complete without engine verification; a
+No remains incomplete.
+The manager's **START BATCH OF UNHEALTHY CELLS** controls default to off.
+Checked categories target cells missing any selected artifact. Navmesh and
+cubemap work is deduplicated by BSP; photos are captured per logical cell.
+When both navmesh and photos are selected, nav generation/save/reload/validation
+finishes before that cell's clear and atmospheric captures. After a photo batch
+completes, run `.\bin\watch_world_capture.ps1 -RunId "<run-id>" -StagePreview`
+to merge current-map images with retained valid captures and stage the updated
+manifest. Satellite stays unavailable until both merged variants cover every
+current logical cell. Run
+`zombiesim_dev_test_cell_health_client` for the live client fixture report at
+`data/zombiesim/cell_health_tests.json` and a console pass/fail summary; the offline contract suite is
+`python -m unittest tests.cell_health.test_contract`.
+
 The game version lives in `content/data_static/version.json` (the single source
 of truth, loaded by `ZM_Version` in `sh_version.lua`), and the shipped changelog
 lives in `content/data_static/changelog.json`. Changelog highlights start with
@@ -958,7 +999,7 @@ acceptance remains; these results do not establish full Phase H completion.
 
 For local Hammer/GMod development, run `.\bin\stage_sign_assets.ps1` to copy and hash-verify the current sign models/materials into the installed `garrysmod` root, or add `-StageToGame` when building sign assets. Generate a six-variant Hammer showroom with `.\bin\build_sign_zoo.ps1`; add `-Compile` to compile and stage **one standalone development BSP**, `zn_dev_sign_zoo`. Open `generated\signs_preview\zoo\zn_dev_sign_zoo.vmf` in Hammer, or use `map zn_dev_sign_zoo` in a sandbox development session. This does not rebuild city recipes, change production staging, or package the zoo for release.
 
-Build the six original sign variants with `.\bin\build_sign_assets.ps1 -WorldProfile preview`: detailed freestanding and lamp-lit billboards, legless panel, small wall sign, thin framed print and borderless poster. Use `-ArtworkPath` for a finished opaque 1024 x 512 panel, or `-ImagePath` / `-BackgroundImagePath` for aspect-preserving foreground/background layers. The sign JSON controls image paths, self-lighting and independent leg/rim/back textures; mounted Source textures are referenced, not copied. Run `.\bin\test_sign_assets.ps1` after building. This compiles six small models and two original textures, not city BSPs. The [artist workflow](docs/sign_artist_workflow.md) documents geometry budgets, settings, placement prefabs, light baking, skybox limits and packaging. Preview admins can use `zombiesim_dev_sign on [freestanding|panel|illuminated|wall|print|poster]` through the bridge, and `off` to remove it; it expires after three minutes. The print and poster mount to the aimed wall, and the two-triangle poster has no collision or physical border. The illuminated preview casts a temporary real projected light, while its Hammer prefab uses a baked spotlight. Live appearance of the detailed billboard and both thin variants was approved by the user; compiled-tile collision, baked lighting and an actual skybox view remain integrated checks.
+Build the six original sign variants with `.\bin\build_sign_assets.ps1 -WorldProfile preview`: detailed freestanding and lamp-lit billboards, legless panel, small wall sign, thin framed print and borderless poster. Use `-ArtworkPath` for a finished opaque 1024 x 512 panel, or `-ImagePath` / `-BackgroundImagePath` for aspect-preserving foreground/background layers. The sign JSON controls image paths, self-lighting and independent leg/rim/back textures; mounted Source textures are referenced, not copied. Run `.\tests\powershell\test_sign_assets.ps1` after building. This compiles six small models and two original textures, not city BSPs. The [artist workflow](docs/sign_artist_workflow.md) documents geometry budgets, settings, placement prefabs, light baking, skybox limits and packaging. Preview admins can use `zombiesim_dev_sign on [freestanding|panel|illuminated|wall|print|poster]` through the bridge, and `off` to remove it; it expires after three minutes. The print and poster mount to the aimed wall, and the two-triangle poster has no collision or physical border. The illuminated preview casts a temporary real projected light, while its Hammer prefab uses a baked spotlight. Live appearance of the detailed billboard and both thin variants was approved by the user; compiled-tile collision, baked lighting and an actual skybox view remain integrated checks.
 
 Generate the deterministic preview world image, manifest, and map layers:
 
@@ -969,11 +1010,10 @@ Generate the deterministic preview world image, manifest, and map layers:
 Plan its recipes and write the required-map list:
 
 ```powershell
-.\bin\build_motorway_preview.ps1 -WorldProfile preview -OutputDirectory .\generated\measured-assemblies
-.\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json -MotorwayAssemblyReport .\generated\measured-assemblies\assembly-report.json
+.\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json -TrustedMotorwayPlan .\generated\phase_j_preview_20261015\plan.json -SettingsPath .\generated\phase_j_preview_20261015\settings.json
 ```
 
-Normal wide (3x) motorway cells plan only from current measured assemblies (`-MotorwayAssemblyReport`) and require the expanded border/outer rings. Root settings keep `vmfBuild.outerEdges.enabled` false, so full-world preview batches use an isolated settings copy with it enabled and redirected profile paths. Terrain infill is calculated only for schema-2 measured motorway recipes; ordinary preview recipes do not receive infill. For the infill stages, first build the ordinary full plan without infill switches, then restrict each of the three passes to motorways: `build_cell_vmfs.ps1 ... -MotorwayOnlyInfill -MeasureCompleteTerrainInfill`, `create_terrain_infill_templates.ps1 -PartialGapLayoutDirectory <src> -CompletePatches -MotorwayOnly`, then `build_cell_vmfs.ps1 ... -MotorwayOnlyInfill -SizedTerrainInfill -CompleteTerrainInfill`. The scoped builder preserves ordinary recipes and safe-room maps and refuses stale-output pruning. An explicit `-ContentMapDirectory` (isolated batch) also disables copying and stale-map cleanup in the live engine `garrysmod/maps` folder unless `-StageEngineMaps` is passed; stage isolated outputs through a backed-up ledger instead.
+For the current approved seed-1337 wide-motorway plan, pass `-TrustedMotorwayPlan` to reuse the matching approved motorway instances and gate records. `-MotorwayAssemblyReport` remains for explicit diagnostic inspection; do not use measured road mouths to reposition normal road tiles. Normal wide (3x) motorway cells require expanded border/outer rings. Root settings keep `vmfBuild.outerEdges.enabled` false, so full-world preview batches use an isolated settings copy with it enabled and redirected profile paths. Terrain infill is calculated only for schema-2 measured motorway recipes; ordinary preview recipes do not receive infill. For the infill stages, first build the ordinary full plan without infill switches, then restrict each of the three passes to motorways: `build_cell_vmfs.ps1 ... -MotorwayOnlyInfill -MeasureCompleteTerrainInfill`, `create_terrain_infill_templates.ps1 -PartialGapLayoutDirectory <src> -CompletePatches -MotorwayOnly`, then `build_cell_vmfs.ps1 ... -MotorwayOnlyInfill -SizedTerrainInfill -CompleteTerrainInfill`. The scoped builder preserves ordinary recipes and safe-room maps and refuses stale-output pruning. An explicit `-ContentMapDirectory` (isolated batch) also disables copying and stale-map cleanup in the live engine `garrysmod/maps` folder unless `-StageEngineMaps` is passed; stage isolated outputs through a backed-up ledger instead.
 
 Refresh the generated recipe VMFs, prune obsolete generated files, and verify every required recipe exists:
 
@@ -1041,7 +1081,7 @@ Only the launcher sky-preview render receives cosmetic haze matched to the selec
 Run the focused scene/camera contract check and compile launchers independently, without regenerating or compiling any world recipes:
 
 ```powershell
-.\bin\test_launcher_parity.ps1
+.\tests\powershell\test_launcher_parity.ps1
 .\bin\build_launchers.ps1 -WorldProfile preview
 .\bin\build_launchers.ps1 -WorldProfile city
 ```
@@ -1287,7 +1327,7 @@ Offline, the same isolated cases use the shared runner below:
 
 ```powershell
 python .\tests\atmosphere\test_client_atmosphere.py
-.\bin\test_glua_syntax.ps1
+.\tests\powershell\test_glua_syntax.ps1
 ```
 
 Alpha 3.2 includes an experimental client-local CSM overlay in the in-game
@@ -1461,7 +1501,7 @@ zombiesim_validate_scripts
 
 When invoked through the bridge, `consolecommands.result.json` includes `reports.scriptValidation` with the checked, passed, and failed counts plus one result for each source file. Syntax failures are also printed in the server console with their mounted `GAME` path.
 
-For an offline syntax check without launching the game, run `.\bin\test_glua_syntax.ps1`. It uses the `gluac.exe` bundled with the GLua Enhanced VS Code extension and exits with code 1 on any failure.
+For an offline syntax check without launching the game, run `.\tests\powershell\test_glua_syntax.ps1`. It uses the `gluac.exe` bundled with the GLua Enhanced VS Code extension and exits with code 1 on any failure.
 
 # Mounted Garry's Mod Assets
 
@@ -1498,7 +1538,7 @@ Regenerate and validate the metadata-only candidate catalog without extracting a
 
 ```powershell
 .\bin\build_mounted_asset_catalog.ps1
-.\bin\test_mounted_asset_catalog.ps1
+.\tests\powershell\test_mounted_asset_catalog.ps1
 ```
 
 The catalog is written to `generated/asset_catalog/mounted_asset_catalog.json`. The builder lists `*_dir.vpk` archives under the installed `garrysmod` and `sourceengine` trees and paths configured in `garrysmod/cfg/mount.cfg`; disabled addon archives are reported as unmounted. It retains one canonical record per virtual model path, its source archive(s), family/tags, mounted status, and whether an authored item uses it as an icon or world model. Item and loot data remain curated in `content/data_static/`; catalog output and reports are generated artifacts.
@@ -1531,14 +1571,18 @@ zn_test_weapon_catalog          // check local SWEP/model/item mappings at runti
 
 ## Automated Test Suites
 
+PowerShell regression scripts live in `tests/powershell/`; `bin/` is reserved
+for generator, build, and shared utility scripts. Run tests from the repository
+root with `.\tests\powershell\test_<name>.ps1`.
+
 Phase F clothing can be built and checked with Garry's Mod closed:
 
 ```powershell
 .\bin\build_clothing_blood.ps1
-.\bin\test_clothing_blood.ps1
-.\bin\test_clothing_model_inspection.ps1
-.\bin\test_clothing_walker_inspection.ps1
-.\bin\test_glua_syntax.ps1
+.\tests\powershell\test_clothing_blood.ps1
+.\tests\powershell\test_clothing_model_inspection.ps1
+.\tests\powershell\test_clothing_walker_inspection.ps1
+.\tests\powershell\test_glua_syntax.ps1
 ```
 
 Run these chart writers serially. The blood builder stages three original
@@ -1881,8 +1925,8 @@ Generation is controlled from [generator-settings.json](generator-settings.json)
 ### Isolated Alpha 3.1.5 outer-edge checks
 
 ```powershell
-.\bin\test_outer_edges.ps1
-.\bin\test_outer_edge_bsps.ps1
+.\tests\powershell\test_outer_edges.ps1
+.\tests\powershell\test_outer_edge_bsps.ps1
 ```
 
 The first command generates matching preview-only settings, plans, layout
@@ -1897,7 +1941,7 @@ When unfinished authored tiles must stay out of a regression, pass an isolated
 source inventory explicitly:
 
 ```powershell
-.\bin\test_outer_edges.ps1 -OutputRoot .\generated\phase_c_live_20261011\checks -TemplateDirectory .\generated\phase_c_live_20261011\tiletemplates
+.\tests\powershell\test_outer_edges.ps1 -OutputRoot .\generated\phase_c_live_20261011\checks -TemplateDirectory .\generated\phase_c_live_20261011\tiletemplates
 ```
 
 The supplied inventory is used consistently for source geometry, expanded
@@ -1907,7 +1951,7 @@ After VBSP, verify compiled gate entities and their corresponding arrival
 landmarks against the freshly generated sources:
 
 ```powershell
-.\bin\test_transition_gate_bsps.ps1 -SourceDirectory .\generated\phase_c_live_20261011\src -BuildDirectory .\generated\phase_c_live_20261011\bsp
+.\tests\powershell\test_transition_gate_bsps.ps1 -SourceDirectory .\generated\phase_c_live_20261011\src -BuildDirectory .\generated\phase_c_live_20261011\bsp
 ```
 
 This checks brush-model presence, entity identity and source pose; static

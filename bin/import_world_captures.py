@@ -105,6 +105,71 @@ def validate(run, world_data, data_root, skyline, skyline_sha256, image_size=256
     return revision, images, source_meta
 
 
+def load_existing_captures(output_root, world_data, tile_size, replacement_images):
+    manifest_path = Path(output_root) / "data_static" / "world_captures_preview.json"
+    images = {variant: {} for variant in VARIANTS}
+    metadata = {variant: {} for variant in VARIANTS}
+    if not manifest_path.exists():
+        return images, metadata, 0, 0
+
+    try:
+        existing = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"existing capture manifest cannot be read: {error}") from error
+    if (not isinstance(existing, dict) or existing.get("schemaVersion") != 1
+            or existing.get("profile") != "preview"
+            or existing.get("grid") != world_data["world"]["grid"]
+            or not isinstance(existing.get("variants"), dict)):
+        raise ValueError("existing capture manifest is incompatible with the preview grid")
+
+    cells = {str(cell["id"]): cell for cell in world_data["cells"]}
+    reused, skipped = 0, 0
+    for variant in VARIANTS:
+        old_variant = existing["variants"].get(variant)
+        if (not isinstance(old_variant, dict) or not isinstance(old_variant.get("cells"), dict)
+                or not isinstance(old_variant.get("metadata"), dict)):
+            raise ValueError(f"existing capture manifest has invalid {variant} records")
+        for key, relative in old_variant["cells"].items():
+            if key in replacement_images[variant]:
+                continue
+            cell = cells.get(key)
+            old_metadata = old_variant["metadata"].get(key)
+            if (cell is None or not isinstance(old_metadata, dict)
+                    or old_metadata.get("map") != cell.get("map")
+                    or relative != f"worlds/preview/captured/{variant}/cell_{key}.png"):
+                skipped += 1
+                continue
+            path = Path(output_root) / "materials" / relative
+            if not path.is_file():
+                skipped += 1
+                continue
+            raw = path.read_bytes()
+            display_hash = old_metadata.get("displaySha256")
+            if display_hash and hashlib.sha256(raw).hexdigest() != display_hash:
+                skipped += 1
+                continue
+            try:
+                with Image.open(path) as image:
+                    image.verify()
+                with Image.open(path) as image:
+                    if image.format != "PNG":
+                        skipped += 1
+                        continue
+                    image = image.convert("RGB")
+                    if max(ImageStat.Stat(image).var) < 0.5:
+                        skipped += 1
+                        continue
+                    images[variant][key] = image.resize(
+                        (tile_size, tile_size), Image.Resampling.LANCZOS
+                    )
+            except (OSError, ValueError):
+                skipped += 1
+                continue
+            metadata[variant][key] = dict(old_metadata)
+            reused += 1
+    return images, metadata, reused, skipped
+
+
 def import_run(run_path, world_path, data_root, output_root, tile_size=256, overview_size=3072, skyline_path=None):
     if tile_size not in (128, 256, 512) or not 128 <= overview_size <= 4096:
         raise ValueError("display tiles must be 128/256/512; overview must be <=4096")
@@ -121,6 +186,16 @@ def import_run(run_path, world_path, data_root, output_root, tile_size=256, over
     if estimated_rgba > 384 * 1024 ** 2:
         raise ValueError("display assets exceed 384 MiB uncompressed two-variant budget; reduce tile/overview size")
     root = Path(output_root)
+    existing_images, existing_meta, reused, skipped = load_existing_captures(
+        root, world_data, tile_size, images
+    )
+    for variant in VARIANTS:
+        existing_images[variant].update(images[variant])
+        existing_meta[variant].update(source_meta[variant])
+    images, source_meta = existing_images, existing_meta
+    estimated_rgba = sum(len(v) for v in images.values()) * tile_size ** 2 * 4 + 2 * atlas_width * atlas_height * 4
+    if estimated_rgba > 384 * 1024 ** 2:
+        raise ValueError("merged display assets exceed 384 MiB uncompressed two-variant budget")
     manifest = {
         "schemaVersion": 1, "captureVersion": revision["captureVersion"], "profile": "preview",
         "mapManifestSha256": revision["mapManifestSha256"],
@@ -130,6 +205,7 @@ def import_run(run_path, world_path, data_root, output_root, tile_size=256, over
         "cameraZ": revision["cameraZ"], "northUp": True, "sourceSize": revision["size"],
         "tileSize": tile_size, "grid": [width, height], "runId": run["runId"],
         "complete": all(len(images[v]) == len(world_data["cells"]) for v in VARIANTS),
+        "reusedImageCount": reused, "skippedExistingImageCount": skipped,
         "estimatedRGBABytes": estimated_rgba, "variants": {},
     }
     owned = []
@@ -145,7 +221,10 @@ def import_run(run_path, world_path, data_root, output_root, tile_size=256, over
             relative = f"worlds/preview/captured/{variant}/cell_{key}.png"
             paths[key] = relative
             raw = path.read_bytes()
-            metadata[key] = {**source_meta[variant][key], "displaySha256": hashlib.sha256(raw).hexdigest()}
+            metadata[key] = {
+                **source_meta[variant][key],
+                "displaySha256": hashlib.sha256(raw).hexdigest()
+            }
             atlas.paste(image.resize((atlas_tile, atlas_tile), Image.Resampling.LANCZOS),
                         ((int(key) % width) * atlas_tile, (int(key) // width) * atlas_tile))
             encoded_bytes += len(raw)
@@ -183,7 +262,10 @@ def main():
     args = parser.parse_args()
     output = Path("content") if args.stage_preview else args.output
     manifest = import_run(args.run, args.world, args.data_root, output, args.tile_size, args.overview_size, args.skyline)
-    print(json.dumps({k: manifest[k] for k in ("complete", "encodedBytes", "estimatedRGBABytes", "runId")}))
+    print(json.dumps({k: manifest[k] for k in (
+        "complete", "encodedBytes", "estimatedRGBABytes", "reusedImageCount",
+        "skippedExistingImageCount", "runId"
+    )}))
 
 
 if __name__ == "__main__":

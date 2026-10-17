@@ -1,4 +1,4 @@
-return function(contract)
+return function(contract, cellHealthContractFactory)
     local state = {files = {}, now = 100, map = "recipe_0", callbacks = {}, hooks = {}, commands = {}}
     local function copy(value)
         if type(value) ~= "table" then return value end
@@ -20,23 +20,46 @@ return function(contract)
         end}
     end
     env.Angle = function(p, y, r) return {p = p, y = y, r = r} end
-    env.AddCSLuaFile = function(path) assert(path == "world_capture/sh_contract.lua") end
+    env.AddCSLuaFile = function(path)
+        assert(path == "world_capture/sh_contract.lua" or path == "sh_cell_health_contract.lua")
+    end
     env.AddOriginToPVS = function(position) state.pvs = position end
-    env.include = function(path) assert(path == "world_capture/sh_contract.lua"); return contract end
+    env.include = function(path)
+        if path == "world_capture/sh_contract.lua" then return contract end
+        assert(path == "sh_cell_health_contract.lua")
+        return cellHealthContractFactory
+    end
     env.IsValid = function(entity) return type(entity) == "table" and not entity.invalid end
     env.GAMEMODE = {}
     env.util = {
-        TableToJSON = copy, JSONToTable = copy, AddNetworkString = function(name) state.callbacks[name] = false end,
+        TableToJSON = copy,
+        JSONToTable = function(value)
+            if type(value) == "string" and state.jsonInput then
+                local result = state.jsonInput
+                state.jsonInput = nil
+                return copy(result)
+            end
+            return copy(value)
+        end,
+        AddNetworkString = function(name) state.callbacks[name] = false end,
         SHA256 = function(raw) return type(raw) == "table" and string.rep("c", 64) or "hash:" .. raw end,
         CRC = function() return "123" end
     }
     env.file = {
         CreateDir = function(path) assert(path:match("^zombiesim")) end,
         Read = function(path, realm)
-            if realm == "GAME" then assert(path == "data_static/zombiesim_skybox_preview.json"); return state.skyline end
+            if realm == "GAME" then
+                if path == "data_static/zombiesim_skybox_preview.json" then return state.skyline end
+                if path == "data_static/world_captures_preview.json" then return state.captureManifest end
+                return nil
+            end
             assert(realm == "DATA"); return state.files[path]
         end,
         Write = function(path, raw) state.files[path] = raw end,
+        Size = function(path, realm)
+            assert(realm == "GAME")
+            return path:match("%.nav$") and state.navFile and 1024 or 0
+        end,
         Exists = function(path, realm)
             assert(realm == "GAME")
             if path:match("%.bsp$") then return true end
@@ -71,10 +94,10 @@ return function(contract)
         return true
     end
     local cells = {
-        {id = 0, x = 0, y = 0, map = "recipe_0", atmosphereProfile = 0},
-        {id = 1, x = 1, y = 0, map = "recipe_0", atmosphereProfile = 0},
-        {id = 2, x = 0, y = 1, map = "recipe_2", atmosphereProfile = 0},
-        {id = 3, x = 1, y = 1, map = "recipe_3", atmosphereProfile = 0}
+        {id = 0, x = 0, y = 0, map = "recipe_0", waterSides = {}, atmosphereProfile = 0},
+        {id = 1, x = 1, y = 0, map = "recipe_0", waterSides = {}, atmosphereProfile = 0},
+        {id = 2, x = 0, y = 1, map = "recipe_2", waterSides = {}, atmosphereProfile = 0},
+        {id = 3, x = 1, y = 1, map = "recipe_3", waterSides = {}, atmosphereProfile = 0}
     }
     function playerEntity:GetWorldCell() return cells[self.CellY * 2 + self.CellX + 1] end
     state.player = playerEntity
@@ -92,11 +115,18 @@ return function(contract)
         return true
     end
     env.player = {GetHumans = function() return state.extraHuman and {playerEntity, {}} or {playerEntity} end}
-    state.world = {profileId = "preview", mapManifestSha256 = string.rep("a", 64),
+    state.world = {profileId = "preview", grid = {2, 2}, mapManifestSha256 = string.rep("a", 64),
         templatePlanSha256 = string.rep("b", 64),
         cellBounds = {revision = 2, neighbourPitch = 5760, playableCeiling = 4608}}
     state.skyline = {profile = "preview", templatePlanSha256 = state.world.templatePlanSha256,
         cellSpan = 5760, scale = 16, cellBounds = {revision = 2}, cameraOrigin = {0, 0, 5120}}
+    state.captureManifest = {
+        schemaVersion = 1, profile = "preview",
+        variants = {
+            clear = {cells = {}, metadata = {}},
+            atmospheric = {cells = {}, metadata = {}}
+        }
+    }
     env.ZM_World = {ActiveProfile = "preview", LauncherMapProfiles = {}}
     function env.ZM_World:IsLoaded() return true end
     function env.ZM_World:GetData() return {world = state.world, cells = cells} end
@@ -123,10 +153,21 @@ return function(contract)
     }
     env.net = {
         Receive = function(name, callback) state.callbacks[name] = callback end,
-        Start = function(name) state.netName = name end,
-        WriteString = function(request) state.request = copy(request) end,
-        Send = function(target) assert(target == playerEntity) end,
-        ReadString = function() return state.result end
+        Start = function(name) state.netName, state.netWrites = name, {} end,
+        WriteString = function(value)
+            state.netWrites[#state.netWrites + 1] = {kind = "string", value = copy(value)}
+            if type(value) == "table" then state.request = copy(value) end
+        end,
+        WriteBool = function(value) state.netWrites[#state.netWrites + 1] = {kind = "bool", value = value} end,
+        Send = function(target)
+            assert(target == playerEntity)
+            state.lastMessage = {name = state.netName, writes = copy(state.netWrites)}
+        end,
+        ReadString = function()
+            if state.readValues then return table.remove(state.readValues, 1) end
+            return state.result
+        end,
+        ReadBool = function() return table.remove(state.readValues, 1) end
     }
     env.hook = {Add = function(name, _, callback) state.hooks[name] = callback end}
     env.timer = {Create = function(_, _, _, callback) state.tick = callback end}
@@ -146,6 +187,7 @@ return function(contract)
         assert(self.changelevel, "no requested reload")
         self.map, self.changelevel, self.now = self.changelevel, nil, self.now + 1
         setfenv(chunk, env); chunk()
+        if self.hooks.InitPostEntity then self.hooks.InitPostEntity() end
     end
     function state:Result(contract, overrides)
         local request = self.request

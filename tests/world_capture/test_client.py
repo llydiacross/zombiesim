@@ -19,6 +19,7 @@ def main():
     runner.run(runner.lua.globals().ZM_WorldCaptureTests, "World capture client")
     runner = FixtureRunner(ROOT / "gamemode", {
         "utils/test_harness.lua", "world_capture/sh_contract.lua", "sv_world_capture.lua",
+        "sh_cell_health_contract.lua",
         "tests/sv_world_capture_tests.lua", "tests/fixtures/sv_world_capture_engine.lua",
     })
     runner.load("utils/test_harness.lua")

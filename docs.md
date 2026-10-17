@@ -4,7 +4,7 @@ This guide explains the city generator in normal game-making language. You do no
 
 ## Launcher maps and survivor slots
 
-The `zn_preview_start` and `zn_city_start` launcher VMFs in [celltemplates/launchers](celltemplates/launchers) are hand-authored, not generated city recipes. Build them independently with `.\bin\test_launcher_parity.ps1` and `.\bin\build_launchers.ps1 -WorldProfile preview` (then `city`). This compiles and stages only the selected launcher into both `content/maps` and the engine's `garrysmod/maps`; do not run a world build for launcher-only edits. Both maps provide a `menu_camera`, a `menu_globe` position, a `credits_camera`, and four named dancer ragdolls.
+The `zn_preview_start` and `zn_city_start` launcher VMFs in [celltemplates/launchers](celltemplates/launchers) are hand-authored, not generated city recipes. Build them independently with `.\tests\powershell\test_launcher_parity.ps1` and `.\bin\build_launchers.ps1 -WorldProfile preview` (then `city`). This compiles and stages only the selected launcher into both `content/maps` and the engine's `garrysmod/maps`; do not run a world build for launcher-only edits. Both maps provide a `menu_camera`, a `menu_globe` position, a `credits_camera`, and four named dancer ragdolls.
 
 The launcher holds players until a profile-scoped survivor slot is selected. The server keeps three slots per profile and migrates existing per-profile progress to slot 1 on first startup, after taking a database backup. Slot 1 needs an appearance choice before first deployment. [launcher_scene.json](content/data_static/launcher_scene.json) contains fictional geographic anchors and credits crawl text; editing it does not require recompiling maps. Read [readme.md](readme.md) for menu controls, test commands, and the current live-verification warning.
 
@@ -39,7 +39,7 @@ it. This direction does not authorize arbitrary geometry edits or broad builds.
 Existing entrance fixtures remain available without a full-world planning pass:
 
 ```powershell
-.\bin\test_safezone_entrances.ps1 -FixturesOnly
+.\tests\powershell\test_safezone_entrances.ps1 -FixturesOnly
 ```
 
 This runs the ordinary 12 orientation/water and two rejection cases only.
@@ -67,7 +67,7 @@ use that same rectangle; commercial access cache keys distinguish dimensions
 at a shared anchor. Existing square candidate ordering/targets are preserved.
 
 ```powershell
-.\bin\test_rectangular_footprints.ps1
+.\tests\powershell\test_rectangular_footprints.ps1
 ```
 
 This fast test invokes the production planner/builder helpers with explicit
@@ -102,8 +102,8 @@ Legacy1x1 settings remain unchanged. The isolated inspector uses the same
 constructor for core and rings, preserving its reviewed transforms.
 Normal playable VMF output remains blocked until ring/gate/travel integration;
 do not bypass the inspection guard to build a wide core with narrow boundaries.
-Run `bin/test_scenery_density.ps1` for actual normal-planner reservation/density
-interaction fixtures as well as `bin/test_motorway_geometry.ps1`.
+Run `tests/powershell/test_scenery_density.ps1` for actual normal-planner reservation/density
+interaction fixtures as well as `tests/powershell/test_motorway_geometry.ps1`.
 
 Normal expanded straight plans carry a separate `motorwayAssembly` contract:
 27 leases and four border/outer owners, source SHA256 and explicit
@@ -123,6 +123,14 @@ This generates isolated expanded settings from the profile and retains wide
 source mappings. It plans the existing vertical/horizontal two-cell fixture
 without inspection metadata. Do not interpret its legacy manifest as new
 density-zone output or enable the production outer-edge setting for this check.
+
+For bounded normal complex cells, `-CellCoordinates` restricts the same
+trusted-plan workflow without remeasuring motorway geometry. The focused
+on-ramp review used:
+
+```powershell
+.\bin\build_motorway_cell_preview.ps1 -WorldProfile preview -MapData .\generated\phase_j_preview_20261015\preview_grid_24x24_seed_1337.json -TrustedMotorwayPlan .\generated\phase_j_preview_20261015\plan.json -NormalComplex -CellCoordinates @('22,18','17,4') -OutputDirectory .\generated\phase_j_grid_road_review_corrected
+```
 
 Normal straight contracts also publish source-measured `gates`, not runtime
 acceptance. `Get-ZMStraightMotorwayMouths` reads the canonical saved floor faces
@@ -153,6 +161,15 @@ trigger and their existing bounds, arrows, barricades and arrival. A trusted
 plan starts players on the nearest available terrain tile in the 640-unit grid;
 the former measured insertion-seam spawn is not used.
 
+For normal schema-2 on-ramp branches, core road placements that overlap a
+trusted motorway lease are suppressed. If the planned `tile_road_onramp` slot
+is leased, keep its template and yaw but move it to the outermost available
+core road slot in branch order. If no core road slot remains, use the first
+border continuation; later road pieces remain on the 640-unit lattice. This
+matches the reviewed examples: Cell(22,18) uses core slot(2,4), while Cell(17,4)
+uses east core slot(4,2) and west border slot(-1,2). Do not derive these
+placements from current source-face IDs or measured mouths.
+
 Runtime export copies the trusted gate records from that same approved plan
 instead of rederiving them from current tile sources. `ZM_Transitions` resolves
 those records through `ZM_World:GetCellsForMap`; shared-map cells must agree.
@@ -160,6 +177,10 @@ At load time, a lane-tagged trigger is matched to its planned carriageway, then
 arrows and arrivals use the saved lane coordinates and brush-only surface
 traces. Arrival hull clearance and the client Global2 API are preserved.
 Legacy maps without lane tags keep the existing combined-marker behavior.
+`motorwayGates` is optional presentation/arrival metadata. Runtime access does
+not validate trigger geometry or require a gate `route` field; the current
+logical cell's world-data exit and travel mode decide whether the neighbor is
+reachable.
 Offline plan and gate fixtures do not establish compiled collision, live
 traversal or visual alignment; the refreshed compiled maps and in-game sight
 review remain separate checks.
@@ -208,9 +229,10 @@ them. Compilation and live travel review are still required.
 The approved south mixed-road approach uses gate Y-2720, arrow Y-2624 and
 arrival Y-2592 at X0/deck36. Ordinary-road96/128 insets keep both points on the
 centred approach before its corner; motorway256/384 insets remain unchanged.
-Explicit `route = 'road'` metadata has one centred lane. Missing `route` remains
-the existing two-lane motorway contract. Server publication/arrival validation
-and trigger bounds handle both; road barricade composition stays native.
+Explicit `route = 'road'` metadata has one centred lane. Trigger construction
+uses the lane layout to emit the appropriate markers; runtime route availability
+is decided from the logical cell's exits, not the trigger geometry or optional
+gate metadata. Road barricade composition stays native.
 Shared-map route/count conflicts fail closed. Actual engine clearance/travel
 and normal complex plan/export/emission remain separate pending gates.
 Standalone ramp offsets are not automatically handled by the mixed1408 route.
@@ -249,7 +271,7 @@ expected.
 
 ```powershell
 .\bin\build_motorway_cell_preview.ps1 -Mixed -OutputDirectory .\generated\phase_e_mixed_centred_routes_20261014
-.\bin\test_terrain_infill.ps1 -Mixed -OutputDirectory .\generated\phase_e_mixed_centred_routes_20261014
+.\tests\powershell\test_terrain_infill.ps1 -Mixed -OutputDirectory .\generated\phase_e_mixed_centred_routes_20261014
 ```
 
 `Assert-ZMStraightMotorwayCellContract` in `bin/motorway_geometry.psm1` validates
@@ -273,7 +295,7 @@ integer rounding. Explicit origins remain limited to the isolated measured
 motorway path; this does not authorize new ordinary authored offsets.
 
 ```powershell
-.\bin\test_motorway_geometry.ps1
+.\tests\powershell\test_motorway_geometry.ps1
 ```
 
 This source-only fixture exercises production corridor creation and validation,
@@ -291,7 +313,7 @@ The pure policy in [scenery_density.psm1](bin/scenery_density.psm1) is covered b
 the fast, isolated regression:
 
 ```powershell
-.\bin\test_scenery_density.ps1
+.\tests\powershell\test_scenery_density.ps1
 ```
 
 This focused contract/planner regression is not full world regeneration or
@@ -393,7 +415,7 @@ fixed-identity placement is already wired to the policy.
 For Alpha 3.2 wide-motorway integration, the user trusts the authored sources;
 individual asset re-approval is not required. Use
 `.\bin\survey_motorway_templates.ps1 -WorldProfile preview` for read-only saved
-winding summaries and `.\bin\test_motorway_survey.ps1` for focused regression.
+winding summaries and `.\tests\powershell\test_motorway_survey.ps1` for focused regression.
 An optional `-Output <report.json>` records detailed winding/material/entity
 evidence. This is not compiled collision, inferred drivable ports or prop bounds.
 Review generated assemblies in Hammer when needed, not each known-good asset.
@@ -406,7 +428,7 @@ dimensions or asymmetric port positions do not authorize rotation changes.
 [motorway_geometry.psm1](bin/motorway_geometry.psm1) provides wide-only nominal
 footprint lookup, cardinal physical point/envelope transforms and occupied-slot
 records from an explicit top-left logical anchor. Run
-`.\bin\test_motorway_geometry.ps1` for focused geometry-contract checks.
+`.\tests\powershell\test_motorway_geometry.ps1` for focused geometry-contract checks.
 At90/270 degrees width/height swap;6x3 and3x4 even spans keep half-tile centres.
 Reservation `originOffset` is measured from the anchor tile's physical centre,
 not an inferred correction to the authored VMF. Logical south means negative
@@ -432,7 +454,7 @@ For the generated Phase B integration inspection, run:
 
 ```powershell
 .\bin\build_motorway_preview.ps1 -WorldProfile preview
-.\bin\test_motorway_preview.ps1
+.\tests\powershell\test_motorway_preview.ps1
 ```
 
 The default isolated output is `generated/phase_b_motorway`: one overview of
@@ -461,7 +483,7 @@ For cell-level inspection, `.\bin\build_motorway_cell_preview.ps1` creates two
 complete straight-cell examples through the ordinary planner and VMF builder,
 not through the asset-overview writer. Both scripts require an explicit
 `-MotorwayCellInspection` mode; the wrapper supplies isolated settings, cell
-and skybox output directories. Run `.\bin\test_motorway_cells.ps1` for actual
+and skybox output directories. Run `.\tests\powershell\test_motorway_cells.ps1` for actual
 written-cell and normal-generation controls.
 
 The default output is `generated/phase_b_motorway_cells`. North-south logical
@@ -491,7 +513,7 @@ authored Z and unresolved height/grade/seam/partial-boundary issues remain
 explicit; conservative AABB overlap is not a compiled collision verdict.
 The default straight path remains schema1.
 
-Run `.\bin\test_complex_motorway_cells.ps1` for seven-piece coverage, exact
+Run `.\tests\powershell\test_complex_motorway_cells.ps1` for seven-piece coverage, exact
 written-source transforms, shell/skybox/scenery ownership, all-instance overlap
 evidence, source fingerprints, repeat VMF/layout determinism and rejected mixed
 topologies. The T-junction is labelled synthetic because the real matching
@@ -526,7 +548,7 @@ The cell builder records emitted ground owners, area and source fingerprints
 in `terrainInfill` layout metadata. Existing schema2inspection VMFs can refresh
 from their verified old structure when infill instance counts change; ordinary
 and schema1straight layouts keep their original structure. Run
-`bin/test_terrain_infill.ps1` for base dimensions/materials/no-overwrite,
+`tests/powershell/test_terrain_infill.ps1` for base dimensions/materials/no-overwrite,
 integer rectangle selection, positive-area exclusion, accounted ground/exclusions
 and actual written-cell evidence. Corrected inspection output is isolated under
 `generated/phase_b_infill_cells`; no whole-world generation or staging is needed.
@@ -546,7 +568,7 @@ motorway-only pass is not a replacement for full preview generation.
 .\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData <plan.json> -CellDirectory <generated-src> -SkyboxOutputDirectory <generated-skybox> -RefreshGenerated -MotorwayOnlyInfill -MeasureCompleteTerrainInfill
 .\bin\create_terrain_infill_templates.ps1 -WorldProfile preview -PartialGapLayoutDirectory <generated-src> -CompletePatches -MotorwayOnly
 .\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData <plan.json> -CellDirectory <generated-src> -SkyboxOutputDirectory <generated-skybox> -RefreshGenerated -MotorwayOnlyInfill -SizedTerrainInfill -CompleteTerrainInfill
-.\bin\test_motorway_infill_scope.ps1
+.\tests\powershell\test_motorway_infill_scope.ps1
 ```
 
 The original corner/crossroads reviews remain accepted. `-SizedInfill`
@@ -1071,7 +1093,7 @@ Run `bin/analyze_world_reachability.ps1` after generating a matching manifest an
 
 `mapGeneration.safeZones.minimumSpacingCells` sets the preferred Euclidean spacing between den entrances. Placement considers only reachable local-road candidates, tries the most constrained districts first, and maximizes separation before district-center and supported-landmark preferences. If a district has no candidate at the target distance, it falls back to its best available reachable location; the manifest records the target, actual minimum separation, and per-district fallback status.
 
-For `bridge-ramp-*` recipes, the center follows the cell's road topology; a straight road keeps a straight center rather than gaining unconnected cross-junction arms. The ramp occupies the first tile along the bridge direction, and bridge road continues beyond it rather than capping perpendicular ordinary-road approaches with deadends. Carpark bridge-ramp variants retain their separately-planned carpark junction. Run `bin/test_phase_c2_layouts.ps1 -WorldProfile preview` after planner changes; also inspect regenerated recipes and the developer zoo in Hammer before shipping a visual change.
+For `bridge-ramp-*` recipes, the center follows the cell's road topology; a straight road keeps a straight center rather than gaining unconnected cross-junction arms. The ramp occupies the first tile along the bridge direction, and bridge road continues beyond it rather than capping perpendicular ordinary-road approaches with deadends. Carpark bridge-ramp variants retain their separately-planned carpark junction. Run `tests/powershell/test_phase_c2_layouts.ps1 -WorldProfile preview` after planner changes; also inspect regenerated recipes and the developer zoo in Hammer before shipping a visual change.
 
 ### `highways`
 
@@ -1328,7 +1350,7 @@ Building height is inferred from the letter count after the number in names such
 
 `tile_skyscraper_*_2x` templates are ordinary 2x2 buildings, not landmarks. Their center-to-edge selection uses a separate deterministic hash after the existing automatic multi-tile placement chance. The selected tower family retains district height preference and falls back to ordinary multi-tile candidates if its footprint cannot fit. Existing landmarks, forced fixtures, destroyed-only pools and placement exclusions remain authoritative. The percentages describe preferred macro selection attempts, not all buildings or terrain tiles; measure successful placements separately. Selection percentages and preference results do not enter recipe identity: the existing macro key records the realized template, footprint, anchor and rotation. Variant generation refreshes this key after placement so different actual tower layouts cannot share a BSP. Omitting both percentage settings disables automatic skyscraper selection. Report the unique required BSP count and time impact before broad compilation, and obtain approval for a material increase.
 
-Run `.\bin\test_skyscraper_selection.ps1` for focused centrality, frequency, classification, height-weighting and recipe-identity checks. Pass `-PlanPath <preview-plan.json>` to additionally verify realized central-versus-outer tower concentration and shared-recipe consistency. Run `.\bin\test_building_frontage.ps1` and `.\bin\test_multi_tile_templates.ps1` for the placement paths affected by changing this building pool.
+Run `.\tests\powershell\test_skyscraper_selection.ps1` for focused centrality, frequency, classification, height-weighting and recipe-identity checks. Pass `-PlanPath <preview-plan.json>` to additionally verify realized central-versus-outer tower concentration and shared-recipe consistency. Run `.\tests\powershell\test_building_frontage.ps1` and `.\tests\powershell\test_multi_tile_templates.ps1` for the placement paths affected by changing this building pool.
 
 ### `decorations` And `carparks`
 
@@ -1355,7 +1377,7 @@ Carparks only replace an eligible building space beside a road. They do not over
 | `topologyVariants.chancePercent` | Chance from `0` to `100` that an eligible plain straight road or motorway tile with a configured variant pool becomes an authored visual variant. Eligible tiles have role `road` and exactly the `road-straight` or `motorway-straight` template; ramps, bridges, junctions, gates, carparks and border tiles are never swapped. |
 | `topologyVariants.templates` | Optional variant pools keyed by `road-straight` or `motorway-straight`. Each variant must keep the base piece's footprint, brushes and connections. The current active pool contains ordinary-road variants; add a motorway pool only when approved alternatives match the wide source footprint. Selection uses the cell seed and tile coordinates, so a stable seed gives the same plan. |
 
-`bin/test_phase_e_layouts.ps1` checks these limits, the industrial selection, the variant share, orphan `.vmx` files, and, with `-Replan`, that re-planning gives the same plan.
+`tests/powershell/test_phase_e_layouts.ps1` checks these limits, the industrial selection, the variant share, orphan `.vmx` files, and, with `-Replan`, that re-planning gives the same plan.
 
 ### `variants`
 
@@ -1376,7 +1398,7 @@ must not accidentally share one BSP just because their coarse topology/profile
 codes match. Context splits can therefore produce more unique BSPs than the
 candidate variant count alone suggests.
 
-`bin/test_cell_variants.ps1 -PlanData <plan> -BaselinePlanData <previous-plan>`
+`tests/powershell/test_cell_variants.ps1 -PlanData <plan> -BaselinePlanData <previous-plan>`
 checks real layout differences at every adjacent pair and unchanged logical
 connections, transport metadata and safe-zone footprints. Optional
 `-LayoutDirectory <generated-src>` checks generated border/outer placements too.
@@ -1621,7 +1643,7 @@ sea height, beach width, foam and wall materials remain unchanged. Fog starts
 its continuation at 2240, and lighting samples stay within the traversal
 envelope rather than growing their count with the scenery ring.
 
-Run `.\bin\test_skybox_edges.ps1 -BuildModels` for isolated source-transform,
+Run `.\tests\powershell\test_skybox_edges.ps1 -BuildModels` for isolated source-transform,
 snow/tower, dependency-hash, companion-cache and compiled-manifest checks.
 It writes only under `generated\skybox_edges`. The source directory supplied
 to `check_vis_budgets.ps1` is also forwarded to the compiler, so an isolated
@@ -1650,13 +1672,13 @@ The authored city shell has a 4608-unit inner sky ceiling and a 4672-unit outer 
 
 City map captures use the loaded skybox manifest's playable ceiling (`cameraZ - 128`, currently 4992), not a fixed 3600-unit camera below the tallest roof. Maps without a matching skybox manifest retain the existing fallback height. Source changes require rebuilding affected maps and their matching skybox manifest together before staging; do not pair a new manifest with old city BSPs.
 
-Run `.\bin\test_skyscraper_height.ps1 -Compile` to generate isolated fixtures for all three tower variants and run VBSP under `generated/skyscraper_height`. This checks source/room/capture clearance and structural compilation, not visual placement, skyline cost or final lighting. Run the visibility-budget check against that exact fixture plan/list/source/build directory before a full lighting compile.
+Run `.\tests\powershell\test_skyscraper_height.ps1 -Compile` to generate isolated fixtures for all three tower variants and run VBSP under `generated/skyscraper_height`. This checks source/room/capture clearance and structural compilation, not visual placement, skyline cost or final lighting. Run the visibility-budget check against that exact fixture plan/list/source/build directory before a full lighting compile.
 
-The skybox model builder also exports optional `towers` entries: `<recipe>_t<N>` models containing only authored `tile_skyscraper_*_2x` instances, with the same scaled placement, material mapping and UVs as the full recipe. These have independent build stamps and exclude ordinary terrain/roads and set dressing. `towerParts` and `towerTriangles` in the model report describe their geometry cost. Run `.\bin\test_skybox_towers.ps1` to verify tower-only extraction, exact transform/UV preservation, and empty-recipe handling.
+The skybox model builder also exports optional `towers` entries: `<recipe>_t<N>` models containing only authored `tile_skyscraper_*_2x` instances, with the same scaled placement, material mapping and UVs as the full recipe. These have independent build stamps and exclude ordinary terrain/roads and set dressing. `towerParts` and `towerTriangles` in the model report describe their geometry cost. Run `.\tests\powershell\test_skybox_towers.ps1` to verify tower-only extraction, exact transform/UV preservation, and empty-recipe handling.
 
-`skybox3d.skylineRadius` (24 cells) controls tower-only coverage independently of the detailed `neighbourRadius` (2). The room expands on the same 1024-unit block grid to contain this coverage, with a hard Source-coordinate check. Coverage is bounded, not automatically expanded to every cell in a larger production world. `maxTowerModels` (128 parts) bounds both distant model creation and draws: nearest cells win, with deterministic coordinate/path tie-breaks. Towers in the current/detailed cells are excluded from this pass. Distant models use a separate long-range fog pass before the translucent nearby horizon, so its graduated haze blends over the towers rather than cutting off geometry drawn afterward; visual occlusion and weather matching still require live acceptance. `zombiesim_skybox_status` reports candidates, budget, omissions, missing assets, placements and frame draws. Weather and lighting sampling clamp both X/Y bounds to the manifest's playable cell span, not the enlarged sky room. Run `.\bin\test_skyscraper_height.ps1 -Compile` for the room-coverage and coordinate-limit regression in addition to tower clearance; these checks do not establish live visibility.
+`skybox3d.skylineRadius` (24 cells) controls tower-only coverage independently of the detailed `neighbourRadius` (2). The room expands on the same 1024-unit block grid to contain this coverage, with a hard Source-coordinate check. Coverage is bounded, not automatically expanded to every cell in a larger production world. `maxTowerModels` (128 parts) bounds both distant model creation and draws: nearest cells win, with deterministic coordinate/path tie-breaks. Towers in the current/detailed cells are excluded from this pass. Distant models use a separate long-range fog pass before the translucent nearby horizon, so its graduated haze blends over the towers rather than cutting off geometry drawn afterward; visual occlusion and weather matching still require live acceptance. `zombiesim_skybox_status` reports candidates, budget, omissions, missing assets, placements and frame draws. Weather and lighting sampling clamp both X/Y bounds to the manifest's playable cell span, not the enlarged sky room. Run `.\tests\powershell\test_skyscraper_height.ps1 -Compile` for the room-coverage and coordinate-limit regression in addition to tower clearance; these checks do not establish live visibility.
 
-To prepare models without replacing a mounted manifest, pass `-OutputContentDirectory .\generated\skybox_preview\release_content` to `build_skybox_models.ps1`. Source material lookup still uses the installed content/mounted game assets; output models, wrappers and manifest go to the isolated directory. Validate that output with `.\bin\test_skybox_manifest.ps1 -WorldProfile preview -PlanData <matching-plan> -ContentDirectory .\generated\skybox_preview\release_content`. The check verifies exact recipe coverage, settings, nonempty model companions, tower presence and every preview viewpoint's distant-part budget. Once matching BSP compilation succeeds, copy the prepared models/materials to content and rerun the exporter with its default output to reuse the stamps, prune stale profile models and publish the manifest; never load a new camera manifest with old BSPs.
+To prepare models without replacing a mounted manifest, pass `-OutputContentDirectory .\generated\skybox_preview\release_content` to `build_skybox_models.ps1`. Source material lookup still uses the installed content/mounted game assets; output models, wrappers and manifest go to the isolated directory. Validate that output with `.\tests\powershell\test_skybox_manifest.ps1 -WorldProfile preview -PlanData <matching-plan> -ContentDirectory .\generated\skybox_preview\release_content`. The check verifies exact recipe coverage, settings, nonempty model companions, tower presence and every preview viewpoint's distant-part budget. Once matching BSP compilation succeeds, copy the prepared models/materials to content and rerun the exporter with its default output to reuse the stamps, prune stale profile models and publish the manifest; never load a new camera manifest with old BSPs.
 
 For fully isolated model intermediates also pass `-BuildDirectory` (for example
 `.\generated\skybox_preview\model_build`). The builder uses the matching plan's

@@ -2,6 +2,8 @@ param(
     [string]$WorldProfile = 'preview',
     [string]$SettingsPath = '',
     [string]$MapData = '',
+    [string]$TrustedMotorwayPlan = '',
+    [string[]]$CellCoordinates = @(),
     [switch]$Complex,
     [switch]$Mixed,
     [switch]$SizedInfill,
@@ -16,6 +18,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if ($NormalComplex -and ($Mixed -or $Complex -or $Normal -or $NormalPlanOnly -or $SizedInfill -or $CompleteInfill)) { throw 'NormalComplex is a standalone normal-generator mode with its own complete infill pass.' }
+if ($CellCoordinates.Count -gt 0 -and -not $NormalComplex) { throw 'CellCoordinates is supported only by the normal complex preview mode.' }
 if ($Mixed) { $Complex = $true; $CompleteInfill = $true }
 if ($Normal -and ($NormalPlanOnly -or $Complex -or $SizedInfill -or $CompleteInfill)) { throw 'Normal emission currently covers the two plain straight recipes without inspection or infill modes.' }
 if ($NormalPlanOnly -and ($Complex -or $SizedInfill -or $CompleteInfill)) { throw 'Normal plan-only checks currently cover plain straights without inspection or infill modes.' }
@@ -82,6 +85,60 @@ if ($NormalComplex) {
         $_.highway.present -and $null -eq $_.safeZone -and -not (((@($_.highway.connections | Sort-Object) -join ',') -in @('N,S', 'E,W')) -and -not $_.highway.bridge -and @($_.highway.rampExits).Count -eq 0)
     })
     if ($cells.Count -eq 0) { throw 'No complex motorway cells found in the manifest.' }
+    if ($CellCoordinates.Count -gt 0) {
+        $requestedCoordinates = @{}
+        foreach ($coordinate in $CellCoordinates) {
+            if ($coordinate -notmatch '^(?<x>\d+),(?<y>\d+)$') { throw "Invalid logical cell coordinate '$coordinate'." }
+            if ($requestedCoordinates.ContainsKey($coordinate)) { throw "Cell coordinate '$coordinate' was requested more than once." }
+            $requestedCoordinates[$coordinate] = $true
+        }
+        $cells = @($cells | Where-Object { $requestedCoordinates.ContainsKey("$($_.x),$($_.y)") })
+        if ($cells.Count -ne $requestedCoordinates.Count) {
+            $foundCoordinates = @($cells | ForEach-Object { "$($_.x),$($_.y)" })
+            $missingCoordinates = @($requestedCoordinates.Keys | Where-Object { $_ -notin $foundCoordinates })
+            throw "Normal complex preview cells are missing or not complex motorway cells: $($missingCoordinates -join ', ')."
+        }
+    }
+}
+$usesTrustedMotorwayPlan = $NormalPlanOnly -or $Normal -or $NormalComplex
+$trustedPlanSubsetPath = ''
+if ($usesTrustedMotorwayPlan) {
+    if ([string]::IsNullOrWhiteSpace($TrustedMotorwayPlan)) {
+        $TrustedMotorwayPlan = Join-Path $root 'generated\phase_j_preview_20261015\plan.json'
+    }
+    $TrustedMotorwayPlan = [IO.Path]::GetFullPath($TrustedMotorwayPlan)
+    if (-not (Test-Path -LiteralPath $TrustedMotorwayPlan -PathType Leaf)) {
+        throw "Trusted motorway plan was not found: $TrustedMotorwayPlan"
+    }
+    $trustedPlanData = Get-Content -Raw -LiteralPath $TrustedMotorwayPlan | ConvertFrom-Json
+    if ($trustedPlanData.mapSeed -ne [int]$manifest.map.seed -or
+        $trustedPlanData.mapGridCells -ne [int]$manifest.map.gridCells) {
+        throw 'Trusted motorway plan and inspection manifest must use the same seed and grid.'
+    }
+    $trustedCellsByCoordinate = @{}
+    foreach ($trustedCell in $trustedPlanData.cells) {
+        $coordinate = "$($trustedCell.x),$($trustedCell.y)"
+        if ($trustedCellsByCoordinate.ContainsKey($coordinate)) {
+            throw "Trusted motorway plan repeats logical cell $coordinate."
+        }
+        $trustedCellsByCoordinate[$coordinate] = $trustedCell
+    }
+    $trustedSubsetCells = @(
+        foreach ($cell in $cells) {
+            $coordinate = "$($cell.x),$($cell.y)"
+            if (-not $trustedCellsByCoordinate.ContainsKey($coordinate)) {
+                throw "Trusted motorway plan has no contract for logical cell $coordinate."
+            }
+            $trustedCellsByCoordinate[$coordinate]
+        }
+    )
+    if ($trustedSubsetCells.Count -ne $cells.Count) {
+        throw 'Trusted motorway plan does not cover every selected preview cell.'
+    }
+    $trustedPlanData.cells = $trustedSubsetCells
+    [IO.Directory]::CreateDirectory($OutputDirectory) | Out-Null
+    $trustedPlanSubsetPath = Join-Path $OutputDirectory 'trusted-motorway-plan.json'
+    Write-TextFileIfChanged -Path $trustedPlanSubsetPath -Content ($trustedPlanData | ConvertTo-Json -Depth 100) | Out-Null
 }
 $manifest.cells = $cells
 $manifest.safeZones = @()
@@ -140,12 +197,14 @@ if ($Mixed) {
     & (Join-Path $PSScriptRoot 'create_road_connector_template.ps1') -WorldProfile preview -SettingsPath $isolatedSettings
     if (-not $?) { throw 'Approved extended road connector initialization failed.' }
 }
-if ($Complex -or $NormalComplex) {
+if ($Complex) {
     & (Join-Path $PSScriptRoot 'build_motorway_preview.ps1') -WorldProfile preview -SettingsPath $isolatedSettings -OutputDirectory (Join-Path $OutputDirectory 'measured-assemblies') | Out-Null
     if (-not $?) { throw 'Measured assembly report generation failed.' }
     $assemblyReport = Join-Path $OutputDirectory 'measured-assemblies\assembly-report.json'
 }
-& (Join-Path $PSScriptRoot 'plan_cell_templates.ps1') -WorldProfile preview -SettingsPath $isolatedSettings -MapData $fixtureMap -CellDirectory $src -Output $planPath -ListOutput $listPath -MotorwayCellInspection:(!$NormalPlanOnly -and !$Normal -and !$NormalComplex) -MotorwayAssemblyReport $assemblyReport | Out-Null
+$trustedPlanArguments = @{}
+if ($usesTrustedMotorwayPlan) { $trustedPlanArguments.TrustedMotorwayPlan = $trustedPlanSubsetPath }
+& (Join-Path $PSScriptRoot 'plan_cell_templates.ps1') -WorldProfile preview -SettingsPath $isolatedSettings -MapData $fixtureMap -CellDirectory $src -Output $planPath -ListOutput $listPath -MotorwayCellInspection:(!$NormalPlanOnly -and !$Normal -and !$NormalComplex) -MotorwayAssemblyReport $assemblyReport @trustedPlanArguments | Out-Null
 if (-not $?) { throw 'Motorway inspection cell planner failed.' }
 if ($NormalPlanOnly) {
     $plan = Get-Content -Raw -LiteralPath $planPath | ConvertFrom-Json

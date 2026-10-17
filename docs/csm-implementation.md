@@ -6,6 +6,10 @@
 work deferred outside Alpha 3.2's completion requirements.** This is acceptance
 of the limited opt-in experiment, not seamless cascade, live lifecycle or
 performance certification. No map changes or dependencies were introduced.
+On 2026-10-17 the user reported that the current CSM implementation works fine
+and accepted its checks for now. This supersedes the earlier pending visual
+review for the current player-centered implementation; it does not create new
+benchmark, multiplayer, or lifecycle evidence.
 The user later authorized one narrow flashlight follow-up: while sun CSM is
 ready, only the local player's F-toggle chest lamp casts dynamic shadows. Other
 players' lamps and the CSM-off path stay unshadowed; this does not reopen the
@@ -66,11 +70,13 @@ reloads or benchmarks merely to close Alpha 3.2.
   Compiled `prop_static` map models remain unchanged and are not filtered.
 - GLua syntax275/0 and editor diagnostics pass. Earlier one-projector preview
   review confirmed world/telephone-pole and tree-leaf shadows only in the
-  observed cell. The original runtime/Options acceptance did not certify the
-  current player-centered change, which still needs fresh-load visual review.
-- Live enable/tier/persistence behavior, lifecycle, secondary-view/skybox
-  isolation, two-client independence and matched foreground performance remain
-  unverified. Focus-unmatched bridge samples are not causal cost evidence.
+  observed cell. The user has now accepted the current implementation by report;
+  this supersedes the earlier pending visual review for the player-centered
+  change. No additional instrumented run occurred in this update.
+- Lifecycle, secondary-view/skybox isolation, two-client independence and
+  matched foreground performance remain unverified and deferred. The user
+  accepts these limits for now; focus-unmatched bridge samples are not causal
+  cost evidence.
 - The F-toggle chest lamp stays unshadowed when CSM is off. With CSM ready, the
   local player's lamp alone enables shadows; remote lamps stay unshadowed.
   The server foliage owner normally disables tree shadows; CSM now overrides
@@ -751,7 +757,9 @@ separate from syntax or fixture success.
       enable toggle (default off) plus one Low/Medium/High quality selector;
       chest lamp remains F-only. The selected mapping is Low = 1 cascade /
       15 Hz, Medium = 2 / 30 Hz, High = 3 / rendered frame rate. These controls
-      are wired to the accepted experimental owner; live behavior is deferred.
+      are wired to the accepted experimental owner; user accepts current
+      behavior for now, while instrumented lifecycle/performance work remains
+      deferred.
 - [ ] Measure performance and optimize CSM shadows separately from the chest
       lamp. Shadowed-chest A/B/A profiles were22.5/59.8/26.6FPS; switching the
       permanent lamp to unshadowed cones then measured59.5FPS versus the
@@ -1047,8 +1055,9 @@ one-projector probe or copy the upstream tree.
 When the user explicitly returns to CSM, first inspect the current owner and
 retained evidence, agree one bounded target from the deferred backlog, and
 reconfirm map/profile, foreground conditions and the unchanged default-off
-policy. Existing source has not received a runtime/Options live review; use
-that evidence boundary rather than assuming experimental acceptance proves it.
+policy. The user accepted the current implementation on 2026-10-17; do not
+repeat visual checks for the same build or claim unmeasured lifecycle,
+multiplayer, or performance evidence.
 
 Stop and ask for a decision if:
 

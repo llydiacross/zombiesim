@@ -2,10 +2,53 @@
 
 ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua gameplay code with a PowerShell pipeline that generates and compiles reusable Source VMF recipe maps.
 
+## Future-agent rule: keep the contract simple
+
+- Start from the user's explicit behavior rule and the existing authoritative
+  owner. For travel, `ZM_World` connectivity/accessibility decides whether a
+  neighbor is reachable; a transition trigger supplies direction. Do not add
+  geometry matching, face-ID checks, tolerances, or compatibility defaults as
+  access vetoes when that rule already answers the question.
+- Keep access decisions separate from presentation and arrival safety. Optional
+  geometry probes may position arrows or select a safe arrival, but must not
+  overrule an accessible world-data route.
+- Preserve canonical placement rules. Ordinary roads stay on the 640-unit
+  5x5 grid; motorway leases reserve/suppress grid slots rather than moving
+  roads to match measured mouths. Do not request per-cell offsets or reopen
+  user-approved motorway art.
+- Prefer one reproduced failure and the smallest owner-level fix. Add only
+  checks required by the contract; do not pursue mathematical perfection,
+  duplicate state, or schema/fingerprint machinery without a demonstrated need.
+  Treat diagnostics as diagnostics, not new requirements.
+- In preview/dev data, do not hide stale or incomplete exports behind a
+  backwards-compatibility default. Either produce the current source data or
+  stop depending on that optional metadata.
+
 ## Active Task Tracker
 
-- **Alpha3.2 Phase J in-game motorway review fixes, 2026-10-15 (incremental
-  compile complete; staging + visual review pending):** complex motorway assemblies now
+The 2026-10-17 entries below are current. Later dated entries preserve the
+status as of their checkpoint; their older "pending" wording is historical and
+does not supersede this snapshot.
+
+- **Alpha3.2 revised focus, 2026-10-17:** the user reports all motorway gates work and alignment is perfect in game. The two corrected BSPs (`zz_preview_74c1b0c24754`, `zz_preview_a30b0e90c7e2`) are staged in `content/maps` and engine `garrysmod/maps`; hashes match the isolated builds. `content/data_static/zombiesim_world_preview.json` routes logical IDs454 and113 to those names via the targeted map-name updater; only those two `map` fields changed, and current plan/capture hashes were preserved for now. All336 active preview cell materials and map-browser thumbnails are refreshed and old `-edge2` cell images removed. A live load found missing skyline footprints for the two new map names; the targeted updater now emits matching footprint entries and temporarily reuses each replaced recipe's skyline model arrays. The updated manifest is staged and the same preview map was reloaded; user confirmation that the warning is gone remains pending. Keep the world generator paused and defer exact skyline models/full revision hashes to the later all-map export.
+- **Phase J transition gate simplification, 2026-10-17:** gate access uses `CanTravelToNeighbour`/`ZM_World` exits as its only route-availability authority. The trigger-center comparison, invalid-measured-gate state, and runtime `route` default were removed. Optional `motorwayGates` records are used only for marker/arrival presentation. Server transition fixtures pass12/12 and GLua syntax passes277/0. Same-map reload and read-only gate report confirmed the west triggers published, the west neighbor available, and the marker unblocked; the user then confirmed all gates work.
+- **Targeted runtime map-name update:** the preview world JSON now maps cells113/454 to the staged BSP names; the update changes only those `map` fields and preserves the existing revision hashes until the final all-map export. GMod was closed at the staging checkpoint; the later same-map runtime load and skyline-manifest follow-up are recorded above.
+- **Preview cell material refresh, 2026-10-17:** rendered the current 336-recipe base plan and the two corrected-cell plans, then staged 334 unchanged base-plan images plus the two corrected images for logical IDs113/454. All336 runtime cell-material names match, every staged PNG decodes at1728x1728, and copied hashes were verified. Removed the336 stale `-edge2` cell images. Preview map-browser thumbnails now cover exactly the336 active runtime names; the original preview launcher thumbnail was restored hash-identically. The16 existing `map_layers` files had no `-edge2` names and were unchanged. Satellite/world-photo and navmesh-backed wireframe outputs remain for after CHM/navmeshes. No VMF/BSP/runtime-hash refresh or live reload occurred; temporary render folders were removed after staging.
+- **Cell Health Manager batch controls, 2026-10-17:** the preview-admin grid reports navmesh presence, current-map clear/atmospheric PNGs and no revision hashes. The user approved an on-click "Start batch of unhealthy cells" control with unchecked-by-default navmesh/photo/cubemap options and a union target rule. The server recomputes the selected work and reuses the persistent composite `ZM_WorldCapture` queue; nav saves/reloads/validates before photos, never concurrently. Navmesh/cubemap work is per BSP, photos per logical cell. Cubemaps are manual only: prompt the user to run native `buildcubemaps`, ask after map reload whether it succeeded, persist Yes per preview map as `USER CONFIRMED`, and leave No incomplete while continuing. Partial photo imports merge only current-map captures and preserve matching existing images; use the existing watcher after restoration. Focused contract6/6, capture client7/7/server11/11, importer6/6, map/skyline updater9/9 and GLua syntax281/0 pass. The latest source was loaded with a same-map reload of `zz_preview_9a00023600b3`; the user reports the controls are visible/legible and the skyline warning is gone. The live client suite passes7/7; no batch has started, so actual maintenance execution remains unverified.
+- **CSM current-check acceptance, 2026-10-17:** the user reports the current CSM implementation works and accepts its checks for now. Keep the default-off experiment and its documented technical limits; do not reopen its deferred lifecycle, multiplayer, or performance work without a new request.
+- **Next-scope note:** the Cell Health Manager is a preview-only artifact grid
+  and user-started maintenance control, not gameplay HP. Green means navmesh,
+  both current-map photos, and a user-confirmed cubemap; the cubemap label is
+  not engine verification. Keep all batch categories unchecked by default.
+  Do not automate `buildcubemaps`, start a batch without an explicit button
+  click, or start broad generator/revision work. First reload the current
+  preview map with the latest source, then review the updated controls and
+  confirm the skyline warning is gone. Any photo run still needs the existing
+  watcher to merge/stage images; navmeshes use the existing staging command.
+  Full-world output work remains separately gated and Phase K/L closure remains
+  deferred.
+- **Historical Alpha3.2 Phase J in-game motorway review fixes, 2026-10-15
+  (incremental compile complete; live checks later accepted 2026-10-17):** complex motorway assemblies now
   shift in whole 320 steps so arms leave cells on the centre line, and
   continuation straights snap to whole 640 slots (`gridSnap` in the contract;
   (13,6) moves640 north). Residual authored mouth jogs (14-48) are Hammer
@@ -15,12 +58,14 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
   (49 recipes/98 cells previously lacked gates). Trees need natural, level
   ground across a192 canopy ring. **User rule:** verify alignment by sight in
   game; do not use motorway_geometry mathematical proofs as evidence.
-- **Alpha3.2 refresh status, 2026-10-16 (incremental compile complete; not accepted):**
+- **Historical Alpha3.2 refresh status, 2026-10-16 (incremental compile complete; later live motorway checks accepted, full output/phase still open):**
   fresh seed-1337 preview plan has576 cells,336 city recipes,96 motorway
   assemblies and3 reusable safe-room maps. User-labelled Cell15,11 (plan grid
   14,23) now has a straight `roads/tile_road.vmf` center, east road ramp and
-  bridge continuation; the two east `onramp-e` motorway cells shift only the
-  ordinary road branch north640 while retaining the motorway piece. The
+  bridge continuation. At this checkpoint, the two east `onramp-e` motorway
+  cells shifted the ordinary road branch north640 while retaining the motorway
+  piece; that per-cell shift is superseded by the lease-aware grid-slot rule
+  above and must not be reused. The
   Army Base landmark cell's three fallback building slots now all use
   `tiletemplates/army`. Focused checks pass: bridge-ramp12, Army9, on-ramp20,
   complex gates234; GLua277/0. The complete-infill VMF emission completed
@@ -67,11 +112,12 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
   this cleanup once recovered ~33 GB.
 - **Alpha3.2 normal wide-motorway cells approved, 2026-10-15:** all27
   complex/mixed preview cells now come from the normal planner (schema-2
-  `motorwayAssembly`, measured assembly report required). Approved fixtures are
+  `motorwayAssembly`, measured assembly report required at that checkpoint). Approved fixtures are
   instance-identical; user approved new cells0,7/12,7/23,18/15,18 in Hammer++.
   Roads stay on the5x5 grid, joins use corner/straight/corner doglegs, no bend
   connectors, T skipped. Motorway geometry fixes are user-owned in Hammer.
-  Next is the approved Phase J full preview batch; ask before navmesh/Satellite.
+  This checkpoint's measured-report normal path is superseded for the current
+  trusted Phase J refresh above; reports remain diagnostic-only there.
   Quick review tool: `build_motorway_cell_preview.ps1 -NormalComplex -SkipInfill`.
   Periodically delete superseded `generated/` test folders (keep ledgers/backups).
 - **Alpha3.2 measured complex travel preparation:** user explicitly approved
@@ -1489,8 +1535,9 @@ wording is superseded by the final acceptance above, not a current task list.
 Keep standalone GLua test suites in `gamemode/tests/`, with their realm prefixes
 (`cl_`, `sv_`, or `sh_`). Update `include` and `AddCSLuaFile` paths when adding or
 moving suites; retain dependency load order. Shared test-runner utilities stay
-in `gamemode/utils/`, offline PowerShell checks in `bin/`, and static-data
-fixtures in the root `tests/` folder.
+in `gamemode/utils/`; standalone PowerShell regression tests live in
+`tests/powershell/`, while generator/build/support scripts stay in `bin/`.
+Static-data fixtures remain under `tests/`.
 
 Run PowerShell commands from the repository root. For changes to planning or VMF generation, use the preview pipeline and start with the fast structural check:
 
@@ -1505,14 +1552,14 @@ Run PowerShell commands from the repository root. For changes to planning or VMF
 Normal wide (3x) motorway cells plan only from current measured assemblies (`-MotorwayAssemblyReport`) and require the expanded border/outer rings. Root settings keep `vmfBuild.outerEdges.enabled` false, so full-world preview batches use an isolated settings copy with it enabled and redirected profile paths. Full terrain infill is three passes: `build_cell_vmfs.ps1 ... -MeasureCompleteTerrainInfill`, `create_terrain_infill_templates.ps1 -PartialGapLayoutDirectory <src> -CompletePatches`, then `build_cell_vmfs.ps1 ... -SizedTerrainInfill -CompleteTerrainInfill`.
 
 - After structural tile changes, run `./bin/check_vis_budgets.ps1 -WorldProfile preview -RefreshPortalData`; inspect affected layouts in Hammer, including generated developer zoos when applicable.
-- For planner yaw changes, extend and run focused regressions for the reported recipe and previously correct affected cases before broad regeneration. Building frontage changes must pass `./bin/test_building_frontage.ps1` and `./bin/test_multi_tile_templates.ps1` before refreshing the preview plan and VMFs.
+- For planner yaw changes, extend and run focused regressions for the reported recipe and previously correct affected cases before broad regeneration. Building frontage changes must pass `./tests/powershell/test_building_frontage.ps1` and `./tests/powershell/test_multi_tile_templates.ps1` before refreshing the preview plan and VMFs.
 - Only use `-SkipVBSP` with `-SkipRecipeRefresh` when the source VMFs are unchanged from the portal preflight. Review `generated/build_<profile>/compile-report.json` for failed or incomplete stages.
 - Builds are incremental: `build_cell_vmfs.ps1` writes a generated VMF or den copy only when its content changed, and `compile_cell_vmfs.ps1` / `check_vis_budgets.ps1` recompile a map only when its BSP is missing or the VMF or any `func_instance` it references (recursively, via `bin/vmf_source_dependencies.psm1`) is newer than the build output. Before a compile, state which maps a source edit affects. Do not pass `-Force` or `-ForcePortalData` for routine rebuilds; reserve them for compiler/config changes or a deliberate clean build.
 - A full VVIS/VRAD build and in-game launch are deliberate final checks. Batch related changes before launching Garry's Mod; reload `zn_preview_start` after preview staging or `zn_city_start` after city staging.
 - For iterative Lua live checks, use Garry's Mod's available hot-reload workflow instead of closing and relaunching the game. When a clean map/spawn cycle is needed, `changelevel <current-map>` reloads the same map without closing the client; verify the destination and player state before interpreting the result.
 - For `cl_*.lua`, camera, Derma, and map-transition changes, parsing or compilation is only static validation. Do not report behavior as verified until the affected input path has been exercised in a running client; otherwise state that an in-game check remains.
 - For visual results (fades, camera motion, outlines, prompts, highlights, placement), ask the human at the running client to look and report before building automated probes. Use the bridge for state evidence such as `zombiesim_player_status`, not as a substitute for eyes.
-- After any Lua change, run `./bin/test_glua_syntax.ps1` for an offline GLua syntax check. It uses the `gluac.exe` bundled with the GLua Enhanced VS Code extension (Garry's Mod's own `lua_shared.dll`), so `//`, `!=`, `&&`, and `continue` parse correctly. Stock `lua`/`luac` cannot parse GLua. This checks syntax only, not GMod APIs or realms.
+- After any Lua change, run `./tests/powershell/test_glua_syntax.ps1` for an offline GLua syntax check. It uses the `gluac.exe` bundled with the GLua Enhanced VS Code extension (Garry's Mod's own `lua_shared.dll`), so `//`, `!=`, `&&`, and `continue` parse correctly. Stock `lua`/`luac` cannot parse GLua. This checks syntax only, not GMod APIs or realms.
 - For runtime changes, use a two-part validation matrix: run the narrowest static or automated check first, then exercise the affected in-game command, input path, persistence transition, or client flow. Report static success and live success separately, and explicitly state when live verification remains.
 - In long implementation sessions, create or refresh a checkpoint after each subsystem boundary and after a failed validation loop. Record the current hypothesis, exact artifact or command under test, result, and next discriminating check before moving to another subsystem.
 

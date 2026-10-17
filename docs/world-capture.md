@@ -71,11 +71,15 @@ Monitor a known run with an attached process:
 .\bin\watch_world_capture.ps1 -RunId "<run-id>" -StagePreview
 ```
 
-It reports result progress, refuses replaced/partial/failed runs, stops on
-stale heartbeat or stalled progress, and validates/imports only after all
-results and original restoration are verified. It never changes game state
-or automatically retries a failed run. The queue itself survives monitor
-termination; inspect status and resume with `zombiesim_world_capture_retry`.
+It reports result progress, refuses replaced/failed runs or missing expected
+photo results, and validates/imports only after original restoration is
+verified. A partial Cell Health run merges new captures with existing images
+whose manifest map name still matches the current cell; stale map-name entries
+are dropped. Satellite is enabled only when both variants cover every logical
+cell. The watcher never changes game state or automatically retries a failed
+run. During a manual cubemap prompt it waits while the server heartbeat remains
+fresh. The queue survives monitor termination; inspect status and resume with
+`zombiesim_world_capture_retry`.
 
 ## Composite nav/capture maintenance
 
@@ -98,11 +102,37 @@ Native `.nav` saves are mounted from Garry's Mod's `maps` directory. This
 service does not copy them into distributable packages or claim publication
 readiness.
 
+### Cell Health batch controls
+
+Preview admins can start the server-validated batch from
+`zombiesim_dev_cell_health`. All three categories begin unchecked. Selecting
+multiple categories targets a logical cell when **any** selected artifact is
+incomplete; each queued cell carries only the missing selected work. Navmesh
+and cubemap work is deduplicated by unique BSP, while clear/atmospheric photos
+remain per logical cell. If both navmesh and photos are selected, one durable
+queue saves, reloads and validates the navmesh before capturing either photo
+variant.
+
+Cubemaps are never run by Lua, the bridge or the watcher. For each selected BSP,
+the current-map client prompt instructs the user to run `buildcubemaps` in the
+native console. After the map reload, the user answers whether it succeeded.
+Yes is persisted per preview map in
+`data/zombiesim/cubemap_confirmations_preview.json` and is displayed as
+**USER CONFIRMED**, not engine-verified. No clears any earlier confirmation,
+leaves the map incomplete, and continues the batch.
+
+When photo work was selected, the Cell Health panel reports the run ID. After
+the durable queue completes and restoration is verified, run
+`.\bin\watch_world_capture.ps1 -RunId "<run-id>" -StagePreview` to merge and
+stage its results. Navmeshes remain in Garry's Mod's `maps` directory until
+staged separately with `bin/stage_world_navmeshes.ps1`.
+
 `buildcubemaps` is **not** part of this Lua queue: Garry's Mod lists it in
 [Blocked ConCommands](https://wiki.facepunch.com/gmod/Blocked_ConCommands).
 `game.ConsoleCommand`, `RunConsoleCommand` and `Player:ConCommand` are not valid
-automation routes. Use native operator console entry or separately authorized
-external native-console automation; do not use aliases/exec/RCON as bypasses.
+automation routes. The Cell Health flow only prompts the user; enter the
+command manually in the native developer console. Do not use aliases, exec,
+RCON or other Lua routes as bypasses.
 
 ### Cubemap automation research (2026-10-10)
 
@@ -120,7 +150,15 @@ has `CreateDefaultCubemaps`; it is compiler evidence, not GMod's runtime
 `buildcubemaps` implementation. VDC runtime documentation was inaccessible
 behind Anubis; exact completion markers and HDR/LDR behaviour remain unverified.
 
-Recommended prototype after the active screenshot run:
+**User decision (2026-10-17):** do not automate native cubemap input or attempt
+engine-side success verification. The Cell Health batch prompts the user to run
+`buildcubemaps`, waits for the resulting map reload, then asks whether it
+succeeded. A Yes is accepted and persisted per preview BSP as **USER
+CONFIRMED**; a No clears any prior confirmation and leaves that BSP incomplete.
+This explicit-attestation workflow supersedes the external-driver prototype
+steps below; the historical research remains for engine context only.
+
+Historical external-driver prototype considered after the active screenshot run:
 
 1. Snapshot one isolated preview BSP and original survivor/map/preferences.
    Confirm the actual mounted writable BSP, rather than assuming `content/maps`

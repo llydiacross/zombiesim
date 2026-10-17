@@ -1,15 +1,206 @@
 # Alpha 3.2 - Phased Implementation Plan
 
-**Status: ACTIVE - PHASES 0/A/B/D ACCEPTED (B WITH EXPLICIT LIMITS); EXPERIMENTAL CSM ACCEPTED; PHASE M CANCELLED; NORMAL WIDE-MOTORWAY CELL INTEGRATION APPROVED 2026-10-15; PRIOR PHASE J COMPILE COMPLETE; TRUSTED LANE-GATE REFRESH SOURCE-VALIDATED; OUTPUT REFRESH/COMPILE/STAGING/VISUAL PENDING APPROVAL; GENERATOR FIRST.**
+**Status: ACTIVE - MOTORWAY LIVE CHECKS ACCEPTED 2026-10-17; TWO CORRECTED BSPs STAGED AND WIRED; 336 CURRENT PREVIEW CELL MATERIALS/THUMBNAILS REFRESHED; STALE EDGE2 MATERIALS REMOVED; TARGETED SKYLINE FOOTPRINTS STAGED WITH TEMPORARY MODEL ALIASES; CELL HEALTH BATCH CONTROLS IMPLEMENTED; FOCUSED FIXTURES PASS; USER CONFIRMS CONTROLS VISIBLE/LEGIBLE AND SKYBOX WARNING CLEARED; NO BATCH STARTED; WORLD GENERATOR PAUSED; FULL-WORLD OUTPUTS DEFERRED; PHASE K/L CLOSURE DEFERRED; NOT RELEASED.**
 
-## Current reconciled status - 2026-10-14
+## Current status - 2026-10-17
 
-**Read this section before the chronological evidence below.** The user
-requested a complete reconciliation after contradictory progress reports.
-The reconciliation is complete and the user resumed implementation, prioritizing
-density and motorways. No additional phase is accepted by that audit.
-Historical "next", "pending" and permission
-notes below describe their own checkpoint, not today's instruction.
+**Read this section before the dated implementation evidence below.** The user
+accepts all live motorway gate/alignment checks and the current CSM checks for
+now. This does not accept all of Alpha 3.2 or Phase J's complete runtime/output
+integration. Dated sections below retain their checkpoint-specific status;
+this 2026-10-17 snapshot supersedes older "pending" wording where it differs.
+
+### Motorway and CSM acceptance
+
+The user reports that all motorway gates work and the motorway pieces are
+perfectly aligned in game. The same-map reload and read-only report for
+`zz_preview_efee87b69fff-v1` confirmed both west triggers published,
+`W_any`/`W_highway`/`W_road` available, and the west marker unblocked. The
+server fixtures pass12/12 and GLua syntax passes277/0. This is user-confirmed
+live acceptance; do not reopen alignment or require mathematical proof.
+
+The user reports that CSM works fine and accepts its checks for now. No new
+performance, lifecycle, or multiplayer measurements were made in this update.
+Keep the documented technical limits deferred; do not resume CSM work unless
+requested.
+
+### Two-map staging and runtime-index update
+
+The user-approved comparison BSPs `zz_preview_74c1b0c24754` for cell(22,18)
+and `zz_preview_a30b0e90c7e2` for cell(17,4) are staged in both
+`content/maps` and Garry's Mod `maps`, with hashes matching their isolated
+build outputs. Staging did not clean other maps. A separate targeted runtime
+map-name update followed.
+
+`update_preview_runtime_map_names.ps1` generated the runtime map-name overlay:
+only cell IDs113 and454 now point to the two staged names. It verified profile,
+grid/seed, topology, entrances, gate directions, VMF/layout freshness and BSP
+hash equality. The output changed only those two `cells[].map` fields; all
+other cell data and the existing `mapManifestSha256`/`templatePlanSha256` were
+preserved. The focused `test_preview_runtime_map_names.ps1` passes7 assertions,
+and its generated candidate is byte-identical to the staged runtime JSON. A
+hash-verified pre-update runtime JSON is retained beside the isolated corrected
+BSPs for rollback. GMod remained closed at this staging checkpoint; a later
+runtime load and skyline-manifest follow-up are recorded below. The previous
+live motorway acceptance remains recorded separately.
+
+This is a temporary two-cell routing update, not a full plan export. The full
+corrected plan still contains27 recipe-name differences; only the two approved
+targets are active. The existing revision hashes stay on the current
+skybox/capture revision until the later all-map export. The user has paused
+generator work; do not activate the other recipe changes now.
+
+**Runtime skyline follow-up (2026-10-17):** after the new map names were loaded,
+`cl_skybox` reported a missing footprint for `zz_preview_a30b0e90c7e2` on cell
+validation. The targeted updater now emits both the runtime-index candidate and
+a matching skyline candidate. The skyline candidate uses current VMF/layout
+hashes, water sides and bounds for the two corrected names; recipe, snow, tower
+and detail model arrays temporarily reuse each replaced recipe's existing
+models. This avoids a broad skyline rebuild while the generator is paused.
+Staged manifest validation covers all576 runtime cells, and the focused updater
+regression passes9 assertions. A fresh same-map reload of
+`zz_preview_9a00023600b3` completed; the user confirms the console warning is
+gone. Exact new skyline models remain for the later all-map export.
+
+### Preview cell materials and map thumbnails
+
+Rendered the current 336-recipe base plan and the two corrected-cell plans,
+then staged the runtime-specific set: 334 unchanged base-plan images plus the
+two corrected map images for logical IDs113/454. All336 staged PNGs decode at
+1728x1728 and their hashes match the render outputs. The active preview runtime
+map-name set matches the staged filenames exactly. After that verification, all
+336 stale `-edge2` cell images were removed.
+
+Rebuilt preview map-browser thumbnails from the staged cell images. All336
+preview cell thumbnails now match the runtime map names; the original preview
+launcher thumbnail was restored and its hash verified unchanged. The existing
+16 `map_layers` files had no `-edge2` names and were left unchanged. Satellite/
+world-photo output and navmesh-backed cell wireframes remain deferred until
+after the Cell Health Manager and full-map navmesh work. Temporary material
+render folders were removed after staging to avoid duplicate copies.
+
+No plan/runtime revision hashes, VMFs or BSPs changed during this material
+refresh. GMod remained closed at this materials checkpoint, so the refreshed
+materials and thumbnails were not live-loaded or visually reviewed then.
+
+### Cell Health Manager and batch controls - 2026-10-17
+
+`zombiesim_dev_cell_health` opens the preview-admin 24x24 logical-cell grid.
+The scan uses non-empty `maps/<map>.nav` files, current-map identity plus basic
+PNG signature/header/end-marker checks for both clear and atmospheric photos,
+and no revision hashes. Cubemaps are initially `UNVERIFIED`; a user Yes after
+manually running `buildcubemaps` and reloading the current map is persisted in
+`garrysmod/data/zombiesim/cubemap_confirmations_preview.json` per preview BSP
+name and displayed as `USER CONFIRMED`, not engine-verified. A No clears any
+prior record, leaves the map incomplete, and continues.
+The current capture manifest still names the old recipes for logical IDs113
+and454, so those two photos remain incomplete until refreshed and imported.
+
+The manager now has **START BATCH OF UNHEALTHY CELLS** plus unchecked-by-default
+navmesh, world-photo and cubemap options. The client selection is server
+recomputed from the same Cell Health contract. The union rule includes a cell
+if any checked artifact is missing; each cell carries only its missing
+selected work. Navmesh/cubemap work is deduplicated by map; photos stay per
+logical cell. A single durable `ZM_WorldCapture` queue performs nav generation,
+save, fresh reload and validation before the same cell's photos. It never runs
+screenshots concurrently with native nav generation. The user runs
+`buildcubemaps` manually from the native console; no Lua, bridge or external
+input automation is used.
+
+Partial photo imports now merge only valid previous images whose manifest map
+name still matches the current runtime cell, replace freshly captured cells,
+and drop stale map-name entries. The Satellite manifest remains incomplete
+until both variants cover all576 cells. After a photo run completes and player
+restoration is verified, the existing watcher
+`bin/watch_world_capture.ps1 -RunId "<run-id>" -StagePreview` imports/stages
+the images. Navmeshes remain in Garry's Mod `maps` until the separate navmesh
+staging command runs.
+
+Focused checks pass: Cell Health contract6/6; world-capture client7/7 and
+server11/11; photo importer6/6; runtime/skyline updater9/9; GLua syntax281/0.
+The latest source was loaded with a same-map reload of
+`zz_preview_9a00023600b3`; a separate status request confirmed the preview
+profile and same map afterward. The user confirms the controls are visible and
+legible, the skyline warning is gone, and the live client suite passes7/7. No
+batch has been started, so native navmesh, photo batch, cubemap and restoration
+behavior remain unverified in-game.
+
+### Next scope
+
+The manager is ready for the user to start a selected unhealthy-cell batch.
+All options default off; **do not start a batch unless the user presses Start**.
+When a photo run completes, use the existing watcher to merge/stage its
+captures; keep full-world generator revisions and other large output work
+paused until separately approved. Previous Phase K/L closure remains deferred
+and is not a prerequisite.
+
+### Lessons for future agents
+
+- Ordinary road drift came from replacing canonical 5x5 road slots with
+  measured motorway-mouth placements. Do not add per-cell offsets, half-tile
+  placement or road-mouth fitting; preserve the 640-unit road grid and use
+  motorway leases only to reserve/suppress occupied slots.
+- The west-gate refusal came from a geometry-center comparison that overruled
+  world-data connectivity. A missing-route default did not fix the live
+  failure. Keep `ZM_World`/`CanTravelToNeighbour` authoritative and keep
+  geometry checks out of route access. See the implementation rule in
+  [AGENTS.md](AGENTS.md).
+- Do not reopen user-approved motorway alignment or demand mathematical
+  proofs. The user's in-game visual acceptance is the acceptance evidence for
+  alignment.
+
+### Phase J lease-aware on-ramp road slots - 2026-10-16 (two layouts approved; isolated compile, staging and two-cell runtime mapping complete)
+
+The normal complex planner now starts ordinary road branches from its canonical
+5x5 tile placements and trusted motorway leases, not measured road mouths. When
+an on-ramp road slot is leased by the motorway core, the on-ramp tile keeps its
+authored yaw and moves to the outermost available 640-unit core road slot. If
+the core branch has no remaining road slot, it becomes the first border
+continuation; later roads continue in whole640 steps. Motorway-owned core road
+slots are suppressed instead of emitting a second road instance over them.
+Motorway assembly origins/yaws and motorway gate records are preserved.
+
+The refreshed seed-1337 plan contains576 cells/336 recipes/96 motorway
+contracts. All96 motor assembly arrays match the trusted plan, all480 ordinary
+cell tile-placement arrays match, no road continuation is off the640 grid, and
+the focused planner/VMF regression passes1058 assertions. In the user examples,
+Cell(22,18) places `tile_road_onramp` at core slot(2,4); Cell(17,4) places it
+at east slot(4,2) and west border slot(-1,2). Two complete-infill comparison
+VMFs are under `generated/phase_j_grid_road_review_corrected/src`; the user
+visually approved both. The user-edited reference VMFs under
+`generated/phase_j_grid_road_review_focus/src` are preserved and must not be
+overwritten. Isolated VBSP/portal preflight and fast VVIS/VRAD complete2/2,
+with0 failures/incomplete stages and0 over-budget/invalid portal files. The
+two BSPs from
+`generated/phase_j_grid_road_review_corrected/build` were staged on 2026-10-17
+to `content/maps` and the engine `maps` directory. SHA-256 matches the isolated
+builds; `-MapsOnly` ran with cleanup disabled. The user's live motorway review
+is accepted, and the two names are now wired to their logical cells by the
+map-name-only runtime update described above. The full plan's other recipe
+changes remain inactive while generator work is paused.
+
+A previous broad motorway-only VMF emission stopped at recipe
+`zz_preview_63daaa0c6288` (cell6,23), which has no unobstructed terrain tile for
+the player start. It was not compiled, staged, or retried after this correction;
+full-world VMF/compile acceptance remains pending. Do not reuse the earlier
+ordinary-road `+640` shifts. The user has paused world-generator work; do not
+retry this emission or start a broader refresh while that pause is in effect.
+
+The user's live den check reported invalid map route data on
+`zz_preview_efee87b69fff-v1`. After reload, the console identified the actual
+veto as `Loaded gate does not match planned map data W`; the missing `route`
+field was not the remaining blocker. Gate availability now uses
+`CanTravelToNeighbour`/`ZM_World` exits only. Removed trigger-center validation,
+the invalid-measured-gate state, and the runtime route default.
+`motorwayGates` is an optional lookup for marker/arrival presentation, not a
+travel requirement. The west-center-mismatch regression passes; server
+transition fixtures pass12/12 and GLua syntax passes277/0. A same-map reload
+completed in preview. The subsequent read-only gate report for
+`zz_preview_efee87b69fff-v1`, logical cell18,6, shows both west lane triggers
+published, `W_any`/`W_highway`/`W_road` available, and the west marker
+unblocked. No new west center-mismatch log appeared. The user subsequently
+confirmed that all gates work and motorway alignment is perfect, accepting the
+live motorway checks.
 
 ### Phase J trusted-plan and lane-gate source update - 2026-10-16 (focused checks pass; no world outputs refreshed)
 
@@ -52,9 +243,9 @@ cells,336 unique city recipes,96 motorway assembly contracts and3 reusable
 safe-room maps (339 required maps). The user-labelled Cell15,11 (plan grid
 14,23) selects a straight `roads/tile_road.vmf` center, the east road ramp and
 the bridge continuation; it no longer inserts a crossjunction on the straight
-route. East `onramp-e` motorway cells17,10 and6,23 each carry one640-unit
-northward shift scoped to the ordinary road approach and following tiles; the
-motorway piece stays at its existing position. The Army Base landmark cell
+route. East `onramp-e` motorway cells17,10 and6,23 carried a640-unit northward
+shift in this earlier output; the newer lease-aware on-ramp road-slot
+correction above supersedes that placement rule. The Army Base landmark cell
 23,19 now uses `tiletemplates/army` for all three fallback building slots.
 
 Focused checks pass: bridge-ramp layout12, Army pool9, on-ramp shift20 and
@@ -1161,7 +1352,7 @@ existing skybox KeyValues parser and records saved Hammer++ face windings,
 material/solid/side ids, source hashes, entities and explicitly unverified
 filename footprints. It does not infer ports from bounding boxes, include
 model collision bounds or reconstruct compiled solids. Full report retained in
-session storage. [test_motorway_survey.ps1](bin/test_motorway_survey.ps1) passes
+session storage. [test_motorway_survey.ps1](tests/powershell/test_motorway_survey.ps1) passes
 5214assertions across eight unchanged sources, including byte-identical repeat
 reports, face records and protected deck/overhang observations.
 
@@ -1210,7 +1401,7 @@ Logical Y increases south; physical origin-offset Y is negative. Even-width
 rounding it away. The nominal rectangle does not absorb deadend/ramp overhangs:
 the separate envelope rotates those unchanged.
 
-[test_motorway_geometry.ps1](bin/test_motorway_geometry.ps1) passes614assertions
+[test_motorway_geometry.ps1](tests/powershell/test_motorway_geometry.ps1) passes614assertions
 covering all eight pieces/four rotations, unique complete slot sets, ownership,
 half-tile alignment, point/inverse transforms, overhang rotation, explicit
 unsupported/legacy rejection and the actual existing planner yaw owner.
@@ -1268,9 +1459,9 @@ generator is [build_motorway_preview.ps1](bin/build_motorway_preview.ps1):
 
 ```powershell
 .\bin\build_motorway_preview.ps1 -WorldProfile preview
-.\bin\test_motorway_geometry.ps1
-.\bin\test_motorway_survey.ps1
-.\bin\test_motorway_preview.ps1
+.\tests\powershell\test_motorway_geometry.ps1
+.\tests\powershell\test_motorway_survey.ps1
+.\tests\powershell\test_motorway_preview.ps1
 ```
 
 Default output is `generated/phase_b_motorway`, not a normal recipe plan or
@@ -1370,7 +1561,7 @@ It calls the normal planner and cell builder with an explicit
 
 ```powershell
 .\bin\build_motorway_cell_preview.ps1
-.\bin\test_motorway_cells.ps1
+.\tests\powershell\test_motorway_cells.ps1
 ```
 
 | Complete cell | Logical / raw grid | Current generated VMF |
@@ -2161,7 +2352,7 @@ Current baseline (read before changing anything):
   Its `suppressedBorderTiles`, `interiorTiles`, `yaw`, `frontage`, `slot`
   and `mode` are serialized on the recipe and included in recipe identity.
   Slots that cover a road gate or water are rejected; the cross-junction case
-  uses corners only. `bin/test_safezone_entrances.ps1` covers it.
+  uses corners only. `tests/powershell/test_safezone_entrances.ps1` covers it.
 - Each cell's frame is tiles -2..6 (core 0..4, border ring -1/5, outer ring
   -2/6, owned by `bin/outer_edges.psm1`). Neighbouring frames abut at the 5760
   pitch; they do **not** overlap. A detail tile "in a neighbour" is therefore
@@ -2716,161 +2907,72 @@ Focused checks pass: motorway geometry 1529, outer edges 1602, skybox edges
 -2208), GLua 275/0. The user rule is to verify by sight in game, not with
 geometry proofs.
 
-### Phase K - Carried Alpha 3.1.5 closure and integrated acceptance
+### Phase K - Carried Alpha 3.1.5 closure (deferred after 2026-10-17)
 
-**Transferred by the user on 2026-10-13; pending, not accepted or discarded.**
-This phase owns the unfinished acceptance from
+**Deferred by the user on 2026-10-17; not part of the immediate active sequence.**
+The user's sequence is Cell Health Manager, then all-map navmeshes and
+screenshots. The detailed carried-closure checklist has been removed from this
+active plan; its evidence remains in the archived Alpha 3.1.5 tracker.
+Historical cross-reference:
 [Alpha 3.1.5 Phase D](docs/todo-alpha.3.1.5.md#phase-d---full-footprint-minimap-world-artwork-and-satellite-capture)
 and [Phase I](docs/todo-alpha.3.1.5.md#phase-i---integrated-acceptance-and-separately-approved-city-rollout).
 Use the final matching 3.2 geometry and artifacts, not stale 3.1.5 outputs.
 
-- [ ] Confirm Phase J supplies the complete matching preview closure: current
-      recipes/BSPs, skyline/models/materials, runtime exports, illustrated cell/
-      stitched world artwork, wireframes, nav data and full revision-matching
-      two-variant Satellite. Audit failed/incomplete stages and cache identities.
-- [ ] Rerun the multi-tile suite deliberately stopped during the 3.1.5 Phase D
-      quick-check window, against current sources with the new motorway contract.
-      If it already passed for this exact revision in D-G, reference that result
-      rather than duplicate the considerable job.
-- [ ] Obtain the remaining Phase D human review: fresh generated/stitched world
-      previews show the full footprint, imagery matches the plan, markers remain
-      aligned, den capture keeps its independent span and Satellite is enabled
-      only after complete valid coverage. Current-cell Level/minimap projection
-      was already accepted and needs only affected-path regression, not rework.
-- [ ] Fresh deployed preview integration: traverse expanded borders, pursue a
-      walker onto reachable border roads, verify core-only spawn/search/harvest
-      eligibility, gates/arrivals, coast joins, map overlays, rarity persistence
-      and approved movement/stamina. Reuse current-revision G/I evidence where
-      it covers the exact case; fix new regressions without reopening old design.
-- [ ] Perform a bounded fresh launcher-to-deployment integration check using an
-      existing appearance-complete survivor. Preserve saved selection, inventory,
-      settings and the approved Home/Play/cards/Tools/sky-tour/cancel lifecycle.
-      Do not fabricate another survivor or execute destructive confirmations.
-- [ ] Complete agreed matched integrated performance coverage for Earth,
-      destination/cards, transition/reopen cold spikes and deployed expanded
-      skyline workloads; record scope and p95/p99. Historical unmatched samples
-      remain operation evidence, not a baseline or a claimed regression.
-- [ ] Run current-revision packaging fixtures/read-only compatibility audit;
-      preserve ownership/rights blockers. No upload or unowned-file deletion.
-- [ ] Verify outstanding temporary-map/content restoration ledgers and owned
-      probe cleanup, player profile/logical cell, preferences and persisted data.
-      If final instrumented restoration is unavailable, record human confirmation
-      separately; never silently discard an existing restoration obligation.
-- [ ] Present combined evidence for the carried acceptance items and request
-      user acceptance or explicit further deferral. Cross-reference results in
-      the 3.1.5 tracker; transfer alone does not complete that milestone.
+This deferral does not accept or discard the carried Phase D/I closure. Reopen it
+only if the user restores that scope. Production/city rebuild and Workshop
+publication remain separately gated.
 
-Accepted Alpha 3.1.5 phases 0/A/B/C/E/F/G/H and their retained limitations remain
-unchanged. In particular, destructive delete/disconnect, live city Settings,
-resolution-change review, unavailable survivor comparisons and historical
-uncaptured cases are not automatically reopened as compulsory gates.
+### Phase L - Final acceptance and documentation (after all-map outputs)
 
-The separately gated production branch of old Phase I is retained at final
-rollout: present preview evidence and ask for city rebuild approval. Only if
-approved, build matching 48x48 city inputs and validate skyline/nav/travel/artwork,
-launcher/profile isolation and compatibility independently. If not approved,
-record production explicitly deferred, never claim both-profile world acceptance.
-Workshop publication remains separately deferred. Newly authored safe-zone
-detail work/design is not pulled into scope by this transfer.
+After the Cell Health Manager and the user-requested full-map navmesh/screenshot
+batch, reconcile the docs, package checks, evidence boundaries and final
+milestone decision against the outputs actually produced. Keep production
+rebuild, Workshop publication, and release status separately gated; Alpha 3.2
+remains `in development` until the user accepts the milestone.
 
-Exit: carried preview closure accepted or explicitly dispositioned, restoration
-verified, and production/publication gates recorded without implied permission.
+## 4. Validation for the revised focus
 
-### Phase L - Documentation, package checks and milestone decision
+The broad generator validation matrix is not active while the user has paused
+world-generator work. Do not rerun historical density, layout, frontage,
+motorway-geometry, or full-preview suites merely because their entries remain
+in older dated notes.
 
-- [ ] Update [docs.md](docs.md), [readme.md](readme.md), [AGENTS.md](AGENTS.md),
-      the CSM tracker, version/changelog and relevant file instructions with the
-      actual naming, footprint, density, diagnostics and supported commands.
-      Keep CSM's accepted experimental scope/deferred limits synchronized;
-      completing its future backlog is not a requirement here.
-- [ ] Mark the historical square-only rectangle deferral in
-      [multi-tile design](docs/two_by_two_tile_templates_plan.md) superseded only
-      when the rectangular implementation is accepted; retain useful history.
-- [ ] Validate package allowlist/source ownership/licences, model companions,
-      map/nav/runtime/material revisions and CSM resources. No new borrowed
-      RealCSM assets or dependencies without licence approval.
-- [ ] Record static, compiled, live, visual, performance and explicitly deferred
-      acceptance separately. Request user milestone acceptance.
-- [ ] Obtain separate approval for a 48x48 production rebuild and for publication.
-      Package/mount/download verification and remaining release blockers do not
-      vanish when preview is accepted. Do not change version to `released` early.
+- **Cell Health Manager:** implemented as a read-only preview admin grid;
+  offline contract tests4/4 and GLua syntax281/0 pass. Live panel review is
+  still required. Keep the basic file/photo checks, no revision hashes, and
+  cubemaps explicitly unverified/incomplete; do not add build or repair work.
+- **Final map outputs:** after the Cell Health Manager, produce the matching
+  full-map runtime export, navmeshes, and all-map screenshots the user requested.
+  Verify the revision hashes and actual coverage before staging or visual review.
+- Use the README and existing build/stage scripts for exact commands. Ask again
+  before any substantially broader job than that final approved output batch.
 
-## 4. Focused validation and handoff commands
+## 5. Handoff and stop conditions
 
-Run commands from the repository root. These are **future validation steps,
-not commands run during planning**. Inspect each script's parameters and workload
-before execution: some existing "tests" generate a full preview plan or model
-outputs and are not fast unit checks.
+The user has explicitly paused world-generator work after accepting the live
+motorway checks. The two corrected BSPs are staged, and the targeted runtime
+map-name overlay routes IDs113/454 to them. Do not resume broad Phase E/J
+planning or regenerate the full preview now. Preserve the temporary revision
+hashes; refresh the matching full plan/runtime/skybox hashes only during the
+final all-map output phase.
 
-| Area | Existing entry point / required use |
-| --- | --- |
-| All changed Lua | `.\bin\test_glua_syntax.ps1`; syntax only. |
-| Existing square footprints/frontage | `.\bin\test_building_frontage.ps1` and `.\bin\test_multi_tile_templates.ps1`; both required for coupled frontage changes, but schedule their expensive paths with approval. |
-| Borders/edges/coast | `.\bin\test_border_showcase.ps1`, `.\bin\test_outer_edges.ps1`, `.\bin\test_skybox_edges.ps1`; refresh stale asset fixtures and keep existing coast controls. |
-| Planner/VMF regressions | `.\bin\test_phase_c2_layouts.ps1`, `.\bin\test_phase_e_layouts.ps1`, naming, player-start and safe-zone entrance suites as affected. Update semantic assertions for intended motorway exclusions; do not weaken connectivity checks. |
-| Recipe variety | `.\bin\test_cell_variants.ps1 -PlanData <isolated-plan.json> -BaselinePlanData <previous-plan.json> -LayoutDirectory <isolated-src>`; distinguish unchanged graph assertions from explicitly approved feature relocations. |
-| Compiled ports/gates | `.\bin\test_transition_gate_bsps.ps1` and `.\bin\test_outer_edge_bsps.ps1` against the exact current fixtures; extend for 3-wide openings/elevations. |
-| Derived art/skyline | `.\bin\test_cell_map_artwork.ps1`, skyline manifest/height/tower suites as affected; tests are not human visual acceptance. |
-| Packaging | `.\bin\test_workshop_packages.ps1`; do not upload. |
-| Offline Lua logic | Existing `tests\glua\harness.py` workflow in README; strict feature-specific fixtures and relevant focused cases only. |
-| Bridge | `.\bin\invoke_dev_bridge.ps1 -Command 'zombiesim_player_status'`; relevant registered suites/status only. Exit 2 means ask about paused/loading state. Never send `lua_*` or refresh through the bridge. |
+The Cell Health Manager contract and preview developer panel are implemented.
+Use `zombiesim_dev_cell_health` and `zombiesim_dev_test_cell_health_client` in
+a running preview admin client to inspect the UI and actual mounted files.
+Record human UI review separately from the passing offline fixtures and syntax
+check. Only after that review proceed to the full-map navmesh and screenshot
+batch; no broader generator work is authorized.
 
-Add only the small missing regression entry points needed by implementation,
-for example a pure density selector fixture and a transport assembly/ports
-fixture. Their future names/commands must be documented after they exist.
-Do not duplicate the offline harness or create parallel generic test frameworks.
+The lengthy Phase K/L closure lists are deferred until after the selected
+sequence; their historical requirements remain in the archived tracker.
+The user has not accepted the Alpha 3.2 milestone or release. CSM's current
+checks are accepted for now; unverified performance/lifecycle/multiplayer
+limits remain deferred, not new work.
 
-Minimum new regression matrix:
+Preserve source assets, user data, and restoration requirements. Production
+rebuild and publication remain separately gated. Dated history below is
+reference, not the active sequence.
 
-- Every density class/untagged token; numeric variants 1 and 6; rectangular/square
-  suffixes; 95:5 threshold boundaries; unavailable pools; route exception;
-  low coast protected from commercial override; deterministic output ordering.
-- Buildings, decoration-only motorway with zero building pool, open fill,
-  commercial/industry/skyscraper/landmark paths, both rings and their variants.
-- All eight new motorway VMFs, four yaws, even-sized origin, surveyed connectors,
-  bridge layers, ramp joins, ring reservations, ocean-side conflicts and deliberate
-  incompatible assembly with explicit failure/no 1x1 fallback.
-- No duplicate emitted instances, missing reserved owners, forbidden scenery,
-  unrelated square-frontage regressions or stale recipe/layout signatures.
-- Safe-zone/landmark relocation, fixed-feature conflict, no unreachable den,
-  profile isolation, unchanged survivor/inventory data and revision reset rollback.
-- CSM-specific lifecycle, masks/depth, view isolation, independent-client and
-  resource/performance tests are retained in the deferred CSM tracker, not this
-  milestone's minimum generator regression matrix.
-
-## 5. Future-agent next action and stop conditions
-
-At handoff, read this tracker and the latest active-milestone evidence. The CSM
-subtracker is deferred reference only; do not restart lighting work. Do not
-start a build because new VMFs are present.
-
-1. Follow the user's generator-first order; leave 3.1.5 closure in J/K.
-2. Resume Phase E rectangle/instance/ring/gate integration against the existing
-   approved assembly contract. M was rejected and removed; no detail review,
-   family authoring, neighbor claims or reservation table is a prerequisite.
-   Preserve the user's larger authored tile direction and inspect actual
-   dimensions/frontage before changing ordinary footprint placement.
-3. Preserve the isolated 576-cell/335-recipe rebuild as diagnostic history,
-   not a ready widened world. Its96 motorway cells lack measured assembly
-   metadata and retain1x1 placement records. It compiled336/338:
-   `zz_preview_97dcc3127e09` and `zz_preview_99a2fd788b1e` fail VBSP on
-   brush41926 in the user-modified motorway crossroads. Minimal repair is now
-   approved and attempted with a verified original backup; compile validation
-   remains pending. Do not stage the incomplete/outdated batch.
-4. Complete E, F and G source/fixture work in order, then generator
-   I and the separately approved J/K closure. Future CSM work is not on this path.
-5. The bounded G generation/compile/derivative/staging/launch batch is approved;
-   preserve player data, restoration ledgers and source assets. J's full-world
-   navmesh/Satellite closure, production and publication still need separate
-   approval. Read the current reconciled status before acting on older notes.
-
-Stop and ask when a required topology/density boundary pool is missing, an
-assembly cannot fit/connect within the current envelope, relocation would change
-fixed gameplay identity, coast policy is ambiguous, an authored-source repair
-needs permission, or the generator recipe/performance/package budget exceeds
-approval. Deferred CSM completeness is not a milestone stop condition.
-
-Keep checkpoints after subsystem boundaries and failed validation loops with
-the exact source/artifact, hypothesis, result and next discriminating check.
-Record actual results here during implementation; every checkbox above remains
-pending until the corresponding work and acceptance evidence exist.
+Keep checkpoints after future subsystem boundaries or failed validation loops.
+Record the exact source/artifact, hypothesis, result, and next discriminating
+check. Distinguish user acceptance from automated evidence and unrun tests.

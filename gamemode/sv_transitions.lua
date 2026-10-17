@@ -137,177 +137,98 @@ end
 
 // Gate triggers are not networked, so their centres are published per direction as Global2 vectors
 // (ZMTransitionGate_<code>_<index>, count in ZMTransitionGateCount_<code>) for the minimap waypoint marker.
-function Transitions:GetMeasuredGate(mapCells, code)
-    local measured, legacy
-    local function finite(value)
-        return type(value) == "number" and value == value and value > -math.huge and value < math.huge
-    end
+local function isFiniteNumber(value)
+    return type(value) == "number" and value == value and value > -math.huge and value < math.huge
+end
+
+// Optional gate records position markers and motorway arrivals; world exits alone authorize travel.
+function Transitions:GetGateData(mapCells, code)
     for _, cell in ipairs(mapCells) do
-        if cell.motorwayGates then
-            if type(cell.motorwayGates) ~= "table" then
-                ErrorNoHalt("[ZombieSim] Invalid planned motorway gate data " .. code .. ".\n")
-                return false
-            end
-            local selected
-            for _, gate in ipairs(cell.motorwayGates) do
-                if type(gate) ~= "table" then
-                    ErrorNoHalt("[ZombieSim] Invalid planned motorway gate record " .. code .. ".\n")
-                    return false
-                end
-                if gate.direction == code then
-                    if selected then
-                        ErrorNoHalt("[ZombieSim] Duplicate planned motorway gate " .. code .. ".\n")
-                        return false
-                    end
-                    selected = gate
+        local gates = type(cell) == "table" and cell.motorwayGates or nil
+        if type(gates) == "table" then
+            for _, gate in ipairs(gates) do
+                if type(gate) == "table" and gate.direction == code then
+                    return gate
                 end
             end
-            local route = selected and (selected.route or "motorway")
-            local laneCount = route == "road" and 1 or 2
-            if not selected or (route ~= "road" and route ~= "motorway")
-                or (selected.status ~= "measured_source_gate_not_compiled_or_live"
-                    and selected.status ~= "trusted_prior_grid_gate_not_compiled_or_live")
-                or not finite(selected.x) or not finite(selected.y) or not finite(selected.deckZ)
-                or selected.arrivalLane ~= 1 or type(selected.lanes) ~= "table" or #selected.lanes ~= laneCount then
-                ErrorNoHalt("[ZombieSim] Invalid planned motorway gate " .. code .. ".\n")
-                return false
-            end
-            if measured and (route ~= (measured.route or "motorway") or #measured.lanes ~= laneCount) then
-                ErrorNoHalt("[ZombieSim] Conflicting shared-map measured routes " .. code .. ".\n")
-                return false
-            end
-            for index, lane in ipairs(selected.lanes) do
-                if type(lane) ~= "table" then
-                    ErrorNoHalt("[ZombieSim] Invalid planned motorway lane " .. code .. ".\n")
-                    return false
-                end
-                for _, field in ipairs({ "lateral", "width", "deckZ", "arrowX", "arrowY", "arrivalX", "arrivalY" }) do
-                    if not finite(lane[field]) then
-                        ErrorNoHalt("[ZombieSim] Conflicting planned motorway lanes " .. code .. ".\n")
-                        return false
-                    end
-                    if measured and measured.lanes[index][field] ~= lane[field] then
-                        ErrorNoHalt("[ZombieSim] Conflicting shared-map motorway lanes " .. code .. ".\n")
-                        return false
-                    end
-                end
-                if lane.width <= 0 or lane.deckZ ~= selected.deckZ
-                    or (route == "road" and lane.lateral ~= 0)
-                    or (route == "motorway" and ((index == 1 and lane.lateral >= 0) or (index == 2 and lane.lateral <= 0))) then
-                    ErrorNoHalt("[ZombieSim] Unsupported planned motorway lane " .. code .. ".\n")
-                    return false
-                end
-            end
-            if measured and (measured.x ~= selected.x or measured.y ~= selected.y or measured.deckZ ~= selected.deckZ) then
-                ErrorNoHalt("[ZombieSim] Conflicting shared-map motorway gate " .. code .. ".\n")
-                return false
-            end
-            measured = selected
-        else
-            legacy = true
         end
     end
-    if measured and legacy then
-        ErrorNoHalt("[ZombieSim] Mixed legacy and planned motorway gate data " .. code .. ".\n")
-        return false
-    end
-    return measured
 end
 
 function Transitions:InitializeGates()
     local centres = {}
     local mapCells = ZM_World:GetCellsForMap(game.GetMap()) or {}
     self.GateMarkers = {}
-    self.InvalidMeasuredGates = {}
     for _, entity in ipairs(ents.FindByClass("trigger_multiple")) do
         local directionName, direction, mode, laneIndex = getGateDetails(entity)
         if directionName then
-            local measured = self:GetMeasuredGate(mapCells, direction.code)
+            local gateData = self:GetGateData(mapCells, direction.code)
             local centre = entity:WorldSpaceCenter()
-            if laneIndex and not measured then
-                ErrorNoHalt("[ZombieSim] Lane-specific gate has no matching planned motorway " .. direction.code .. ".\n")
-                measured = false
-            end
-            if measured then
-                local expectedCentre = Vector(measured.x, measured.y, centre.z)
-                if laneIndex then
-                    local lane = measured.route == "motorway" and measured.lanes[laneIndex] or nil
-                    if not lane then
-                        ErrorNoHalt("[ZombieSim] Lane-specific gate has an invalid planned carriageway " .. direction.code .. ".\n")
-                        measured = false
-                    else
-                        local right = gateForward[direction.code]:Cross(Vector(0, 0, 1))
-                        expectedCentre = expectedCentre + right * lane.lateral
+            entity:SetNWBool("ZMTransitionGate", true)
+            entity:SetNWString("ZMTransitionDirection", directionName)
+            centres[direction.code] = centres[direction.code] or {}
+            table.insert(centres[direction.code], centre)
+            local index = #centres[direction.code]
+            local key = "ZMTransitionGate_" .. direction.code .. "_" .. index
+            local motorway = laneIndex ~= nil or mode == "highway"
+            if gateData and gateData.route == "road" then
+                motorway = false
+            elseif gateData and gateData.route == "motorway" then
+                motorway = true
+            elseif not motorway then
+                for _, cell in ipairs(mapCells) do
+                    if ZM_World:GetTravelMode(ZM_World:GetExit(cell, direction.code), "highway", true) then
+                        motorway = true
+                        break
                     end
                 end
-                if measured and (math.abs(centre.x - expectedCentre.x) > 16 or math.abs(centre.y - expectedCentre.y) > 16) then
-                    ErrorNoHalt("[ZombieSim] Loaded gate does not match planned map data " .. direction.code .. ".\n")
-                    measured = false
-                elseif measured then
-                    centre = expectedCentre
-                end
             end
-            if measured ~= false then
-                entity:SetNWBool("ZMTransitionGate", true)
-                entity:SetNWString("ZMTransitionDirection", directionName)
-                centres[direction.code] = centres[direction.code] or {}
-                table.insert(centres[direction.code], centre)
-                local index = #centres[direction.code]
-                local key = "ZMTransitionGate_" .. direction.code .. "_" .. index
-                local motorway = measured and measured.route ~= "road" or not measured and mode == "highway"
-                if not measured then
-                    for _, cell in ipairs(mapCells) do
-                        if ZM_World:GetTravelMode(ZM_World:GetExit(cell, direction.code), "highway", true) then
-                            motorway = true
-                            break
+            local forward = gateForward[direction.code]
+            local right = forward:Cross(Vector(0, 0, 1))
+            local marker = { key = key, direction = direction.code, mode = mode, motorway = motorway,
+                centre = centre, surfaces = {}, gateData = gateData, laneIndex = laneIndex }
+            local arrowCount = laneIndex and 1 or motorway and 2 or 1
+            for lane = 1, 2 do
+                if not laneIndex or lane == laneIndex then
+                    local suffix = not laneIndex and lane == 2 and "_Lane2" or ""
+                    local arrowKey = key .. suffix
+                    local ready = false
+                    if laneIndex or lane <= arrowCount then
+                        local sample = centre - forward * (motorway and 256 or 96)
+                            + right * (motorway and (lane == 1 and -160 or 160) or 0)
+                        local laneData = gateData and type(gateData.lanes) == "table" and gateData.lanes[lane]
+                        if type(laneData) == "table" and isFiniteNumber(laneData.arrowX) and isFiniteNumber(laneData.arrowY) then
+                            local deckZ = isFiniteNumber(laneData.deckZ) and laneData.deckZ
+                                or gateData and isFiniteNumber(gateData.deckZ) and gateData.deckZ
+                                or centre.z
+                            sample = Vector(laneData.arrowX, laneData.arrowY, deckZ)
+                        end
+                        local trace = util.TraceLine({
+                            start = sample + Vector(0, 0, 256),
+                            endpos = sample - Vector(0, 0, 256),
+                            mask = MASK_SOLID_BRUSHONLY,
+                            filter = entity
+                        })
+                        ready = trace.Hit and not trace.HitSky and not trace.StartSolid and trace.HitNormal.z >= 0.7
+                        if ready and gateData and isFiniteNumber(gateData.deckZ) then
+                            ready = math.abs(trace.HitPos.z - gateData.deckZ) <= 2
+                        end
+                        if ready then
+                            SetGlobal2Vector(arrowKey .. "_Surface", trace.HitPos + trace.HitNormal * 2)
+                            SetGlobal2Vector(arrowKey .. "_Normal", trace.HitNormal)
+                            marker.surfaces[lane] = trace.HitPos
+                        else
+                            ErrorNoHalt("[ZombieSim] No supported road surface for transition arrow " .. arrowKey .. ".\n")
                         end
                     end
-                end
-                local forward = gateForward[direction.code]
-                local right = forward:Cross(Vector(0, 0, 1))
-                local marker = { key = key, direction = direction.code, mode = mode, motorway = motorway,
-                    centre = centre, surfaces = {}, measured = measured, laneIndex = laneIndex }
-                local arrowCount = laneIndex and 1 or motorway and 2 or 1
-                for lane = 1, 2 do
-                    if not laneIndex or lane == laneIndex then
-                        local suffix = not laneIndex and lane == 2 and "_Lane2" or ""
-                        local arrowKey = key .. suffix
-                        local ready = false
-                        if laneIndex or lane <= arrowCount then
-                            local sample = centre - forward * (motorway and 256 or 96)
-                                + right * (motorway and (lane == 1 and -160 or 160) or 0)
-                            if measured then
-                                sample = Vector(measured.lanes[lane].arrowX, measured.lanes[lane].arrowY, measured.deckZ)
-                            end
-                            local trace = util.TraceLine({
-                                start = sample + Vector(0, 0, 256),
-                                endpos = sample - Vector(0, 0, 256),
-                                mask = MASK_SOLID_BRUSHONLY,
-                                filter = entity
-                            })
-                            ready = trace.Hit and not trace.HitSky and not trace.StartSolid and trace.HitNormal.z >= 0.7
-                            if ready and measured then
-                                ready = math.abs(trace.HitPos.z - measured.deckZ) <= 2
-                            end
-                            if ready then
-                                SetGlobal2Vector(arrowKey .. "_Surface", trace.HitPos + trace.HitNormal * 2)
-                                SetGlobal2Vector(arrowKey .. "_Normal", trace.HitNormal)
-                                marker.surfaces[lane] = trace.HitPos
-                            else
-                                ErrorNoHalt("[ZombieSim] No supported road surface for transition arrow " .. arrowKey .. ".\n")
-                            end
-                        end
-                        SetGlobal2Bool(arrowKey .. "_SurfaceReady", ready)
-                        if laneIndex or lane == 1 then
-                            marker.surfaceReady, marker.surface = ready, marker.surfaces[lane]
-                        end
+                    SetGlobal2Bool(arrowKey .. "_SurfaceReady", ready)
+                    if laneIndex or lane == 1 then
+                        marker.surfaceReady, marker.surface = ready, marker.surfaces[lane]
                     end
                 end
-                SetGlobal2Int(key .. "_ArrowCount", arrowCount)
-                self.GateMarkers[#self.GateMarkers + 1] = marker
-            else
-                self.InvalidMeasuredGates[entity] = true
             end
+            SetGlobal2Int(key .. "_ArrowCount", arrowCount)
+            self.GateMarkers[#self.GateMarkers + 1] = marker
         end
     end
     for _, direction in pairs(directions) do
@@ -430,7 +351,7 @@ end
 function Transitions:ResolveGateArrivalPosition(playerEntity, sideCode)
     local marker
     for _, candidate in ipairs(self.GateMarkers or {}) do
-        if candidate.direction == sideCode and (candidate.motorway or candidate.measured) and candidate.centre then
+        if candidate.direction == sideCode and (candidate.motorway or candidate.gateData) and candidate.centre then
             marker = candidate
             break
         end
@@ -441,8 +362,11 @@ function Transitions:ResolveGateArrivalPosition(playerEntity, sideCode)
     local forward = gateForward[sideCode]
     local right = forward:Cross(Vector(0, 0, 1))
     local sample = marker.centre - forward * self.MotorwayArrivalInset - right * self.MotorwayArrivalLateral
-    if marker.measured then
-        local lane = marker.measured.lanes[marker.measured.arrivalLane]
+    local gateData = marker.gateData
+    local arrivalLane = gateData and gateData.arrivalLane
+    local lane = gateData and type(gateData.lanes) == "table" and gateData.lanes[arrivalLane]
+    if type(lane) == "table" and isFiniteNumber(lane.arrivalX) and isFiniteNumber(lane.arrivalY)
+        and isFiniteNumber(lane.deckZ) then
         sample = Vector(lane.arrivalX, lane.arrivalY, lane.deckZ)
     end
     local trace = util.TraceLine({
@@ -453,7 +377,7 @@ function Transitions:ResolveGateArrivalPosition(playerEntity, sideCode)
     if not trace.Hit or trace.HitSky or trace.StartSolid or trace.HitNormal.z < 0.7 then
         return nil
     end
-    if marker.measured and math.abs(trace.HitPos.z - marker.measured.deckZ) > 2 then
+    if gateData and isFiniteNumber(gateData.deckZ) and math.abs(trace.HitPos.z - gateData.deckZ) > 2 then
         ErrorNoHalt("[ZombieSim] Arrival surface differs from planned motorway deck " .. sideCode .. ".\n")
         return nil
     end
@@ -708,10 +632,6 @@ function Transitions:TryUseGate(playerEntity, entity)
     local directionName, direction, mode = getGateDetails(entity)
     if not direction then
         return
-    end
-    if self.InvalidMeasuredGates and self.InvalidMeasuredGates[entity] then
-        playerEntity:PrintMessage(HUD_PRINTCENTER, "This route's map data is invalid.")
-        return false
     end
     // Only an explicitly aimed searchable spot takes priority; nearby loot must not make a gate unusable.
     if ZM_LootSpots and ZM_LootSpots.FindAimedSpot and ZM_LootSpots:FindAimedSpot(playerEntity) then

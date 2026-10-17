@@ -4,6 +4,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'sign_assets.psm1') -Force
 $root = Split-Path -Parent $PSScriptRoot
+$testSignZooScript = Join-Path (Join-Path $root 'tests\powershell') 'test_sign_zoo.ps1'
 $profile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile preview
 $output = Join-Path $root 'generated\signs_preview\zoo'
 $null = New-Item -ItemType Directory -Force -Path $output
@@ -136,7 +137,7 @@ if (-not (Test-Path -LiteralPath $vmfPath) -or [System.IO.File]::ReadAllText($vm
 & (Join-Path $PSScriptRoot 'stage_sign_assets.ps1')
 if (-not $?) { throw 'Development sign staging failed.' }
 Write-Host "Generated six-variant Hammer showroom: $vmfPath"
-& (Join-Path $PSScriptRoot 'test_sign_zoo.ps1')
+& $testSignZooScript
 if (-not $?) { throw 'Sign zoo structural/staging regressions failed.' }
 if (-not $Compile) { return }
 
@@ -190,5 +191,5 @@ $destination = Join-Path $maps "$name.bsp"
 Copy-Item -LiteralPath $bspPath -Destination $destination -Force
 if ((Get-FileHash -LiteralPath $bspPath).Hash -ne (Get-FileHash -LiteralPath $destination).Hash) { throw 'Zoo BSP staging hash mismatch.' }
 Write-Host "Development-only map staged: $destination"
-& (Join-Path $PSScriptRoot 'test_sign_zoo.ps1') -Compiled
+& $testSignZooScript -Compiled
 if (-not $?) { throw 'Compiled sign zoo regressions failed.' }

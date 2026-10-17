@@ -6,7 +6,7 @@
       "title": "Density-Aware Generator, Wide Motorways and CSM",
       "status": "in development",
       "date": "2026-10-13",
-      "summary": "Reconciled Alpha 3.2: Phases 0/A/B/D and isolated motorway fixture reviews are accepted with retained limits. Phase E normal motorway reservations/rings/gates/travel and matching derivatives remain unfinished; wide-source remapping and the 336/338 density-preview compile do not prove that integration. Supporting rectangle/origin helpers are source-only. A bounded playable-preview batch and minimal crossroads repair are approved; the attempted repair is not compiled. CSM experiment accepted with further work deferred, safe-zone details cancelled/removed, and carried Alpha 3.1.5 closure remains J/K.",
+      "summary": "Alpha 3.2 remains in development. Live motorway gate/alignment and current CSM checks are accepted. Two corrected BSPs are staged and wired to logical cells 113/454 by a targeted runtime map-name update. The 336 active preview cell materials and map-browser thumbnails are refreshed, with stale -edge2 cell images removed. A read-only preview Cell Health Manager developer panel is implemented; focused tests pass and live UI review is pending. The user paused generator work and set the order to CHM review, then full-map navmeshes/screenshots and Satellite/wireframe outputs; the long carried Phase K/L checklists are deferred.",
       "highlights": [
         "+ Proven plain-ground precision defects repaired with verified backups; infill uses full/half/quarter bases and reusable power-of-two rectangles from4 through512, never polygon, decimal-named or sub-4 patches.",
         "+ Phase B accepted after seven bounds-based complete-cell fixtures compiled and received user visual review; exact floor-mouth joins remain clearance-pending, mismatched motorway joins and ordinary-road approaches unsupported.",
@@ -22,13 +22,22 @@
         "+ Straight normal assembly metadata now derives asymmetric gate lanes, deck heights, arrow and arrival coordinates from current authored floor windings in all four directions; source/grade/boundary checks reject invalid measurements. Brushes/runtime consumers remain pending.",
         "+ Normal straight VMF gate writer now consumes measured trigger extents and lane-positioned arrival landmarks; existing car/glass barricades translate to measured lane centres. Legacy geometry is preserved and normal-wide emission remains guarded until runtime integration.",
         "+ Current experimental client-local additive CSM accepted with default-off Options enable and Low1/15Hz, Medium2/30Hz, High3/rendered-frame tiers; baked/shared lighting unchanged.",
+        "+ User accepted the live motorway gate and alignment checks; transition availability follows world-data exits rather than gate-geometry validation.",
+        "+ Two corrected on-ramp comparison BSPs staged in content and engine maps with hashes matching their isolated builds.",
+        "+ User set the revised order: Cell Health Manager next, followed by full-map navmeshes and screenshots.",
+        "+ Preview cell materials and browser thumbnails now match all336 active runtime map names; 336 stale -edge2 material images were removed.",
+        "+ Read-only preview Cell Health Manager developer grid checks navmesh files and current-map captured photos without changing artifacts.",
+        "- Reconciled milestone reporting: accepted motorway fixture review is preserved; historical join limits are not new asset-authoring requirements, and compile completion is not normal-generator or live-travel acceptance.",
         "? Safe-zone detail Phase M rejected after review; claim/reservation/emission integration removed. Authored assets and existing den entrances preserved; larger ordinary authored tiles are the replacement direction.",
         "? Phase E end-to-end output verification, authored origins and ring/travel integration remain unfinished; no new ordinary rectangular building asset is installed. Remaining CSM work is deferred outside Alpha 3.2 completion gates.",
-        "? Weighted nested projectors are not proven seamless cascades; runtime/Options live review, multiplayer isolation and matched foreground performance remain unverified.",
+        "? Weighted nested projectors are not proven seamless cascades; the user accepts the current CSM checks for now, while multiplayer isolation and matched foreground performance remain unverified and deferred.",
         "? Alpha 3.1.5 Phase D generated-output acceptance and Phase I integration move to the final shared output and closure phases J/K, without implying completion.",
         "? The retained preview compile completed336/338 with two motorway-crossroads failures; minimal brush repair is approved and attempted but uncompiled. That plan still lacks normal measured assembly integration and cannot be staged as a completed widened world.",
-        "? Bounded isolated playable-preview generation/compile/derivative/backed-up staging/launch is approved; full-world navmesh/Satellite closure, production rebuilds and Workshop publication remain separately gated.",
-        "- Reconciled milestone reporting: accepted motorway fixture review is preserved; historical join limits are not new asset-authoring requirements, and compile completion is not normal-generator or live-travel acceptance."
+        "? The two-cell runtime map-name overlay, refreshed cell materials/thumbnails and Cell Health Manager UI have not been live-loaded or visually reviewed; the current world revision hashes remain until the final all-map output batch.",
+        "? Cubemap completion remains unverified because BSP-packaged VTFs may be compiler defaults; the Cell Health Manager counts cubemaps as incomplete until reliable evidence exists.",
+        "? The full corrected plan still includes additional recipe-name differences that are not activated. Do not expand them while generator work is paused.",
+        "? User reports current CSM checks work and accepts them for now; no new performance, lifecycle or multiplayer evidence was collected.",
+        "? The all-map navmesh/screenshot batch is deferred until Cell Health Manager completion; production rebuild and Workshop publication remain separately gated."
       ]
     },
     {

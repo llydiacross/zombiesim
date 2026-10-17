@@ -88,6 +88,46 @@ class ImportTests(unittest.TestCase):
         self.assertFalse(manifest["variants"]["atmospheric"]["complete"])
         self.assertTrue(manifest["variants"]["clear"]["complete"])
 
+    def test_partial_import_merges_matching_cells_and_excludes_stale_map_names(self):
+        output = self.root / "output"
+        importer.import_run(self.run_path, self.world_path, self.root, output)
+        self.world["cells"][0]["map"] = "corrected_recipe"
+        self.world["cells"][3]["map"] = "stale_recipe"
+        self.world_path.write_text(json.dumps(self.world))
+
+        partial = copy.deepcopy(self.run)
+        partial["runId"] = "repair_run"
+        partial["queue"] = [dict(self.run["queue"][0], map="corrected_recipe")]
+        partial["results"] = {"clear": {}, "atmospheric": {}}
+        for variant in importer.VARIANTS:
+            previous = self.run["results"][variant]["0"]
+            relative = f"zombiesim/world_captures/repair_run/{variant}/cell_0.png"
+            destination = self.root.joinpath(*relative.split("/"))
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(self.root.joinpath(*previous["path"].split("/")), destination)
+            raw = destination.read_bytes()
+            partial["results"][variant]["0"] = {
+                **previous,
+                "runId": "repair_run",
+                "path": relative,
+                "map": "corrected_recipe",
+                "bytes": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+            }
+        partial_path = self.root / "repair_run.json"
+        partial_path.write_text(json.dumps(partial))
+
+        manifest = importer.import_run(partial_path, self.world_path, self.root, output)
+        self.assertFalse(manifest["complete"])
+        self.assertEqual(manifest["reusedImageCount"], 4)
+        self.assertEqual(manifest["skippedExistingImageCount"], 2)
+        for variant in importer.VARIANTS:
+            record = manifest["variants"][variant]
+            self.assertEqual(record["capturedCellCount"], 3)
+            self.assertEqual(record["metadata"]["0"]["map"], "corrected_recipe")
+            self.assertEqual(record["metadata"]["1"]["map"], "shared_recipe")
+            self.assertNotIn("3", record["cells"])
+
     def test_hashes_identity_checksum_readiness_and_restoration_are_fail_closed(self):
         mutations = [
             lambda r: r["revision"].update(templatePlanSha256="c" * 64),
