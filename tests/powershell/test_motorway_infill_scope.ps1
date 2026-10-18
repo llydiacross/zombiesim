@@ -31,11 +31,17 @@ function Assert {
 
 $normalStraight = [pscustomobject]@{
     cellTemplateFilename = 'motorway-straight.vmf'
-    motorwayAssembly = [pscustomobject]@{ schemaVersion = 2 }
+    motorwayAssembly = [pscustomobject]@{
+        schemaVersion = 2
+        assemblyAuthority = 'trusted_prior_approved_grid_layout'
+    }
 }
 $complexMotorway = [pscustomobject]@{
     cellTemplateFilename = 'motorway-crossroads.vmf'
-    motorwayAssembly = [pscustomobject]@{ schemaVersion = 2 }
+    motorwayAssembly = [pscustomobject]@{
+        schemaVersion = 2
+        assemblyAuthority = 'trusted_prior_approved_grid_layout'
+    }
 }
 $diagnosticMotorway = [pscustomobject]@{
     cellTemplateFilename = 'motorway-inspection.vmf'
@@ -49,17 +55,17 @@ $legacyContract = [pscustomobject]@{
 $selected = @(Get-MotorwayInfillRecipes @(
     $normalStraight, $complexMotorway, $diagnosticMotorway, $ordinary, $legacyContract
 ))
-Assert ($selected.Count -eq 3) 'Only schema-2 measured motorway and inspection contracts are selected.'
+Assert ($selected.Count -eq 2) 'Only schema-2 normal motorway assembly contracts are selected.'
 Assert (@($selected | Where-Object { $_.cellTemplateFilename -eq 'ordinary-road.vmf' }).Count -eq 0) 'Ordinary recipes are excluded.'
 Assert (@($selected | Where-Object { $_.cellTemplateFilename -eq 'legacy-straight.vmf' }).Count -eq 0) 'Unmeasured legacy contracts are excluded.'
 Assert (@($selected | Where-Object { $_.cellTemplateFilename -eq 'motorway-straight.vmf' }).Count -eq 1) 'Normal straight motorway recipes are included.'
-Assert (@($selected | Where-Object { $_.cellTemplateFilename -eq 'motorway-inspection.vmf' }).Count -eq 1) 'Schema-2 inspection motorway recipes are included.'
+Assert (@($selected | Where-Object { $_.cellTemplateFilename -eq 'motorway-inspection.vmf' }).Count -eq 0) 'Retired diagnostic inspection contracts cannot enter normal infill batches.'
 
 $rejectedEmpty = $false
 try {
     Get-MotorwayInfillRecipes @($ordinary, $legacyContract) | Out-Null
 } catch {
-    if ($_.Exception.Message -notlike '*found no recipes with a schema-2 measured motorway contract*') { throw }
+    if ($_.Exception.Message -notlike '*found no recipes with a trusted schema-2 motorway assembly*') { throw }
     $rejectedEmpty = $true
 }
 Assert $rejectedEmpty 'An empty motorway-only pass fails explicitly.'

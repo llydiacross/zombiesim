@@ -179,7 +179,7 @@ function Get-MotorwayInfillRecipes {
 
     $motorwayRecipes = @($Recipes | Where-Object { $null -ne (Get-ZMComplexMotorwayContract $_) })
     if ($motorwayRecipes.Count -eq 0) {
-        throw 'MotorwayOnlyInfill found no recipes with a schema-2 measured motorway contract.'
+        throw 'MotorwayOnlyInfill found no recipes with a trusted schema-2 motorway assembly.'
     }
     return $motorwayRecipes
 }
@@ -500,7 +500,7 @@ function Test-RecipeTilePlacements {
             throw 'Normal wide motorway emission requires a complete measured straight assembly contract.'
         }
         $trustedPrevious = Test-TrustedPriorMotorwayAssembly $Recipe.motorwayAssembly
-        $current = New-ZMNormalStraightMotorwayContract $Recipe $TileDirectory
+        $current = Get-ZMNormalStraightMotorwayContract $Recipe
         if (($current | ConvertTo-Json -Depth 30 -Compress) -cne
             ($Recipe.motorwayAssembly | ConvertTo-Json -Depth 30 -Compress)) {
             throw 'Normal wide motorway emission contract differs from current source.'
@@ -518,16 +518,8 @@ function Test-RecipeTilePlacements {
             $normalComplex.status -ne 'normal_complex_travel_pending') {
             throw 'Normal complex motorway emission requires a unique travel-pending schema-2 contract.'
         }
-        if (-not (Test-TrustedPriorMotorwayAssembly $normalComplex)) {
-            foreach ($property in $normalComplex.sourceFingerprints.PSObject.Properties) {
-                if ($property.Value -cne (Get-FileHash -LiteralPath (Join-Path $TileDirectory $property.Name) -Algorithm SHA256).Hash) {
-                    throw "Normal complex motorway source changed; replan before emission: $($property.Name)"
-                }
-            }
-        }
-        if ((Test-TrustedPriorMotorwayAssembly $normalComplex) -and
-            @($normalComplex.gates).Count -eq 0) {
-            throw 'Trusted prior complex motorway plan lacks its approved gate records.'
+        if (-not (Test-TrustedPriorMotorwayAssembly $normalComplex) -or @($normalComplex.gates).Count -eq 0) {
+            throw 'Normal complex motorway emission requires a trusted plan with approved gate records.'
         }
         Get-TransitionGatePlacements $Recipe | Out-Null
     }
@@ -548,9 +540,9 @@ function Test-RecipeTilePlacements {
     $external = @($placements | Where-Object role -eq motorway_external_occupied)
     if ($external.Count -gt 0) {
         $complex = Get-ZMComplexMotorwayContract $Recipe
-        $inspectionComplex = $null -ne $Recipe.PSObject.Properties['motorwayCellInspection'] -and $MotorwayCellInspection
-        if ($null -eq $complex -or ($null -eq $normalComplex -and -not $inspectionComplex)) {
-            throw 'External motorway occupancy requires a complex measured assembly contract.'
+        if ($null -eq $complex -or $null -eq $normalComplex -or
+            -not (Test-TrustedPriorMotorwayAssembly $complex)) {
+            throw 'External motorway occupancy requires a trusted complex motorway contract.'
         }
         foreach ($record in $external) {
             $owner = @($complex.assemblies | Where-Object owner -eq $record.placementId)
@@ -1188,11 +1180,7 @@ function Get-TransitionGatePlacements {
 
     if ($null -ne $Recipe.PSObject.Properties['motorwayCellInspection']) { return @() }
     if ($null -ne $Recipe.PSObject.Properties['motorwayAssembly'] -and $Recipe.motorwayAssembly.schemaVersion -eq 2) {
-        $complexGates = if (Test-TrustedPriorMotorwayAssembly $Recipe.motorwayAssembly) {
-            @($Recipe.motorwayAssembly.gates)
-        } else {
-            @(Get-ZMComplexMotorwayGates $Recipe.motorwayAssembly $TileDirectory)
-        }
+        $complexGates = @(Get-ZMComplexMotorwayGates $Recipe.motorwayAssembly)
         if ((@($Recipe.activeEntrances | Sort-Object -Unique) -join ',') -ne
             (@($complexGates.direction | Sort-Object -Unique) -join ',')) {
             throw "Normal complex motorway gates disagree with active entrances: $($Recipe.cellTemplateFilename)"
@@ -1200,7 +1188,7 @@ function Get-TransitionGatePlacements {
         return @(ConvertTo-TransitionGatePlacements $complexGates)
     }
     if ($null -ne $Recipe.PSObject.Properties['motorwayAssembly']) {
-        $fresh = New-ZMNormalStraightMotorwayContract $Recipe $TileDirectory
+        $fresh = Get-ZMNormalStraightMotorwayContract $Recipe
         if (($fresh.gates | ConvertTo-Json -Depth 10 -Compress) -cne
             ($Recipe.motorwayAssembly.gates | ConvertTo-Json -Depth 10 -Compress)) {
             throw 'Normal measured gate records differ from current source; replan.'
@@ -1282,23 +1270,10 @@ function Set-CellPlayerStart {
         @{ Expression = { [int]$_.tileY } },
         @{ Expression = { [int]$_.tileX } })
     $complexContract = Get-ZMComplexMotorwayContract $Recipe
-    $candidate = if ($null -ne $complexContract -and $null -ne $complexContract.PSObject.Properties['insertionSeam']) {
-        $complexContract.insertionSeam.playerStartCandidate
-    } else { $null }
-    if ($null -ne $candidate) {
-        if ((-not $MotorwayCellInspection -and $complexContract.status -ne 'normal_complex_travel_pending') -or $TileGridSize -ne 5 -or $TileWidth -ne 640 -or
-            $candidate.status -ne 'measured_floor_candidate_clearance_pending') {
-            throw 'Measured motorway spawn candidate is limited to combined inspection fixtures.'
-        }
-        $point = Convert-ZMMotorwayPoint $candidate 0
-        $spawnX = $point.x
-        $spawnY = $point.y
-    } else {
-        if ($terrainTiles.Count -eq 0) { throw "Recipe '$($Recipe.cellTemplateFilename)' has no unobstructed terrain tile for the player start." }
-        $spawnTile = $terrainTiles[0]
-        $spawnX = [int](([int]$spawnTile.tileX - $centerTile) * $TileWidth)
-        $spawnY = [int](($centerTile - [int]$spawnTile.tileY) * $TileWidth)
-    }
+    if ($terrainTiles.Count -eq 0) { throw "Recipe '$($Recipe.cellTemplateFilename)' has no unobstructed terrain tile for the player start." }
+    $spawnTile = $terrainTiles[0]
+    $spawnX = [int](([int]$spawnTile.tileX - $centerTile) * $TileWidth)
+    $spawnY = [int](($centerTile - [int]$spawnTile.tileY) * $TileWidth)
     $originPropertyIndex = $Vmf.IndexOf('"origin"', $playerStartIndex, [System.StringComparison]::Ordinal)
     if ($originPropertyIndex -lt 0) { throw 'Base cell info_player_start must define an origin.' }
     $originMatch = [regex]::Match($Vmf.Substring($originPropertyIndex), '^"origin"\s+"(?<origin>-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?)"')
@@ -1647,41 +1622,35 @@ foreach ($recipe in $recipes) {
     }
     $complexContract = Get-ZMComplexMotorwayContract $recipe
     if ($null -ne $recipe.PSObject.Properties['motorwayAssembly'] -and $null -eq $complexContract) {
-        $rings = Resolve-ZMNormalStraightMotorwayRings $recipe $TileDirectory $borderPlacements $outerPlacements
+        $rings = Resolve-ZMNormalStraightMotorwayRings $recipe $borderPlacements $outerPlacements
         $borderPlacements = $rings.borderPlacements
         $outerPlacements = $rings.outerPlacements
     }
-    if ($null -ne $recipe.PSObject.Properties['motorwayCellInspection'] -or $null -ne $complexContract) {
-        $inspection = if ($null -ne $complexContract) { $complexContract } else { $recipe.motorwayCellInspection }
-        if ($inspection.schemaVersion -eq 2) {
-            $expectedStatus = if ($null -ne $recipe.PSObject.Properties['motorwayCellInspection']) { 'complex_cell_diagnostic_not_live_travel' } else { 'normal_complex_travel_pending' }
-            if ($inspection.status -ne $expectedStatus) { throw 'Invalid complex motorway contract status.' }
-            if (-not (Test-TrustedPriorMotorwayAssembly $inspection)) {
-                foreach ($property in $inspection.sourceFingerprints.PSObject.Properties) {
-                    if ($property.Value -cne (Get-FileHash -LiteralPath (Join-Path $TileDirectory $property.Name) -Algorithm SHA256).Hash) { throw "Complex inspection source changed: $($property.Name). Replan." }
-                }
-            }
-            $leased = @{}
-            foreach ($lease in $inspection.leases) { $leased["$($lease.tileX),$($lease.tileY)"] = $true }
-            $borderPlacements = @($borderPlacements | Where-Object { -not $leased.ContainsKey("$($_.tileX),$($_.tileY)") })
-            $outerPlacements = @($outerPlacements | Where-Object { -not $leased.ContainsKey("$($_.tileX),$($_.tileY)") })
-            $borderPlacements = @(Resolve-ZMCentredRoadBorderPlacements $recipe $borderPlacements)
-        } else {
+    if ($null -ne $complexContract) {
+        if ($complexContract.status -ne 'normal_complex_travel_pending' -or
+            -not (Test-TrustedPriorMotorwayAssembly $complexContract)) {
+            throw 'Complex motorway ring replacement requires a trusted normal contract.'
+        }
+        $leased = @{}
+        foreach ($lease in $complexContract.leases) { $leased["$($lease.tileX),$($lease.tileY)"] = $true }
+        $borderPlacements = @($borderPlacements | Where-Object { -not $leased.ContainsKey("$($_.tileX),$($_.tileY)") })
+        $outerPlacements = @($outerPlacements | Where-Object { -not $leased.ContainsKey("$($_.tileX),$($_.tileY)") })
+    } elseif ($null -ne $recipe.PSObject.Properties['motorwayCellInspection']) {
+        $inspection = $recipe.motorwayCellInspection
         if ($inspection.schemaVersion -ne 1 -or $inspection.status -ne 'cell_geometry_inspection_not_live_travel' -or
             $recipe.topology -ne 'motorway-straight' -or $recipe.transportFeature -ne 'none' -or
             $inspection.sourceSha256 -cne (Get-FileHash -LiteralPath (Join-Path $TileDirectory $inspection.template) -Algorithm SHA256).Hash) {
-            throw 'Motorway cell inspection metadata is unsupported or its source fingerprint is stale; replan from current sources.'
+            throw 'Straight motorway inspection metadata is unsupported or its source fingerprint is stale; replan.'
         }
         $leased = Assert-ZMStraightMotorwayCellContract $recipe
         $borderPlacements = @($borderPlacements | Where-Object { -not $leased.ContainsKey("$($_.tileX),$($_.tileY)") }) +
             @($inspection.ringPlacements | Where-Object ring -eq border)
         $outerPlacements = @($outerPlacements | Where-Object { -not $leased.ContainsKey("$($_.tileX),$($_.tileY)") }) +
             @($inspection.ringPlacements | Where-Object ring -eq outer)
-        }
     }
     if ($null -ne $complexContract) {
         Import-Module (Join-Path $PSScriptRoot 'terrain_infill.psm1')
-        $infill = Set-ZMInspectionTerrainInfill $recipe $TileDirectory $borderPlacements $outerPlacements -SizedPatches:$SizedTerrainInfill -CompletePatches:$CompleteTerrainInfill -MeasureCompletePatches:$MeasureCompleteTerrainInfill
+        $infill = Set-ZMMotorwayTerrainInfill $recipe $TileDirectory $borderPlacements $outerPlacements -SizedPatches:$SizedTerrainInfill -CompletePatches:$CompleteTerrainInfill -MeasureCompletePatches:$MeasureCompleteTerrainInfill
         $recipe | Add-Member -NotePropertyName terrainInfill -NotePropertyValue $infill
     }
     $expectedInteriorInstanceCount = (Get-RecipeInteriorInstanceCount $recipe) +

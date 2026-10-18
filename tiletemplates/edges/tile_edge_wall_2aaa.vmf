@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "19"
+	"mapversion" "20"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "19"
+	"mapversion" "20"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -227,7 +227,7 @@ world
 				"v" "320 -320 32"
 				"v" "320 256 32"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -245,7 +245,7 @@ world
 				"v" "-320 256 384"
 				"v" "-320 -320 384"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001A"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
@@ -263,7 +263,7 @@ world
 				"v" "320 -320 384"
 				"v" "320 256 384"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001A"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
@@ -281,7 +281,7 @@ world
 				"v" "320 256 384"
 				"v" "-320 256 384"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
@@ -299,7 +299,7 @@ world
 				"v" "-320 -320 384"
 				"v" "320 -320 384"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
@@ -317,7 +317,7 @@ world
 				"v" "320 256 384"
 				"v" "320 -320 384"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -345,7 +345,7 @@ world
 				"v" "320 256 800"
 				"v" "320 -320 800"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -363,9 +363,9 @@ world
 				"v" "-320 -320 800"
 				"v" "-320 -320 768"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[0 1 0 0] 0.25"
-			"vaxis" "[0 0 -1 256] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -381,9 +381,9 @@ world
 				"v" "320 256 800"
 				"v" "320 256 768"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[0 1 0 0] 0.25"
-			"vaxis" "[0 0 -1 256] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -399,9 +399,9 @@ world
 				"v" "-320 256 800"
 				"v" "-320 256 768"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 0 -1 256] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -417,9 +417,9 @@ world
 				"v" "320 -320 800"
 				"v" "320 -320 768"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 0 -1 256] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -435,7 +435,7 @@ world
 				"v" "320 -320 768"
 				"v" "320 256 768"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -463,8 +463,8 @@ world
 				"v" "-320 -320 768"
 				"v" "-320 -320 384"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
-			"uaxis" "[0 1 0 384] 0.25"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
+			"uaxis" "[0 1 0 256] 0.25"
 			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -481,8 +481,8 @@ world
 				"v" "320 256 768"
 				"v" "320 256 384"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
-			"uaxis" "[0 1 0 384] 0.25"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
+			"uaxis" "[0 1 0 256] 0.25"
 			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -499,7 +499,7 @@ world
 				"v" "-320 256 768"
 				"v" "-320 256 384"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
@@ -517,7 +517,7 @@ world
 				"v" "320 -320 768"
 				"v" "320 -320 384"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
@@ -535,7 +535,7 @@ world
 				"v" "320 -320 384"
 				"v" "320 256 384"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -553,7 +553,7 @@ world
 				"v" "320 256 768"
 				"v" "320 -320 768"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -581,8 +581,8 @@ world
 				"v" "-320 -320 1184"
 				"v" "-320 -320 800"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
-			"uaxis" "[0 1 0 -128] 0.25"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
+			"uaxis" "[0 1 0 256] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -599,8 +599,8 @@ world
 				"v" "320 256 1184"
 				"v" "320 256 800"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
-			"uaxis" "[0 1 0 -128] 0.25"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
+			"uaxis" "[0 1 0 256] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -617,7 +617,7 @@ world
 				"v" "-320 256 1184"
 				"v" "-320 256 800"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -635,7 +635,7 @@ world
 				"v" "320 -320 1184"
 				"v" "320 -320 800"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -653,7 +653,7 @@ world
 				"v" "320 -320 800"
 				"v" "320 256 800"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -671,7 +671,7 @@ world
 				"v" "320 256 1184"
 				"v" "320 -320 1184"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -717,9 +717,9 @@ world
 				"v" "-320 -320 1216"
 				"v" "-320 -320 1184"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[0 1 0 0] 0.25"
-			"vaxis" "[0 0 -1 384] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -735,9 +735,9 @@ world
 				"v" "320 256 1216"
 				"v" "320 256 1184"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[0 1 0 0] 0.25"
-			"vaxis" "[0 0 -1 384] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -753,9 +753,9 @@ world
 				"v" "-320 256 1216"
 				"v" "-320 256 1184"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 0 -1 384] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -771,9 +771,9 @@ world
 				"v" "320 -320 1216"
 				"v" "320 -320 1184"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 0 -1 384] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -789,7 +789,7 @@ world
 				"v" "320 -320 1184"
 				"v" "320 256 1184"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -817,8 +817,8 @@ world
 				"v" "-320 -320 1600"
 				"v" "-320 -320 1216"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
-			"uaxis" "[0 1 0 -128] 0.25"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
+			"uaxis" "[0 1 0 256] 0.25"
 			"vaxis" "[0 0 -1 256] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -835,8 +835,8 @@ world
 				"v" "320 256 1600"
 				"v" "320 256 1216"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
-			"uaxis" "[0 1 0 -128] 0.25"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
+			"uaxis" "[0 1 0 256] 0.25"
 			"vaxis" "[0 0 -1 256] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -853,7 +853,7 @@ world
 				"v" "-320 256 1600"
 				"v" "-320 256 1216"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 0 -1 256] 0.25"
 			"rotation" "0"
@@ -871,7 +871,7 @@ world
 				"v" "320 -320 1600"
 				"v" "320 -320 1216"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 0 -1 256] 0.25"
 			"rotation" "0"
@@ -889,7 +889,7 @@ world
 				"v" "320 -320 1216"
 				"v" "320 256 1216"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -907,7 +907,7 @@ world
 				"v" "320 256 1600"
 				"v" "320 -320 1600"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021C"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001B"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -953,7 +953,7 @@ world
 				"v" "-320 -320 1632"
 				"v" "-320 -320 1600"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
@@ -971,7 +971,7 @@ world
 				"v" "320 256 1632"
 				"v" "320 256 1600"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
@@ -989,7 +989,7 @@ world
 				"v" "-320 256 1632"
 				"v" "-320 256 1600"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
@@ -1007,7 +1007,7 @@ world
 				"v" "320 -320 1632"
 				"v" "320 -320 1600"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
@@ -1025,7 +1025,7 @@ world
 				"v" "320 -320 1600"
 				"v" "320 256 1600"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021J"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE001K"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"

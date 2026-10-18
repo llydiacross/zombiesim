@@ -1,7 +1,7 @@
 param(
     [string]$OutputRoot = '',
     [string]$TemplateDirectory = '',
-    [string]$MotorwayAssemblyReport = ''
+    [string]$TrustedMotorwayPlan = ''
 )
 
 Set-StrictMode -Version Latest
@@ -16,17 +16,18 @@ Import-Module (Join-Path $testsBinDirectory 'cell_bounds.psm1') -Force
 Import-Module (Join-Path $testsBinDirectory 'outer_edges.psm1') -Force
 Import-Module (Join-Path $testsBinDirectory 'skybox_models.psm1') -Force
 Import-Module (Join-Path $testsBinDirectory 'transition_gates.psm1') -Force
-Import-Module (Join-Path $testsBinDirectory 'motorway_geometry.psm1') -Force
 $script:passed = 0
 
 function Get-TestMotorwayGates {
     param($Layout)
 
     if ($null -eq $Layout.PSObject.Properties['motorwayAssembly'] -or $null -eq $Layout.motorwayAssembly) { return $null }
-    $assembly = $Layout.motorwayAssembly
-    if ($null -ne $assembly.PSObject.Properties['gates']) { return @($assembly.gates) }
-    if ($assembly.schemaVersion -eq 2) { return @(Get-ZMComplexMotorwayGates $assembly $TemplateDirectory) }
-    return @()
+    $authority = $Layout.motorwayAssembly.PSObject.Properties['assemblyAuthority']
+    $gates = @($Layout.motorwayAssembly.gates)
+    if ($null -eq $authority -or $authority.Value -ne 'trusted_prior_approved_grid_layout' -or $gates.Count -eq 0) {
+        throw "Trusted motorway contract has no approved gate records for $($Layout.cellTemplateFilename)."
+    }
+    return $gates
 }
 
 function Get-TestMotorwayGate {
@@ -72,13 +73,11 @@ if ([string]::IsNullOrWhiteSpace($TemplateDirectory)) {
     $TemplateDirectory = Join-Path $projectRoot $settings.paths.templateDirectory
 }
 $TemplateDirectory = (Resolve-Path -LiteralPath $TemplateDirectory).Path
-if ([string]::IsNullOrWhiteSpace($MotorwayAssemblyReport)) {
-    # The full preview grid contains normal complex motorway cells, which plan only from current measured assemblies.
-    $assemblyDirectory = Join-Path $OutputRoot 'measured-assemblies'
-    & (Join-Path $testsBinDirectory 'build_motorway_preview.ps1') -WorldProfile preview -OutputDirectory $assemblyDirectory | Out-Null
-    $MotorwayAssemblyReport = Join-Path $assemblyDirectory 'assembly-report.json'
+if ([string]::IsNullOrWhiteSpace($TrustedMotorwayPlan) -or
+    -not (Test-Path -LiteralPath $TrustedMotorwayPlan -PathType Leaf)) {
+    throw 'Pass the current approved full-world plan with -TrustedMotorwayPlan.'
 }
-$MotorwayAssemblyReport = (Resolve-Path -LiteralPath $MotorwayAssemblyReport).Path
+$TrustedMotorwayPlan = (Resolve-Path -LiteralPath $TrustedMotorwayPlan).Path
 $settings.paths.templateDirectory = [Uri]::UnescapeDataString(
     ([Uri]($projectRoot.TrimEnd('\') + '\')).MakeRelativeUri([Uri]($TemplateDirectory + '\')).ToString()
 ).Replace('/', '\')
@@ -321,7 +320,7 @@ Assert (@($runtime.cells | Where-Object { $null -eq $_.PSObject.Properties['wate
 # Exercise protected real-world recipes without touching their installed outputs.
 $coverageDirectory = Join-Path $OutputRoot 'coverage'
 $coveragePlanPath = Join-Path $OutputRoot 'coverage-plan.json'
-& (Join-Path $testsBinDirectory 'plan_cell_templates.ps1') -WorldProfile preview -SettingsPath $settingsPath -MapData (Join-Path $testsBinDirectory 'preview_grid_24x24_seed_1337.json') -CellDirectory $coverageDirectory -Output $coveragePlanPath -ListOutput (Join-Path $OutputRoot 'coverage-required.txt') -MotorwayAssemblyReport $MotorwayAssemblyReport | Out-Null
+& (Join-Path $testsBinDirectory 'plan_cell_templates.ps1') -WorldProfile preview -SettingsPath $settingsPath -MapData (Join-Path $testsBinDirectory 'preview_grid_24x24_seed_1337.json') -CellDirectory $coverageDirectory -Output $coveragePlanPath -ListOutput (Join-Path $OutputRoot 'coverage-required.txt') -TrustedMotorwayPlan $TrustedMotorwayPlan | Out-Null
 if (-not $?) { throw 'Expanded protected recipe planning failed.' }
 $coveragePlan = Get-Content -Raw -LiteralPath $coveragePlanPath | ConvertFrom-Json
 # The Alpha 3.1.5 legacy-policy comparisons are retired: Alpha 3.2 density zoning intentionally changes

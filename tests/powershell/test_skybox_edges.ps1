@@ -1,4 +1,9 @@
-param([string]$OutputRoot = '', [switch]$BuildModels)
+param(
+    [string]$OutputRoot = '',
+    [switch]$BuildModels,
+    [string]$MapData = '',
+    [string]$TrustedMotorwayPlan = ''
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -25,8 +30,13 @@ $settingsPath = Join-Path $OutputRoot 'settings.json'
 $sourceDirectory = Join-Path $OutputRoot 'src'
 $planPath = Join-Path $OutputRoot 'plan.json'
 $listPath = Join-Path $OutputRoot 'required.txt'
-$batchRoot = Join-Path $root 'generated\phase_j_preview_20261015'
-& (Join-Path $testsBinDirectory 'plan_cell_templates.ps1') -WorldProfile preview -SettingsPath $settingsPath -MapData (Join-Path $batchRoot 'preview_grid_24x24_seed_1337.json') -MotorwayAssemblyReport (Join-Path $batchRoot 'measured-assemblies\assembly-report.json') -CellDirectory $sourceDirectory -Output $planPath -ListOutput $listPath | Out-Null
+if ([string]::IsNullOrWhiteSpace($MapData) -or -not (Test-Path -LiteralPath $MapData -PathType Leaf) -or
+    [string]::IsNullOrWhiteSpace($TrustedMotorwayPlan) -or -not (Test-Path -LiteralPath $TrustedMotorwayPlan -PathType Leaf)) {
+    throw 'Pass the current matching preview manifest and trusted motorway plan with -MapData and -TrustedMotorwayPlan.'
+}
+$MapData = [IO.Path]::GetFullPath($MapData)
+$TrustedMotorwayPlan = [IO.Path]::GetFullPath($TrustedMotorwayPlan)
+& (Join-Path $testsBinDirectory 'plan_cell_templates.ps1') -WorldProfile preview -SettingsPath $settingsPath -MapData $MapData -TrustedMotorwayPlan $TrustedMotorwayPlan -CellDirectory $sourceDirectory -Output $planPath -ListOutput $listPath | Out-Null
 if (-not $?) { throw 'Skyline fixture planning failed.' }
 $plan = Get-Content -Raw $planPath | ConvertFrom-Json
 $selected = @($plan.cells | Group-Object { (@($_.skyboxOceanSides) -join '') + ':' + (@($_.waterBorderSides | ForEach-Object { $_.side } | Sort-Object) -join '') } |

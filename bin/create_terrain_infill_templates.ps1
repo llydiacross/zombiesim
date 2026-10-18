@@ -21,7 +21,15 @@ if (-not [string]::IsNullOrWhiteSpace($PartialGapLayoutDirectory)) {
     $seen = @{}
     foreach ($file in Get-ChildItem -LiteralPath $PartialGapLayoutDirectory -Filter '*.layout.json' -File) {
         $layout = Get-Content -Raw -LiteralPath $file.FullName | ConvertFrom-Json
-        $contract = @(foreach ($name in @('motorwayCellInspection', 'motorwayAssembly')) { if ($null -ne $layout.PSObject.Properties[$name] -and $layout.$name.schemaVersion -eq 2) { $layout.$name } })
+        $contractProperty = $layout.PSObject.Properties['motorwayAssembly']
+        $authority = if ($null -ne $contractProperty) { $contractProperty.Value.PSObject.Properties['assemblyAuthority'] } else { $null }
+        $contract = @()
+        if ($null -ne $contractProperty -and $contractProperty.Value.schemaVersion -eq 2) {
+            if ($null -eq $authority -or $authority.Value -ne 'trusted_prior_approved_grid_layout') {
+                throw "Motorway infill layout lacks a trusted normal assembly: $($file.FullName)"
+            }
+            $contract = @($contractProperty.Value)
+        }
         if ($contract.Count -gt 1) { throw "Complete infill layout has more than one complex motorway contract: $($file.FullName)" }
         if ($MotorwayOnly -and $contract.Count -eq 0) { continue }
         if ($contract.Count -eq 1 -and [IO.Path]::GetFileName($contract[0].template) -eq 'tile_motorway_corner_5x3.vmf') { continue }

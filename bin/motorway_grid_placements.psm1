@@ -77,6 +77,10 @@ function Set-ZMTrustedMotorwayGridContract {
     )
 
     $contract = $TrustedContract | ConvertTo-Json -Depth 100 | ConvertFrom-Json
+    $authority = $contract.PSObject.Properties['assemblyAuthority']
+    if ($null -eq $authority -or $authority.Value -ne 'trusted_prior_approved_grid_layout') {
+        throw 'Motorway grid placement requires an approved trusted-plan contract.'
+    }
     if ($contract.schemaVersion -eq 1) { return $contract }
     if ($contract.schemaVersion -ne 2) {
         throw "Unsupported trusted motorway grid contract version $($contract.schemaVersion)."

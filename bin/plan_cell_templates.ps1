@@ -9,7 +9,6 @@ param(
     [switch]$ListOnly,
     [switch]$ForceEligibleCarparks,
     [switch]$MotorwayCellInspection,
-    [string]$MotorwayAssemblyReport = '',
     [string]$TrustedMotorwayPlan = '',
     [string]$WorldProfile = '',
     [switch]$Preview,
@@ -3411,57 +3410,9 @@ if ($outerEdgesEnabled) {
         $cell.cellTemplateExists = Test-Path -LiteralPath $cell.cellTemplatePath
     }
 }
-function Test-PlannedComplexMotorwayCell {
-    param([object]$cell)
 
-    return [string]$cell.topology -like 'motorway-*' -and -not ([string]$cell.topology -eq 'motorway-straight' -and [string]$cell.transportFeature -eq 'none')
-}
 
-function Resolve-PlannedComplexMotorwayCase {
-    param([object]$cell, [object]$assemblyReport)
 
-    $name = switch ($cell.topology) {
-        'motorway-corner' { 'tile_motorway_corner_5x3.vmf' }
-        'motorway-crossjunction' { 'tile_motorway_crossroads_3x3.vmf' }
-        'motorway-tjunction' { 'tile_motorway_tjunction_6x3.vmf' }
-        'motorway-deadend' { 'tile_motorway_deadend_3x3.vmf' }
-        'motorway-straight' {
-            if ($cell.transportFeature -like 'bridge-*') { 'tile_motorway_road_bridge.vmf' }
-            elseif ($cell.transportFeature -like 'onramp-dual-*') { 'tile_motorway_onramp_dual_3x4.vmf' }
-            elseif ($cell.transportFeature -like 'onramp-*') { 'tile_motorway_onramp_3x4.vmf' }
-            else { throw 'Complex inspection report requires a complex piece, not a repeated straight.' }
-        }
-        default { throw "Unsupported complex inspection topology '$($cell.topology)'." }
-    }
-    # The measured wide bridge carries its motorway N/S at yaw0, unlike the legacy1x1 transport yaws.
-    $yaw = if ($cell.topology -eq 'motorway-straight' -and $cell.transportFeature -eq 'bridge-horizontal') { [int]$plannerSettings.rotations.layout.straight.vertical }
-        elseif ($cell.topology -eq 'motorway-straight' -and $cell.transportFeature -eq 'bridge-vertical') { [int]$plannerSettings.rotations.layout.straight.horizontal }
-        elseif ($cell.transportFeature -ne 'none') { Get-TransportFeatureRotation $cell.transportFeature }
-        else { Get-LayoutRotation $cell.topology $cell.orientation }
-    $case = @($assemblyReport.cases | Where-Object { [IO.Path]::GetFileName($_.piece) -eq $name -and $_.yaw -eq $yaw })
-    if ($case.Count -ne 1) { throw "Exactly one measured assembly case required for $name/yaw$yaw." }
-    if ($cell.topology -ne 'motorway-straight' -and $cell.transportFeature -ne 'none') {
-        $mainYaw = Get-LayoutRotation $cell.topology $cell.orientation
-        $main = @($assemblyReport.cases | Where-Object { [IO.Path]::GetFileName($_.piece) -eq $name -and $_.yaw -eq $mainYaw })
-        $transportName = if ($cell.transportFeature -like 'bridge-*') { 'tile_motorway_road_bridge.vmf' } else { 'tile_motorway_onramp_3x4.vmf' }
-        $roadDirections = if ($cell.transportFeature -eq 'bridge-horizontal') { @('E', 'W') }
-            elseif ($cell.transportFeature -eq 'bridge-vertical') { @('N', 'S') }
-            else { @($cell.rampExits | Sort-Object) }
-        $transports = @($assemblyReport.cases | Where-Object {
-            [IO.Path]::GetFileName($_.piece) -eq $transportName -and
-            (@($_.connections | Where-Object route -eq road | ForEach-Object { $_.ports[0].outward } | Sort-Object) -join ',') -eq ($roadDirections -join ',')
-        })
-        if ($cell.transportFeature -like 'bridge-*') {
-            $bridgeYaw = if ($cell.transportFeature -eq 'bridge-horizontal') {
-                [int]$plannerSettings.rotations.layout.straight.vertical
-            } else { [int]$plannerSettings.rotations.layout.straight.horizontal }
-            $transports = @($transports | Where-Object yaw -eq $bridgeYaw)
-        }
-        if ($main.Count -ne 1 -or $transports.Count -ne 1) { throw 'Mixed motorway requires unique source-measured topology and transport orientations.' }
-        $case = @(Join-ZMMotorwayAssemblyCases $main[0] $transports[0])
-    }
-    return $case[0]
-}
 
 if (-not $MotorwayCellInspection) {
     $motorwayCells = @($planCells | Where-Object { $_.topology -like 'motorway-*' })
@@ -3503,14 +3454,8 @@ if ($MotorwayCellInspection) {
         }
     }
     Import-Module (Join-Path $PSScriptRoot 'motorway_geometry.psm1') -Force
-    $assemblyReport = if ([string]::IsNullOrWhiteSpace($MotorwayAssemblyReport)) { $null } else { Get-Content -Raw -LiteralPath $MotorwayAssemblyReport | ConvertFrom-Json }
     foreach ($cell in $planCells) {
-        if ($null -eq $assemblyReport) {
-            Set-ZMStraightMotorwayCellInspection $cell $TemplateDirectory $plannerSettings.rotations.layout
-        } else {
-            $case = @(Resolve-PlannedComplexMotorwayCase $cell $assemblyReport)
-            Set-ZMComplexMotorwayCellInspection $cell $case[0] $TemplateDirectory $assemblyReport.registry $plannerSettings.rotations.transport
-        }
+        Set-ZMStraightMotorwayCellInspection $cell $TemplateDirectory $plannerSettings.rotations.layout
         $cell.cellTemplateFilename = [IO.Path]::GetFileNameWithoutExtension($cell.cellTemplateFilename) + '-motorway3-inspect.vmf'
         $cell.cellTemplatePath = Join-Path $CellDirectory $cell.cellTemplateFilename
         $cell.cellTemplateExists = Test-Path -LiteralPath $cell.cellTemplatePath

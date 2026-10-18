@@ -15,35 +15,22 @@ Import-Module (Join-Path $PSScriptRoot 'scenery_density.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'motorway_geometry.psm1') -Force
 
 function Get-RuntimeMotorwayGates {
-    param([object]$PlanCell, [string]$TemplateDirectory)
+    param([object]$PlanCell)
 
-    if ($null -eq $PlanCell.PSObject.Properties['motorwayAssembly']) { return }
-    $authority = $PlanCell.motorwayAssembly.PSObject.Properties['assemblyAuthority']
-    if ($null -ne $authority -and $authority.Value -eq 'trusted_prior_approved_grid_layout') {
-        $priorGates = @($PlanCell.motorwayAssembly.gates)
-        if ($priorGates.Count -eq 0 -or
-            (@($PlanCell.activeEntrances | Sort-Object -Unique) -join ',') -ne
-            (@($priorGates.direction | Sort-Object -Unique) -join ',')) {
-            throw "Trusted prior motorway gates disagree with active entrances for $($PlanCell.cellTemplateFilename)."
-        }
-        return $priorGates
+    if ($null -eq $PlanCell.PSObject.Properties['motorwayAssembly']) { return @() }
+    $contract = $PlanCell.motorwayAssembly
+    if ($contract.schemaVersion -eq 1) {
+        $gates = @(Get-ZMNormalStraightMotorwayContract $PlanCell | ForEach-Object { $_.gates })
+    } elseif ($contract.schemaVersion -eq 2) {
+        $gates = @(Get-ZMComplexMotorwayGates $contract)
+    } else {
+        throw "Unsupported trusted motorway contract for $($PlanCell.cellTemplateFilename)."
     }
-    if ($PlanCell.motorwayAssembly.schemaVersion -eq 2) {
-        if ($PlanCell.motorwayAssembly.status -ne 'normal_complex_travel_pending') {
-            throw "Runtime complex motorway contract has unsupported status for $($PlanCell.cellTemplateFilename)."
-        }
-        $complexGates = @(Get-ZMComplexMotorwayGates $PlanCell.motorwayAssembly $TemplateDirectory)
-        if ((@($PlanCell.activeEntrances | Sort-Object -Unique) -join ',') -ne (@($complexGates.direction | Sort-Object) -join ',')) {
-            throw "Runtime complex motorway gates disagree with active entrances for $($PlanCell.cellTemplateFilename)."
-        }
-        return $complexGates
+    if ((@($PlanCell.activeEntrances | Sort-Object -Unique) -join ',') -ne
+        (@($gates.direction | Sort-Object -Unique) -join ',')) {
+        throw "Trusted motorway gates disagree with active entrances for $($PlanCell.cellTemplateFilename)."
     }
-    $measured = New-ZMNormalStraightMotorwayContract $PlanCell $TemplateDirectory
-    if (($measured | ConvertTo-Json -Depth 30 -Compress) -cne
-        ($PlanCell.motorwayAssembly | ConvertTo-Json -Depth 30 -Compress)) {
-        throw "Runtime motorway gate metadata differs from current source for $($PlanCell.cellTemplateFilename)."
-    }
-    return $measured.gates
+    return $gates
 }
 
 function Get-RuntimeSceneryDensityFields {
@@ -503,7 +490,7 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
     foreach ($field in $densityFields.Keys) { $runtimeCell[$field] = $densityFields[$field] }
     if ($null -ne $planCell.PSObject.Properties['motorwayAssembly']) {
         $templateRoot = Join-Path $projectRoot $generatorSettings.paths.templateDirectory
-        $runtimeCell.motorwayGates = @(Get-RuntimeMotorwayGates $planCell $templateRoot)
+        $runtimeCell.motorwayGates = @(Get-RuntimeMotorwayGates $planCell)
     }
     $runtimeCells.Add($runtimeCell)
 }

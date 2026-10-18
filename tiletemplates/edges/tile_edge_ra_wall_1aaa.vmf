@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8871"
-	"mapversion" "20"
+	"mapversion" "21"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "20"
+	"mapversion" "21"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -1174,7 +1174,7 @@ entity
 {
 	"id" "447"
 	"classname" "prop_static"
-	"angles" "0 270 0"
+	"angles" "0 276.5 0"
 	"fademindist" "-1"
 	"fadescale" "1"
 	"lightmapresolutionx" "32"
@@ -1182,7 +1182,7 @@ entity
 	"model" "models/props_buildings/collapsedbuilding02b.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "0 -224 1984"
+	"origin" "0 -192 1984"
 	editor
 	{
 		"color" "255 255 0"
@@ -1203,7 +1203,49 @@ entity
 	"model" "models/props_buildings/collapsedbuilding02b.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "128 96 1984"
+	"origin" "128 160 1984"
+	editor
+	{
+		"color" "255 255 0"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "465"
+	"classname" "prop_static"
+	"angles" "0 94.5 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props_buildings/collapsedbuilding02b.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "0 160 1984"
+	editor
+	{
+		"color" "255 255 0"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "471"
+	"classname" "prop_static"
+	"angles" "0 260 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props_buildings/collapsedbuilding02b.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "-128 -224 1984"
 	editor
 	{
 		"color" "255 255 0"

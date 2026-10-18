@@ -473,16 +473,20 @@ function New-ZMInfillRectangleVmf {
     })
 }
 
-function Set-ZMInspectionTerrainInfill {
+function Set-ZMMotorwayTerrainInfill {
     param([object]$Recipe, [string]$TemplateDirectory, [object[]]$BorderPlacements, [object[]]$OuterPlacements, [switch]$SizedPatches, [switch]$CompletePatches, [switch]$MeasureCompletePatches)
 
-    $inspection = @(foreach ($name in @('motorwayCellInspection', 'motorwayAssembly')) { if ($null -ne $Recipe.PSObject.Properties[$name] -and $Recipe.$name.schemaVersion -eq 2) { $Recipe.$name } })
-    if ($inspection.Count -ne 1) { throw 'Complex terrain infill requires one schema-2 motorway contract.' }
-    $inspection = $inspection[0]
+    $contract = $Recipe.PSObject.Properties['motorwayAssembly']
+    $authority = if ($null -ne $contract) { $contract.Value.PSObject.Properties['assemblyAuthority'] } else { $null }
+    if ($null -eq $contract -or $null -eq $contract.Value -or $contract.Value.schemaVersion -ne 2 -or
+        $null -eq $authority -or $authority.Value -ne 'trusted_prior_approved_grid_layout') {
+        throw 'Motorway terrain infill requires a schema-2 trusted normal assembly contract.'
+    }
+    $contract = $contract.Value
     # Omitted skybox-ocean outer bands keep their beach; infill stays inside the retained 2240 boundary there.
     $ocean = @(if ($null -ne $Recipe.PSObject.Properties['skyboxOceanSides']) { @($Recipe.skyboxOceanSides) })
     $obstacles = [System.Collections.Generic.List[object]]::new()
-    $sources = @($inspection.assemblies)
+    $sources = @($contract.assemblies)
     foreach ($placement in @($Recipe.tilePlacements | Where-Object { $_.role -ne 'motorway_external_occupied' }) + $BorderPlacements + $OuterPlacements) {
         $sources += [pscustomobject]@{
             template = $placement.template; yaw = $placement.rotationYaw
@@ -637,8 +641,8 @@ function Set-ZMInspectionTerrainInfill {
     if ($MeasureCompletePatches) { $placements.Clear() }
     $templates = @('terrain\infill\tile_ground_half.vmf', 'terrain\infill\tile_ground_quarter.vmf') + @($placements | ForEach-Object template) | Sort-Object -Unique
     $unresolved = @($partialGaps | Where-Object status -eq 'fractional_ground_boundary_requires_source_review')
-    if ($unresolved.Count) { Write-Warning "Ground infill: $($unresolved.Count) fractional boundaries require source review for $($inspection.template); no fractional or polygon sources emitted." }
-    if ($unfilled.Count) { Write-Warning "Ground infill: $($unfilled.Count) sub4 remainders left on the default floor for $($inspection.template); no sub4 sources emitted." }
+    if ($unresolved.Count) { Write-Warning "Ground infill: $($unresolved.Count) fractional boundaries require source review for $($contract.template); no fractional or polygon sources emitted." }
+    if ($unfilled.Count) { Write-Warning "Ground infill: $($unfilled.Count) sub4 remainders left on the default floor for $($contract.template); no sub4 sources emitted." }
     foreach ($template in $templates) {
         $path = Join-Path $TemplateDirectory $template
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing editable infill base template: $path. Run create_terrain_infill_templates.ps1 first." }
@@ -678,4 +682,4 @@ function Set-ZMInspectionTerrainInfill {
     }
 }
 
-Export-ModuleMember -Function Get-ZMInfillObstacles, Get-ZMInfillGroundCoverage, Set-ZMInspectionTerrainInfill, Get-ZMInfillPatchName, Get-ZMInfillRectanglePieces, Get-ZMInfillShape, New-ZMInfillShapeVmf, New-ZMInfillRectangleVmf
+Export-ModuleMember -Function Get-ZMInfillObstacles, Get-ZMInfillGroundCoverage, Set-ZMMotorwayTerrainInfill, Get-ZMInfillPatchName, Get-ZMInfillRectanglePieces, Get-ZMInfillShape, New-ZMInfillShapeVmf, New-ZMInfillRectangleVmf

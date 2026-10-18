@@ -4,10 +4,7 @@ param(
     [string]$MapData = '',
     [string]$TrustedMotorwayPlan = '',
     [string[]]$CellCoordinates = @(),
-    [switch]$Complex,
-    [switch]$Mixed,
-    [switch]$SizedInfill,
-    [switch]$CompleteInfill,
+    [switch]$StraightInspection,
     [switch]$NormalPlanOnly,
     [switch]$Normal,
     [switch]$NormalComplex,
@@ -17,173 +14,138 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-if ($NormalComplex -and ($Mixed -or $Complex -or $Normal -or $NormalPlanOnly -or $SizedInfill -or $CompleteInfill)) { throw 'NormalComplex is a standalone normal-generator mode with its own complete infill pass.' }
-if ($CellCoordinates.Count -gt 0 -and -not $NormalComplex) { throw 'CellCoordinates is supported only by the normal complex preview mode.' }
-if ($Mixed) { $Complex = $true; $CompleteInfill = $true }
-if ($Normal -and ($NormalPlanOnly -or $Complex -or $SizedInfill -or $CompleteInfill)) { throw 'Normal emission currently covers the two plain straight recipes without inspection or infill modes.' }
-if ($NormalPlanOnly -and ($Complex -or $SizedInfill -or $CompleteInfill)) { throw 'Normal plan-only checks currently cover plain straights without inspection or infill modes.' }
-if ($SizedInfill -and -not $Complex) { throw 'Sized ground patches require complex inspection cells.' }
-if ($CompleteInfill -and -not $Complex) { throw 'Complete ground infill requires complex inspection cells.' }
-if ($CompleteInfill) { $SizedInfill = $true }
-Import-Module (Join-Path $PSScriptRoot 'vmf_source_dependencies.psm1') -Force
+
+$modes = [System.Collections.Generic.List[string]]::new()
+if ($StraightInspection) { $modes.Add('StraightInspection') }
+if ($NormalPlanOnly) { $modes.Add('NormalPlanOnly') }
+if ($Normal) { $modes.Add('Normal') }
+if ($NormalComplex) { $modes.Add('NormalComplex') }
+if ($modes.Count -ne 1) {
+    throw 'Choose exactly one of -StraightInspection, -NormalPlanOnly, -Normal, or -NormalComplex.'
+}
+if ($CellCoordinates.Count -gt 0 -and -not $NormalComplex) {
+    throw 'CellCoordinates is supported only with -NormalComplex.'
+}
+if ($SkipInfill -and -not $NormalComplex) {
+    throw 'SkipInfill is supported only with -NormalComplex.'
+}
+if ([string]::IsNullOrWhiteSpace($MapData) -or -not (Test-Path -LiteralPath $MapData -PathType Leaf)) {
+    throw 'Pass the current matching preview manifest with -MapData.'
+}
+if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
+    throw 'Pass an isolated output path with -OutputDirectory; dated generated defaults are not used.'
+}
+
 $root = Split-Path -Parent $PSScriptRoot
 $profile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -SettingsPath $SettingsPath
-if ($profile.Name -ne 'preview') { throw 'Motorway cell inspection is preview-only.' }
-if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $root $(if ($NormalComplex) { 'generated\phase_f_normal_complex_cells' } elseif ($Mixed) { 'generated\phase_e_mixed_cells' } elseif ($NormalPlanOnly -or $Normal) { 'generated\phase_e_normal_straight' } elseif ($CompleteInfill) { 'generated\phase_b_power2_infill_cells' } elseif ($Complex) { 'generated\phase_b_complex_cells' } else { 'generated\phase_b_motorway_cells' }) }
+if ($profile.Name -ne 'preview') { throw 'Motorway cell previews are limited to the preview profile.' }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $generatedRoot = [IO.Path]::GetFullPath((Join-Path $root 'generated')).TrimEnd('\') + '\'
-if (-not $OutputDirectory.StartsWith($generatedRoot, [StringComparison]::OrdinalIgnoreCase)) { throw 'Motorway cell outputs must remain below generated.' }
-if ([string]::IsNullOrWhiteSpace($MapData)) {
-    $MapData = Join-Path $root 'generated\phase_j_preview_20261015\preview_grid_24x24_seed_1337.json'
+if (-not $OutputDirectory.StartsWith($generatedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+    throw 'Motorway cell output must remain under generated.'
 }
-if (-not (Test-Path -LiteralPath $MapData -PathType Leaf)) { throw 'Current matching preview manifest required; pass -MapData explicitly.' }
+
+$MapData = [IO.Path]::GetFullPath($MapData)
 $sourceHash = (Get-FileHash -LiteralPath $MapData -Algorithm SHA256).Hash
 $manifest = Get-Content -Raw -LiteralPath $MapData | ConvertFrom-Json
-if ($manifest.map.gridCells -ne 24 -or $manifest.map.seed -ne 1337) { throw 'Cell inspection expects the approved 24x24 seed1337 preview manifest.' }
-$targets = if ($NormalComplex) { @() } elseif ($Mixed) { @(
-    [pscustomobject]@{ x = 17; y = 0; label = 'deadend_s_bridge'; syntheticT = $false },
-    [pscustomobject]@{ x = 13; y = 18; label = 'corner_ne_ramp_s'; syntheticT = $false },
-    [pscustomobject]@{ x = 6; y = 23; label = 'deadend_n_ramp_e'; syntheticT = $false },
-    [pscustomobject]@{ x = 15; y = 23; label = 'deadend_n_bridge'; syntheticT = $false }
-) } elseif ($Complex) { @(
-    [pscustomobject]@{ x = 15; y = 14; label = 'corner'; syntheticT = $false },
-    [pscustomobject]@{ x = 6; y = 7; label = 'crossroads'; syntheticT = $false },
-    [pscustomobject]@{ x = 15; y = 18; label = 'tjunction_fixture'; syntheticT = $true },
-    [pscustomobject]@{ x = 6; y = 0; label = 'deadend'; syntheticT = $false },
-    [pscustomobject]@{ x = 17; y = 2; label = 'bridge'; syntheticT = $false },
-    [pscustomobject]@{ x = 6; y = 3; label = 'single_ramp'; syntheticT = $false },
-    [pscustomobject]@{ x = 17; y = 4; label = 'dual_ramp'; syntheticT = $false }
-) } else { @(
-    [pscustomobject]@{ x = 6; y = 1; orientation = 'vertical' },
-    [pscustomobject]@{ x = 2; y = 7; orientation = 'horizontal' }
-) }
-$cells = @(foreach ($target in $targets) {
-    $matches = @($manifest.cells | Where-Object { $_.x -eq $target.x -and $_.y -eq $target.y })
-    if ($matches.Count -ne 1) { throw "Missing/duplicate inspection cell $($target.x),$($target.y)." }
-    $cell = $matches[0]
-    if ($Complex) {
-        if (-not $cell.highway.present -or $null -ne $cell.safeZone -or @($cell.landmarks).Count -gt 0) { throw "Complex inspection target $($target.label) changed." }
-        if ($target.syntheticT) {
-            $cell.highway.connections = @('N', 'E', 'W')
-            $cell.highway.degree = 3
-            $cell.road.connections = @('N', 'E', 'W')
-            $cell.road.degree = 3
-            $cell | Add-Member -NotePropertyName inspectionFixtureChange -NotePropertyValue 'Explicit T-junction fixture derived from a crossroads; no T-junction exists in current preview world. Source world/neighbor graph unchanged.'
-        }
-        $cell
-        continue
+if ($manifest.map.gridCells -ne 24 -or $manifest.map.seed -ne 1337) {
+    throw 'Motorway cell preview expects the approved 24x24 seed-1337 manifest.'
+}
+
+$normalMode = $NormalPlanOnly -or $Normal -or $NormalComplex
+$trustedPlan = $null
+if ($normalMode) {
+    if ([string]::IsNullOrWhiteSpace($TrustedMotorwayPlan) -or
+        -not (Test-Path -LiteralPath $TrustedMotorwayPlan -PathType Leaf)) {
+        throw 'Normal motorway previews require an explicit current -TrustedMotorwayPlan.'
     }
-    $expected = if ($target.orientation -eq 'vertical') { 'N,S' } else { 'E,W' }
-    if (-not $cell.highway.present -or (@($cell.highway.connections | Sort-Object) -join ',') -ne $expected -or
-        $cell.highway.bridge -or @($cell.highway.rampExits).Count -gt 0 -or $null -ne $cell.safeZone -or @($cell.landmarks).Count -gt 0) {
-        throw "Inspection target $($target.x),$($target.y) no longer matches the intended plain straight motorway."
+    $TrustedMotorwayPlan = [IO.Path]::GetFullPath($TrustedMotorwayPlan)
+    $trustedPlan = Get-Content -Raw -LiteralPath $TrustedMotorwayPlan | ConvertFrom-Json
+    if ($trustedPlan.mapSeed -ne [int]$manifest.map.seed -or
+        $trustedPlan.mapGridCells -ne [int]$manifest.map.gridCells) {
+        throw 'Trusted motorway plan and preview manifest must use the same seed and grid.'
     }
-    $cell
-})
+}
+
 if ($NormalComplex) {
     $cells = @($manifest.cells | Where-Object {
-        $_.highway.present -and $null -eq $_.safeZone -and -not (((@($_.highway.connections | Sort-Object) -join ',') -in @('N,S', 'E,W')) -and -not $_.highway.bridge -and @($_.highway.rampExits).Count -eq 0)
+        $_.highway.present -and $null -eq $_.safeZone -and @($_.landmarks).Count -eq 0 -and
+        -not ((@($_.highway.connections | Sort-Object) -join ',') -in @('N,S', 'E,W') -and
+            -not $_.highway.bridge -and @($_.highway.rampExits).Count -eq 0)
     })
     if ($cells.Count -eq 0) { throw 'No complex motorway cells found in the manifest.' }
     if ($CellCoordinates.Count -gt 0) {
-        $requestedCoordinates = @{}
+        $requested = @{}
         foreach ($coordinate in $CellCoordinates) {
-            if ($coordinate -notmatch '^(?<x>\d+),(?<y>\d+)$') { throw "Invalid logical cell coordinate '$coordinate'." }
-            if ($requestedCoordinates.ContainsKey($coordinate)) { throw "Cell coordinate '$coordinate' was requested more than once." }
-            $requestedCoordinates[$coordinate] = $true
+            if ($coordinate -notmatch '^(?<x>\d+),(?<y>\d+)$') { throw "Invalid logical coordinate '$coordinate'." }
+            if ($requested.ContainsKey($coordinate)) { throw "Duplicate logical coordinate '$coordinate'." }
+            $requested[$coordinate] = $true
         }
-        $cells = @($cells | Where-Object { $requestedCoordinates.ContainsKey("$($_.x),$($_.y)") })
-        if ($cells.Count -ne $requestedCoordinates.Count) {
-            $foundCoordinates = @($cells | ForEach-Object { "$($_.x),$($_.y)" })
-            $missingCoordinates = @($requestedCoordinates.Keys | Where-Object { $_ -notin $foundCoordinates })
-            throw "Normal complex preview cells are missing or not complex motorway cells: $($missingCoordinates -join ', ')."
+        $cells = @($cells | Where-Object { $requested.ContainsKey("$($_.x),$($_.y)") })
+        if ($cells.Count -ne $requested.Count) {
+            $found = @($cells | ForEach-Object { "$($_.x),$($_.y)" })
+            $missing = @($requested.Keys | Where-Object { $_ -notin $found })
+            throw "Trusted preview is missing requested complex motorway cells: $($missing -join ', ')."
         }
     }
-}
-$usesTrustedMotorwayPlan = $NormalPlanOnly -or $Normal -or $NormalComplex
-$trustedPlanSubsetPath = ''
-if ($usesTrustedMotorwayPlan) {
-    if ([string]::IsNullOrWhiteSpace($TrustedMotorwayPlan)) {
-        $TrustedMotorwayPlan = Join-Path $root 'generated\phase_j_preview_20261015\plan.json'
-    }
-    $TrustedMotorwayPlan = [IO.Path]::GetFullPath($TrustedMotorwayPlan)
-    if (-not (Test-Path -LiteralPath $TrustedMotorwayPlan -PathType Leaf)) {
-        throw "Trusted motorway plan was not found: $TrustedMotorwayPlan"
-    }
-    $trustedPlanData = Get-Content -Raw -LiteralPath $TrustedMotorwayPlan | ConvertFrom-Json
-    if ($trustedPlanData.mapSeed -ne [int]$manifest.map.seed -or
-        $trustedPlanData.mapGridCells -ne [int]$manifest.map.gridCells) {
-        throw 'Trusted motorway plan and inspection manifest must use the same seed and grid.'
-    }
-    $trustedCellsByCoordinate = @{}
-    foreach ($trustedCell in $trustedPlanData.cells) {
-        $coordinate = "$($trustedCell.x),$($trustedCell.y)"
-        if ($trustedCellsByCoordinate.ContainsKey($coordinate)) {
-            throw "Trusted motorway plan repeats logical cell $coordinate."
-        }
-        $trustedCellsByCoordinate[$coordinate] = $trustedCell
-    }
-    $trustedSubsetCells = @(
-        foreach ($cell in $cells) {
-            $coordinate = "$($cell.x),$($cell.y)"
-            if (-not $trustedCellsByCoordinate.ContainsKey($coordinate)) {
-                throw "Trusted motorway plan has no contract for logical cell $coordinate."
-            }
-            $trustedCellsByCoordinate[$coordinate]
-        }
+} else {
+    $targets = @(
+        [pscustomobject]@{ x = 6; y = 1; orientation = 'vertical'; connections = 'N,S' },
+        [pscustomobject]@{ x = 2; y = 7; orientation = 'horizontal'; connections = 'E,W' }
     )
-    if ($trustedSubsetCells.Count -ne $cells.Count) {
-        throw 'Trusted motorway plan does not cover every selected preview cell.'
-    }
-    $trustedPlanData.cells = $trustedSubsetCells
-    [IO.Directory]::CreateDirectory($OutputDirectory) | Out-Null
-    $trustedPlanSubsetPath = Join-Path $OutputDirectory 'trusted-motorway-plan.json'
-    Write-TextFileIfChanged -Path $trustedPlanSubsetPath -Content ($trustedPlanData | ConvertTo-Json -Depth 100) | Out-Null
+    $cells = @(foreach ($target in $targets) {
+        $matches = @($manifest.cells | Where-Object { $_.x -eq $target.x -and $_.y -eq $target.y })
+        if ($matches.Count -ne 1) { throw "Missing/duplicate straight preview cell $($target.x),$($target.y)." }
+        $cell = $matches[0]
+        if (-not $cell.highway.present -or
+            (@($cell.highway.connections | Sort-Object) -join ',') -ne $target.connections -or
+            $cell.highway.bridge -or @($cell.highway.rampExits).Count -gt 0 -or
+            $null -ne $cell.safeZone -or @($cell.landmarks).Count -gt 0) {
+            throw "Preview cell $($target.x),$($target.y) is no longer the approved plain $($target.orientation) straight."
+        }
+        $cell
+    })
 }
+
+if ($normalMode) {
+    $trustedByCoordinate = @{}
+    foreach ($cell in $trustedPlan.cells) {
+        $coordinate = "$($cell.x),$($cell.y)"
+        if ($trustedByCoordinate.ContainsKey($coordinate)) { throw "Trusted plan repeats cell $coordinate." }
+        $trustedByCoordinate[$coordinate] = $cell
+    }
+    foreach ($cell in $cells) {
+        $coordinate = "$($cell.x),$($cell.y)"
+        if (-not $trustedByCoordinate.ContainsKey($coordinate)) { throw "Trusted plan has no contract for $coordinate." }
+        $trusted = $trustedByCoordinate[$coordinate]
+        if ($trusted.topology -cne $cell.topology -or $trusted.transportFeature -cne $cell.transportFeature -or
+            (@($trusted.activeEntrances | Sort-Object -Unique) -join ',') -cne
+            (@($cell.activeEntrances | Sort-Object -Unique) -join ',')) {
+            throw "Trusted plan topology, transport, or entrances differ at $coordinate."
+        }
+        $contract = $trusted.motorwayAssembly
+        $authority = if ($null -ne $contract) { $contract.PSObject.Properties['assemblyAuthority'] } else { $null }
+        if ($null -eq $authority -or $authority.Value -ne 'trusted_prior_approved_grid_layout' -or
+            @($contract.gates).Count -eq 0) {
+            throw "Trusted plan has no approved gate records at $coordinate."
+        }
+    }
+}
+
 $manifest.cells = $cells
 $manifest.safeZones = @()
-[IO.Directory]::CreateDirectory($OutputDirectory) | Out-Null
 $settings = $profile.Settings
 $settings.vmfBuild.outerEdges.enabled = $true
 $templateRoot = Join-Path $root $settings.paths.templateDirectory
-# Only the intermediate old-axis plan uses these retained sources. The inspection pass replaces its full corridor.
-$legacyMotorwayTopologies = @{
-    'motorway-straight' = 'roads/motorway_1x1/tile_motorway.vmf'
-    'motorway-corner' = 'roads/motorway_1x1/tile_motorway_corner.vmf'
-    'motorway-tjunction' = 'roads/motorway_1x1/tile_motorway_tjunction.vmf'
-    'motorway-crossjunction' = 'roads/motorway_1x1/tile_motorway_crossroads.vmf'
-    'motorway-deadend' = 'roads/motorway_1x1/tile_motorway_deadend.vmf'
-}
-$legacyMotorwayTransports = @{
-    'bridge' = 'roads/motorway_1x1/tile_motorway_road_bridge.vmf'
-    'onramp' = 'roads/motorway_1x1/tile_motorway_onramp.vmf'
-    'onramp-dual' = 'roads/motorway_1x1/tile_motorway_onramp_dual.vmf'
-}
-if (-not $NormalPlanOnly -and -not $Normal -and -not $NormalComplex) {
-foreach ($key in $legacyMotorwayTopologies.Keys) {
-    if (-not $settings.cellPlanning.topologyTemplates.ContainsKey($key)) {
-        throw "Inspection settings are missing required topology '$key'."
+foreach ($path in @($settings.cellPlanning.topologyTemplates.Values) +
+    @($settings.cellPlanning.transportTemplates.Values) + @($settings.vmfBuild.border.cornerTemplate)) {
+    if (-not (Test-Path -LiteralPath (Join-Path $templateRoot $path) -PathType Leaf)) {
+        throw "Preview settings source is missing: $path"
     }
-    $settings.cellPlanning.topologyTemplates[$key] = $legacyMotorwayTopologies[$key]
 }
-foreach ($key in $legacyMotorwayTransports.Keys) {
-    if (-not $settings.cellPlanning.transportTemplates.ContainsKey($key)) {
-        throw "Inspection settings are missing required transport '$key'."
-    }
-    $settings.cellPlanning.transportTemplates[$key] = $legacyMotorwayTransports[$key]
-}
-if (-not $settings.cellPlanning.topologyVariants.templates.ContainsKey('motorway-straight')) {
-    $settings.cellPlanning.topologyVariants.templates['motorway-straight'] = @(
-        'roads/motorway_1x1/tile_motorway_a.vmf',
-        'roads/motorway_1x1/tile_motorway_b.vmf',
-        'roads/motorway_1x1/tile_motorway_c.vmf'
-    )
-}
-Write-Host 'Cell inspection settings only: explicitly mapped to retained 1x1 sources; root settings and existing authored assets unchanged.'
-}
-foreach ($path in @($settings.cellPlanning.topologyTemplates.Values) + @($settings.cellPlanning.transportTemplates.Values) + @($settings.vmfBuild.border.cornerTemplate)) {
-    if (-not (Test-Path -LiteralPath (Join-Path $templateRoot $path) -PathType Leaf)) { throw "Isolated cell settings source missing: $path" }
-}
+
+Import-Module (Join-Path $PSScriptRoot 'vmf_source_dependencies.psm1') -Force
+[IO.Directory]::CreateDirectory($OutputDirectory) | Out-Null
 $isolatedSettings = Join-Path $OutputDirectory 'settings.json'
 $fixtureMap = Join-Path $OutputDirectory 'fixture-map.json'
 $planPath = Join-Path $OutputDirectory 'plan.json'
@@ -192,90 +154,68 @@ $src = Join-Path $OutputDirectory 'src'
 $skybox = Join-Path $OutputDirectory 'skybox'
 Write-TextFileIfChanged -Path $isolatedSettings -Content ($settings | ConvertTo-Json -Depth 100) | Out-Null
 Write-TextFileIfChanged -Path $fixtureMap -Content ($manifest | ConvertTo-Json -Depth 30) | Out-Null
-$assemblyReport = ''
-if ($Mixed) {
-    & (Join-Path $PSScriptRoot 'create_road_connector_template.ps1') -WorldProfile preview -SettingsPath $isolatedSettings
-    if (-not $?) { throw 'Approved extended road connector initialization failed.' }
+
+$plannerArguments = @{
+    WorldProfile = 'preview'; SettingsPath = $isolatedSettings; MapData = $fixtureMap
+    CellDirectory = $src; Output = $planPath; ListOutput = $listPath
 }
-if ($Complex) {
-    & (Join-Path $PSScriptRoot 'build_motorway_preview.ps1') -WorldProfile preview -SettingsPath $isolatedSettings -OutputDirectory (Join-Path $OutputDirectory 'measured-assemblies') | Out-Null
-    if (-not $?) { throw 'Measured assembly report generation failed.' }
-    $assemblyReport = Join-Path $OutputDirectory 'measured-assemblies\assembly-report.json'
+if ($normalMode) {
+    $plannerArguments.TrustedMotorwayPlan = $TrustedMotorwayPlan
+} else {
+    $plannerArguments.MotorwayCellInspection = $true
 }
-$trustedPlanArguments = @{}
-if ($usesTrustedMotorwayPlan) { $trustedPlanArguments.TrustedMotorwayPlan = $trustedPlanSubsetPath }
-& (Join-Path $PSScriptRoot 'plan_cell_templates.ps1') -WorldProfile preview -SettingsPath $isolatedSettings -MapData $fixtureMap -CellDirectory $src -Output $planPath -ListOutput $listPath -MotorwayCellInspection:(!$NormalPlanOnly -and !$Normal -and !$NormalComplex) -MotorwayAssemblyReport $assemblyReport @trustedPlanArguments | Out-Null
-if (-not $?) { throw 'Motorway inspection cell planner failed.' }
-if ($NormalPlanOnly) {
-    $plan = Get-Content -Raw -LiteralPath $planPath | ConvertFrom-Json
-    if ($sourceHash -cne (Get-FileHash -LiteralPath $MapData -Algorithm SHA256).Hash) { throw 'Source manifest changed during normal planning.' }
-    foreach ($cell in $plan.cells) {
-        if ($null -ne $cell.PSObject.Properties['motorwayCellInspection'] -or
-            $cell.motorwayAssembly.status -ne 'normal_reservations_travel_pending' -or
-            $cell.motorwayAssembly.leases.Count -ne 27 -or $cell.motorwayAssembly.ringPlacements.Count -ne 4) {
-            throw 'Normal plan-only output must own all straight core/ring leases without inspection metadata.'
-        }
-        [pscustomobject]@{
-            gridX = $cell.x; gridY = $cell.y; orientation = $cell.orientation
-            recipe = $cell.cellTemplateFilename; leases = $cell.motorwayAssembly.leases.Count
-            ringOwners = $cell.motorwayAssembly.ringPlacements.Count; status = $cell.motorwayAssembly.status
-        }
-    }
-    return
-}
-& (Join-Path $PSScriptRoot 'build_cell_vmfs.ps1') -WorldProfile preview -SettingsPath $isolatedSettings -PlanData $planPath -CellDirectory $src -SkyboxOutputDirectory $skybox -RefreshGenerated -MotorwayCellInspection:(!$Normal -and !$NormalComplex) -MeasureCompleteTerrainInfill:($CompleteInfill -or ($NormalComplex -and -not $SkipInfill)) | Out-Null
-if (-not $?) { throw 'Motorway inspection cell builder failed.' }
-if ($NormalComplex) {
-    if (-not $SkipInfill) {
-    & (Join-Path $PSScriptRoot 'create_terrain_infill_templates.ps1') -WorldProfile preview -SettingsPath $isolatedSettings -PartialGapLayoutDirectory $src -CompletePatches | Out-Null
-    if (-not $?) { throw 'Normal complex ground base creation failed.' }
-    & (Join-Path $PSScriptRoot 'build_cell_vmfs.ps1') -WorldProfile preview -SettingsPath $isolatedSettings -PlanData $planPath -CellDirectory $src -SkyboxOutputDirectory $skybox -RefreshGenerated -SizedTerrainInfill -CompleteTerrainInfill | Out-Null
-    if (-not $?) { throw 'Normal complex infill rebuild failed.' }
-    }
-    if ($sourceHash -cne (Get-FileHash -LiteralPath $MapData -Algorithm SHA256).Hash) { throw 'Source manifest changed during normal complex emission.' }
-    $plan = Get-Content -Raw -LiteralPath $planPath | ConvertFrom-Json
-    foreach ($cell in $plan.cells) {
-        if ($null -ne $cell.PSObject.Properties['motorwayCellInspection']) { throw 'Normal complex recipes must not carry inspection metadata.' }
-        $contract = $cell.PSObject.Properties['motorwayAssembly']
-        [pscustomobject]@{ gridX = $cell.x; gridY = $cell.y; topology = $cell.topology; feature = $cell.transportFeature; vmf = Join-Path $src $cell.cellTemplateFilename; status = $(if ($contract) { $contract.Value.status } else { 'none' }) }
-    }
-    return
-}
-if ($Normal) {
-    if ($sourceHash -cne (Get-FileHash -LiteralPath $MapData -Algorithm SHA256).Hash) { throw 'Source manifest changed during normal emission.' }
-    $plan = Get-Content -Raw -LiteralPath $planPath | ConvertFrom-Json
-    foreach ($cell in $plan.cells) {
-        if ($null -ne $cell.PSObject.Properties['motorwayCellInspection']) { throw 'Normal emitted recipes must not carry inspection metadata.' }
-        [pscustomobject]@{ orientation = $cell.orientation; vmf = $cell.cellTemplatePath; gates = $cell.motorwayAssembly.gates.Count; status = 'normal_emitted_not_compiled_or_live' }
-    }
-    return
-}
-if ($SizedInfill) {
-    & (Join-Path $PSScriptRoot 'create_terrain_infill_templates.ps1') -WorldProfile preview -SettingsPath $isolatedSettings -PartialGapLayoutDirectory $src -CompletePatches:$CompleteInfill | Out-Null
-    if (-not $?) { throw 'Editable sized ground base creation failed.' }
-    & (Join-Path $PSScriptRoot 'build_cell_vmfs.ps1') -WorldProfile preview -SettingsPath $isolatedSettings -PlanData $planPath -CellDirectory $src -SkyboxOutputDirectory $skybox -RefreshGenerated -MotorwayCellInspection -SizedTerrainInfill -CompleteTerrainInfill:$CompleteInfill | Out-Null
-    if (-not $?) { throw 'Sized ground inspection cell builder failed.' }
-}
+& (Join-Path $PSScriptRoot 'plan_cell_templates.ps1') @plannerArguments | Out-Null
+if (-not $?) { throw 'Motorway cell planner failed.' }
+
 $plan = Get-Content -Raw -LiteralPath $planPath | ConvertFrom-Json
-if ($sourceHash -cne (Get-FileHash -LiteralPath $MapData -Algorithm SHA256).Hash) { throw 'Source manifest changed during cell inspection generation.' }
-$report = [ordered]@{
-    schemaVersion = 1; status = 'complete_cell_geometry_inspection_not_live_travel'
-    sourceManifest = [IO.Path]::GetFullPath($MapData); sourceManifestSha256 = $sourceHash
-    settings = $isolatedSettings; plan = $planPath
-    cells = @($plan.cells | ForEach-Object {
-        [ordered]@{
-            gridX = $_.x; gridY = $_.y; worldX = $_.worldX; worldY = $_.worldY
-            orientation = $_.orientation; topology = $_.topology; transportFeature = $_.transportFeature
-            vmf = Join-Path $src $_.cellTemplateFilename
-            sourceSha256 = $_.motorwayCellInspection.sourceSha256
-            coreSlots = $_.tilePlacements.Count
-            corridorLeases = $_.motorwayCellInspection.leases.Count
-            ringOwners = $(if ($Complex) { $null } else { $_.motorwayCellInspection.ringPlacements.Count })
-            status = $_.motorwayCellInspection.status
+foreach ($cell in $plan.cells) {
+    if ($normalMode) {
+        $authority = $cell.motorwayAssembly.PSObject.Properties['assemblyAuthority']
+        if ($null -ne $cell.PSObject.Properties['motorwayCellInspection'] -or
+            $null -eq $authority -or $authority.Value -ne 'trusted_prior_approved_grid_layout') {
+            throw "Normal plan contains an untrusted/inspection motorway contract at $($cell.x),$($cell.y)."
         }
-    })
-    fixtureChanges = @($cells | Where-Object { $null -ne $_.PSObject.Properties['inspectionFixtureChange'] } | ForEach-Object { $_.inspectionFixtureChange })
-    limits = @('Complete normal cell shell/scenery/rings/skybox with planned transport, not an asset zoo.', 'Complex mode is explicitly diagnostic: seams, ordinary-road approaches and partial boundary tiles are unapproved.', 'Legacy narrow gates/blockers not emitted; not staged or live-travel-ready.', 'No world-wide regeneration, BSP compilation or publication.')
+    } elseif ($null -eq $cell.PSObject.Properties['motorwayCellInspection']) {
+        throw "Straight inspection plan lacks its explicit inspection contract at $($cell.x),$($cell.y)."
+    }
 }
-Write-TextFileIfChanged -Path (Join-Path $OutputDirectory 'cell-report.json') -Content ($report | ConvertTo-Json -Depth 12) | Out-Null
-$report.cells | ForEach-Object { [pscustomobject]$_ }
+if ($sourceHash -cne (Get-FileHash -LiteralPath $MapData -Algorithm SHA256).Hash) {
+    throw 'Source manifest changed during motorway cell planning.'
+}
+if ($NormalPlanOnly) {
+    $plan.cells | ForEach-Object {
+        [pscustomobject]@{
+            gridX = $_.x; gridY = $_.y; topology = $_.topology
+            vmf = $_.cellTemplateFilename; gates = @($_.motorwayAssembly.gates).Count
+        }
+    }
+    return
+}
+
+$builderArguments = @{
+    WorldProfile = 'preview'; SettingsPath = $isolatedSettings; PlanData = $planPath
+    CellDirectory = $src; SkyboxOutputDirectory = $skybox; RefreshGenerated = $true
+}
+if ($StraightInspection) { $builderArguments.MotorwayCellInspection = $true }
+if ($NormalComplex -and -not $SkipInfill) { $builderArguments.MeasureCompleteTerrainInfill = $true }
+& (Join-Path $PSScriptRoot 'build_cell_vmfs.ps1') @builderArguments | Out-Null
+if (-not $?) { throw 'Motorway cell VMF generation failed.' }
+if ($NormalComplex -and -not $SkipInfill) {
+    & (Join-Path $PSScriptRoot 'create_terrain_infill_templates.ps1') -WorldProfile preview `
+        -SettingsPath $isolatedSettings -PartialGapLayoutDirectory $src -CompletePatches | Out-Null
+    if (-not $?) { throw 'Normal complex terrain-base creation failed.' }
+    & (Join-Path $PSScriptRoot 'build_cell_vmfs.ps1') -WorldProfile preview -SettingsPath $isolatedSettings `
+        -PlanData $planPath -CellDirectory $src -SkyboxOutputDirectory $skybox -RefreshGenerated `
+        -SizedTerrainInfill -CompleteTerrainInfill | Out-Null
+    if (-not $?) { throw 'Normal complex infill rebuild failed.' }
+}
+if ($sourceHash -cne (Get-FileHash -LiteralPath $MapData -Algorithm SHA256).Hash) {
+    throw 'Source manifest changed during motorway cell generation.'
+}
+$plan.cells | ForEach-Object {
+    [pscustomobject]@{
+        gridX = $_.x; gridY = $_.y; topology = $_.topology; transport = $_.transportFeature
+        vmf = Join-Path $src $_.cellTemplateFilename
+        status = if ($StraightInspection) { 'straight_inspection_only' } else { 'trusted_normal_plan_not_compiled' }
+    }
+}

@@ -4,10 +4,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $testsRepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $testsBinDirectory = Join-Path $testsRepoRoot 'bin'
+$mapData = Join-Path $testsBinDirectory 'preview_grid_24x24_seed_1337.json'
 Import-Module (Join-Path $testsBinDirectory 'skybox_models.psm1') -Force
 Import-Module (Join-Path $testsBinDirectory 'motorway_geometry.psm1') -Force
 $root = $testsRepoRoot
-if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $root 'generated\phase_b_motorway_cells' }
+if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $root 'generated\motorway_straight_inspection' }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $passed = 0
 function Assert {
@@ -20,7 +21,7 @@ function Read-Entities {
     $tree = [ZombieSim.Skybox.KeyValuesParser]::Parse([IO.File]::ReadAllText($Path))
     return @($tree.Children | Where-Object Name -eq entity)
 }
-$summaries = @(& (Join-Path $testsBinDirectory 'build_motorway_cell_preview.ps1') -OutputDirectory $OutputDirectory)
+$summaries = @(& (Join-Path $testsBinDirectory 'build_motorway_cell_preview.ps1') -StraightInspection -MapData $mapData -OutputDirectory $OutputDirectory)
 $planPath = Join-Path $OutputDirectory 'plan.json'
 $settingsPath = Join-Path $OutputDirectory 'settings.json'
 $plan = Get-Content -Raw -LiteralPath $planPath | ConvertFrom-Json
@@ -95,33 +96,9 @@ foreach ($cell in $plan.cells) {
 }
 $hashes = @{}
 foreach ($file in Get-ChildItem (Join-Path $OutputDirectory 'src') -File) { $hashes[$file.Name] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash }
-& (Join-Path $testsBinDirectory 'build_motorway_cell_preview.ps1') -OutputDirectory $OutputDirectory | Out-Null
+& (Join-Path $testsBinDirectory 'build_motorway_cell_preview.ps1') -StraightInspection -MapData $mapData -OutputDirectory $OutputDirectory | Out-Null
 foreach ($file in Get-ChildItem (Join-Path $OutputDirectory 'src') -File) {
     Assert ($hashes.ContainsKey($file.Name) -and $hashes[$file.Name] -ceq (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash) 'Repeated real-cell generation retains identical VMF and layout bytes.'
-}
-$normalRoot = Join-Path $OutputDirectory 'normal-control'
-[IO.Directory]::CreateDirectory($normalRoot) | Out-Null
-$normalPlan = Join-Path $normalRoot 'plan.json'
-& (Join-Path $testsBinDirectory 'plan_cell_templates.ps1') -WorldProfile preview -SettingsPath $settingsPath -MapData (Join-Path $OutputDirectory 'fixture-map.json') -Output $normalPlan -ListOutput (Join-Path $normalRoot 'required.txt') -CellDirectory (Join-Path $normalRoot 'src') | Out-Null
-if (-not $?) { throw 'Normal cell control planner failed.' }
-& (Join-Path $testsBinDirectory 'build_cell_vmfs.ps1') -WorldProfile preview -SettingsPath $settingsPath -PlanData $normalPlan -CellDirectory (Join-Path $normalRoot 'src') -SkyboxOutputDirectory (Join-Path $normalRoot 'skybox') -RefreshGenerated | Out-Null
-if (-not $?) { throw 'Normal cell control builder failed.' }
-$control = Get-Content -Raw -LiteralPath $normalPlan | ConvertFrom-Json
-foreach ($cell in $control.cells) {
-    Assert ($null -eq $cell.PSObject.Properties['motorwayCellInspection']) 'Ordinary planner remains unopted-in.'
-    $vmf = Join-Path $normalRoot ('src\' + $cell.cellTemplateFilename)
-    $instances = @(Read-Entities $vmf | Where-Object { $_.Get('classname') -eq 'func_instance' })
-    Assert (@($instances | Where-Object { $_.Get('file') -like '*motorway_3x1*' }).Count -eq 0) 'Ordinary builder never silently switches families.'
-    Assert (@($cell.tilePlacements | Where-Object { $_.role -like 'motorway_*' }).Count -eq 0) 'Normal core roles preserved.'
-    foreach ($placement in $cell.tilePlacements | Where-Object { $null -eq $_.PSObject.Properties['emitsInstance'] -or $_.emitsInstance }) {
-        $target = 'zm_tile_' + ([string]$placement.role).ToLowerInvariant() + "_$($placement.tileX)_$($placement.tileY)"
-        $matching = @($instances | Where-Object { $_.Get('targetname') -eq $target })
-        Assert ($matching.Count -eq 1) 'Original normal placement still emits exactly once.'
-        $p = [ZombieSim.Skybox.Vec3]::Parse($matching[0].Get('origin'))
-        $width = if ($null -eq $placement.PSObject.Properties['footprintWidth']) { 1 } else { $placement.footprintWidth }
-        $height = if ($null -eq $placement.PSObject.Properties['footprintHeight']) { 1 } else { $placement.footprintHeight }
-        Assert ($p.X -eq ($placement.tileX - 2 + ($width - 1) / 2.0) * 640 -and $p.Y -eq (2 - $placement.tileY - ($height - 1) / 2.0) * 640) 'Original normal core origin formula remains unchanged.'
-    }
 }
 $rejected = $false
 try {
@@ -133,4 +110,4 @@ try {
 Assert $rejected 'Inspection recipes cannot be consumed without explicit builder opt-in.'
 & (Join-Path $testsBinDirectory 'check_required_cells.ps1') -WorldProfile preview -SettingsPath $settingsPath -RequiredCellList (Join-Path $OutputDirectory 'required.txt') -CellDirectory (Join-Path $OutputDirectory 'src')
 if (-not $?) { throw 'Inspection required-cell check failed.' }
-Write-Host "Motorway cells: $passed assertions passed; two complete generated cells and normal-generation controls verified. Compilation/solid clearance/live travel not claimed."
+Write-Host "Motorway cells: $passed assertions passed; two isolated straight inspections verified. Normal gate records are covered by trusted-plan contract tests."
