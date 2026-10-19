@@ -11,12 +11,14 @@ These are the things I have already done
 # Changes
 
 - Some of the buildings have been renamed to better reflect their density and purpose as well as that a bunch of edits have been made to improve their appearance and functionality.
+- Some decorations have been renamed and are now industrial tiles in the buildings folder, such as the dumps.
+- the army folder (which is used for military-themed decorations and buildings) now contains the siren and should be only placed now in the army base
 
 This is what the plan is for the upcoming updates and changes.
 
 # Upcoming Updates and Changes
 
-
+ 
 ## Better Fog (least priority)
 
 - Figure out a way to improve fog.
@@ -136,6 +138,14 @@ This is what the plan is for the upcoming updates and changes.
 - This rule that buildings must equal their environment tags only applies to military (army_base) cells, and radiation cells. Everything else buildings which don't have a tag may appear.
 - If a tagged building is available for a specific environment, it will take priority over untagged buildings when generating the world.
 - Please make sure all new building changes are staged to gmod along with associated materials and models
+
+## Refactor and Optimisations
+
+- Refactor cl_skybox.lua and decrease the amount of lines in the file. Possibly split up functionality into a module like atmosphere module.
+- I notice that around the project we are using  IsFiniteNumber, IsFiniteVector, and similar utility functions. Consider creating a util script file to centralize these checks and reduce code duplication. Check all files for repeated patterns and refactor accordingly.
+  - Also, finiteNumber and IsFiniteNumber are both existing. Consider consolidating them into a single utility function to maintain consistency across the project. Check for Vector and angle equivalents as well.
+- Rename "materializer" and any mentions of materialization and materializer to "spawner" and "spawning" where applicable.
+- readJson and readJsonFile both exit, consider creating a util script and centralizing JSON reading functionality to avoid code duplication and ensure consistent error handling.
 
 ## Fixes
 
