@@ -64,6 +64,16 @@ This is what the plan is for the upcoming updates and changes.
 - Through the prefab system, we will be able to also create detail to be placed into the world, like piles of bodies, broken down albumances, abandoned vehicles, and other environmental storytelling elements that enhance the immersion and realism of the game environment.
 - This will allow for a more dynamic and visually rich environment, where the world feels lived-in and responsive to the player's actions and the ongoing narrative.
 
+## Calling Cards
+
+in the materials folder under the scoreboard folder currently there is just two info_header texture for the background and detail. I would to expand this so you the player can choose both of these things. So I want to add more variants of background, and detail.
+- See new scoreboard/backgrounds and scoreboard/details folders for all the new variants
+- Each variant gets a name and is an item in game.
+- You can't find the calling cards, they are given as rewards from quests, or you can buy them from the shop keeper for credits
+- Players can equip a calling card to display it on their profile or in specific areas of the game interface.
+- Right now, for the scoreboard, we should add a pencil somewhere where you can change your "calling card"
+- You don't "equip" the calling card, simply just owning it will allow you to display it on your profile or in specific areas of the game interface. Also, the calling card isn't a item in your inventory either. I was thinking that it doesn't take up an inventory slot for the user and is simply in a seperate special storage just for the calling cards. This special storage box for calling cards is where all calling cards automatically go. That is how we propegate the edit button in the scoreboard to show what you do and don't own.
+
 ## Structure building system
 
 - Create a set of tiles to be used for constructing various structures within the game environment.
@@ -146,6 +156,7 @@ This is what the plan is for the upcoming updates and changes.
   - Also, finiteNumber and IsFiniteNumber are both existing. Consider consolidating them into a single utility function to maintain consistency across the project. Check for Vector and angle equivalents as well.
 - Rename "materializer" and any mentions of materialization and materializer to "spawner" and "spawning" where applicable.
 - readJson and readJsonFile both exit, consider creating a util script and centralizing JSON reading functionality to avoid code duplication and ensure consistent error handling.
+- There is a data static in the root of gmod: C:\Program Files (x86)\Steam\steamapps\common\GarrysMod\garrysmod\data_static and also in our gamemode. Please make sure there is no data_static in the root of gmod and that all files are being put into our gamemode contents data_static, as I am unsure if the data_static at the root is even read, and also it won't be shipped with our gamemode
 
 ## Fixes
 
