@@ -607,7 +607,7 @@ function Get-RecipeInteriorInstanceCount {
 # VBSP remaps instance entity origins/angles only for classes in the game's FGD (garrysmod.fgd), so ZombieSim point
 # entities inside a func_instance keep their template-local coordinates. Re-emit them here in cell space, flagged
 # with zm_instance_transformed so the runtime ignores the untransformed copies VBSP still merges.
-$instanceTransformedClasses = @('zn_safezone_door', 'zn_safezone_arrival')
+$instanceTransformedClasses = @('zn_safezone_door', 'zn_safezone_arrival', 'zn_prefab_anchor')
 
 function Get-TransformedInstancePointEntities {
     param(
@@ -634,6 +634,9 @@ function Get-TransformedInstancePointEntities {
         $keyText = if ($editorStart.Success) { $body.Substring(0, $editorStart.Index) } else { $body }
         foreach ($pair in [regex]::Matches($keyText, '(?m)^\s*"([^"]+)" "([^"]*)"')) {
             $keyValues[$pair.Groups[1].Value] = $pair.Groups[2].Value
+        }
+        if ($classMatch.Groups[1].Value -eq 'zn_prefab_anchor' -and [string]$keyValues['instance_local'] -ne '1') {
+            throw "zn_prefab_anchor in $TemplatePath must set instance_local to 1."
         }
         $origin = @(([string]$keyValues['origin']) -split '\s+' | Where-Object { $_ -ne '' } | ForEach-Object { [double]$_ })
         if ($origin.Count -ne 3) {
@@ -1188,15 +1191,12 @@ function Get-TransitionGatePlacements {
         return @(ConvertTo-TransitionGatePlacements $complexGates)
     }
     if ($null -ne $Recipe.PSObject.Properties['motorwayAssembly']) {
-        $fresh = Get-ZMNormalStraightMotorwayContract $Recipe
-        if (($fresh.gates | ConvertTo-Json -Depth 10 -Compress) -cne
-            ($Recipe.motorwayAssembly.gates | ConvertTo-Json -Depth 10 -Compress)) {
-            throw 'Normal measured gate records differ from current source; replan.'
+        $contract = Get-ZMNormalStraightMotorwayContract $Recipe
+        if ((@($Recipe.activeEntrances | Sort-Object -Unique) -join ',') -ne
+            (@($contract.gates.direction | Sort-Object -Unique) -join ',')) {
+            throw 'Trusted straight motorway gates disagree with active entrances.'
         }
-        if ((@($Recipe.activeEntrances | Sort-Object -Unique) -join ',') -ne ($fresh.gates.direction -join ',')) {
-            throw 'Normal measured gates disagree with active entrances.'
-        }
-        return @(ConvertTo-TransitionGatePlacements $fresh.gates)
+        return @(ConvertTo-TransitionGatePlacements $contract.gates)
     }
     $gateDirectionsProperty = $Recipe.PSObject.Properties['gateDirections']
     $activeEntrancesProperty = $Recipe.PSObject.Properties['activeEntrances']

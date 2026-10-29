@@ -21,8 +21,9 @@ The user requested a source investigation of
 [Xenthio/RealCSM](https://github.com/Xenthio/RealCSM) and a future-agent plan for
 ZombieSim's own implementation.
 
-The authoritative schedule is the [Alpha 3.2 master plan](../todo-alpha.3.2.md)
-and [AGENTS.md](../AGENTS.md). On 2026-10-13 the user moved unfinished
+The current schedule is the [Alpha 3.3 plan](../todo-alpha.3.3.md) and
+[AGENTS.md](../AGENTS.md); [Alpha 3.2](todo-alpha.3.2.md) is archived without
+claiming full acceptance. On 2026-10-13 the user moved unfinished
 Alpha 3.1.5 closure to the end of 3.2 and prioritized generator work. Old
 3.1.5 closure is not a prerequisite. On 2026-10-14 the user moved Phase C/Phase 0
 feasibility forward to run alongside the isolated preview regeneration and
@@ -33,8 +34,8 @@ authorize `light_environment`, baked-lightmap/lightstyle, shared-server,
 production-map, preference-default or dependency changes.
 
 On 2026-10-13 the user expanded Alpha 3.2 to include density-aware scenery and
-3-wide motorway assemblies. The [master phased plan](../todo-alpha.3.2.md)
-owns milestone ordering and those contracts; this document remains the CSM
+3-wide motorway assemblies. The [archived phased plan](todo-alpha.3.2.md)
+records those contracts; this document remains the CSM
 technical subtracker. On 2026-10-14 the user explicitly accepted an **additive
 client-local CSM overlay** as the intended CSM direction. This supersedes the
 earlier replacement-quality requirement. The baked `light_environment` remains
@@ -1049,7 +1050,7 @@ exist, so also test practical shadow-pool coexistence.
 ## 9. Handoff and stop conditions
 
 No CSM action is currently scheduled. Continue the active non-CSM work in the
-[master tracker](../todo-alpha.3.2.md). Do not repeat the completed
+[Alpha 3.3 plan](../todo-alpha.3.3.md). Do not repeat the completed
 one-projector probe or copy the upstream tree.
 
 When the user explicitly returns to CSM, first inspect the current owner and

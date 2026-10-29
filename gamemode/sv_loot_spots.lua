@@ -41,14 +41,17 @@ function Spots:FindCandidates()
     local candidates = {}
     local coreOnly = ZM_World:GetCellBounds().revision == 2 and ZM_World:GetCellsForMap(game.GetMap()) ~= nil
     for _, entity in ipairs(ents.GetAll()) do
-        if IsValid(entity) and (not coreOnly or ZM_World:IsCoreSpawnPosition(entity:GetPos())) then
-            local rule = ZM_StaticData:GetEntityLootRule(entity:GetClass(), entity:GetModel())
+        local prefabLoot = IsValid(entity) and entity.ZM_PrefabLoot or nil
+        if IsValid(entity) and (not coreOnly or (prefabLoot and prefabLoot.guaranteed)
+            or ZM_World:IsCoreSpawnPosition(entity:GetPos())) then
+            local rule = prefabLoot and prefabLoot.rule or ZM_StaticData:GetEntityLootRule(entity:GetClass(), entity:GetModel())
             local key = rule and self.GetSpotKey(entity)
             if key then
                 local center = entity.ZM_LootSpotCenter
                     or (entity.WorldSpaceCenter and entity:WorldSpaceCenter())
                     or entity:GetPos()
-                table.insert(candidates, { key = key, rule = rule, entity = entity, center = center })
+                table.insert(candidates, { key = key, rule = rule, entity = entity, center = center,
+                    guaranteed = prefabLoot and prefabLoot.guaranteed == true or false })
             end
         end
     end
@@ -71,8 +74,11 @@ function Spots.SelectActiveCandidates(candidates, rng)
     local ordered = table.Copy(candidates or {})
     table.sort(ordered, function(a, b) return a.key < b.key end)
     local winners = {}
+    local guaranteed = {}
     for _, candidate in ipairs(ordered) do
-        if ZM_Loot.RollSearchableActivation(candidate.rule, rng) then
+        if candidate.guaranteed then
+            table.insert(guaranteed, candidate)
+        elseif ZM_Loot.RollSearchableActivation(candidate.rule, rng) then
             table.insert(winners, { candidate = candidate, priority = rng:Next() })
         end
     end
@@ -97,6 +103,7 @@ function Spots.SelectActiveCandidates(candidates, rng)
             table.insert(selected, { key = candidate.key, rule = candidate.rule, entity = candidate.entity, center = center })
         end
     end
+    for _, candidate in ipairs(guaranteed) do table.insert(selected, candidate) end
     table.sort(selected, function(a, b) return a.key < b.key end)
     return selected
 end
@@ -139,6 +146,20 @@ function Spots:LoadCell(profile, cellId, candidates, options)
         local rows, rowsError = ZM_GetLootSpots(profile, cellId)
         if not rows then
             return nil, rowsError
+        end
+        local existing = {}
+        for _, row in ipairs(rows) do existing[row.spotKey] = true end
+        local missing = {}
+        for _, candidate in ipairs(candidates) do
+            if candidate.guaranteed and not existing[candidate.key] then
+                missing[#missing + 1] = candidate.key
+            end
+        end
+        if #missing > 0 then
+            local saved, saveError = ZM_EnsureLootSpots(profile, cellId, missing)
+            if not saved then return nil, saveError end
+            rows, rowsError = ZM_GetLootSpots(profile, cellId)
+            if not rows then return nil, rowsError end
         end
         ZM_TouchLootCell(profile, cellId, now)
         for _, row in ipairs(rows) do
@@ -333,10 +354,12 @@ function Spots:CompleteSearch(target, now, rng)
         end
         spot.item = instance
     elseif spot.state == "declined" then
-        local saved, saveError = ZM_SetLootSpot(self.Cell.profile, self.Cell.cellId, spot.key, "available", spot.item)
-        if not saved then
-            spot.claim = nil
-            return nil, "Could not reopen the loot: " .. tostring(saveError)
+        if not spot.runtime then
+            local saved, saveError = ZM_SetLootSpot(self.Cell.profile, self.Cell.cellId, spot.key, "available", spot.item)
+            if not saved then
+                spot.claim = nil
+                return nil, "Could not reopen the loot: " .. tostring(saveError)
+            end
         end
         spot.state = "available"
         self:UpdateVisual(spot)
@@ -375,10 +398,11 @@ function Spots:RespondOffer(target, token, accept, now)
     end
     if not accept then
         release()
-        spot.state = "declined"
         if spot.runtime ~= true then
-            ZM_SetLootSpot(self.Cell.profile, self.Cell.cellId, spot.key, "declined", spot.item)
+            local saved, saveError = ZM_SetLootSpot(self.Cell.profile, self.Cell.cellId, spot.key, "declined", spot.item)
+            if not saved then return false, "Could not save the declined loot: " .. tostring(saveError) end
         end
+        spot.state = "declined"
         self:UpdateVisual(spot)
         return true, "declined"
     end
@@ -387,14 +411,31 @@ function Spots:RespondOffer(target, token, accept, now)
         return false, "You moved too far away."
     end
 
-    local given, giveError = target:GiveItemInstance(spot.item)
+    local given, giveError
+    if spot.runtime then
+        given, giveError = target:GiveItemInstance(spot.item)
+    else
+        local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+        if not characterKey then
+            release()
+            return false, "Could not take the item: " .. tostring(keyError)
+        end
+        if ZM_Util.ProfileFor(target) ~= self.Cell.profile then
+            release()
+            return false, "Could not take the item: loot and inventory profiles differ."
+        end
+        given, giveError = ZM_InventoryService:Mutate(target, function(draft)
+            return ZM_InventoryService.Ops.Add(draft, "backpack", table.Copy(spot.item))
+        end, {
+            extraSteps = function()
+                return { { kind = "lootSpotClaim", steamid = characterKey, cellId = self.Cell.cellId,
+                    spotKey = spot.key, instanceId = spot.item.instanceId } }
+            end
+        })
+    end
     if not given then
         release()
         return false, "Could not take the item: " .. tostring(giveError)
-    end
-    local saved, saveError = ZM_SetLootSpot(self.Cell.profile, self.Cell.cellId, spot.key, "looted", nil)
-    if not saved then
-        print("[ZombieSim] Loot spot " .. spot.key .. " could not be saved as looted: " .. tostring(saveError))
     end
     spot.state = "looted"
     spot.item = nil

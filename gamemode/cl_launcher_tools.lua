@@ -15,6 +15,8 @@ function Tools:GetCapabilities(profile, mapName)
         mapAtlas = preview,
         contentStatus = launcher,
         wardrobe = preview,
+        prefabEditor = preview,
+        prefabExplorer = preview,
         skyBrowser = launcher,
         profile = profile,
         map = mapName
@@ -500,7 +502,7 @@ end
 function Tools:BuildMenu(content, addButton, addLabelLine, refresh)
     local capabilities = self:GetCapabilities()
     addLabelLine(content, "TOOLS", 36)
-    addLabelLine(content, "Read-only inspection. Browsing never grants items, changes equipment or teleports the survivor.", 54)
+    addLabelLine(content, "Atlases are read-only. Prefab tools manage the shared preview library.", 54)
     local function entry(text, page, action, enabled, reason)
         local item = addButton((self.Page == page and IsValid(self.Body) and "? " or "") .. text, function()
             action()
@@ -532,6 +534,12 @@ function Tools:BuildMenu(content, addButton, addLabelLine, refresh)
     if wardrobe:IsEnabled() then
         wardrobe:SetTooltip("Opens a window: full citizen outfit, fabric and blood preview.")
     end
+    entry("PREFAB EDITOR", nil, function() ZM_PrefabEditorClient:Begin() end,
+        capabilities.prefabEditor and IsValid(LocalPlayer()) and LocalPlayer():IsAdmin(),
+        "Prefab editing requires a preview launcher admin.")
+    entry("PREFAB EXPLORER", nil, function() ZM_PrefabExplorer:Open() end,
+        capabilities.prefabExplorer and IsValid(LocalPlayer()) and LocalPlayer():IsAdmin(),
+        "Prefab browsing requires a preview launcher admin.")
     entry("SKY BROWSER", nil, function() ZM_SkyBrowser:Open(self.Host) end,
         capabilities.skyBrowser, "Sky Browser is unavailable outside a launcher.")
         :SetTooltip("Opens a window: skies and automatic palette artwork.")
@@ -578,6 +586,8 @@ concommand.Add("zombiesim_dev_test_launcher_tools_profile", function()
             "Map Atlas enabled state follows profile-safe artwork capability")
         check(buttons["WARDROBE"]:IsEnabled() == (capabilities.wardrobe and ZM_Wardrobe:IsAvailable()),
             "Wardrobe enabled state retains its preview-admin guard")
+        check(buttons["PREFAB EXPLORER"]:IsEnabled() == capabilities.prefabExplorer,
+            "Prefab Explorer enabled state retains its preview-admin guard")
     end)
     local summary = suite:Run()
     menu:SetPage(originalPage)
@@ -610,6 +620,8 @@ concommand.Add("zombiesim_dev_test_launcher_tools", function()
             "city launcher retains profile-safe read-only tools")
         check(not city.mapAtlas and not city.wardrobe,
             "city disables preview artwork and wardrobe actions instead of hiding Tools")
+        check(preview.prefabExplorer and not city.prefabExplorer,
+            "prefab explorer is available only in the preview launcher")
         check(not Tools:GetCapabilities("preview", "zn_preview_0_0").launcher,
             "deployed gameplay maps do not expose launcher Tools")
     end)

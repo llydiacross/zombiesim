@@ -65,6 +65,11 @@ local minimapColors = {
     text = Color(236, 236, 238)
 }
 
+local function gameplayHudHidden()
+    return ZM_LauncherMenu and ZM_LauncherMenu.Active
+        or ZM_PrefabEditorClient and ZM_PrefabEditorClient:IsSession()
+end
+
 hook.Add("HUDShouldDraw", "ZM.SuppressDefaultSurvivalHud", function(hudName)
     if hudName == "CHudHealth" or hudName == "CHudBattery" or hudName == "CHudAmmo" or hudName == "CHudSecondaryAmmo" then
         return false
@@ -331,7 +336,7 @@ end
 local function drawWeaponHudPanel()
     local player = LocalPlayer()
     if not IsValid(player) or not player:Alive() or ZM_SafeZones:IsPlayerInside(player)
-        or ZM_LauncherMenu and ZM_LauncherMenu.Active then
+        or gameplayHudHidden() then
         hideHudWeaponIcon()
         return
     end
@@ -709,7 +714,7 @@ local compassEntityMarkerColor = Color(239, 57, 72)
 local compassXpTextColor = Color(255, 255, 255)
 
 local function drawPlayerCompass()
-    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    if gameplayHudHidden() then return end
     local player = LocalPlayer()
     if not IsValid(player) or not ZM_World or not ZM_World:IsLoaded() then
         return
@@ -804,7 +809,7 @@ local function getGodModeBadgeRect()
 end
 
 hook.Add("HUDPaint", "ZM.PreviewGodModeBadge", function()
-    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    if gameplayHudHidden() then return end
     local player = LocalPlayer()
     if not IsValid(player) or not player:GetNWBool("ZM_CheatGod", false) then return end
 
@@ -1079,7 +1084,7 @@ local function drawBossMinimapMarker(mapX, mapY, mapWidth, mapHeight, markerX, m
 end
 
 local function drawPlayerMinimap()
-    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    if gameplayHudHidden() then return end
     local player = LocalPlayer()
     if not IsValid(player) then return end
 
@@ -1271,6 +1276,9 @@ for pointIndex = 1, 5 do
     }
     dangerStarShape.tipPoints[pointIndex] = {}
     dangerStarShape.innerPoints[pointIndex] = {}
+end
+
+for pointIndex = 1, 5 do
     dangerStarShape.triangles[pointIndex] = {
         dangerStarShape.tipPoints[pointIndex],
         dangerStarShape.innerPoints[pointIndex],
@@ -1304,7 +1312,7 @@ local function drawDangerStar(centerX, centerY, radius, color)
 end
 
 local function drawCellStatusPanel()
-    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    if gameplayHudHidden() then return end
     local player = LocalPlayer()
     if not IsValid(player) or not ZM_World or not ZM_World:IsLoaded() then return end
 
@@ -1345,7 +1353,7 @@ local function drawCellStatusPanel()
 end
 
 local function drawRadiationHudPanel()
-    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    if gameplayHudHidden() then return end
     local player = LocalPlayer()
     if not IsValid(player) or not ZM_World or not ZM_World:IsLoaded() then return end
 
@@ -1515,7 +1523,7 @@ local staminaBarHeight = 5
 
 // Draws queued notifications above the player (and above the stamina bar), removing expired ones.
 hook.Add("HUDPaint", "ZM.PlayerNotifications", function()
-    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    if gameplayHudHidden() then return end
     local ply = LocalPlayer()
     if not IsValid(ply) then return end
     local now = CurTime()
@@ -1550,7 +1558,7 @@ hook.Add("HUDPaint", "ZM.PlayerNotifications", function()
 end)
 
 hook.Add("HUDPaint", "ZM.HudEventNotifications", function()
-    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    if gameplayHudHidden() then return end
     local player = LocalPlayer()
     if not IsValid(player) then return end
 
@@ -1602,7 +1610,7 @@ hook.Add("HUDPaint", "ZM.EnemyHitMarker", function()
     if CurTime() >= enemyHitMarkerExpires or not IsValid(player) or not player:Alive()
         or ZM_SafeZones:IsPlayerInside(player)
         or gui.IsGameUIVisible() or IsValid(vgui.GetKeyboardFocus())
-        or ZM_LauncherMenu and ZM_LauncherMenu.Active then
+        or gameplayHudHidden() then
         return
     end
 
@@ -1622,7 +1630,7 @@ end)
 
 // Draws stamina above the player only while sprinting or recovering.
 hook.Add("HUDPaint", "ZM.StaminaBar", function()
-    if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    if gameplayHudHidden() then return end
     local ply = LocalPlayer()
     if not IsValid(ply) or not ply:Alive() then return end
 

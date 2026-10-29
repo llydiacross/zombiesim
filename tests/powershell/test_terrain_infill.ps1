@@ -29,14 +29,6 @@ if ($CellCoordinates.Count -eq 0) {
     if ($CellCoordinates.Count -eq 0) { throw 'Trusted plan contains no normal complex motorway cells for infill integration.' }
 }
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $root 'generated\motorway_trusted_infill_test' }
-if ($CellCoordinates.Count -eq 0) {
-    $trusted = Get-Content -Raw -LiteralPath $TrustedMotorwayPlan | ConvertFrom-Json
-    $representatives = @($trusted.cells | Where-Object {
-        $_.topology -like 'motorway-*' -and
-        -not (($_.topology -eq 'motorway-straight' -and $_.transportFeature -eq 'none'))
-    } | Group-Object { "$($_.topology)|$($_.transportFeature)" } | ForEach-Object { $_.Group[0] } | Select-Object -First 7)
-    $CellCoordinates = @($representatives | ForEach-Object { "$($_.x),$($_.y)" })
-}
 $sourceRoot = Join-Path $root 'tiletemplates'
 $passed = 0
 function Assert {

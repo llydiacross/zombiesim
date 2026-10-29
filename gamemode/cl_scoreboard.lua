@@ -46,8 +46,8 @@ local scoreboardIcons = {
     pencil = Material("icon16/pencil.png", "smooth"),
     skills = Material("icon16/gun.png", "smooth"),
     world = Material("icon16/world.png", "smooth"),
-    headerBackground = Material("scoreboard/info_header_background.png", "smooth"),
-    headerDetail = Material("scoreboard/info_header_detail.png", "smooth")
+    headerBackground = Material("scoreboard/backgrounds/default.png", "smooth"),
+    headerDetail = Material("scoreboard/details/default.png", "smooth")
 }
 
 local function drawScoreboardIcon(icon, x, y, size, color)

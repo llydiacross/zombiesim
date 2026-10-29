@@ -1,0 +1,26 @@
+return function(gizmo)
+    local suite = ZM_TestHarness.NewSuite()
+    suite:Add("axis selection measures distance to a finite screen segment", function(check)
+        check(gizmo.DistanceToSegment(50, 5, 0, 0, 100, 0) == 5, "perpendicular distance is measured")
+        check(gizmo.DistanceToSegment(110, 0, 0, 0, 100, 0) == 10, "distance beyond the end uses the endpoint")
+        check(gizmo.DistanceToSegment(0, 0, 1, 1, 1, 1) == math.huge, "degenerate handles cannot be selected")
+    end)
+    suite:Add("axis drags project movement and snap symmetrically", function(check)
+        check(gizmo.AxisDelta(25, 0, 100, 0, 80) == 20, "horizontal drag projects onto the axis")
+        check(gizmo.AxisDelta(0, 25, 100, 0, 80) == 0, "perpendicular movement does not move the prop")
+        check(gizmo.AxisDelta(1, 1, 0, 0, 80) == nil, "invisible axes cannot be dragged")
+        check(gizmo.Snap(23, 16) == 16 and gizmo.Snap(24, 16) == 32, "positive positions snap to the nearest step")
+        check(gizmo.Snap(-23, 16) == -16 and gizmo.Snap(-24, 16) == -32, "negative positions snap symmetrically")
+        check(gizmo.Snap(13.5, 0) == 13.5, "zero step permits free movement and rotation")
+    end)
+    suite:Add("rotation follows the ring in both directions across angle wrap", function(check)
+        check(gizmo.RingAngle(1, 0) == 0 and gizmo.RingAngle(0, 1) == 90,
+            "ring components map to their geometric angles")
+        check(gizmo.RingAngle(0, 0) == nil, "the ring centre has no defined angle")
+        check(gizmo.AngleDelta(179, -179) == 2, "crossing the positive wrap continues forward")
+        check(gizmo.AngleDelta(-179, 179) == -2, "crossing the negative wrap continues backward")
+        check(gizmo.AngleDelta(0, 90) == 90 and gizmo.AngleDelta(90, 0) == -90,
+            "opposite drag directions produce opposite rotations")
+    end)
+    return suite
+end

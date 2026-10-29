@@ -194,6 +194,44 @@ function Tests.Run()
         for _, call in ipairs(state.calls) do if call[1] == "DrawRect" then rects = rects + 1 end end
         check(rects == 124, "original frost plus 52 grain rectangles")
     end)
+    suite:Add("prefab_fog_and_dark_grade_are_scoped_to_the_editor", function(check)
+        local atmosphere, state, env = Tests.NewFixture()
+        atmosphere:ApplyProfile(1, "fixture")
+        local editor = { active = true, PreviewFog = nil, PreviewDark = false }
+        function editor:IsActive() return self.active end
+        env.ZM_PrefabEditorClient = editor
+
+        state.calls = {}
+        check(state:Hook("SetupWorldFog", "ZM.Atmosphere.WorldFog") == true, "editor disables world fog by default")
+        check(state.calls[1][1] == "FogMode" and state.calls[1][2] == env.MATERIAL_FOG_NONE,
+            "fog-off uses the engine's no-fog mode")
+        editor.PreviewFog = { start = 350, finish = 1450, maxDensity = 0.82, color = { 122, 132, 141 } }
+        state.calls = {}
+        check(state:Hook("SetupWorldFog", "ZM.Atmosphere.WorldFog") == true, "editor world fog is applied")
+        check(state.calls[2][1] == "FogStart" and state.calls[2][2] == 350
+            and state.calls[3][1] == "FogEnd" and state.calls[3][2] == 1450,
+            "the representative profile distances are preserved")
+        state.calls = {}
+        check(state:Hook("SetupSkyboxFog", "ZM.Atmosphere.SkyboxFog", 0.0625) == true, "editor skybox fog is applied")
+        check(state.calls[2][2] == 350 * 0.0625 and state.calls[3][2] == 1450 * 0.0625,
+            "the skybox uses engine scale")
+
+        editor.PreviewDark = true
+        state.calls = {}
+        state:Hook("RenderScreenspaceEffects", "ZM.Atmosphere.ColourCorrection")
+        check(state.calls[1] and state.calls[1][1] == "DrawColorModify"
+            and state.calls[1][2]["$pp_colour_brightness"] == -0.15,
+            "the explicitly simulated dark grade is used")
+        editor.active = false
+        state.calls = {}
+        state:Hook("RenderScreenspaceEffects", "ZM.Atmosphere.ColourCorrection")
+        check(state.calls[1] and state.calls[1][1] == "DrawColorModify"
+            and state.calls[1][2]["$pp_colour_brightness"] == 0,
+            "leaving the editor restores normal atmosphere grading")
+        state.calls = {}
+        check(state:Hook("SetupWorldFog", "ZM.Atmosphere.WorldFog") == true and state.calls[2][2] == 100,
+            "leaving the editor restores the original profile fog")
+    end)
     suite:Add("capture_fog_is_scoped_nested_and_preserves_native_cache", function(check)
         local atmosphere, state, env = Tests.NewFixture()
         atmosphere:ApplyProfile(1, "fixture")

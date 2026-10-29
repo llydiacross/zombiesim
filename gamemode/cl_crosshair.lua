@@ -105,6 +105,7 @@ end
 // In the locked camera a white cross also marks the mouse aim cursor the player turns toward.
 hook.Add("HUDPaint", "ZM.CustomCrosshair", function()
     if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    if ZM_PrefabEditorClient and ZM_PrefabEditorClient:IsSession() then return end
     local ply = LocalPlayer()
     if not IsValid(ply) or not ply:Alive() or ZM_SafeZones:IsPlayerInside(ply) then return end
 

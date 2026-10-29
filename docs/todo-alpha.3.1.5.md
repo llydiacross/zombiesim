@@ -2,12 +2,11 @@
 
 **Status: REMAINING CLOSURE TRANSFERRED TO ALPHA 3.2 - 2026-10-13.**
 
-The user chose to prioritize generator work and move unfinished Phase D output
-acceptance and Phase I integration to the end of
-[Alpha 3.2](../todo-alpha.3.2.md). That tracker now owns the active schedule:
-Phase J combines shared final-revision output work; Phase K owns carried
-acceptance/restoration and the separately gated production branch. Do not run a
-separate 3.1.5 closure batch before the new generator work.
+The user chose to move unfinished Phase D output acceptance and Phase I
+integration to the end of [Alpha 3.2](todo-alpha.3.2.md). Alpha 3.2 was later
+archived without full acceptance, and the [Alpha 3.3 plan](../todo-alpha.3.3.md)
+now records the still-deferred closure. Do not run a separate 3.1.5 closure
+batch ahead of the current priorities.
 
 Phases 0/A/B/C/E/F/G/H remain accepted; current-cell Level/minimap projection
 is accepted. Phase D generated-output review and Phase I remain pending, not

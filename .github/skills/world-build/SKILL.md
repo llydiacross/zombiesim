@@ -24,23 +24,18 @@ For configuration meanings, template-orientation contracts, and compiler diagnos
 
 ## Preview Generation And VMF Check
 
-Run this sequence from the repository root when planning inputs, template selection, or generation logic changed:
-
-```powershell
-.\bin\generate_world_cells.ps1 -WorldProfile preview -Seed 1337
-.\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json -TrustedMotorwayPlan <matching-approved-plan.json>
-.\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json -RefreshGenerated -PruneStaleGenerated
-.\bin\expand_cell_filenames.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json
-.\bin\check_required_cells.ps1 -WorldProfile preview -RequiredCellList .\bin\preview_grid_24x24_seed_1337_required_cell_vmfs.txt
-```
+When planning inputs, template selection, or generation logic changed, follow
+the [preview workflow](../../../docs.md#preview-workflow) from the repository
+root with matching isolated settings, manifest, trusted plan and output paths.
+Do not overwrite retained artifacts merely by copying a dated example. Honor
+the active tracker and obtain approval before paused or expensive work.
 
 Normal wide (3x) motorway planning requires the matching trusted approved plan (`-TrustedMotorwayPlan`) and expanded border/outer rings. The old mouth/connector survey and `-MotorwayAssemblyReport` workflow has been retired; it is not a normal planner input. Motorway gates consume saved plan records, while `ZM_World` remains the runtime authority for route availability. Root settings keep `vmfBuild.outerEdges.enabled` false, so full-world preview batches use an isolated settings copy with it enabled and redirected profile paths. Full terrain infill is three passes: `build_cell_vmfs.ps1 ... -MeasureCompleteTerrainInfill`, `create_terrain_infill_templates.ps1 -PartialGapLayoutDirectory <src> -CompletePatches`, then `build_cell_vmfs.ps1 ... -SizedTerrainInfill -CompleteTerrainInfill`.
 
-Use the existing matching manifest and plan instead of regenerating them only when the change cannot affect world layout or recipe selection:
-
-```powershell
-.\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json -RefreshGenerated -PruneStaleGenerated
-```
+Use the existing matching manifest and plan instead of regenerating them only
+when the change cannot affect world layout or recipe selection. Pass the
+matching isolated `-SettingsPath`, `-PlanData` and output directories to the
+builder; do not prune retained outputs without explicit approval.
 
 Then run the focused structural compile check:
 

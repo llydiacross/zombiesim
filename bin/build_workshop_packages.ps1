@@ -61,6 +61,15 @@ foreach ($name in $settings.coreStaticFiles) {
     if ($name -eq 'music_definitions.json') { continue }
     Add-Content "data_static/$name" 'core' 'registries'
 }
+$prefabDirectory = Join-Path $content 'data_static\prefabs'
+if (Test-Path -LiteralPath $prefabDirectory -PathType Container) {
+    foreach ($prefab in Get-ChildItem -LiteralPath $prefabDirectory -File) {
+        if ($prefab.Name -cnotmatch '^[a-z0-9][a-z0-9_-]*\.json$') {
+            throw "Invalid exported prefab filename: $($prefab.Name)"
+        }
+        Add-Content "data_static/prefabs/$($prefab.Name)" 'core' 'prefabs'
+    }
+}
 if ($settings.coreStaticFiles -contains 'sky_catalogue.json') {
     $skyCatalogue = Read-PackageJson (Join-Path $content 'data_static\sky_catalogue.json')
     $licenceFiles = $skyCatalogue.PSObject.Properties['ownedLicenceFiles']

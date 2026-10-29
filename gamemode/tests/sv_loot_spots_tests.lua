@@ -5,6 +5,8 @@ local Generation = ZM_ItemGeneration
 local testProfile = "zn_test_loot"
 local otherProfile = "zn_test_loot_other"
 local testCell = 424242
+local testOwners = {}
+local nextTestOwner = 0
 
 local function fakeEntity(position)
     return {
@@ -17,20 +19,22 @@ local function fakeEntity(position)
 end
 
 local function fakePlayer(position)
+    nextTestOwner = nextTestOwner + 1
+    local owner = "zn_test_loot_owner_" .. nextTestOwner
+    testOwners[#testOwners + 1] = owner
     return {
         position = position or Vector(0, 0, 0),
         alive = true,
         items = {},
-        giveFails = false,
+        ZM_InventoryProfile = testProfile,
+        ZM_Inventory = ZM_InventoryService.NewInventory(),
+        GetCharacterKey = function() return owner end,
         IsValid = function() return true end,
         IsPlayer = function() return false end,
         Alive = function(self) return self.alive end,
         WorldSpaceCenter = function(self) return self.position end,
         GetLevel = function() return 5 end,
         GiveItemInstance = function(self, instance)
-            if self.giveFails then
-                return false, "there is no free slot in the backpack"
-            end
             table.insert(self.items, instance)
             return true
         end
@@ -56,6 +60,11 @@ end
 local function cleanup()
     ZM_DeleteLootCells(testProfile)
     ZM_DeleteLootCells(otherProfile)
+    for _, owner in ipairs(testOwners) do
+        ZM_DeletePlayerItems(owner, testProfile)
+        ZM_DeletePlayerItems(owner, otherProfile)
+    end
+    testOwners = {}
 end
 
 local suite = ZM_TestHarness.NewSuite()
@@ -302,6 +311,99 @@ test("activation_generates_and_persists_spots", function(check)
     check(#rows == 1 and rows[1].spotKey == "m1" and rows[1].state == "available", "the active spot is stored")
 end)
 
+test("guaranteed_prefab_spots_bypass_roll_and_spacing_without_suppressing_ordinary_loot", function(check)
+    local rule = certainRule()
+    local list = {
+        { key = "m1", rule = rule, entity = fakeEntity(), center = Vector(0, 0, 0) },
+        { key = "p1_a_a", rule = rule, entity = fakeEntity(), center = Vector(0, 0, 0), guaranteed = true },
+        { key = "p1_a_b", rule = rule, entity = fakeEntity(), center = Vector(0, 0, 0), guaranteed = true }
+    }
+    local rolls = 0
+    local rng = { Chance = function() rolls = rolls + 1; return true end, Next = function() return 0 end }
+    local selected = Spots.SelectActiveCandidates(list, rng)
+    check(#selected == 3 and rolls == 1, "guaranteed spots consume no roll or spacing slots")
+    rng.Chance = function() return false end
+    selected = Spots.SelectActiveCandidates(list, rng)
+    check(#selected == 2 and selected[1].key == "p1_a_a" and selected[2].key == "p1_a_b",
+        "guaranteed spots remain active when the ordinary roll fails")
+end)
+
+test("prefab_candidates_use_their_own_rules_and_guaranteed_overhangs", function(check)
+    local rule = certainRule()
+    local function prefab(key, position, guaranteed)
+        local entity = fakeEntity(position)
+        entity.ZM_LootSpotKey = key
+        entity.ZM_PrefabLoot = { rule = rule, guaranteed = guaranteed }
+        entity.GetClass = function() return "prop_physics" end
+        entity.GetModel = function() return "models/props_c17/oildrum001.mdl" end
+        entity.MapCreationID = function() return -1 end
+        return entity
+    end
+    local guaranteed = prefab("p1_a_a", Vector(500, 0, 0), true)
+    local normal = prefab("p1_a_b", Vector(0, 0, 0), false)
+    local outside = prefab("p1_a_c", Vector(500, 0, 0), false)
+    local off = fakeEntity(Vector(0, 0, 0))
+    off.GetClass = function() return "prop_physics" end
+    off.GetModel = function() return "models/props_c17/oildrum001.mdl" end
+    off.MapCreationID = function() return -1 end
+    local oldEntities = ents.GetAll
+    local oldBounds, oldMaps, oldCore = ZM_World.GetCellBounds, ZM_World.GetCellsForMap, ZM_World.IsCoreSpawnPosition
+    ents.GetAll = function() return { guaranteed, normal, outside, off } end
+    ZM_World.GetCellBounds = function() return { revision = 2 } end
+    ZM_World.GetCellsForMap = function() return {} end
+    ZM_World.IsCoreSpawnPosition = function(_, position) return position.x == 0 end
+    local called, found = pcall(Spots.FindCandidates, Spots)
+    ents.GetAll = oldEntities
+    ZM_World.GetCellBounds, ZM_World.GetCellsForMap, ZM_World.IsCoreSpawnPosition = oldBounds, oldMaps, oldCore
+    check(called and #found == 2, "only the normal core prop and guaranteed overhanging prop are candidates")
+    if not called or #found ~= 2 then return end
+    check(found[1].key == "p1_a_a" and found[1].guaranteed and found[1].rule == rule
+        and found[2].key == "p1_a_b" and not found[2].guaranteed,
+        "explicit prefab rules and guaranteed state reach the loot owner")
+end)
+
+test("guaranteed_prefab_spots_merge_without_resetting_saved_state", function(check)
+    local ordinary = candidates(1)
+    local first = Spots:LoadCell(testProfile, testCell, ordinary, { now = 1000, rng = Generation.NewRng(12) })
+    check(first and first.spots.m1, "existing ordinary loot generation is created")
+    ZM_SetLootSpot(testProfile, testCell, "m1", "looted", nil)
+    local guaranteed = { key = "p1234_fixture_p_one", rule = certainRule(), entity = fakeEntity(),
+        center = Vector(0, 0, 0), guaranteed = true }
+    table.insert(ordinary, guaranteed)
+    local merged, problem = Spots:LoadCell(testProfile, testCell, ordinary, { now = 1010 })
+    check(merged and merged.spots.m1 and merged.spots.m1.state == "looted"
+        and merged.spots[guaranteed.key] and merged.spots[guaranteed.key].state == "available",
+        "a new guaranteed spot is added without resetting ordinary loot: " .. tostring(problem))
+    ZM_SetLootSpot(testProfile, testCell, guaranteed.key, "looted", nil)
+    local repeated = Spots:LoadCell(testProfile, testCell, ordinary, { now = 1020 })
+    check(repeated and repeated.spots[guaranteed.key] and repeated.spots[guaranteed.key].state == "looted"
+        and #ZM_GetLootSpots(testProfile, testCell) == 2, "repeat loads cannot grant the same spot twice")
+    local other = Spots:LoadCell(otherProfile, testCell, ordinary, { now = 1000, rng = Generation.NewRng(13) })
+    check(other and other.spots[guaranteed.key] and other.spots[guaranteed.key].state == "available",
+        "guaranteed spot state remains profile-scoped")
+end)
+
+test("guaranteed_prefab_merge_failure_preserves_existing_rows", function(check)
+    local list = candidates(1)
+    Spots:LoadCell(testProfile, testCell, list, { now = 1000, rng = Generation.NewRng(14) })
+    ZM_SetLootSpot(testProfile, testCell, "m1", "looted", nil)
+    table.insert(list, { key = "p1234_fixture_p_one", rule = certainRule(), entity = fakeEntity(),
+        center = Vector(0, 0, 0), guaranteed = true })
+    local originalQuery, originalLastError = sql.Query, sql.LastError
+    sql.Query = function(query)
+        if string.find(query, "INSERT OR IGNORE INTO loot_spots", 1, true) then return false end
+        return originalQuery(query)
+    end
+    sql.LastError = function() return "injected guaranteed-spot failure" end
+    local called, loaded, problem = pcall(Spots.LoadCell, Spots, testProfile, testCell, list, { now = 1010 })
+    sql.Query, sql.LastError = originalQuery, originalLastError
+    local rows = ZM_GetLootSpots(testProfile, testCell)
+    check(called and not loaded and string.find(tostring(problem), "injected", 1, true),
+        "failed guaranteed insertion reports its error")
+    check(#rows == 1 and rows[1].spotKey == "m1" and rows[1].state == "looted",
+        "failed insertion rolls back without resetting existing loot")
+end)
+
 test("refresh_waits_for_five_minutes_of_absence", function(check)
     local list = candidates(2)
     Spots:LoadCell(testProfile, testCell, list, { now = 1000 })
@@ -399,10 +501,11 @@ test("search_offer_accept_loots_the_spot", function(check)
     check(ZM_GetLootSpots(testProfile, testCell)[1].item ~= "NULL", "the rolled item is saved on the spot")
     local accepted, message = Spots:RespondOffer(survivor, offer.token, true, 13)
     check(accepted and message == "accepted", "accepting the offer succeeds")
-    check(#survivor.items == 1 and survivor.items[1].itemId == "itemBandage", "the item is given once")
+    check(ZM_InventoryService:Count(survivor, "itemBandage", "backpack") == offer.count, "the item is given once")
     check(spot.state == "looted" and ZM_GetLootSpots(testProfile, testCell)[1].state == "looted", "the spot is looted and saved")
     local replay = Spots:RespondOffer(survivor, offer.token, true, 14)
-    check(not replay and #survivor.items == 1, "replaying the token gives nothing")
+    check(not replay and ZM_InventoryService:Count(survivor, "itemBandage", "backpack") == offer.count,
+        "replaying the token gives nothing")
     check(not Spots:BeginSearch(survivor, spot, 15), "a looted spot cannot be searched again")
 end)
 
@@ -413,7 +516,7 @@ test("decline_keeps_the_same_item_across_reloads", function(check)
     Spots:BeginSearch(survivor, Spots.Cell.spots.m1, 10)
     local first = Spots:CompleteSearch(survivor, 12, Generation.NewRng(3))
     local declined = Spots:RespondOffer(survivor, first.token, false, 13)
-    check(declined and #survivor.items == 0, "declining gives nothing")
+    check(declined and ZM_InventoryService:Count(survivor, "itemBandage", "backpack") == 0, "declining gives nothing")
     check(Spots.Cell.spots.m1.state == "declined", "a declined spot keeps its gray declined state")
 
     Spots:Activate(Spots:LoadCell(testProfile, testCell, list, { now = 1100 }))
@@ -423,7 +526,8 @@ test("decline_keeps_the_same_item_across_reloads", function(check)
     check(second.token ~= first.token, "each offer gets a new token")
     check(not Spots:RespondOffer(survivor, first.token, true, 23), "an old token is rejected")
     local accepted = Spots:RespondOffer(survivor, second.token, true, 24)
-    check(accepted and #survivor.items == 1 and survivor.items[1].itemId == first.itemId, "a re-opened declined item can be accepted")
+    check(accepted and ZM_InventoryService:Count(survivor, first.itemId, "backpack") == first.count,
+        "a re-opened declined item can be accepted")
     check(Spots.Cell.spots.m1.state == "looted", "accepting a declined item marks the spot looted")
 end)
 
@@ -445,7 +549,8 @@ test("claims_range_and_expiry_are_enforced", function(check)
     local secondOffer = Spots:CompleteSearch(second, 15, Generation.NewRng(4))
     second.position = Vector(5000, 0, 0)
     check(not Spots:RespondOffer(second, secondOffer.token, true, 16), "accepting from far away is rejected")
-    check(#second.items == 0 and spot.state == "available", "a rejected accept changes nothing")
+    check(ZM_InventoryService:Count(second, "itemBandage", "backpack") == 0 and spot.state == "available",
+        "a rejected accept changes nothing")
 
     first.position = Vector(1000, 0, 0)
     Spots:BeginSearch(first, spot, 20)
@@ -457,12 +562,142 @@ end)
 test("full_backpack_keeps_the_spot_and_item", function(check)
     Spots:Activate(Spots:LoadCell(testProfile, testCell, candidates(1), { now = 1000 }))
     local survivor = fakePlayer(Vector(1000, 0, 0))
-    survivor.giveFails = true
     Spots:BeginSearch(survivor, Spots.Cell.spots.m1, 10)
     local offer = Spots:CompleteSearch(survivor, 12, Generation.NewRng(6))
+    local sample = Spots.Cell.spots.m1.item
+    for slot = 1, ZM_Items.ContainerCapacity.backpack do
+        local full = table.Copy(sample)
+        full.instanceId = "zn_test_full_" .. slot
+        full.count = ZM_Items:GetDefinition(full.itemId).maxStack
+        survivor.ZM_Inventory.backpack[slot] = full
+    end
     local accepted, reason = Spots:RespondOffer(survivor, offer.token, true, 13)
     check(not accepted and string.find(reason, "Could not take the item", 1, true), "a failed grant reports why")
     check(Spots.Cell.spots.m1.state == "available" and Spots.Cell.spots.m1.item.itemId == offer.itemId, "the spot keeps its item")
+end)
+
+test("loot_claim_is_atomic_when_spot_save_fails", function(check)
+    local list = candidates(1)
+    list[1].guaranteed = true
+    Spots:Activate(Spots:LoadCell(testProfile, testCell, list, { now = 1000 }))
+    local survivor = fakePlayer(Vector(1000, 0, 0))
+    Spots:BeginSearch(survivor, Spots.Cell.spots.m1, 10)
+    local offer = Spots:CompleteSearch(survivor, 12, Generation.NewRng(22))
+    local originalQuery, originalLastError = sql.Query, sql.LastError
+    sql.Query = function(query)
+        if string.find(query, "UPDATE loot_spots SET state = 'looted'", 1, true) then return false end
+        return originalQuery(query)
+    end
+    sql.LastError = function() return "injected loot claim failure" end
+    local called, accepted, reason = pcall(Spots.RespondOffer, Spots, survivor, offer.token, true, 13)
+    sql.Query, sql.LastError = originalQuery, originalLastError
+    check(called and not accepted and string.find(tostring(reason), "injected", 1, true),
+        "a spot write failure is reported")
+    local rows = ZM_GetLootSpots(testProfile, testCell)
+    local inventory = ZM_GetPlayerItems(survivor:GetCharacterKey(), testProfile)
+    check(ZM_InventoryService:Count(survivor, offer.itemId, "backpack") == 0
+        and inventory and #inventory == 0 and rows and rows[1].state == "available"
+        and Spots.Cell.spots.m1.item ~= nil, "failed claim rolls back inventory and preserves the offered spot")
+    check(Spots:BeginSearch(survivor, Spots.Cell.spots.m1, 20), "the preserved spot can be searched again")
+    local retry = Spots:CompleteSearch(survivor, 22, Generation.NewRng(23))
+    local retried = retry and Spots:RespondOffer(survivor, retry.token, true, 23)
+    check(retried and ZM_InventoryService:Count(survivor, offer.itemId, "backpack") == offer.count,
+        "a later successful claim grants the item exactly once")
+end)
+
+test("loot_claim_rejects_stale_database_state", function(check)
+    Spots:Activate(Spots:LoadCell(testProfile, testCell, candidates(1), { now = 1000 }))
+    local survivor = fakePlayer(Vector(1000, 0, 0))
+    Spots:BeginSearch(survivor, Spots.Cell.spots.m1, 10)
+    local offer = Spots:CompleteSearch(survivor, 12, Generation.NewRng(24))
+    ZM_SetLootSpot(testProfile, testCell, "m1", "looted", nil)
+    local accepted, reason = Spots:RespondOffer(survivor, offer.token, true, 13)
+    check(not accepted and string.find(tostring(reason), "changed", 1, true)
+        and ZM_InventoryService:Count(survivor, offer.itemId, "backpack") == 0,
+        "a stale offer cannot grant an item after the persisted spot changes")
+end)
+
+test("loot_claim_rolls_back_if_inventory_write_fails", function(check)
+    Spots:Activate(Spots:LoadCell(testProfile, testCell, candidates(1), { now = 1000 }))
+    local survivor = fakePlayer(Vector(1000, 0, 0))
+    Spots:BeginSearch(survivor, Spots.Cell.spots.m1, 10)
+    local offer = Spots:CompleteSearch(survivor, 12, Generation.NewRng(26))
+    local originalQuery, originalLastError = sql.Query, sql.LastError
+    sql.Query = function(query)
+        if string.find(query, "INSERT INTO player_items", 1, true) then return false end
+        return originalQuery(query)
+    end
+    sql.LastError = function() return "injected inventory failure" end
+    local called, accepted, reason = pcall(Spots.RespondOffer, Spots, survivor, offer.token, true, 13)
+    sql.Query, sql.LastError = originalQuery, originalLastError
+    local rows = ZM_GetLootSpots(testProfile, testCell)
+    check(called and not accepted and string.find(tostring(reason), "injected", 1, true),
+        "inventory write failure is reported")
+    check(ZM_InventoryService:Count(survivor, offer.itemId, "backpack") == 0
+        and rows and rows[1].state == "available" and Spots.Cell.spots.m1.item ~= nil,
+        "failed inventory write preserves the saved offer and live inventory")
+end)
+
+test("loot_claim_rejects_a_different_inventory_profile", function(check)
+    Spots:Activate(Spots:LoadCell(testProfile, testCell, candidates(1), { now = 1000 }))
+    local survivor = fakePlayer(Vector(1000, 0, 0))
+    survivor.ZM_InventoryProfile = otherProfile
+    Spots:BeginSearch(survivor, Spots.Cell.spots.m1, 10)
+    local offer = Spots:CompleteSearch(survivor, 12, Generation.NewRng(27))
+    local accepted, reason = Spots:RespondOffer(survivor, offer.token, true, 13)
+    local rows = ZM_GetLootSpots(testProfile, testCell)
+    check(not accepted and string.find(tostring(reason), "profiles differ", 1, true)
+        and ZM_InventoryService:Count(survivor, offer.itemId, "backpack") == 0
+        and rows and rows[1].state == "available", "profile mismatch cannot grant or consume loot")
+end)
+
+test("decline_reports_failed_save_without_changing_the_spot", function(check)
+    Spots:Activate(Spots:LoadCell(testProfile, testCell, candidates(1), { now = 1000 }))
+    local survivor = fakePlayer(Vector(1000, 0, 0))
+    Spots:BeginSearch(survivor, Spots.Cell.spots.m1, 10)
+    local offer = Spots:CompleteSearch(survivor, 12, Generation.NewRng(25))
+    local originalQuery, originalLastError = sql.Query, sql.LastError
+    sql.Query = function(query)
+        if string.find(query, "UPDATE loot_spots SET state = 'declined'", 1, true) then return false end
+        return originalQuery(query)
+    end
+    sql.LastError = function() return "injected decline failure" end
+    local called, declined, reason = pcall(Spots.RespondOffer, Spots, survivor, offer.token, false, 13)
+    sql.Query, sql.LastError = originalQuery, originalLastError
+    local rows = ZM_GetLootSpots(testProfile, testCell)
+    check(called and not declined and string.find(tostring(reason), "injected", 1, true),
+        "failed decline is reported")
+    check(Spots.Cell.spots.m1.state == "available" and rows and rows[1].state == "available",
+        "failed decline does not change the in-memory or stored state")
+end)
+
+test("missing_spot_and_failed_item_encoding_are_reported", function(check)
+    Spots:LoadCell(testProfile, testCell, candidates(1), { now = 1000 })
+    local updated, problem = ZM_SetLootSpot(testProfile, testCell, "missing", "available", nil)
+    check(not updated and type(problem) == "string", "updating a nonexistent row is not reported as success")
+    local originalEncode = util.TableToJSON
+    util.TableToJSON = function() return nil end
+    local called, saved, encodeError = pcall(ZM_SetLootSpot, testProfile, testCell, "m1", "available", { itemId = "itemBandage" })
+    util.TableToJSON = originalEncode
+    local rows = ZM_GetLootSpots(testProfile, testCell)
+    check(called and not saved and type(encodeError) == "string" and rows and rows[1].item == "NULL",
+        "encoding failure is reported without replacing stored loot")
+end)
+
+test("declined_runtime_spot_can_be_reopened_without_a_database_row", function(check)
+    Spots:Activate(Spots:LoadCell(testProfile, testCell, candidates(1), { now = 1000 }))
+    local survivor = fakePlayer(Vector(1000, 0, 0))
+    local entity = fakeEntity(Vector(1000, 0, 0))
+    local item = Generation:CreateInstance("itemBandage", { count = 1, level = 1 })
+    local spot, problem = Spots:RegisterRuntimeSpot(entity, item, "temporary-fixture")
+    check(spot ~= nil, "runtime spot registers: " .. tostring(problem))
+    if not spot then return end
+    check(Spots:BeginSearch(survivor, spot, 10), "runtime spot can be searched")
+    local first = Spots:CompleteSearch(survivor, 12)
+    check(first and Spots:RespondOffer(survivor, first.token, false, 13), "runtime offer can be declined")
+    check(Spots:BeginSearch(survivor, spot, 20), "declined runtime spot can be searched again")
+    local second, reopenError = Spots:CompleteSearch(survivor, 22)
+    check(second and second.itemId == first.itemId, "runtime offer reopens without a stored row: " .. tostring(reopenError))
 end)
 
 test("profiles_and_cells_are_isolated", function(check)

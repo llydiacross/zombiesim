@@ -2,6 +2,16 @@
   "schemaVersion": 1,
   "entries": [
     {
+      "version": "3.3",
+      "title": "Next Update",
+      "status": "in development",
+      "date": "2026-10-28",
+      "summary": "Alpha 3.3 is in development.",
+      "highlights": [
+        "+ Added a prefab editor and explorer for preview admins."
+      ]
+    },
+    {
       "version": "3.2",
       "title": "New Motorways, Denser Districts and Sunlight",
       "status": "in development",
@@ -10,8 +20,8 @@
       "highlights": [
         "+ Added new motorway routes to the city.",
         "+ Buildings now better match the density of each area.",
-        "? Motorway gates now follow reachable roads and line up with the road lanes.",
-        "+ Optional dynamic sun shadows can be enabled and adjusted in Options."
+        "+ Optional dynamic sun shadows can be enabled and adjusted in Options.",
+        "? Motorway gates now follow reachable roads and line up with the road lanes."
       ]
     },
     {
@@ -136,8 +146,8 @@
       "date": "2026-09-26",
       "summary": "Improved road connections, building orientation, and larger city structures.",
       "highlights": [
-        "? Fixed roads and buildings facing the wrong direction.",
-        "+ Added support for larger connected buildings."
+        "+ Added support for larger connected buildings.",
+        "? Fixed roads and buildings facing the wrong direction."
       ]
     },
     {

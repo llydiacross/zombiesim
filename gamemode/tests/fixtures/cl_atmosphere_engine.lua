@@ -128,7 +128,7 @@ return function()
     end
     env.ZM_SafeZones = { IsPlayerInside = function() return state.inDen end }
     env.ZM_Quality = { ConVars = {} }
-    env.ZM_LauncherMenu, env.ZM_WorldMap = { Active = false }, { Capturing = false }
+    env.ZM_LauncherMenu, env.ZM_WorldMap, env.ZM_PrefabEditorClient = { Active = false }, { Capturing = false }, false
     env.ZM_SkyInspection = { GetLauncherFogSettings = function() return state.launcherFog end }
     env.ZM_Skybox = {
         SceneryLight = { 1, 1, 1 }, ClampWorldBounds = function(_, minimum, maximum) return minimum, maximum end,

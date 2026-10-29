@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $bin = Join-Path $root 'bin'
 if ([string]::IsNullOrWhiteSpace($PlanData)) {
-    $PlanData = Join-Path $root 'generated\phase_j_preview_20261015\plan_grid_road_review.json'
+    $PlanData = Join-Path $root 'generated\phase_j_preview_20261015\plan_grid_road_review_corrected.json'
 }
 if ([string]::IsNullOrWhiteSpace($TrustedPlanData)) {
     $TrustedPlanData = Join-Path $root 'generated\phase_j_preview_20261015\plan.json'
@@ -21,6 +21,27 @@ foreach ($path in @($PlanData, $TrustedPlanData, $VmfDirectory)) {
     if (-not (Test-Path -LiteralPath $path)) { throw "Motorway grid test input is missing: $path" }
 }
 Import-Module (Join-Path $bin 'skybox_models.psm1') -Force
+Import-Module (Join-Path $bin 'motorway_geometry.psm1') -Force
+Import-Module (Join-Path $bin 'transition_gates.psm1')
+
+foreach ($source in @(
+    @{ path = 'build_cell_vmfs.ps1'; names = @('ConvertTo-TransitionGatePlacements', 'Get-TransitionGatePlacements') },
+    @{ path = 'export_runtime_world_data.ps1'; names = @('Get-RuntimeMotorwayGates') }
+)) {
+    $tokens = $null
+    $errors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+        (Join-Path $bin $source.path), [ref]$tokens, [ref]$errors)
+    if ($errors.Count -gt 0) { throw "Cannot parse $($source.path)." }
+    foreach ($name in $source.names) {
+        $definitions = @($ast.FindAll({
+            param($node)
+            $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name
+        }, $false))
+        if ($definitions.Count -ne 1) { throw "Expected one $name in $($source.path)." }
+        . ([scriptblock]::Create($definitions[0].Extent.Text))
+    }
+}
 
 $plan = Get-Content -Raw -LiteralPath $PlanData | ConvertFrom-Json
 $trustedPlan = Get-Content -Raw -LiteralPath $TrustedPlanData | ConvertFrom-Json
@@ -105,6 +126,23 @@ foreach ($cell in $plan.cells) {
     if ($null -eq $contractProperty) { throw "Motorway cell $coordinate has no assembly contract." }
     $contract = $contractProperty.Value
     $trustedContract = $trustedCell.motorwayAssembly
+    $runtimeGates = @(Get-RuntimeMotorwayGates $cell)
+    Assert ((Get-JsonSignature $runtimeGates) -ceq (Get-JsonSignature @($contract.gates))) "Runtime export retains approved gate records at $coordinate."
+    $writtenGates = @(Get-TransitionGatePlacements $cell)
+    foreach ($gate in $contract.gates) {
+        $route = if ($null -ne $gate.PSObject.Properties['route']) { [string]$gate.route } else { 'motorway' }
+        $expectedCount = if ($route -eq 'road') { 1 } else { 2 }
+        $written = @($writtenGates | Where-Object direction -eq $gate.direction)
+        $arrival = $gate.lanes[[int]$gate.arrivalLane - 1]
+        Assert ($written.Count -eq $expectedCount -and
+            @($written | Where-Object {
+                $_.route -ne $route -or $_.x -ne $gate.x -or $_.y -ne $gate.y -or
+                $_.arrivalX -ne $arrival.arrivalX -or $_.arrivalY -ne $arrival.arrivalY
+            }).Count -eq 0) "Gate writer preserves route, lane count, position and arrival at $coordinate/$($gate.direction)."
+    }
+    Assert ($writtenGates.Count -eq (@($contract.gates | ForEach-Object {
+        if ($null -ne $_.PSObject.Properties['route'] -and $_.route -eq 'road') { 1 } else { 2 }
+    } | Measure-Object -Sum).Sum)) "Gate writer emits no extra triggers at $coordinate."
     if ($contract.schemaVersion -eq 1) {
         Assert ((Get-JsonSignature @($cell.tilePlacements)) -ceq (Get-JsonSignature @($trustedCell.tilePlacements))) "Plain-straight grid slots remain unchanged at $coordinate."
         Assert ((Get-JsonSignature @($contract)) -ceq (Get-JsonSignature @($trustedContract))) "Plain-straight motorway contract remains unchanged at $coordinate."
@@ -139,7 +177,10 @@ foreach ($cell in $plan.cells) {
                 (Test-GridAxis ([double]$assembly.origin.y) $tileSize)) "Road continuation origin uses the 640-unit grid at $coordinate."
         }
         $motorCoreLeaseSlots = @{}
-        foreach ($lease in @($contract.leases | Where-Object ring -eq 'core')) { $motorCoreLeaseSlots["$($lease.tileX),$($lease.tileY)"] = $true }
+        $motorOwners = @($motorAssemblies | ForEach-Object { [string]$_.owner })
+        foreach ($lease in @($contract.leases | Where-Object { $_.ring -eq 'core' -and $_.owner -in $motorOwners })) {
+            $motorCoreLeaseSlots["$($lease.tileX),$($lease.tileY)"] = $true
+        }
         foreach ($placement in @(Get-RoadTilePlacements $cell | Where-Object role -eq 'onramp_road')) {
             Assert (-not $motorCoreLeaseSlots.ContainsKey("$($placement.tileX),$($placement.tileY)")) "On-ramp road no longer overlaps a leased 5x5 motorway slot at $coordinate."
         }

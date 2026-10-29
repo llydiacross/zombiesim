@@ -5,10 +5,17 @@ documented here. For a player overview, see the [root README](../readme.md).
 
 ## Development status
 
+**Alpha 3.3 implementation is authorized; the prefab editor prototype is active.** See the
+[phased plan](../todo-alpha.3.3.md): prefab editor first, zombie AI medium
+priority, fog least-priority presentation work and world-generation rules
+last. Alpha 3.2 is [archived](todo-alpha.3.2.md), not released or fully
+accepted; its outstanding outputs and carried closure are deferred. The
+historical 3.2 evidence below does not define the current phase order.
+
 Alpha 3.1.0 development, including final Phase H, was accepted by the user on
 2026-10-06. The [archived tracker](../docs/todo-alpha-3.1.0.md) records static,
 live and human acceptance separately, including remaining validation limits.
-On 2026-10-13 the user made [Alpha 3.2](../todo-alpha.3.2.md) the active schedule
+On 2026-10-13 the user made [Alpha 3.2](todo-alpha.3.2.md) the active schedule
 and prioritized density/3-wide motorway generator work before CSM.
 [Alpha 3.1.5](../docs/todo-alpha.3.1.5.md) phases 0/A/B/C/E/F/G/H and current-cell
 Level/minimap projection remain accepted. Its unfinished Phase D generated
@@ -17,7 +24,7 @@ artwork/wireframe/Satellite acceptance and Phase I integration are carried to
 generator. This transfer does not declare 3.1.5 complete or reopen retained
 limits from accepted phases.
 
-The [reconciled Alpha3.2 status](../todo-alpha.3.2.md#current-reconciled-status---2026-10-14)
+The [archived Alpha 3.2 status](todo-alpha.3.2.md#current-status---2026-10-17)
 is authoritative over older chronological progress notes. Both straight and
 all seven complex motorway fixtures were reviewed; Phase B remains accepted
 with its retained limits. The isolated fixture pipeline is not normal-world
@@ -38,80 +45,17 @@ focused VMF suite pass1058 assertions. Two complete-infill VMFs are available
 under `generated/phase_j_grid_road_review_corrected/src`; the user approved
 their appearance. Isolated VBSP/portal preflight and fast VVIS/VRAD pass2/2
 with no failures/incomplete stages or portal-budget violations. Their BSPs
-remain in `generated/phase_j_grid_road_review_corrected/build`; nothing was
-staged or live-tested. A prior broad VMF-only attempt stopped at cell6,23
-because no terrain tile was available for its player start; full-batch
-acceptance remains pending.
+remain in `generated/phase_j_grid_road_review_corrected/build`. The two BSPs
+were subsequently staged and the user accepted the live gate and alignment
+checks. Full-world output acceptance remains pending.
 
-The following Phase E generator notes are chronological history; use the
-current Phase J tracker above for active work.
-The user resumed work after reconciliation: density and motorways are the
-release priority. Ordinary rectangular-building physical validation waits
-until an authored asset is supplied; CSM remains deferred. Normal plain-straight
-planning now reserves the full three-wide core before density decorations,
-using the same physical stripe origins as inspection. Two isolated normal-plan
-outputs cover both orientations. Complete measured straight contracts now
-authorize normal VMF emission; complex normal rollout remains unfinished.
-Normal straight plans now also declare27 core/ring leases and four ring owners;
-the tested builder resolver preserves unleased boundary walls/corners and
-rejects stale sources. `.\bin\build_motorway_cell_preview.ps1 -NormalPlanOnly`
-reproduces the isolated expanded normal plans without compilation. This is ring
-ownership preparation, not complete gates/runtime integration or live evidence.
-Straight normal plans now also include source-measured gate lanes/decks:
-416-unit carriageways at Z68 with asymmetric centres, transformed in all four
-directions. Legacy160-unit runtime offsets remain unchanged until the matching
-brush/marker/arrival integration is complete; no live-travel claim is implied.
-The normal straight VMF writer now consumes those measurements for asymmetric
-trigger bounds, lane-positioned arrival landmarks and translated car/glass
-barricades. Legacy geometry remains unchanged. Runtime export and server
-arrows/arrivals now consume the same measured lanes through `ZM_World`; old
-maps retain their legacy offsets. Invalid/conflicting shared-map contracts are
-reported and blocked rather than guessed. Fresh offline server10/10,
-client10/10, motorway1529 and GLua275/0 pass. Actual compiled/live review and
-remaining complex normal assembly integration are pending. The follow-on
-`.\bin\build_motorway_cell_preview.ps1 -Normal` output passes two-map
-VBSP/portals/VVIS/VRAD and BSP checks for four gates/four arrivals, without
-inspection metadata. Unsupported or stale normal contracts remain blocked.
-`-Mixed` covers the four actual combined layouts, preserving all routes.
-The corrected fixtures under `generated/phase_e_mixed_centred_routes_20261014`
-pass VBSP/portal budgets/VVIS/VRAD with the preview fast preset. Three wide insertion seams are exact;
-the new corner/on-ramp join retains a2-unit centre/36-unit width difference.
-Deadend/bridge combinations now keep the bridge exactly at the cell origin;
-the deadend adjusts around its measured mouths. Mixed on-ramp approaches now
-snake from the central side-entry axis through two ordinary corners and an
-approved768-unit straight, without moving the wide pieces or authored ramps.
-`create_road_connector_template.ps1` initializes that editable source once and
-preserves subsequent artist edits; source floor-mouth validation rejects
-incompatible edits rather than guessing joins. Its extra128 units are explicitly
-approved, not generated-instance scaling.
-`-Mixed` automatically runs the existing complete rectangular-infill workflow.
-The accepted corner-specific infill exclusions remain unchanged; this does not
-claim every corner gap is filled. Fresh mixed infill27022 assertions/128 emitted
-rectangles and density2633 pass. The two centred road routes publish
-`ordinaryRoadApproaches.boundaryPort` for subsequent gate integration; diagnostic
-fixtures still emit no gates, and actual normal mixed gate/arrival wiring is
-pending. All four corrected fixtures are open in new Hammer++ windows; old
-comparisons and unsaved work remain untouched. The user approved both bridge/
-deadend arrangements, the deadend/on-ramp and the corner's connecting road.
-Their remaining corner correction removes the obsolete south border straight
-at slot2,5 and replaces it with the existing planned terrain source.
-Fresh `generated/phase_e_corner_terrain_cleanup_20261014` output passes the
-same four-map fast compile/portal and27022 infill checks; the three approved
-control VMFs are byte-identical. This replaces no other piece and preserves
-the approved connecting road. No installed profile, BSP,
-persistence or gameplay state was changed.
-The immediate focus is now motorway-specific origins, rings and travel, not
-additional general-building features. The builder's shared straight motorway
-contract checks exact core/border/outer ownership and approved finite origins
-before replacing ring pieces. Focused source fixtures and retained straight
-plans pass; normal-world enablement and physical/live acceptance remain open.
-Core/ring instance emission now uses the measured motorway owner's explicit
-cell-local XYZ instead of deriving it again from reservation dimensions.
-Fractional coordinates are retained; incompatible frame/pitch/Z shifts fail.
-Ordinary centred output and interior rounding remain unchanged. The focused
-motorway suite covers the actual entity writer, not complete-map compilation.
-Its first source slice aligns explicit rectangular occupancy between planner
-and builder and validates footprint owner IDs/geometry. The fast
+The current planner and writer use trusted approved motorway records rather
+than remeasuring mouths or solving connector geometry. Normal road placements
+stay on the 640-unit lattice and runtime route access is decided by `ZM_World`.
+The former measured inspection commands have been retired; their evidence is
+historical, not an instruction to rebuild accepted layouts.
+The source also aligns explicit rectangular occupancy between planner and
+builder and validates footprint owner IDs/geometry. The fast
 `.\tests\powershell\test_rectangular_footprints.ps1` fixture covers square controls and
 rectangles; new asset selection, inventory/origin and ring/travel integration
 remain unfinished. See the [occupancy contract](../docs.md#alpha-32-explicit-rectangular-occupancy).
@@ -130,14 +74,10 @@ The user accepted the
 current experimental client-local CSM overlay and Options controls, default off.
 Remaining CSM work is deferred to [its dedicated tracker](../docs/csm-implementation.md)
 outside Alpha 3.2's completion gates; no further probes or optimization are
-scheduled. Runtime/Options live review, seamless blending, lifecycle isolation
-and matched performance remain unverified, not implied by acceptance. Expanded preview
-assets retain their restoration ledger; production settings/installed outputs
-remain untouched. The bounded isolated preview generation/compile/derivative/
-backed-up staging/launch batch is now approved. Minimal crossroads brush41926
-repair is also approved and attempted, with a verified original backup;
-compiler verification remains pending. Full-world navmesh/Satellite closure
-and production/publication still need separate approval. Workshop publication remains deferred;
+scheduled. Seamless blending, lifecycle isolation and matched performance
+remain unverified, not implied by acceptance. Generator and full-world output
+work are paused; ask before further expensive work. Full-world navmesh/Satellite
+closure and production/publication remain separately gated. Workshop publication remains deferred;
 `version.json` reports `in development`, not `released`. Production city
 rebuilds require separate approval.
 
@@ -159,91 +99,28 @@ Warnings identify authored pools unable to supply a different adjacent layout.
 New BSPs, skyline and runtime exports must be staged together; old captured
 Satellite imagery remains compatibility-gated, not relabelled as current.
 
-### Alpha 3.2 motorway assembly inspection
+### Alpha 3.2 motorway previews and infill
 
-For **complete generated cells**, rather than an asset overview, use:
+The approved preview uses a matching trusted motorway plan for instance
+placements, leases and gate records. The old measured mouth/connector survey
+and synthetic complex-inspection workflows are retired. Route availability
+remains owned by `ZM_World`; do not move ordinary roads off the 640-unit grid
+to match mouths or reopen approved motorway art.
 
-```powershell
-.\bin\build_motorway_cell_preview.ps1
-.\tests\powershell\test_motorway_cells.ps1
-```
+The isolated wrapper requires an explicit manifest and output directory.
+Choose exactly one of `-StraightInspection`, `-NormalPlanOnly`, `-Normal` or
+`-NormalComplex`; normal modes also require `-TrustedMotorwayPlan`.
+`-CellCoordinates` and `-SkipInfill` are available for normal-complex mode.
+It writes only under `generated/` and does not compile or stage maps.
+Obtain approval before generating previews while generator work is paused.
 
-These run the normal planner/builder with an explicit isolated inspection mode
-and generate two real preview straight-cell examples under
-`generated/phase_b_motorway_cells/src`: logical(6,-11) north-south and
-logical(2,-5) east-west. Each includes the normal shell, surrounding scenery,
-border/outer rings and skybox room. Three-wide reservations continue the
-motorway on its existing axis through the full5760footprint.
-The user inspected and approved both examples in Hammer.
-
-The default mode accepts only plain inland straight cells. For the remaining
-seven pieces inside complete cells:
-
-```powershell
-.\bin\build_motorway_cell_preview.ps1 -Complex
-.\tests\powershell\test_complex_motorway_cells.ps1
-```
-
-Outputs stay separate under `generated/phase_b_complex_cells`; `cell-report.json`
-maps each complete VMF to its logical coordinates and topology. Six cases use
-real current cells; the T-junction is an explicitly synthetic modification of
-a crossroads because no T exists in the matching world. Core, border and outer
-scenery respects conservative saved-winding leases for the full assemblies,
-including ordinary-road approaches. This is a **diagnostic geometry preview**:
-residual two-lane seams, road deck/grade mismatches, partial boundary tiles,
-below-terrain geometry and envelope overlaps remain disclosed in the plan.
-The bridge preserves the existing `bridge-horizontal` yaw90 mapping; its
-measured motorway is E/W rather than the source cell's N/S. This discrepancy
-must be resolved at integration, not silently corrected or labelled supported.
-Mixed corner/ramp and terminal/bridge cells fail explicitly rather than losing
-either route. Neither mode emits legacy narrow travel triggers/blockers,
-changes normal settings, stages outputs or proves live travel. Full Phase B
-acceptance remains separate.
-
-The user completed the original seven-cell Hammer review, identifying missing
-ground rather than requesting changes to the motorway assets. Editable infill
-bases now live in `tiletemplates/terrain/infill`: `tile_ground_full.vmf`
-is640x640, `tile_ground_half.vmf`
-is320x640 and `tile_ground_quarter.vmf` is320x320, centered at the origin,
-with the existing grass material and ground Z0..32. Artists can add detail
-without shrinking or changing the base ground footprint. Decorated variants
-still need independent road/bridge/prop clearance review; automatic variant
-discovery is not enabled.
-
-```powershell
-.\bin\create_terrain_infill_templates.ps1
-.\tests\powershell\test_terrain_infill.ps1
-```
-
-The first command creates missing sources only and **never overwrites an
-existing artist-owned template**. The focused test builds corrected full-cell
-previews in an isolated generated directory. Fully empty
-ground prefers640x640tiles, then half/quarter
-instances. Below-ground geometry stays protected against filling intentional
-depressions. Ground coverage is independent of conservative scenery leases.
-Partly occupied curved/fractional slots remain explicitly review-required;
-passing this test does not declare every visible gap or compiled clearance
-resolved. Normal generation and approved straights remain unchanged.
-
-The first correction passed corner review but left crossroads strips narrower
-than320units. The user approved additional measured-size editable bases:
-
-```powershell
-.\bin\build_motorway_cell_preview.ps1 -Complex -SizedInfill -OutputDirectory .\generated\phase_b_sized_infill_cells
-.\tests\powershell\test_terrain_infill.ps1 -SizedInfill
-```
-
-The opt-in first measures uncovered ground, creates only missing rectangular
-patch sources, then builds their instances. Names such as
-`tile_ground_patch_u304_u320.vmf` express **Hammer-unit dimensions**, not a
-304-tile footprint. The old arbitrary-size/decimal/polygon pass is retired:
-extra patches use only strict powers of two from 4 through 512 on both axes,
-including U4/U8 for narrow bounds-verified gaps. Standard 640/320 ground bases
-remain explicit exceptions. Sources remain editable and are never overwritten.
-Fractional boundaries are inset to integer edges; fractional or sub-4 remainders
-stay on the default black floor. No `p` filenames or polygon ground sources are
-generated. Existing human-approved roadway art remains unchanged; new
-ground/clearance review is separate.
+Editable infill bases live in `tiletemplates/terrain/infill`: full 640x640,
+half 320x640 and quarter 320x320, with ground Z0..32. The initializer creates
+missing sources only and never overwrites artist-owned templates. Additional
+patches use powers of two from 4 to 512; fractional and sub-4 remainders stay
+on the default floor. Decoration clearance remains a separate review.
+See the [generator reference](../docs.md#rectangular-ground-infill) for the
+trusted motorway-only three-pass workflow.
 
 ### Tile ground alignment and centering
 
@@ -269,12 +146,9 @@ under `generated/phase_b_grid_infill_cells`; the accepted corner and crossroads
 VMFs remain retained historical artifacts. Current infill is rectangle-only;
 nonstandard ground and compiled review remain open.
 
-The consolidated rectangle pass and safe cleanup are explicit:
+Infill cleanup is explicit and audits by default:
 
 ```powershell
-.\bin\build_motorway_cell_preview.ps1 -Complex -CompleteInfill
-.\tests\powershell\test_terrain_infill.ps1 -CompleteInfill -OutputDirectory .\generated\phase_b_power2_infill_cells
-.\tests\powershell\test_complex_motorway_cells.ps1 -CompleteInfill -OutputDirectory .\generated\phase_b_power2_infill_cells
 .\bin\clean_terrain_infill_templates.ps1 -LayoutDirectories .\generated\phase_b_power2_infill_cells\src
 ```
 
@@ -288,41 +162,185 @@ restore the exact archived files or regenerate before inspecting those fixtures.
 The former64x320extra patch is replaced by64x256plus64x64 under the strict
 power-of-two rule; unused unmodified sources are safely archived.
 
-The compatibility name `-CompleteInfill` now means rectangle consolidation,
-not polygon generation or guaranteed full ground. Coverage uses recognized
-ground bases rather than arbitrary road/structural brushes. Tests separately
-account for recognized ground, emitted rectangles and explicit default-floor/
-nonstandard exclusions at four rotations; this is not compiler/live acceptance.
-
-Generate only the isolated Hammer inspection fixtures and run their focused
-checks with:
+For source-only trusted contract and placement checks, run:
 
 ```powershell
-.\bin\build_motorway_preview.ps1 -WorldProfile preview
 .\tests\powershell\test_motorway_geometry.ps1
-.\tests\powershell\test_complex_motorway_gates.ps1
-.\tests\powershell\test_motorway_survey.ps1
-.\tests\powershell\test_motorway_preview.ps1
+.\tests\powershell\test_motorway_grid_placements.ps1
+.\tests\powershell\test_motorway_infill_scope.ps1
 ```
 
-The complex gate check generates the four approved mixed fixtures in isolation,
-then tests source-floor gate/arrow/arrival support and all cardinal rotations.
-Use `-PlanData` with a fresh four-mixed or seven-standalone fixture plan to
-avoid regeneration. Old plans without the source coordinate frame must be
-regenerated. These are offline candidate-contract checks, not installed maps,
-normal-generator integration or in-game travel acceptance.
+The placement check reads retained full-plan and VMF artifacts; supply matching
+`-PlanData`, `-TrustedPlanData` and `-VmfDirectory` if they have been cleaned
+up. The straight-cell and terrain-infill integration suites generate isolated
+VMFs and require their explicit matching inputs. Static checks do not prove
+new compiled or live behavior.
 
-The overview is `generated/phase_b_motorway/motorway_phase_b_preview.vmf`;
-eight companion rotation fixtures cover all four cardinal yaws. Saved cameras
-focus each case. Overview rows, left/right, are straight/bridge,
-corner/crossroads, T/deadend and single/dual ramp.
+## Prefab editor prototype
 
-The generated report distinguishes exact floor joins, inspection-only joins
-with measured residuals, pending road approaches and conservative envelope
-overlaps. These are integration inspections of trusted authored assets, not
-individual asset re-approval or compiled/playable maps. Normal settings,
-recipe plans and installed worlds remain untouched. See the
-[generator reference](../docs.md) and [Phase B gates](../todo-alpha.3.2.md).
+The initial prefab editor is a preview-launcher admin tool. It starts only when
+that admin is the sole connected human, changes to `gm_flatgrass`, and returns
+to `zn_preview_start` without loading a survivor. In launcher Tools, choose
+**Prefab Editor**. A stale owned session marker can be explicitly cleared
+from the launch error prompt; inspect invalid markers rather than deleting
+unknown data.
+
+The 640x640 grid is a guide, not an overhang restriction. Its ground compass
+uses north +Y and east +X. Open the larger model browser to navigate mounted
+model folders, search their contents and select a thumbnail. Enable **Search
+all mounted model folders** and enter search terms to build an incremental
+index for that browser session and search full model paths; the page indicates
+while scanning.
+Selecting an icon fills the model path, and **Add Prop** places it. A model path can also be
+entered directly. Select a prop in the list or scene and drag its coloured
+X/Y/Z handles. Double-click a prop, or use the **Mode** button, to cycle
+Move, Rotate and uniform Scale. Rotation uses X=roll, Y=pitch and Z=yaw;
+move handles have arrowheads, rotation uses coloured rings, and scale handles
+have square ends. Click a rotation ring to select and highlight it, then hold
+the left mouse button and drag anywhere in the viewport to rotate. Releasing
+keeps the ring selected; click elsewhere without dragging to deselect it.
+Right-click during a drag cancels that drag. If the ring is edge-on to the
+view, orbit the camera and try again. Drag any scale handle to resize all
+dimensions together. Middle-click a prop to reset its local rotation to
+zero without changing its position or scale.
+The supported scale range is
+0.1 to 10, with 0.1 increments when snapping is enabled. Right-drag orbits the
+view and the wheel zooms. Numeric fields edit local position, rotation, skin
+and scale; position and rotation snaps are configurable and can be disabled. Name, description
+and comma-separated tags are saved with the prefab. A saved ID is stable;
+rename the display name rather than silently changing the ID.
+Each selected prop has a **Movable physics prop** setting; unchecked means
+stationary and is the default for new and existing prefabs. This is currently
+an authoring setting only: world spawning and actual physics collision
+validation are still in development.
+
+The separately approved straight-road reference prototype is available under
+**Reference Tile** when its preview model is staged. It is an editor-only
+background, not a prefab prop; selecting or removing it does not change saved
+prefab data. The grid and compass rise above the reference geometry while it
+is visible, but prop coordinates still use the authored tile origin.
+**Preview inner-city fog** uses the installed preview world's inner-city fog
+profile. **Dark preview (simulated)** is a temporary screen grade, not a
+change to physical lights, shadows, time of day or saved settings. Both
+controls reset when the editor closes.
+
+Save, reopen and explicitly confirm deletion through the editor. Prefabs are
+server-owned JSON files under `garrysmod/data/zombiesim/prefabs`. Metadata
+fields update as you type; failed saves
+report any recoverable draft under `zombiesim/prefab_editor_recovery`.
+Normal map spawning supports unscaled exported props at authored
+`zn_prefab_anchor` entities; existing maps have not been rebuilt with anchors.
+Prefab loot is implemented in source but still needs a city-cell live review.
+Preview admins can open **Prefab Explorer** from launcher Tools or from the
+editor. Search names, IDs and descriptions, or filter by an exact tag; select
+a prefab to inspect its assembled 3D preview, drag to orbit and use the wheel
+to zoom. The server-shared library permits duplicate display names with unique
+stable IDs. Rename and delete require confirmation. Before managing the
+prefab currently open in the editor through Explorer, start a new document or
+open a different prefab; this protects unsaved editor work. In the editor,
+**Open in Editor** respects the unsaved-changes prompt. From the launcher it
+confirms the transition, starts an isolated editor session and loads the
+selected prefab there.
+Existing prefabs without a scale field load at their original size, and
+prefabs without a mobility setting load as stationary; they are not rewritten
+until explicitly saved. Matching scaled collision and
+independent-axis stretching are later world-integration work.
+
+Each selected prop also has **Off**, **Normal**, or **Guaranteed** loot.
+Older prefabs default to Off. Normal uses the existing model's loot rule and
+the ordinary halved activation chance and 320-unit spacing. A loot-group ID
+can override the model's items; if the model has no rule, choose a group and
+enable an explicit configured chance. The displayed configured percentage is
+halved for normal searchable activation. Guaranteed bypasses both the roll
+and spacing, but a searched spot stays searched until its normal refresh; it
+does not grant unlimited items. A guaranteed prop without a model rule needs
+a valid group override. Unknown groups and incomplete settings fail visibly
+on save or catalog load. Prop identities persist through editing, so removing
+an earlier prop does not remap a surviving prop's saved loot.
+Accepting a persisted loot offer commits the inventory and spot state in the
+same transaction; a failed write or stale offer grants nothing. Temporary
+runtime drops remain separately owned.
+For explicit export to addon content, inspect the dry run first:
+
+```powershell
+.\bin\export_prefab.ps1 -Id my_prefab
+.\bin\export_prefab.ps1 -Id my_prefab -Apply
+```
+
+An existing different export is protected unless `-Replace` is explicitly
+supplied. Exported definitions are included in the Workshop core package;
+export alone does not stage maps or place any anchors.
+`zn_test_prefabs` checks the document, storage and gizmo contracts; the
+offline editor-session fixtures run with
+`python .\tests\prefabs\test_contract.py`. In-game behavior and appearance
+require a separate live review.
+
+`zn_test_prefab_spawn` is a separate, bounded engine fixture for the
+unscaled spawn primitive. It requires the preview launcher with one admin
+and no loaded survivor, creates transient test props at four cardinal anchor
+rotations, checks their transforms and motion flags, and requests their
+removal before returning. It also checks native model-scale values and
+isolated server collision traces for one oil-drum model at scales 0.1, 0.5,
+1, 2 and 10 on all three axes, both stationary and movable. It does not read
+or modify saved prefabs. It does not verify client traces, sustained physics
+motion, visible collision or normal-world spawning. Non-unit scales currently
+fail explicitly rather than spawn with unverified collision.
+
+### Prefab map anchors (A2 integration in progress)
+
+The **ZombieSim Prefab Anchor** in `zombiesim.fgd` uses its origin and angles
+as the prefab's world transform. Set **Required prefab tags** to a
+comma-separated list; all tags must match. Runtime selection reads only
+exported `data_static/prefabs` definitions and uses profile, world seed,
+logical cell ID and the anchor's map creation ID. An unchanged map reload
+repeats the selection; moving physics props does not modify authored data.
+
+When placing an anchor **inside a tile template**, set **Placed inside a
+tile instance** to **Yes**. The generator requires that setting and emits
+the world-space copy, while runtime ignores the raw instance-local copy.
+Direct map anchors leave it at No and remain independent of transformed
+anchors. Existing safe-zone marker handling is unchanged.
+
+Runtime waits for map initialization and a loaded survivor in the matching
+city cell. Each anchor spawns once per map session, with cleanup rebuilding
+its authored layout. Loot initialization waits if the survivor loads before
+map initialization completes, so prefab placement runs first; ordinary loot
+still initializes if placement reports an error. Non-unit scales and models without valid physics fail
+explicitly; there is no default prefab or geometry-overlap veto.
+`zombiesim_prefab_status` reports runtime anchors, surviving props and errors.
+Prefab loot uses the shared loot-spot owner; gate replacement remains
+unimplemented. City-cell persistence, searching and visual behavior still
+require an in-game review.
+
+`zn_test_prefab_city` is a guarded preview-admin probe for a deployed survivor
+in their actual city cell. It creates a transient prefab prop, uses a unique
+throwaway loot profile, exercises targeting/search/decline and reload, and
+restores the original loot owner without intentionally moving the player or
+granting an item. Ordinary city gameplay remains active. A failed cleanup
+retains `data/zombiesim/prefab_city_probe.json`; the sole preview admin can
+run `zombiesim_prefab_city_probe_recover` to remove only its recorded test
+profile. The probe uses a synthetic anchor; it does not verify actual
+compiled-anchor city eligibility or accepted rewards.
+
+Focused checks:
+
+```powershell
+python .\tests\prefabs\test_contract.py
+.\tests\powershell\test_prefab_anchors.ps1
+```
+
+The latter uses temporary files by default. `-OutputDirectory` retains one
+isolated VMF fixture; `-BspPath` also checks the compiled anchor records.
+Compilation/staging and actual world collision/visual acceptance remain
+separate gates in the active tracker.
+
+The separately approved isolated anchor review uses
+`bin/stage_prefab_anchor_fixture.ps1`: inspect first, then `-Action Stage`.
+It refuses existing destination files and creates a hash ledger; after
+returning to the launcher, `-Action Restore` checks every remaining hash
+before removing its own temporary BSPs and prefab. Its owner-only test
+session reuses the editor guard without loading a survivor. The fixture
+spawn command uses synthetic cell ID 0, not a deployed city-cell transition.
 
 ## CS 1.6 weapon assets
 
@@ -1004,7 +1022,10 @@ For local Hammer/GMod development, run `.\bin\stage_sign_assets.ps1` to copy and
 
 Build the six original sign variants with `.\bin\build_sign_assets.ps1 -WorldProfile preview`: detailed freestanding and lamp-lit billboards, legless panel, small wall sign, thin framed print and borderless poster. Use `-ArtworkPath` for a finished opaque 1024 x 512 panel, or `-ImagePath` / `-BackgroundImagePath` for aspect-preserving foreground/background layers. The sign JSON controls image paths, self-lighting and independent leg/rim/back textures; mounted Source textures are referenced, not copied. Run `.\tests\powershell\test_sign_assets.ps1` after building. This compiles six small models and two original textures, not city BSPs. The [artist workflow](../docs/sign_artist_workflow.md) documents geometry budgets, settings, placement prefabs, light baking, skybox limits and packaging. Preview admins can use `zombiesim_dev_sign on [freestanding|panel|illuminated|wall|print|poster]` through the bridge, and `off` to remove it; it expires after three minutes. The print and poster mount to the aimed wall, and the two-triangle poster has no collision or physical border. The illuminated preview casts a temporary real projected light, while its Hammer prefab uses a baked spotlight. Live appearance of the detailed billboard and both thin variants was approved by the user; compiled-tile collision, baked lighting and an actual skybox view remain integrated checks.
 
-Generate the deterministic preview world image, manifest, and map layers:
+Once generator work is approved, use matching isolated settings and output
+paths. The dated settings in the examples are not permission to overwrite
+retained artifacts. Generate the deterministic preview world image, manifest,
+and map layers:
 
 ```powershell
 .\bin\generate_world_cells.ps1 -WorldProfile preview -Seed 1337
@@ -1016,14 +1037,14 @@ Plan its recipes and write the required-map list:
 .\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json -TrustedMotorwayPlan .\generated\phase_j_preview_20261015\plan.json -SettingsPath .\generated\phase_j_preview_20261015\settings.json
 ```
 
-For the current approved seed-1337 wide-motorway plan, pass `-TrustedMotorwayPlan` to reuse the matching approved motorway instances and gate records. `-MotorwayAssemblyReport` remains for explicit diagnostic inspection; do not use measured road mouths to reposition normal road tiles. Normal wide (3x) motorway cells require expanded border/outer rings. Root settings keep `vmfBuild.outerEdges.enabled` false, so full-world preview batches use an isolated settings copy with it enabled and redirected profile paths. Terrain infill is calculated only for schema-2 measured motorway recipes; ordinary preview recipes do not receive infill. For the infill stages, first build the ordinary full plan without infill switches, then restrict each of the three passes to motorways: `build_cell_vmfs.ps1 ... -MotorwayOnlyInfill -MeasureCompleteTerrainInfill`, `create_terrain_infill_templates.ps1 -PartialGapLayoutDirectory <src> -CompletePatches -MotorwayOnly`, then `build_cell_vmfs.ps1 ... -MotorwayOnlyInfill -SizedTerrainInfill -CompleteTerrainInfill`. The scoped builder preserves ordinary recipes and safe-room maps and refuses stale-output pruning. An explicit `-ContentMapDirectory` (isolated batch) also disables copying and stale-map cleanup in the live engine `garrysmod/maps` folder unless `-StageEngineMaps` is passed; stage isolated outputs through a backed-up ledger instead.
+For the current approved seed-1337 wide-motorway plan, pass `-TrustedMotorwayPlan` to reuse the matching approved motorway instances and gate records; do not use measured road mouths to reposition normal road tiles. Normal wide (3x) motorway cells require expanded border/outer rings. Root settings keep `vmfBuild.outerEdges.enabled` false, so full-world preview batches use an isolated settings copy with it enabled and redirected profile paths. Terrain infill is calculated only for trusted schema-2 motorway recipes; ordinary preview recipes do not receive infill. For the infill stages, first build the ordinary full plan without infill switches, then restrict each of the three passes to motorways: `build_cell_vmfs.ps1 ... -MotorwayOnlyInfill -MeasureCompleteTerrainInfill`, `create_terrain_infill_templates.ps1 -PartialGapLayoutDirectory <src> -CompletePatches -MotorwayOnly`, then `build_cell_vmfs.ps1 ... -MotorwayOnlyInfill -SizedTerrainInfill -CompleteTerrainInfill`. The scoped builder preserves ordinary recipes and safe-room maps and refuses stale-output pruning. An explicit `-ContentMapDirectory` (isolated batch) also disables copying and stale-map cleanup in the live engine `garrysmod/maps` folder unless `-StageEngineMaps` is passed; stage isolated outputs through a backed-up ledger instead.
 
-Refresh the generated recipe VMFs, prune obsolete generated files, and verify every required recipe exists:
+Refresh the generated recipe VMFs and verify every required recipe exists:
 
 ```powershell
-.\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json -RefreshGenerated -PruneStaleGenerated
-.\bin\expand_cell_filenames.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json
-.\bin\check_required_cells.ps1 -WorldProfile preview
+.\bin\build_cell_vmfs.ps1 -WorldProfile preview -SettingsPath .\generated\phase_j_preview_20261015\settings.json -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json -RefreshGenerated
+.\bin\expand_cell_filenames.ps1 -WorldProfile preview -SettingsPath .\generated\phase_j_preview_20261015\settings.json -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json
+.\bin\check_required_cells.ps1 -WorldProfile preview -SettingsPath .\generated\phase_j_preview_20261015\settings.json -RequiredCellList .\bin\preview_grid_24x24_seed_1337_required_cell_vmfs.txt
 ```
 
 Generate Hammer-only template zoos in `celltemplates/dev`. `-RefreshPlan` first replans the preview so `streets.vmf` and `carparks.vmf` reflect current placement rules; `landmarks.vmf` lists every template matched by `cellPlanning.landmarkTemplatePatterns` in `generator-settings.json` and automatically includes future configured landmark templates:

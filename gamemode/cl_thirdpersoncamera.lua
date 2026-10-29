@@ -548,6 +548,7 @@ local cameraTrace = { mins = cameraHullMins, maxs = cameraHullMaxs, output = cam
 hook.Add("CalcView", "ZM.CustomThirdPersonView", function(ply, pos, angles, fov)
     lockedCameraObstructed = false
     if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    if ZM_PrefabEditorClient and ZM_PrefabEditorClient:IsActive() then return ZM_PrefabEditorClient:GetView(fov) end
     if not IsValid(ply) or not ply:Alive() then return end
 
     local inDen = isInDenCamera(ply)
@@ -608,6 +609,7 @@ end)
 
 // The camera is always external enough that the local player model should be rendered.
 hook.Add("ShouldDrawLocalPlayer", "ZM.DrawPlayer", function(ply)
+    if ZM_PrefabEditorClient and ZM_PrefabEditorClient:IsActive() then return false end
     if ZM_WorldMap and ZM_WorldMap.Capturing then return false end
     return not isInDenCamera(ply) and denCameraBlend < 0.5 and arrivalCameraRise >= 0.25
 end)

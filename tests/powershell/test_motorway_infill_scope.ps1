@@ -98,18 +98,11 @@ if (-not [string]::IsNullOrWhiteSpace($PlanData)) {
         Assert ($layout.vmfSha256 -ceq $actualHash) "Current layout fingerprint matches its VMF for $($recipe.cellTemplateFilename)."
         if ($isSelected) {
             $authority = $layout.motorwayAssembly.PSObject.Properties['assemblyAuthority']
-            if ($null -ne $authority -and $authority.Value -eq 'trusted_prior_approved_grid_layout') {
-                Assert ($null -eq $layout.motorwayAssembly.PSObject.Properties['sourceFingerprints']) "Trusted prior plan does not retain stale geometry fingerprints for $($recipe.cellTemplateFilename)."
-                Assert (@($layout.motorwayAssembly.gates).Count -gt 0) "Trusted prior plan retains its approved gates for $($recipe.cellTemplateFilename)."
-            } else {
-                foreach ($fingerprint in $layout.motorwayAssembly.sourceFingerprints.PSObject.Properties) {
-                    $sourcePath = Join-Path (Join-Path $root 'tiletemplates') ([string]$fingerprint.Name)
-                    if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
-                        throw "Measured motorway source is missing: $sourcePath"
-                    }
-                    Assert ((Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash -ceq $fingerprint.Value) "Measured motorway source fingerprint is current for $($recipe.cellTemplateFilename)."
-                }
+            if ($null -eq $authority -or $authority.Value -ne 'trusted_prior_approved_grid_layout') {
+                throw "Motorway layout lacks trusted authority: $($recipe.cellTemplateFilename)"
             }
+            Assert ($null -eq $layout.motorwayAssembly.PSObject.Properties['sourceFingerprints']) "Trusted prior plan does not retain stale geometry fingerprints for $($recipe.cellTemplateFilename)."
+            Assert (@($layout.motorwayAssembly.gates).Count -gt 0) "Trusted prior plan retains its approved gates for $($recipe.cellTemplateFilename)."
             foreach ($placement in $layout.terrainInfill.placements) {
                 $infillSource = Join-Path (Join-Path $root 'tiletemplates') ([string]$placement.template)
                 Assert (Test-Path -LiteralPath $infillSource -PathType Leaf) "Motorway infill source exists for $($recipe.cellTemplateFilename)."

@@ -15,6 +15,16 @@ function Assert-Rejected([string]$Name, [scriptblock]$Action) {
     try { & $Action | Out-Null } catch { $rejected = $true }
     Assert-Package $Name $rejected
 }
+$scoreboardSource = [IO.File]::ReadAllText((Join-Path $testsRepoRoot 'gamemode\cl_scoreboard.lua'))
+foreach ($default in @(
+    @{ name = 'headerBackground'; material = 'scoreboard/backgrounds/default.png' },
+    @{ name = 'headerDetail'; material = 'scoreboard/details/default.png' }
+)) {
+    $expression = '{0} = Material("{1}", "smooth")' -f $default.name, $default.material
+    $assetPath = Join-Path (Join-Path $testsRepoRoot 'content\materials') $default.material.Replace('/', '\')
+    Assert-Package "scoreboard $($default.name) references an existing default image" (
+        $scoreboardSource.Contains($expression) -and (Test-Path -LiteralPath $assetPath -PathType Leaf))
+}
 foreach ($path in '..\secret.txt', 'materials\..\secret.txt', 'C:\secret.txt', '\root.txt',
     'materials\\bad.vtf', 'materials\.\bad.vtf', 'materials\bad:stream.vtf') {
     Assert-Rejected "reject unsafe path: $path" { ConvertTo-WorkshopPath $path }
@@ -130,6 +140,7 @@ try {
         schemaVersion = 1; sources = @(@{ package = 'cs16'; workshopId = '2657591603'; revision = '1637211535' }); files = @($cs16Entries) + @($importedEntries)
     }
     Write-Fixture 'content\data_static\version.json' '{"schemaVersion":1,"product":"Z-Nation","stage":"Alpha","version":"9.8.7","status":"in development"}'
+    Write-Fixture 'content\data_static\prefabs\roadblock.json' '{"schemaVersion":1,"id":"roadblock","name":"Roadblock","description":"","tags":[],"props":[]}'
     Write-Fixture 'content\data_static\sky_catalogue.json' '{"schemaVersion":1,"ownedFiles":["materials\\zombiesim\\skies\\imported_fixtureft.vmt"],"ownedLicenceFiles":["data_static\\sky_licences\\imported_fixture\\README.txt"]}'
     Write-Fixture 'content\materials\zombiesim\skies\imported_fixtureft.vmt' 'owned sky material'
     Write-Fixture 'content\materials\zombiesim\skies\imported_tropo_night_1ft.vmt' 'retired sky material'
@@ -138,6 +149,8 @@ try {
     Write-Fixture 'content\data_static\launcher_earth\NOTICE.txt' 'Natural Earth public-domain fixture notice. NASA Black Marble 2016.'
     Write-Fixture 'content\materials\zombiesim\launcher\earth_day.vmt' 'owned launcher Earth material'
     Write-Fixture 'content\materials\zombiesim\launcher\earth_lights.vmt' 'owned blended night-light material'
+    Write-Fixture 'content\materials\scoreboard\backgrounds\default.png' 'scoreboard background fixture'
+    Write-Fixture 'content\materials\scoreboard\details\default.png' 'scoreboard detail fixture'
     Write-Fixture 'content\data_static\clothing_citizen_calibration.json' '{"schemaVersion":1,"previewOnly":false,"models":{}}'
     Write-Fixture 'content\sounds\music\a.mp3' 'audio'
     Write-Fixture 'content\sounds\music\preview skybox 1.mp3' 'launcher preview audio'
@@ -174,13 +187,19 @@ try {
         schemaVersion = 1; worldProfiles = @('city', 'preview'); maximumShardBytes = 1MB; metadataReserveBytes = 65536
         releaseCleared = $false; coreWorkshopId = 'pending:core'; workshopIds = @{ 'clothing-01' = 'pending:clothing-01' }
         coreStaticFiles = @('clothing_catalogue.json', 'clothing_citizen_calibration.json', 'launcher_earth.json', 'music_definitions.json', 'sky_catalogue.json', 'version.json', 'zombiesim_signs_preview.json')
-        commonMaterialDirectories = @('materials\zombiesim\skies', 'materials\zombiesim\launcher'); commonMaterialExtensions = @('.vmt', '.vtf', '.png'); externalDependencies = @('Mounted native fixtures') }
+        commonMaterialDirectories = @('materials\zombiesim\skies', 'materials\zombiesim\launcher', 'materials\scoreboard'); commonMaterialExtensions = @('.vmt', '.vtf', '.png'); externalDependencies = @('Mounted native fixtures') }
     $builder = Join-Path $testsBinDirectory 'build_workshop_packages.ps1'
     & $builder -ProjectRoot $fixtureRoot -SettingsPath $fixtureSettings -Pack
     $fixtureReport = Get-Content -LiteralPath (Join-Path $fixtureRoot 'generated\workshop\inventory-report.json') -Raw | ConvertFrom-Json
     Assert-Package 'full builder stages and round-trip packs both sandbox and city' (
         $fixtureReport.staged -and $fixtureReport.packed -and @($fixtureReport.profiles).Count -eq 2 -and
         @($fixtureReport.packages | Where-Object { -not $_.extractionVerified }).Count -eq 0)
+    Assert-Package 'exported prefab definitions are included in core packaging' (
+        @($fixtureReport.packages | Where-Object id -eq 'core').files.path -contains 'data_static/prefabs/roadblock.json')
+    $commonFiles = @($fixtureReport.packages | Where-Object id -like 'common-*' | ForEach-Object { $_.files.path })
+    Assert-Package 'nested scoreboard default images are included in common packaging' (
+        @($commonFiles | Where-Object { $_ -eq 'materials/scoreboard/backgrounds/default.png' }).Count -eq 1 -and
+        @($commonFiles | Where-Object { $_ -eq 'materials/scoreboard/details/default.png' }).Count -eq 1)
     Assert-Package 'CS 1.6 manifest ships in core and hash-owned assets with original credits ship in common' (
         @($fixtureReport.packages | Where-Object id -eq 'core').files.path -contains 'data_static/imported_assets.json' -and
         @($fixtureReport.packages | Where-Object id -like 'common-*').files.path -contains 'data_static/asset_credits/cs16_original.txt' -and

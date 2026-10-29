@@ -90,6 +90,18 @@ return function(Atmosphere, Modules)
                 Snow.FogCullDistance = nil
                 return true
             end
+            if ZM_PrefabEditorClient and ZM_PrefabEditorClient:IsActive() then
+                local settings = ZM_PrefabEditorClient.PreviewFog
+                Snow.FogCullDistance = nil
+                if not settings then
+                    render.FogMode(MATERIAL_FOG_NONE)
+                    Core.RecordHookResult("SetupWorldFog", true, true, nil, 1, "prefab editor fog off")
+                    return true
+                end
+                local applied = applyFog(settings)
+                Core.RecordHookResult("SetupWorldFog", applied, applied, settings, 1, "prefab editor fog preview")
+                return applied
+            end
             if ZM_LauncherMenu and ZM_LauncherMenu.Active then
                 local preview = ZM_SkyInspection and ZM_SkyInspection.GetLauncherFogSettings and
                     ZM_SkyInspection:GetLauncherFogSettings()
@@ -115,6 +127,17 @@ return function(Atmosphere, Modules)
             if Atmosphere.WorldCaptureFogVariant == "clear" then
                 render.FogMode(MATERIAL_FOG_NONE)
                 return true
+            end
+            if ZM_PrefabEditorClient and ZM_PrefabEditorClient:IsActive() then
+                local settings = ZM_PrefabEditorClient.PreviewFog
+                if not settings then
+                    render.FogMode(MATERIAL_FOG_NONE)
+                    Core.RecordHookResult("SetupSkyboxFog", true, true, nil, scale, "prefab editor fog off")
+                    return true
+                end
+                local applied = applyFog(settings, scale)
+                Core.RecordHookResult("SetupSkyboxFog", applied, applied, settings, scale, "prefab editor fog preview")
+                return applied
             end
             if ZM_LauncherMenu and ZM_LauncherMenu.Active then
                 local preview = ZM_SkyInspection and ZM_SkyInspection.GetLauncherFogSettings and

@@ -9,10 +9,12 @@ cancelled; none of the ideas below is an active implementation requirement.
 Existing safe-zone entrances and the user's authored VMF/VMX files remain.
 
 The replacement direction is larger, interesting authored tiles with varied
-width/height placed through the ordinary generator. Continue
-[Alpha 3.2 Phase E](../../todo-alpha.3.2.md#phase-e---rectangular-vmfs-ring-leases-and-actual-travel);
-inspect actual authored footprints/frontage before wiring them. Do not revive
-neighbor claims, coastal detailing or naval silhouettes from these old notes.
+width/height placed through the ordinary generator.
+[Alpha 3.2 Phase E](../todo-alpha.3.2.md#phase-e---rectangular-vmfs-ring-leases-and-actual-travel)
+records prior work; generator work is last in the
+[Alpha 3.3 plan](../../todo-alpha.3.3.md). Inspect actual authored
+footprints/frontage before wiring them. Do not revive neighbor claims, coastal
+detailing or naval silhouettes from these old notes.
 
 ## Original proposal (historical only)
 

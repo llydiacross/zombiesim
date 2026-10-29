@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "product": "Z-Nation",
   "stage": "Alpha",
-  "version": "3.2",
+  "version": "3.3",
   "status": "in development",
-  "currentPhase": "More updates are on the way.",
+  "currentPhase": "Prefab tools are ready for preview; world integration is in development.",
   "nextMilestone": null,
-  "started": "2026-10-13",
+  "started": "2026-10-28",
   "released": null,
   "previousRelease": "3.0"
 }

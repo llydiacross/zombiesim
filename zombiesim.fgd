@@ -73,6 +73,16 @@
 [
 ]
 
+@PointClass base(Targetname, Angles) = zn_prefab_anchor : "ZombieSim Prefab Anchor"
+[
+    prefab_tags(string) : "Required prefab tags" : "" : "Comma-separated tags. Every tag must match an explicitly exported prefab. Selection is deterministic per world cell and anchor."
+    instance_local(choices) : "Placed inside a tile instance" : 0 : "Set Yes in tile templates. The ZombieSim generator emits the transformed world-space copy; the original local copy is ignored." =
+    [
+        0 : "No (placed directly in the map)"
+        1 : "Yes (tile template)"
+    ]
+]
+
 @SolidClass base(Targetname) = trigger_multiple : "ZombieSim Transition Gate"
 [
     zm_transition_direction(choices) : "World exit direction" : "north" : "The cardinal world edge this gate travels through." =

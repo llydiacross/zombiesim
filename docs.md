@@ -30,9 +30,10 @@ assets are preserved. Old isolated detail fixtures are rejected history, not
 current outputs to stage. Do not resume or redesign that system.
 
 The user instead prefers larger, interesting authored tiles with varied
-width/height placed through the normal generator. Continue the existing
-rectangular footprint and instance integration in
-[Phase E](todo-alpha.3.2.md#phase-e---rectangular-vmfs-ring-leases-and-actual-travel);
+width/height placed through the normal generator. The historical rectangular
+footprint and instance work is recorded in
+[Alpha 3.2 Phase E](docs/todo-alpha.3.2.md#phase-e---rectangular-vmfs-ring-leases-and-actual-travel).
+Future generator work is last in the [Alpha 3.3 plan](todo-alpha.3.3.md);
 inspect each actual asset's footprint, orientation and frontage before wiring
 it. This direction does not authorize arbitrary geometry edits or broad builds.
 
@@ -87,11 +88,7 @@ Independent authored origins, matching small-output/physical validation and
 ring/travel integration remain Phase E work. Do not infer arbitrary geometry
 support or increase the existing limit from this filename contract.
 
-## Alpha 3.2 straight motorway ownership contract
-
-The immediate Phase E focus is motorway origin/ring/travel integration, not
-additional ordinary building content. The retained rectangular helpers above
-remain supporting source work.
+## Alpha 3.2 motorway ownership contract
 
 `New-ZMStraightMotorwayStripe` now owns the shared approved3x1 stripe geometry.
 The normal planner applies its five core stripes before density decorations:
@@ -100,23 +97,21 @@ free scenery slots. This is restricted to plain straight topology with wide
 settings, the5x5 frame and the approved vertical0/horizontal90 mappings.
 Legacy1x1 settings remain unchanged. The isolated inspector uses the same
 constructor for core and rings, preserving its reviewed transforms.
-Normal playable VMF output remains blocked until ring/gate/travel integration;
-do not bypass the inspection guard to build a wide core with narrow boundaries.
+Normal playable output uses the approved trusted plan and expanded rings.
 Run `tests/powershell/test_scenery_density.ps1` for actual normal-planner reservation/density
 interaction fixtures as well as `tests/powershell/test_motorway_geometry.ps1`.
 
 Normal expanded straight plans carry a separate `motorwayAssembly` contract:
-27 leases and four border/outer owners, source SHA256 and explicit
+27 leases and four border/outer owners, saved gates and explicit
 `normal_reservations_travel_pending` status. `Resolve-ZMNormalStraightMotorwayRings`
-validates source/ownership before replacing only the leased boundary records.
+validates ownership before replacing only the leased boundary records.
 Unleased corners/walls retain their authored records and yaws; route-adjacent
 wall density consumes the same leases. Inland-straight limitations remain.
-The normal builder still refuses emission until gates/runtime are implemented.
 
 For a bounded normal-planner-only check, without VMFs/compile/staging:
 
 ```powershell
-.\bin\build_motorway_cell_preview.ps1 -WorldProfile preview -NormalPlanOnly
+.\bin\build_motorway_cell_preview.ps1 -WorldProfile preview -NormalPlanOnly -MapData .\generated\phase_j_preview_20261015\preview_grid_24x24_seed_1337.json -TrustedMotorwayPlan .\generated\phase_j_preview_20261015\plan.json -OutputDirectory .\generated\motorway_plan_check
 ```
 
 This generates isolated expanded settings from the profile and retains wide
@@ -132,16 +127,9 @@ on-ramp review used:
 .\bin\build_motorway_cell_preview.ps1 -WorldProfile preview -MapData .\generated\phase_j_preview_20261015\preview_grid_24x24_seed_1337.json -TrustedMotorwayPlan .\generated\phase_j_preview_20261015\plan.json -NormalComplex -CellCoordinates @('22,18','17,4') -OutputDirectory .\generated\phase_j_grid_road_review_corrected
 ```
 
-Normal straight contracts also publish source-measured `gates`, not runtime
-acceptance. `Get-ZMStraightMotorwayMouths` reads the canonical saved floor faces
-through the existing mouth-registry validator. Current straight faces120/126
-and342/384 form416-unit carriageways at Z68, centred-512/+528. Source hash
-and border-stripe origin are checked before gate derivation. Both orientations
-rotate these asymmetric centres into outward-right lane coordinates (N/W:
--512,+528; S/E:-528,+512). Gates remain at2208, measured mouths meet2240,
-arrows are256 inward and arrivals384 inward. Metadata records lane extents
-and the negative-right arrival lane. Brushes/props/runtime consumers remain
-source-wired below; the normal-wide emission guard is unchanged.
+Normal straight and complex contracts carry approved gate records from the
+trusted plan. The builder and runtime exporter consume those records without
+reconstructing gates from source faces or measuring motorway mouths.
 
 The active Phase J refresh reuses the previously approved seed-1337 plan via
 `bin/reuse_approved_preview_plan.ps1`. It verifies the matching seed/grid and
@@ -182,97 +170,17 @@ not validate trigger geometry or require a gate `route` field; the current
 logical cell's world-data exit and travel mode decide whether the neighbor is
 reachable.
 Offline plan and gate fixtures do not establish compiled collision, live
-traversal or visual alignment; the refreshed compiled maps and in-game sight
-review remain separate checks.
+traversal or visual alignment. The existing live gate and alignment review was
+accepted; it does not verify future regenerated outputs.
 
-`build_motorway_cell_preview.ps1 -Normal` and the source-survey helpers remain
-diagnostic tools; they are not part of this trusted Phase J refresh and must not
-be treated as mathematical proof of the user-approved motorway alignment.
+`build_motorway_cell_preview.ps1 -Normal` is an isolated preview tool, not
+mathematical proof of the user-approved motorway alignment.
 
-`build_motorway_cell_preview.ps1 -Mixed` covers the four actual bend/deadend
-plus bridge/on-ramp combinations. `Join-ZMMotorwayAssemblyCases` inserts the
-transport piece into an unambiguous measured outgoing motorway mouth and
-removes only internal continuations. Road headings select transport orientation;
-the bridge's road axis is perpendicular to its motorway axis. Both authored
-pieces and every logical route remain intact. Input assembly records are
-unchanged; vertical correction is forbidden and seam residuals remain explicit.
-Three insertion seams are exact. The north-east corner/south-ramp combination
-retains a2-unit lane-centre difference and36-unit width difference.
-These new arrangements are inspection candidates, not approved production
-connections. They do not reopen the seven previously accepted examples.
-
-Historical isolated inspection fixtures used a measured insertion-seam spawn
-when no terrain slot was available. The active trusted plan strips that
-candidate and uses a 640-grid terrain tile instead; it performs no AABB spawn
-selection and does not claim full-height entity-clearance proof.
-
-The user's mixed-layout corrections keep each bridge at physical `(0,0,0)`
-and rebase its terminal around the exact insertion seam. South deadend origin
-is `(0,1280,0)`; north is `(16,-1280,0)`, preserving the measured asymmetric
-mouths. Ramp combinations retain their original wide owners, yaws and origins.
-Both mixed ramp approaches now connect the centred side-entry to the offset
-ordinary-road ramp through corner/straight/corner. The required lateral
-distance1408 uses two standard corner mouths plus an explicitly approved
-768-unit straight section. The source initializer reuses the rectangular
-VMF transform for the original straight's longitudinal endpoints only;
-width, deck and texture axes are unchanged. It creates
-`tiletemplates/roads/connectors/tile_road_straight_768.vmf` once, never overwrites
-an existing editable source, and is not an automatically discovered grid tile.
-`Get-ZMOrdinaryRoadMouths` and `Get-ZMComplexMotorwayGates` remain optional
-source-survey diagnostics. They can read saved floor windings and reject stale
-source fingerprints; do not invoke that measurement path for the trusted
-Phase J plan or use it to re-prove approved motorways. The active refresh uses
-the prior exported road and motorway gate records, preserving the special
-south outer-row gate and ordinary-road approach positions without recalculating
-them. Compilation and live travel review are still required.
-
-The approved south mixed-road approach uses gate Y-2720, arrow Y-2624 and
-arrival Y-2592 at X0/deck36. Ordinary-road96/128 insets keep both points on the
-centred approach before its corner; motorway256/384 insets remain unchanged.
-Explicit `route = 'road'` metadata has one centred lane. Trigger construction
-uses the lane layout to emit the appropriate markers; runtime route availability
-is decided from the logical cell's exits, not the trigger geometry or optional
-gate metadata. Road barricade composition stays native.
-Shared-map route/count conflicts fail closed. Actual engine clearance/travel
-and normal complex plan/export/emission remain separate pending gates.
-Standalone ramp offsets are not automatically handled by the mixed1408 route.
-
-`-Mixed` automatically enables complete rectangular infill, including the
-measurement/create/re-emission pass. Existing corner-specific exclusions and
-fractional/sub4 remainder policy are preserved. The old no-infill/off-centre
-fixtures are superseded inspection history. Fresh corrected output under
-`generated/phase_e_mixed_centred_routes_20261014` passes four-map VBSP,
-portal budgets and VVIS/VRAD using the preview fast preset; mixed infill27022
-assertions accounts for128 emitted rectangles. All four exact corrected VMFs
-are opened in new Hammer++ windows for human review; prior windows are retained.
-No preview world index or installed BSP was changed.
-
-The subsequent human review approved both bridge/deadend arrangements,
-deadend/on-ramp and the corner's connecting row. The obsolete ordinary straight
-at the corner's south border slot `(2,5)` is now the existing planned terrain
-source, using standard `zm_border_` ownership. Cleanup runs only on unleased
-legacy transition-road records belonging to a centred mixed-road approach;
-other sides, neighbours and nonmixed layouts are preserved. Fresh output under
-`generated/phase_e_corner_terrain_cleanup_20261014` passes the same compile/
-portal/infill checks, and the three approved control VMFs are byte-identical.
-Normal runtime gates remain separate pending integration.
-
-Fresh junction-only verification uses
-`generated/phase_e_junction_cell_verification_20261014`: the seven complete-cell
-suite passes3436 assertions; only its exact crossroads and explicitly synthetic
-motorway T were freshly compiled through VBSP/portal budgets/VVIS/VRAD with
-the preview fast preset. The matching full density plan has four motorway
-crossroads but no motorway T cells; ordinary road T cells and on-ramp road
-branches must not be misreported as the wide T source. The suite rejects
-mixed layouts missing a measured transport record rather than rejecting
-the now-supported combinations categorically. Normal/live integration remains
-separate. The user approved final corner cleanup with missing infill explicitly
-expected.
-
-```powershell
-.\bin\build_motorway_cell_preview.ps1 -Mixed -OutputDirectory .\generated\phase_e_mixed_centred_routes_20261014
-.\tests\powershell\test_terrain_infill.ps1 -Mixed -OutputDirectory .\generated\phase_e_mixed_centred_routes_20261014
-```
+The former measured mixed-cell, mouth and connector inspection workflows have
+been retired. Historical reviews remain recorded in the
+[Alpha 3.2 tracker](docs/todo-alpha.3.2.md); do not recreate those diagnostics to
+re-prove accepted layouts. Trusted normal-complex previews use the approved
+plan instead.
 
 `Assert-ZMStraightMotorwayCellContract` in `bin/motorway_geometry.psm1` validates
 the approved isolated inland-straight corridor before the builder replaces
@@ -284,28 +192,22 @@ shifted origins, incomplete leases and duplicate owners fail explicitly.
 Validation is read-only. Water/ocean borders and den entrances remain outside
 this contract.
 
-Core and ring instance emission now consumes each measured motorway owner's
+Core and ring instance emission consumes each trusted motorway owner's
 `originCellLocal` XYZ directly, independently of its reservation anchor.
 These are complete physical cell-local coordinates: do not rotate them again
 or add a tile Z offset. The measured path requires its approved5x5/640-unit
 frame and zero tile Z offset; other frames fail rather than silently moving
 the geometry. Fractional coordinates are preserved with invariant-culture VMF
 output. Ordinary placements retain centred origins and existing interior
-integer rounding. Explicit origins remain limited to the isolated measured
-motorway path; this does not authorize new ordinary authored offsets.
+integer rounding.
 
 ```powershell
 .\tests\powershell\test_motorway_geometry.ps1
 ```
 
-This source-only fixture exercises production corridor creation and validation,
-including malformed-record rejection. It does not regenerate, compile or stage
-maps. Normal-world enablement, complex assemblies, boundary closure and actual
-travel remain Phase E/G gates; isolated lease validity is not physical approval.
-The suite also tests the production core/ring instance writer's exact VMF
-entity lines, independent fractional origins, invalid-frame rejection and
-ordinary-placement compatibility. These are entity-output fixtures, not a
-fresh complete-cell VMF or compiled geometry check.
+This source-only fixture exercises footprint reservations, corridor leases and
+trusted gate contracts, including malformed-record rejection. It does not
+regenerate, compile or stage maps, and does not replace physical review.
 
 ## Alpha 3.2 scenery-density contract
 
@@ -340,7 +242,7 @@ remains owned by its existing functional selection path. Wall placements record
 their selected target and exclusions in layout metadata. Complete occupied
 route-footprint adjacency, unavailable-tier fixed identities, other fixed-
 identity conflicts and full-world behavior remain tracked in
-[Alpha 3.2](todo-alpha.3.2.md).
+[Alpha 3.2](docs/todo-alpha.3.2.md).
 
 New manifest exports resolve the existing environment profile priority once,
 then store `sceneryDensityPolicyVersion=1`, `sceneryDensityTier`,
@@ -412,116 +314,29 @@ fixed-identity placement is already wired to the policy.
 
 ## Canonical Tile Orientations
 
-For Alpha 3.2 wide-motorway integration, the user trusts the authored sources;
-individual asset re-approval is not required. Use
-`.\bin\survey_motorway_templates.ps1 -WorldProfile preview` for read-only saved
-winding summaries and `.\tests\powershell\test_motorway_survey.ps1` for focused regression.
-An optional `-Output <report.json>` records detailed winding/material/entity
-evidence. This is not compiled collision, inferred drivable ports or prop bounds.
-Review generated assemblies in Hammer when needed, not each known-good asset.
-Preserve authored carriageway/deck offsets; the old narrow motorway measurements
-do not apply to the new family.
+For Alpha 3.2 wide-motorway integration, the authored sources and reviewed
+layouts are trusted; individual asset re-approval is not required. Preserve
+authored carriageway/deck offsets and inspect genuinely changed arrangements
+in Hammer when needed.
 The user confirms all new pieces match their1x1 counterparts' orientations in
 every circumstance. Reuse the existing canonical topology/yaw mappings; wider
 dimensions or asymmetric port positions do not authorize rotation changes.
 
 [motorway_geometry.psm1](bin/motorway_geometry.psm1) provides wide-only nominal
-footprint lookup, cardinal physical point/envelope transforms and occupied-slot
-records from an explicit top-left logical anchor. Run
+footprint lookup and occupied-slot records from an explicit top-left logical
+anchor. Run
 `.\tests\powershell\test_motorway_geometry.ps1` for focused geometry-contract checks.
 At90/270 degrees width/height swap;6x3 and3x4 even spans keep half-tile centres.
 Reservation `originOffset` is measured from the anchor tile's physical centre,
 not an inferred correction to the authored VMF. Logical south means negative
-physical Y. A separate envelope retains physical overhangs; nominal slots alone
-are not collision validation or ring leases. These helpers are not yet wired
-into placement; ports, alignment/anchor solving and Z-layer compatibility remain
-Phase B integration work.
+physical Y. Nominal slots alone are not collision validation.
 
-Straight and bridge port contracts now come from explicit source floor faces:
-416-wide motorway carriageways at Z68, centres-512/+528; bridge central road
-floor width256 at Z232.375. These are separate surface layers, not legacy
-deck/arrival constants or full pedestrian-clearance envelopes.
-`Get-ZMMotorwaySurfacePorts` rejects unrecorded complex-piece connectors;
-`Convert-ZMMotorwayPort` preserves the mapped yaw and transforms heading/position.
-`Resolve-ZMMotorwayPortTranslation` accepts a fixed world port and a moving
-local port at an explicit yaw/existing Z, solves X/Y only and requires exact
-type/width/opposed-heading/grade/deck compatibility. It never scales geometry,
-changes yaw or hides a height mismatch. Exact comparison applies to the current
-shared planar surfaces; no unproven curved-mouth tolerance is assumed.
-The focused survey suite tests these measured seams in all four rotations.
-
-For the generated Phase B integration inspection, run:
-
-```powershell
-.\bin\build_motorway_preview.ps1 -WorldProfile preview
-.\tests\powershell\test_motorway_preview.ps1
-```
-
-The default isolated output is `generated/phase_b_motorway`: one overview of
-all eight pieces, eight four-rotation fixtures with saved cameras, the raw
-source survey and `assembly-report.json`. Output outside `generated` is rejected.
-The overview's left/right rows are straight/bridge, corner/crossroads,
-T/deadend and single/dual ramp. No normal recipe plan, settings or installed
-world is regenerated.
-
-`Get-ZMMotorwayMouthRegistry` records full-family floor-edge provenance, fractional
-endpoints, measured outward grade and planar/continuity flags. The report
-separates exact floor joins, inspection-only first-lane alignments with residuals,
-and ordinary-road approach gates. Road approach source floors are recorded
-separately, not forced onto unmatched ramp/bridge decks. Diagnostic seams never
-count as successful planner fallback placements.
-
-Placement records use explicit cell-local physical bounds and logical tile
-leases for core/border/outer rings; only the placement owner emits an instance.
-Nominal rectangles and saved winding envelopes are separate. Positive-volume
-envelope overlaps remain clearance gates, not automatic underlay exceptions.
-These fixtures do not establish compiled collision, prop/displacement bounds,
-pedestrian clearance, approved tolerances or whole-cell topology support.
-See the [Phase B tracker](todo-alpha.3.2.md) for precise remaining gates.
-
-For cell-level inspection, `.\bin\build_motorway_cell_preview.ps1` creates two
-complete straight-cell examples through the ordinary planner and VMF builder,
-not through the asset-overview writer. Both scripts require an explicit
-`-MotorwayCellInspection` mode; the wrapper supplies isolated settings, cell
-and skybox output directories. Run `.\tests\powershell\test_motorway_cells.ps1` for actual
-written-cell and normal-generation controls.
-
-The default output is `generated/phase_b_motorway_cells`. North-south logical
-(6,-11) and east-west logical(2,-5) retain the normal shell, scenery and9x9
-frame. The axis stays unchanged while three-wide reservations replace15core,
-6border and6outer slots, with nine emitting stripe owners. Ten surrounding
-core slots contain terrain/decorations, never a building fallback. The border
-writer uses each rectangular owner's center rather than emitting at its anchor
-tile; ordinary1x1ring origins are unchanged.
-
-Both complete straight-cell examples received human Hammer approval. Their
-scoped fixture settings repair renamed source references without modifying
-normal settings. No legacy narrow gates/blockers are emitted; complex/coastal/
-landmark cells fail rather than masquerading as supported. This is isolated
-geometry inspection, not full density/topology/clearance/live-travel acceptance.
-
-`.\bin\build_motorway_cell_preview.ps1 -Complex` adds seven complete diagnostic
-cells under `generated/phase_b_complex_cells`, leaving the approved straight
-output unchanged. It generates a fresh measured assembly report, then passes
-`-MotorwayAssemblyReport` to the normal planner's inspection pass. Schema2
-emits measured transport owners at exact fractional XY/yaw/Z0, leases all
-intersected core/border/outer slots and suppresses conflicting scenery. Ordinary
-road approaches use their saved world/brush-entity windings, not guessed1x1
-bounds. Every actual instance participates in conservative positive-volume
-overlap diagnostics; source changes invalidate the report. Roads remain at
-authored Z and unresolved height/grade/seam/partial-boundary issues remain
-explicit; conservative AABB overlap is not a compiled collision verdict.
-The default straight path remains schema1.
-
-Run `.\tests\powershell\test_complex_motorway_cells.ps1` for seven-piece coverage, exact
-written-source transforms, shell/skybox/scenery ownership, all-instance overlap
-evidence, source fingerprints, repeat VMF/layout determinism and rejected mixed
-topologies. The T-junction is labelled synthetic because the real matching
-world has no T. Existing bridge yaw90 is preserved even though measured
-motorway directions then disagree with the source N/S highway. Do not hide
-that mismatch, ignore transport on corner/terminal cells, invent tolerance,
-scale pieces or shift Z to claim support. Hammer review, approach/topology
-resolution, shell/prop/displacement clearance and compilation remain gates.
+The cell-preview wrapper requires explicit `-MapData`, `-OutputDirectory` and
+one mode: `-StraightInspection`, `-NormalPlanOnly`, `-Normal`, or
+`-NormalComplex`. Normal modes also require `-TrustedMotorwayPlan`.
+`-CellCoordinates` and `-SkipInfill` apply only to `-NormalComplex`. Outputs
+are restricted to `generated/`; these tools do not stage or compile maps.
+The obsolete assembly-report, mouth and connector survey tools are retired.
 
 ### Rectangular ground infill
 
@@ -545,20 +360,19 @@ Empty quarter slots prefer a full640x640base, then half/quarter sources.
 Scenery leases remain unchanged. Structural/model clearance remains separate.
 
 The cell builder records emitted ground owners, area and source fingerprints
-in `terrainInfill` layout metadata. Existing schema2inspection VMFs can refresh
-from their verified old structure when infill instance counts change; ordinary
-and schema1straight layouts keep their original structure. Run
+in `terrainInfill` layout metadata. Ordinary and schema1 straight layouts
+keep their original structure. Run
 `tests/powershell/test_terrain_infill.ps1` for base dimensions/materials/no-overwrite,
 integer rectangle selection, positive-area exclusion, accounted ground/exclusions
-and actual written-cell evidence. Corrected inspection output is isolated under
-`generated/phase_b_infill_cells`; no whole-world generation or staging is needed.
+and actual written-cell evidence. This integration test requires explicit matching
+manifest and trusted-plan inputs and generates isolated preview VMFs.
 
-Only schema-2 recipes with a measured `motorwayAssembly` or
-`motorwayCellInspection` contract receive terrain infill. Ordinary preview
-recipes are never passed through `Set-ZMInspectionTerrainInfill`. To avoid
+Only schema-2 recipes with a trusted `motorwayAssembly` contract receive terrain
+infill. Ordinary preview recipes are never passed through
+`Set-ZMMotorwayTerrainInfill`. To avoid
 reprocessing ordinary recipe VMFs during the infill stages, use
 `-MotorwayOnlyInfill` for both builder passes and `-MotorwayOnly` for source
-initialization. This mode selects the deduplicated measured motorway recipes,
+initialization. This mode selects the deduplicated trusted motorway recipes,
 preserves existing ordinary VMFs and safe-room maps, and rejects stale-output
 pruning rather than deleting unrelated generated files. Run the ordinary
 full-plan VMF build separately without infill switches first; the
@@ -571,11 +385,11 @@ motorway-only pass is not a replacement for full preview generation.
 .\tests\powershell\test_motorway_infill_scope.ps1
 ```
 
-The original corner/crossroads reviews remain accepted. `-SizedInfill`
+The original corner/crossroads reviews remain accepted. The infill pass
 subtracts recognized axis-aligned ground bases from each quarter and uses
 power-of-two rectangular sources for admissible gaps. The missing-only initializer accepts
 `-PartialGapLayoutDirectory` to create those sources; add `-MotorwayOnly` to
-restrict discovery to measured motorway layouts. An explicit second
+restrict discovery to trusted motorway layouts. An explicit second
 inspection build uses `-SizedTerrainInfill`. Neither flag enables normal or
 production generation. Names encode integer Hammer-unit dimensions
 (`u304_u320`), not nominal tile-count suffixes. Decimal-sized and polygon
@@ -585,10 +399,10 @@ No instance is scaled and no existing source is overwritten. The approved
 corner review is not reopened; refreshed rectangular fixtures are isolated.
 Rectangle patches stay disjoint from recognized ground and each other.
 All emitted world edges are integer-aligned. Extra patch dimensions must each
-be16,32,64,128,256or512; the standard full640/half320x640/quarter320bases are
+be4,8,16,32,64,128,256or512; the standard full640/half320x640/quarter320bases are
 explicit exceptions. Admissible gap interiors decompose into those reusable
 sizes. Fractional boundaries are inset to integer edges rather than extended
-into existing ground; any remainder thinner than16is left on the default black
+into existing ground; any remainder thinner than4 is left on the default black
 floor and recorded, never turned into a thin or decimal-named source. Tests distinguish
 actual ground from reported exclusions; accounted area is not a full-ground
 or collision acceptance claim.
@@ -651,8 +465,8 @@ Unknown/displaced/partial references are not silently treated as safe to snap.
 
 ### Rectangle consolidation and legacy infill retirement
 
-As of2026-10-14, the polygon-generation approach is rejected. The retained
-`-CompleteInfill` compatibility flag means consolidated **rectangles only**,
+The polygon-generation approach is rejected. The builder's
+`-CompleteTerrainInfill` flag means consolidated **rectangles only**,
 not guaranteed complete coverage. Its first pass measures admissible rectangles;
 the initializer creates missing sources, and the second pass emits them.
 Consolidation requires touching integer rectangles whose union remains an
@@ -786,18 +600,19 @@ The profile name should match the `world_profile` key on its launcher map. After
 
 ## Preview Workflow
 
-Run these commands from the project root. This uses the small preview city and leaves production cell VMFs alone.
+Run these commands from the project root only after approval. Use matching
+isolated settings and output paths; the dated settings below are an example,
+not permission to overwrite retained artifacts.
 
 ```powershell
 .\bin\generate_world_cells.ps1 -WorldProfile preview -Seed 1337
-.\bin\build_motorway_preview.ps1 -WorldProfile preview -OutputDirectory .\generated\measured-assemblies
-.\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json -MotorwayAssemblyReport .\generated\measured-assemblies\assembly-report.json
-.\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json -RefreshGenerated -PruneStaleGenerated
-.\bin\expand_cell_filenames.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json
-.\bin\check_required_cells.ps1 -WorldProfile preview -RequiredCellList .\bin\preview_grid_24x24_seed_1337_required_cell_vmfs.txt
+.\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json -TrustedMotorwayPlan .\generated\phase_j_preview_20261015\plan.json -SettingsPath .\generated\phase_j_preview_20261015\settings.json
+.\bin\build_cell_vmfs.ps1 -WorldProfile preview -SettingsPath .\generated\phase_j_preview_20261015\settings.json -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json -RefreshGenerated
+.\bin\expand_cell_filenames.ps1 -WorldProfile preview -SettingsPath .\generated\phase_j_preview_20261015\settings.json -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json
+.\bin\check_required_cells.ps1 -WorldProfile preview -SettingsPath .\generated\phase_j_preview_20261015\settings.json -RequiredCellList .\bin\preview_grid_24x24_seed_1337_required_cell_vmfs.txt
 ```
 
-Normal wide (3x) motorway cells plan only from current measured assemblies (`-MotorwayAssemblyReport`) and require the expanded border/outer rings. Root settings keep `vmfBuild.outerEdges.enabled` false, so full-world preview batches use an isolated settings copy with it enabled and redirected profile paths. Full terrain infill is three passes: `build_cell_vmfs.ps1 ... -MeasureCompleteTerrainInfill`, `create_terrain_infill_templates.ps1 -PartialGapLayoutDirectory <src> -CompletePatches`, then `build_cell_vmfs.ps1 ... -SizedTerrainInfill -CompleteTerrainInfill`. An explicit `-ContentMapDirectory` (isolated batch) also disables copying and stale-map cleanup in the live engine `garrysmod/maps` folder unless `-StageEngineMaps` is passed; stage isolated outputs through a backed-up ledger instead.
+Normal wide (3x) motorway cells require the matching approved trusted plan and expanded border/outer rings. Root settings keep `vmfBuild.outerEdges.enabled` false, so full-world preview batches use an isolated settings copy with it enabled and redirected profile paths. Full terrain infill uses the three motorway-only passes documented above. An explicit `-ContentMapDirectory` (isolated batch) also disables copying and stale-map cleanup in the live engine `garrysmod/maps` folder unless `-StageEngineMaps` is passed; stage isolated outputs through a backed-up ledger instead. Obtain approval before restarting the paused generator or other expensive output work.
 
 `-WorldProfile preview` makes the map generator use `worldGeneration.profiles.preview.gridCells` and makes planning, building, and checking use the preview profile's configured folders when no explicit path is supplied. `-Preview` is accepted for existing command files and means the same thing.
 

@@ -9,6 +9,15 @@ include( "cl_csm.lua" )
 include( "cl_chest_lamp.lua" )
 include( "cl_player.lua" )
 include( "cl_thirdpersoncamera.lua" )
+include( "cl_prefab_editor.lua" )
+include( "cl_prefab_explorer.lua" )
+include( "cl_prefab_spotlight_probe.lua" )
+if game.GetMap() == "zn_dev_prefab_anchor" then
+    include( "prefabs/cl_fixture_scale_sync.lua" )({
+        IsValid = IsValid, CurTime = CurTime, ErrorNoHalt = ErrorNoHalt, hook = hook, timer = timer
+    })
+end
+include( "tests/cl_prefab_fixture_trace.lua" )( include( "prefabs/sh_fixture_trace.lua" ) )
 include( "cl_transitions.lua" )
 include( "sh_walker_preload.lua" )
 local initializeTransitionMarkers = include( "cl_transition_markers.lua" )

@@ -53,6 +53,14 @@ Server-owned movement scales the unmodified walk speed by 0.675 and sprint speed
 
 Searchable world props and placed fallen bodies use half of their configured activation chance. Rolled candidates receive deterministic priorities and active search centres must be at least 320 units apart in 3D, preventing dense clusters without changing enemy or player drops. New loot generations place 1-2 fallen bodies; an unexpired legacy generation retains its deterministic 2-4-body layout until refresh. Saved offers and searched states remain profile/cell scoped. A changed content-hashed map revision backs up and resets that logical cell once so stale entity keys are never applied to a rebuilt BSP.
 
+Prefab props can be authored with loot Off, Normal or Guaranteed. Normal
+uses the same activation and spacing rules; Guaranteed bypasses both
+without suppressing ordinary spots. Per-prop group overrides use existing
+loot groups. Guaranteed does not mean unlimited: claimed spots remain
+searched until the ordinary cell refresh. Persisted loot acceptance commits
+the inventory and claimed spot together, so a failed save grants nothing.
+Prefab loot remains in development and needs actual city-cell review.
+
 Radiation uses a fictional game meter: cell exposure contributes 0-10 Sv and the strongest nearby radiated walker contributes up to another 10 Sv within 600 units. Groups do not stack. Above 15 combined Sv, an unprotected survivor loses 1 HP every 2 seconds with no Strength-based health floor; this can kill. At lower readings, the existing slow ambient radiation damage retains its Strength floor. Extreme exposure brings black-and-white presentation and increasingly strong cosmetic camera tremor; normal exposure has no radiation shake or postprocessing.
 
 A Radiation Protection Suit occupies the dedicated armour slot independently of weapons, and must be worn rather than carried. It completely prevents radiation damage and radiation screen effects, while leaving the Geiger counter and meter available as warnings. It provides no immunity to ordinary combat damage. Armour follows character/profile-scoped inventory persistence and can be equipped/unequipped from the inventory.

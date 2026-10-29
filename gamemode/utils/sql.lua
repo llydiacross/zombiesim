@@ -600,6 +600,24 @@ function ZM_DeleteTradeData(steamid, profile, includeStock)
 end
 
 local commitWriters = {
+    lootSpotClaim = function(profile, step)
+        if not validInteger(step.cellId) or type(step.spotKey) ~= "string" or step.spotKey == ""
+            or type(step.instanceId) ~= "string" or step.instanceId == "" then
+            return false, "invalid loot spot claim"
+        end
+        local where = " WHERE profile = " .. sql.SQLStr(profile) .. " AND cellId = " .. integerValue(step.cellId)
+            .. " AND spotKey = " .. sql.SQLStr(step.spotKey) .. " AND state = 'available'"
+        local rows = sql.Query("SELECT item FROM loot_spots" .. where)
+        if rows == false then return false, sql.LastError() or "could not read loot spot" end
+        local item = rows and rows[1] and type(rows[1].item) == "string" and util.JSONToTable(rows[1].item) or nil
+        if type(item) ~= "table" or item.instanceId ~= step.instanceId then
+            return false, "the loot spot changed; search it again"
+        end
+        local saved, saveError = runQuery("UPDATE loot_spots SET state = 'looted', item = NULL" .. where)
+        if not saved then return false, saveError end
+        if tonumber(sql.QueryValue("SELECT changes()")) ~= 1 then return false, "the loot spot changed; search it again" end
+        return true
+    end,
     // Sells step.units from a shared den stock row. The row is created at step.stock on the first sale of the day,
     // and the update only applies while `sold` still equals step.expected and stays within the stock, so a stale
     // view or a race with another buyer fails the whole transaction.
@@ -759,7 +777,7 @@ local commitWriters = {
 }
 
 // Writes a list of persistence steps for one profile in a single transaction: every step lands or none do.
-// Steps: { kind = "playerItems"|"denStash"|"cash"|"professionClaim"|"playerImplants"|"credits"|"mastercraftAttempt"|"job"|"tradeStock"|"tradeLedger"|"bankLedger"|"worldDropInsert"|"worldDropUpdate"|"worldDropDelete", steamid = ..., ... }.
+// Steps: { kind = "playerItems"|"denStash"|"cash"|"professionClaim"|"playerImplants"|"credits"|"mastercraftAttempt"|"job"|"tradeStock"|"tradeLedger"|"bankLedger"|"worldDropInsert"|"worldDropUpdate"|"worldDropDelete"|"lootSpotClaim", steamid = ..., ... }.
 function ZM_CommitWrites(profile, steps)
     profile = getPlayerDataProfile(profile)
     if not profile then return false, "Invalid commit profile" end
@@ -911,7 +929,11 @@ function ZM_GetLootSpots(profile, cellId)
 end
 
 local function lootItemValue(item)
-    return item and sql.SQLStr(util.TableToJSON(item, false) or "{}") or "NULL"
+    if item == nil then return "NULL" end
+    if type(item) ~= "table" then return nil, "Invalid loot item" end
+    local encoded = util.TableToJSON(item, false)
+    if type(encoded) ~= "string" then return nil, "Could not encode loot item" end
+    return sql.SQLStr(encoded)
 end
 
 // Replaces a cell's spots and timestamps in one transaction (used when a cell is generated or re-rolled).
@@ -934,7 +956,9 @@ function ZM_ReplaceLootCell(profile, cellId, generatedAt, lastPresentAt, spots, 
         return rollback(deleteError)
     end
     for _, spot in ipairs(spots) do
-        local inserted, insertError = runQuery("INSERT INTO loot_spots (profile, cellId, spotKey, state, item) VALUES (" .. sql.SQLStr(profile) .. ", " .. cell .. ", " .. sql.SQLStr(spot.key) .. ", " .. sql.SQLStr(spot.state) .. ", " .. lootItemValue(spot.item) .. ")")
+        local itemValue, itemError = lootItemValue(spot.item)
+        if not itemValue then return rollback(itemError) end
+        local inserted, insertError = runQuery("INSERT INTO loot_spots (profile, cellId, spotKey, state, item) VALUES (" .. sql.SQLStr(profile) .. ", " .. cell .. ", " .. sql.SQLStr(spot.key) .. ", " .. sql.SQLStr(spot.state) .. ", " .. itemValue .. ")")
         if not inserted then
             return rollback(insertError)
         end
@@ -1026,12 +1050,37 @@ function ZM_RestoreLootCellBackup(profile, cellId, mapFingerprint)
     return ZM_ReplaceLootCell(profile, cellId, tonumber(backup.generatedAt), tonumber(backup.lastPresentAt), rows, mapFingerprint)
 end
 
+function ZM_EnsureLootSpots(profile, cellId, keys)
+    profile = getPlayerDataProfile(profile)
+    if not profile then return false, "Invalid loot profile" end
+    local started, startError = runQuery("BEGIN")
+    if not started then return false, startError end
+    local function rollback(message)
+        sql.Query("ROLLBACK")
+        return false, message
+    end
+    for _, key in ipairs(keys) do
+        if type(key) ~= "string" or key == "" then return rollback("Invalid loot spot key") end
+        local inserted, insertError = runQuery("INSERT OR IGNORE INTO loot_spots (profile, cellId, spotKey, state, item) VALUES ("
+            .. sql.SQLStr(profile) .. ", " .. integerValue(cellId) .. ", " .. sql.SQLStr(key) .. ", 'available', NULL)")
+        if not inserted then return rollback(insertError) end
+    end
+    local committed, commitError = runQuery("COMMIT")
+    if not committed then return rollback(commitError) end
+    return true
+end
+
 function ZM_SetLootSpot(profile, cellId, spotKey, state, item)
     profile = getPlayerDataProfile(profile)
     if not profile then
         return false, "Invalid loot profile"
     end
-    return runQuery("UPDATE loot_spots SET state = " .. sql.SQLStr(state) .. ", item = " .. lootItemValue(item) .. " WHERE profile = " .. sql.SQLStr(profile) .. " AND cellId = " .. integerValue(cellId) .. " AND spotKey = " .. sql.SQLStr(spotKey))
+    local itemValue, itemError = lootItemValue(item)
+    if not itemValue then return false, itemError end
+    local updated, updateError = runQuery("UPDATE loot_spots SET state = " .. sql.SQLStr(state) .. ", item = " .. itemValue .. " WHERE profile = " .. sql.SQLStr(profile) .. " AND cellId = " .. integerValue(cellId) .. " AND spotKey = " .. sql.SQLStr(spotKey))
+    if not updated then return false, updateError end
+    if tonumber(sql.QueryValue("SELECT changes()")) ~= 1 then return false, "The loot spot no longer exists." end
+    return true
 end
 
 function ZM_TouchLootCell(profile, cellId, lastPresentAt)

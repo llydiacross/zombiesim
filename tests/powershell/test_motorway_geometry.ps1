@@ -65,8 +65,8 @@ $recipe = [pscustomobject]@{
 Set-ZMStraightMotorwayCellInspection $recipe $tileDirectory @{ straight = @{ vertical = 0; horizontal = 90 } }
 $contract = $recipe.motorwayCellInspection | ConvertTo-Json -Depth 30 | ConvertFrom-Json
 $contract.status = 'normal_reservations_travel_pending'
-$contract.assemblyAuthority = 'trusted_prior_approved_grid_layout'
-$contract.gates = @(
+$contract | Add-Member -NotePropertyName assemblyAuthority -NotePropertyValue 'trusted_prior_approved_grid_layout'
+$contract | Add-Member -NotePropertyName gates -NotePropertyValue @(
     [pscustomobject]@{ direction = 'N'; lanes = @(@{}, @()) },
     [pscustomobject]@{ direction = 'S'; lanes = @(@{}, @()) }
 )
@@ -75,6 +75,28 @@ $recipe | Add-Member -NotePropertyName motorwayAssembly -NotePropertyValue $cont
 $before = $recipe | ConvertTo-Json -Depth 40 -Compress
 Assert ((Get-ZMNormalStraightMotorwayContract $recipe).gates.Count -eq 2) 'Straight gates come from the approved trusted plan.'
 Assert (($recipe | ConvertTo-Json -Depth 40 -Compress) -ceq $before) 'Trusted contract access does not mutate the recipe.'
+
+$tokens = $null
+$parseErrors = $null
+$builderAst = [System.Management.Automation.Language.Parser]::ParseFile(
+    (Join-Path $testsBinDirectory 'build_cell_vmfs.ps1'), [ref]$tokens, [ref]$parseErrors)
+if ($parseErrors.Count -gt 0) { throw 'Cannot parse motorway gate writer.' }
+$gateFunction = $builderAst.Find({
+    param($node)
+    $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+        $node.Name -eq 'Get-TransitionGatePlacements'
+}, $true)
+if ($null -eq $gateFunction) { throw 'Cannot find motorway gate writer.' }
+. ([scriptblock]::Create($gateFunction.Extent.Text))
+function ConvertTo-TransitionGatePlacements {
+    param([object[]]$Gates)
+    return $Gates
+}
+$recipe | Add-Member -NotePropertyName activeEntrances -NotePropertyValue @('S', 'N')
+$recipe.motorwayAssembly.gates = @($recipe.motorwayAssembly.gates[1], $recipe.motorwayAssembly.gates[0])
+Assert (@(Get-TransitionGatePlacements $recipe).Count -eq 2) 'Straight gate selection ignores direction ordering.'
+$recipe.activeEntrances = @('N', 'E')
+Assert-Rejected { Get-TransitionGatePlacements $recipe | Out-Null } '*gates disagree with active entrances*'
 
 $border = @(foreach ($y in -1..5) { foreach ($x in -1..5) {
     if ($x -in @(-1, 5) -or $y -in @(-1, 5)) {

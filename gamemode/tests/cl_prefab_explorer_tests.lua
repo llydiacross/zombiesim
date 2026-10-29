@@ -1,0 +1,149 @@
+return function(createEngine, loadChunk)
+    local suite = ZM_TestHarness.NewSuite()
+    local function fixture()
+        local gizmo = loadChunk("prefabs/sh_gizmo.lua")()
+        local contract = loadChunk("prefabs/sh_contract.lua")()
+        local env, state = createEngine(gizmo, contract)
+        local editorChunk = loadChunk("cl_prefab_editor.lua")
+        setfenv(editorChunk, env)
+        editorChunk()
+        local explorerChunk = loadChunk("cl_prefab_explorer.lua")
+        setfenv(explorerChunk, env)
+        explorerChunk()
+        return env, state, env.ZM_PrefabExplorer, env.ZM_PrefabEditorClient
+    end
+    local function document(id, name, tags, props)
+        return { schemaVersion = 1, id = id, name = name, description = "A description",
+            tags = tags or {}, props = props or {} }
+    end
+    local function prop(x)
+        return { model = "models/props_c17/oildrum001.mdl", position = { x = x, y = 0, z = 0 },
+            angles = { p = 0, y = 30, r = 0 }, skin = 0, scale = 1.5 }
+    end
+    local function findButton(state, text)
+        for _, panel in ipairs(state.panels) do
+            if panel.kind == "DButton" and panel.text == text then return panel end
+        end
+    end
+
+    suite:Add("explorer lists and filters shared prefabs", function(check)
+        local _, state, explorer = fixture()
+        explorer:Open()
+        check(state.requests[#state.requests].values[1] == "explorer_list", "opening requests the library")
+        state:Response("explorer_list", true, "", {
+            document("one", "Same", { "road" }), document("two", "Same", { "gate" })
+        })
+        check(#explorer.List.lines == 2, "duplicate names remain separately identified by ID")
+        explorer.Search:TypeText("TWO")
+        check(#explorer.List.lines == 1 and explorer.List.lines[1].PrefabId == "two",
+            "search is case-insensitive and includes IDs")
+        explorer.Search:TypeText("")
+        explorer.Tag:TypeText("ROAD")
+        check(#explorer.List.lines == 1 and explorer.List.lines[1].PrefabId == "one",
+            "tag filter matches exact tags without case sensitivity")
+        explorer.Tag:TypeText("ro")
+        check(#explorer.List.lines == 0, "partial tags do not match an exact tag filter")
+    end)
+
+    suite:Add("preview draws all props and releases its models", function(check)
+        local env, state, explorer = fixture()
+        explorer:Open()
+        explorer.Selected = { id = "one" }
+        state:Response("explorer_preview", true, "", document("other", "Other", {}, { prop(0) }))
+        check(explorer.Preview == nil, "late responses do not replace the selected prefab")
+        state:Response("explorer_preview", true, "", document("one", "One", { "road" }, { prop(0), prop(100) }))
+        local panel, additional = explorer.Preview, explorer.PreviewModels[1]
+        check(panel and panel:GetEntity().matrix.scale.x == 1.5 and additional.position.x == 100
+            and additional.angles.y == 30, "preview preserves model positions, angles and scale")
+        panel:PostDrawModel(panel:GetEntity())
+        check(additional.drawn, "additional models draw in the model panel's 3D context")
+        local before = panel.camPos
+        panel:OnMousePressed(env.MOUSE_LEFT)
+        state.mouseX = state.mouseX + 30
+        panel:Think()
+        panel:OnMouseReleased(env.MOUSE_LEFT)
+        check(not panel.capture and panel.camPos.x ~= before.x, "left-drag orbits and releases capture")
+        local frame = explorer.Frame
+        frame:Close()
+        check(not panel.valid and not additional.valid and not panel:GetEntity().valid,
+            "closing releases the panel and all preview models")
+        state:Response("explorer_preview", true, "", document("one", "One", {}, { prop(0) }))
+        check(explorer.Frame == nil and explorer.Preview == nil, "late replies do not reopen the explorer")
+    end)
+
+    suite:Add("empty prefabs and request failures are visible", function(check)
+        local _, state, explorer = fixture()
+        explorer:Open()
+        explorer.Selected = { id = "empty" }
+        state:Response("explorer_preview", true, "", document("empty", "Empty"))
+        check(explorer.Preview == nil and string.find(explorer.Details.text, "no props", 1, true),
+            "empty prefabs are reported without a placeholder model")
+        state:Response("explorer_preview", false, "Missing prefab")
+        check(#state.messages > 0, "request errors are surfaced")
+    end)
+
+    suite:Add("management actions require confirmation", function(check)
+        local _, state, explorer = fixture()
+        explorer:Open()
+        explorer.Selected = document("one", "Original")
+        local count = #state.requests
+        findButton(state, "RENAME"):DoClick()
+        check(#state.requests == count and state.stringRequest, "rename prompts for a name")
+        state.stringRequest[4]("Updated")
+        check(#state.requests == count and state.query, "rename asks for explicit confirmation")
+        state.query[4]()
+        local request = state.requests[#state.requests]
+        check(request.values[1] == "explorer_rename" and request.values[2] == "one"
+            and request.values[3] == "Updated", "confirmation sends the stable ID and new display name")
+        findButton(state, "DELETE"):DoClick()
+        count = #state.requests
+        state.query[6]()
+        check(#state.requests == count, "cancelling deletion does not send a request")
+        findButton(state, "DELETE"):DoClick()
+        state.query[4]()
+        check(state.requests[#state.requests].values[1] == "explorer_delete",
+            "deletion is sent only after confirmation")
+    end)
+
+    suite:Add("opening from the editor protects unsaved work", function(check)
+        local _, state, explorer, editor = fixture()
+        state:Response("status", true, "", { origin = { x = 0, y = 0, z = 0 }, documents = {} })
+        state:Response("model", true, "", { model = "models/props_c17/oildrum001.mdl" })
+        explorer:Open()
+        explorer.Selected = document("one", "One")
+        local count = #state.requests
+        findButton(state, "OPEN IN EDITOR"):DoClick()
+        check(#state.requests == count and state.query, "dirty editor asks before loading")
+        state.query[6]()
+        check(#state.requests == count and explorer.Frame ~= nil, "cancel keeps the editor and explorer open")
+        findButton(state, "OPEN IN EDITOR"):DoClick()
+        state.query[4]()
+        check(state.requests[#state.requests].values[1] == "load"
+            and state.requests[#state.requests].values[2] == "one" and explorer.Frame == nil,
+            "confirmed discard loads the requested prefab and closes the explorer")
+        check(editor:IsActive(), "the underlying editor remains open")
+    end)
+
+    suite:Add("opening from the launcher carries the chosen ID", function(check)
+        local _, state, explorer = fixture()
+        explorer:Open()
+        explorer.Selected = document("one", "One")
+        local count = #state.requests
+        findButton(state, "OPEN IN EDITOR"):DoClick()
+        check(#state.requests == count and state.query, "map change requires confirmation")
+        state.query[6]()
+        check(#state.requests == count and explorer.Frame ~= nil, "cancel leaves the explorer open")
+        findButton(state, "OPEN IN EDITOR"):DoClick()
+        state.query[4]()
+        check(state.requests[#state.requests].values[1] == "begin"
+            and state.requests[#state.requests].values[2] == "one" and explorer.Frame == nil,
+            "confirmation sends the selected ID and closes the explorer")
+        state:Response("status", true, "", {
+            origin = { x = 0, y = 0, z = 0 }, documents = {}, openId = "one"
+        })
+        check(state.requests[#state.requests].values[1] == "load"
+            and state.requests[#state.requests].values[2] == "one",
+            "workspace initialization loads the selected ID through the editor")
+    end)
+    return suite
+end

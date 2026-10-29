@@ -1,6 +1,10 @@
 # Alpha 3.2 - Phased Implementation Plan
 
-**Status: ACTIVE - MOTORWAY LIVE CHECKS ACCEPTED 2026-10-17; TWO CORRECTED BSPs STAGED AND WIRED; 336 CURRENT PREVIEW CELL MATERIALS/THUMBNAILS REFRESHED; STALE EDGE2 MATERIALS REMOVED; TARGETED SKYLINE FOOTPRINTS STAGED WITH TEMPORARY MODEL ALIASES; CELL HEALTH BATCH CONTROLS IMPLEMENTED; FOCUSED FIXTURES PASS; USER CONFIRMS CONTROLS VISIBLE/LEGIBLE AND SKYBOX WARNING CLEARED; NO BATCH STARTED; WORLD GENERATOR PAUSED; FULL-WORLD OUTPUTS DEFERRED; PHASE K/L CLOSURE DEFERRED; NOT RELEASED.**
+**Status: ARCHIVED 2026-10-28 - NOT RELEASED OR FULLY ACCEPTED.** The user
+shifted priority to [Alpha 3.3](../todo-alpha.3.3.md). The previously accepted
+motorway and CSM checks remain accepted; outstanding generator, output,
+maintenance, integration and Alpha 3.1.5 closure work remains deferred, not
+silently completed or made an immediate prerequisite to Alpha 3.3.
 
 ## Current status - 2026-10-17
 
@@ -9,6 +13,26 @@ accepts all live motorway gate/alignment checks and the current CSM checks for
 now. This does not accept all of Alpha 3.2 or Phase J's complete runtime/output
 integration. Dated sections below retain their checkpoint-specific status;
 this 2026-10-17 snapshot supersedes older "pending" wording where it differs.
+
+### Motorway source cleanup - 2026-10-28
+
+The approved source-only cleanup retires the mouth/connector survey, assembly
+report and complex inspection workflows. Normal planning, the VMF gate writer
+and runtime export consume the matching approved trusted-plan records instead;
+ordinary roads remain on the 640-unit grid and `ZM_World` owns route access.
+The cell-preview wrapper requires explicit inputs and retains straight
+inspection and trusted normal modes. No authored assets were changed.
+
+Focused source checks pass: motorway contracts 132 assertions, the retained
+corrected full-plan/VMF grid regression 1464 assertions, and infill scope 6
+assertions. The grid regression checks the actual gate writer and exporter
+against all 96 saved motorway contracts (69 straight, 27 complex), including
+route, lane counts, positions and arrivals. Gate directions match their
+entrances. PowerShell parsing passes 121 files;
+`git diff --check` passes. These are source/retained-artifact checks, not new
+generated, compiled or live evidence. No world generation, compilation,
+staging or game reload occurred; the prior accepted live review remains
+separate. Generator and full-output work remain paused.
 
 ### Motorway and CSM acceptance
 
@@ -144,7 +168,7 @@ and is not a prerequisite.
   world-data connectivity. A missing-route default did not fix the live
   failure. Keep `ZM_World`/`CanTravelToNeighbour` authoritative and keep
   geometry checks out of route access. See the implementation rule in
-  [AGENTS.md](AGENTS.md).
+  [AGENTS.md](../AGENTS.md).
 - Do not reopen user-approved motorway alignment or demand mathematical
   proofs. The user's in-game visual acceptance is the acceptance evidence for
   alignment.
@@ -676,7 +700,7 @@ This is the master tracker for **new authored buildings/decorations/borders/
 edges, density zoning and 3-wide motorway assemblies**, with the current
 experimental CSM slice accepted by the user. All remaining CSM implementation,
 validation and optimization is deferred to the existing
-[CSM implementation tracker](docs/csm-implementation.md), outside Alpha 3.2's
+[CSM implementation tracker](csm-implementation.md), outside Alpha 3.2's
 completion requirements. This accepts the limited default-off additive
 experiment, not seamless cascades or measured performance. Do not restart CSM
 probes, reloads or benchmarks to advance this milestone.
@@ -743,7 +767,7 @@ probes, reloads or benchmarks to advance this milestone.
 
 - Replace old 1-wide motorway geometry with the new 3-wide family throughout
   core, border and outer-edge continuations. Retain the authored
-  [1x1 sources](tiletemplates/roads/motorway_1x1) as source assets, not automatic
+  [1x1 sources](../tiletemplates/roads/motorway_1x1) as source assets, not automatic
   fallbacks. Incompatible new layouts must fail with evidence.
 - Preserve the logical world grid and cell size: 640-unit tiles, 5x5 core,
   existing 7x7 border frame and enabled 9x9 outer frame, and the existing
@@ -807,16 +831,16 @@ These are source findings, not compiled-map or visual evidence.
 
 | Surface / current owner | Finding and required work |
 | --- | --- |
-| [generator-settings.json](generator-settings.json) | Explicit motorway paths still reference removed root-level `roads/tile_motorway*` files. Border settings also reference deleted/renamed walls and corners. Update discovery, topology, transport and variation mappings from the surveyed inventory, not a bulk path substitution. |
-| [generate_world_cells.ps1](bin/generate_world_cells.ps1) | Owns road/highway topology, districts, settlement placement, landmarks and safe zones. Produce one authoritative coast/district density field here or through a shared pure helper consumed here and by fixtures; relocate conflicting features before final reachability repair and serialization. |
-| [plan_cell_templates.ps1](bin/plan_cell_templates.ps1) | `Get-BuildingDensityTier` uses tags/profiles, not an inland gradient. `Get-BuildingTemplatesForDensity` gives every building a nonzero weight, violating hard exclusions. Decorations and `Set-OpenTerrainFill` select from unfiltered pools. Single/multi-tile, commercial, industry, landmark and variant paths all need the same contract. |
+| [generator-settings.json](../generator-settings.json) | Explicit motorway paths still reference removed root-level `roads/tile_motorway*` files. Border settings also reference deleted/renamed walls and corners. Update discovery, topology, transport and variation mappings from the surveyed inventory, not a bulk path substitution. |
+| [generate_world_cells.ps1](../bin/generate_world_cells.ps1) | Owns road/highway topology, districts, settlement placement, landmarks and safe zones. Produce one authoritative coast/district density field here or through a shared pure helper consumed here and by fixtures; relocate conflicting features before final reachability repair and serialization. |
+| [plan_cell_templates.ps1](../bin/plan_cell_templates.ps1) | `Get-BuildingDensityTier` uses tags/profiles, not an inland gradient. `Get-BuildingTemplatesForDensity` gives every building a nonzero weight, violating hard exclusions. Decorations and `Set-OpenTerrainFill` select from unfiltered pools. Single/multi-tile, commercial, industry, landmark and variant paths all need the same contract. |
 | Same planner, transport branch | Places a single center template and one-tile arms, then adds onramp/deadend/bridge pieces through special cases. These cannot simply receive the larger VMFs without footprint reservations and explicit connector matching. |
-| [build_cell_vmfs.ps1](bin/build_cell_vmfs.ps1) | `Get-PlacementFootprint` explicitly rejects nonsquare footprints and widths over 3. Border routes are single center slots. Generalize transported placement ownership/validation, emitted origins, ring reservations and layout metadata coherently. Keep existing square building behavior unchanged. |
-| [outer_edges.psm1](bin/outer_edges.psm1) | Continues routes in one outer-ring slot, and checks wall adjacency using Manhattan distance to old route slots. Consume full occupied corridor slots and compatible transport continuations; preserve ocean omission and shell boundary rules. |
-| [transition_gates.psm1](bin/transition_gates.psm1) and [sv_transitions.lua](gamemode/sv_transitions.lua) | Gate anchors remain axis-based; runtime motorway arrows use lateral +/-160 and arrivals use the old carriageway correction. Survey new deck/median/lane positions and publish validated geometry-derived anchors. Preserve paired arrows, colors, arrival yaw, behind-arrow arrival intent and hull safety. |
-| [world.lua](gamemode/utils/world.lua), [export_runtime_world_data.ps1](bin/export_runtime_world_data.ps1) | Own profile/map resolution and generated compatibility. Carry validated density/transport/lighting data only where consumers need it, with schema/revision checks and explicit unavailable paths. |
-| [build_cell_map_materials.ps1](bin/build_cell_map_materials.ps1), skyline model builder and world capture | Illustrated maps, wireframes, skyline/coast extraction and capture revisions must describe the same widened layout. Use generated placement metadata rather than draw a wider line over stale one-tile occupancy. |
-| [CSM tracker](docs/csm-implementation.md) | Contains pinned upstream/API research, resource limits, proposed module boundaries, view lifecycle and a full validation matrix. Recheck actual owners before implementation; proposed files and `zn_test_csm` / `zombiesim_csm_status` are not implemented commands. |
+| [build_cell_vmfs.ps1](../bin/build_cell_vmfs.ps1) | `Get-PlacementFootprint` explicitly rejects nonsquare footprints and widths over 3. Border routes are single center slots. Generalize transported placement ownership/validation, emitted origins, ring reservations and layout metadata coherently. Keep existing square building behavior unchanged. |
+| [outer_edges.psm1](../bin/outer_edges.psm1) | Continues routes in one outer-ring slot, and checks wall adjacency using Manhattan distance to old route slots. Consume full occupied corridor slots and compatible transport continuations; preserve ocean omission and shell boundary rules. |
+| [transition_gates.psm1](../bin/transition_gates.psm1) and [sv_transitions.lua](../gamemode/sv_transitions.lua) | Gate anchors remain axis-based; runtime motorway arrows use lateral +/-160 and arrivals use the old carriageway correction. Survey new deck/median/lane positions and publish validated geometry-derived anchors. Preserve paired arrows, colors, arrival yaw, behind-arrow arrival intent and hull safety. |
+| [world.lua](../gamemode/utils/world.lua), [export_runtime_world_data.ps1](../bin/export_runtime_world_data.ps1) | Own profile/map resolution and generated compatibility. Carry validated density/transport/lighting data only where consumers need it, with schema/revision checks and explicit unavailable paths. |
+| [build_cell_map_materials.ps1](../bin/build_cell_map_materials.ps1), skyline model builder and world capture | Illustrated maps, wireframes, skyline/coast extraction and capture revisions must describe the same widened layout. Use generated placement metadata rather than draw a wider line over stale one-tile occupancy. |
+| [CSM tracker](csm-implementation.md) | Contains pinned upstream/API research, resource limits, proposed module boundaries, view lifecycle and a full validation matrix. Recheck actual owners before implementation; proposed files and `zn_test_csm` / `zombiesim_csm_status` are not implemented commands. |
 
 ### Authored asset inventory warnings
 
@@ -838,7 +862,7 @@ These are source findings, not compiled-map or visual evidence.
 
 ### New motorway inventory
 
-All paths below are relative to [motorway_3x1](tiletemplates/roads/motorway_3x1).
+All paths below are relative to [motorway_3x1](../tiletemplates/roads/motorway_3x1).
 The dimensions are authored naming/plane-point observations, **not verified
 drivable connectors or exact compiled collision bounds**.
 
@@ -913,7 +937,7 @@ Exit: an agreed source inventory, safe restoration path and clear authorization.
 
 #### Phase 0 inventory evidence - 2026-10-13
 
-The user authorized Phase 0. The [3.1.5 tracker](docs/todo-alpha.3.1.5.md)
+The user authorized Phase 0. The [3.1.5 tracker](todo-alpha.3.1.5.md)
 is archived with rerooted links; its pending closure stays in J/K. No generator
 logic, authored VMF/VMX, staged output, player data or API files were changed.
 
@@ -1041,7 +1065,7 @@ influence with protected coast precedence. The resulting12-column fixture was
 explicitly approved: ordinary land/settlement `L L L M M M M M H H H H`,
 commercial/financial `L L L H H H H H H H H H H`.
 
-[scenery_density.psm1](bin/scenery_density.psm1) owns the pure classifier,
+[scenery_density.psm1](../bin/scenery_density.psm1) owns the pure classifier,
 cardinal distance field, resolved tier/source, exact target rolls, versioned
 selection hash and compatible-pool chooser. Required missing pools fail with
 cell/side/pool context; optional shortages retain terrain with explicit status.
@@ -1066,7 +1090,7 @@ not physical footprint detection. Phase A is not accepted or complete.
 #### Phase A authoritative field/export slice - 2026-10-13
 
 The earlier pure-only limitation is superseded for field migration, not for
-placement enforcement. [generate_world_cells.ps1](bin/generate_world_cells.ps1)
+placement enforcement. [generate_world_cells.ps1](../bin/generate_world_cells.ps1)
 now applies the approved zoning before serialization, using explicit west
 ocean-touching cells at x=0 and the existing environment profile priority.
 Stored cell fields are `sceneryDensityPolicyVersion=1`, `sceneryDensityTier`,
@@ -1075,10 +1099,10 @@ Stored cell fields are `sceneryDensityPolicyVersion=1`, `sceneryDensityTier`,
 Priority is unchanged: e.g. destroyed can precede commercial; no separate
 tag-based district reinterpretation is introduced.
 
-[plan_cell_templates.ps1](bin/plan_cell_templates.ps1) validates declared
+[plan_cell_templates.ps1](../bin/plan_cell_templates.ps1) validates declared
 metadata, uses the authoritative tier in existing recipe/filename/variant
 paths and retains the density record on each planned cell.
-[export_runtime_world_data.ps1](bin/export_runtime_world_data.ps1) validates
+[export_runtime_world_data.ps1](../bin/export_runtime_world_data.ps1) validates
 manifest policy and requires matching manifest/plan records before retaining
 the same fields in runtime cells. Partial records, invalid source/band
 combinations, unknown policies and divergent aliases fail explicitly.
@@ -1251,7 +1275,7 @@ tolerance. No new connector geometry or normal-planner support is implemented.
 - The source of truth is the current
   `generated/phase_b_approved_assemblies/assembly-report.json` registry:
   source SHA256, floor side ids and full `edges` retain provenance. Re-run
-  [build_motorway_preview.ps1](bin/build_motorway_preview.ps1) in this isolated
+  `build_motorway_preview.ps1` (retired) in this isolated
   directory before authoring if sources change; never copy an old report's
   numbers into a newer source revision.
 - A continuation's end must meet every actual source floor edge, not just the
@@ -1347,12 +1371,12 @@ for this family. Do not ask for another orientation confirmation or infer a
 replacement rotation from the footprint/geometry. Port positions, wider
 reservations and height compatibility still need direct integration measurements.
 
-[survey_motorway_templates.ps1](bin/survey_motorway_templates.ps1) reuses the
+`survey_motorway_templates.ps1` (retired) reused the
 existing skybox KeyValues parser and records saved Hammer++ face windings,
 material/solid/side ids, source hashes, entities and explicitly unverified
 filename footprints. It does not infer ports from bounding boxes, include
 model collision bounds or reconstruct compiled solids. Full report retained in
-session storage. [test_motorway_survey.ps1](tests/powershell/test_motorway_survey.ps1) passes
+session storage. `test_motorway_survey.ps1` (retired) passed
 5214assertions across eight unchanged sources, including byte-identical repeat
 reports, face records and protected deck/overhang observations.
 
@@ -1386,7 +1410,7 @@ rotation/connection/reservation fixtures. Phase B remains incomplete.
 
 #### Phase B rectangular reservation/rotation slice - 2026-10-13
 
-[motorway_geometry.psm1](bin/motorway_geometry.psm1) adds a bounded wide-family
+[motorway_geometry.psm1](../bin/motorway_geometry.psm1) adds a bounded wide-family
 footprint lookup: unsuffixed straight/road bridge are explicit3x1; the six
 suffixed pieces parse their named rectangles without square clamping. Legacy
 `motorway_1x1` paths are rejected, including the same-name straight. This is a
@@ -1401,7 +1425,7 @@ Logical Y increases south; physical origin-offset Y is negative. Even-width
 rounding it away. The nominal rectangle does not absorb deadend/ramp overhangs:
 the separate envelope rotates those unchanged.
 
-[test_motorway_geometry.ps1](tests/powershell/test_motorway_geometry.ps1) passes614assertions
+[test_motorway_geometry.ps1](../tests/powershell/test_motorway_geometry.ps1) passes614assertions
 covering all eight pieces/four rotations, unique complete slot sets, ownership,
 half-tile alignment, point/inverse transforms, overhang rotation, explicit
 unsupported/legacy rejection and the actual existing planner yaw owner.
@@ -1455,7 +1479,7 @@ additional human asset review occurred.
 
 The user requested continuation through Phase B to an actual generated Hammer
 preview, rather than stopping at successive helpers. The isolated inspection
-generator is [build_motorway_preview.ps1](bin/build_motorway_preview.ps1):
+generator was `build_motorway_preview.ps1` (retired):
 
 ```powershell
 .\bin\build_motorway_preview.ps1 -WorldProfile preview
@@ -1552,7 +1576,7 @@ cell, not a catalogue of authored pieces. The earlier assembly overview is
 diagnostic evidence only and does not satisfy that request. Do not reopen it
 or individual assets for routine approval.
 
-[build_motorway_cell_preview.ps1](bin/build_motorway_cell_preview.ps1) now
+[build_motorway_cell_preview.ps1](../bin/build_motorway_cell_preview.ps1) now
 selects two real plain-straight cells from the matching tuned preview manifest,
 preserving its seed1337, grid24 and neighbor/transport records. The scoped
 fixture removes unrelated safe-zone map records, not actual saved world data.
@@ -2000,7 +2024,7 @@ the Phase C order. The user subsequently accepted the current experiment and
 deferred further CSM work; this section retains scoped historical evidence.
 
 Unfinished capability checks now belong to the
-[deferred CSM backlog](docs/csm-implementation.md#deferred-backlog-transferred-from-alpha-32).
+[deferred CSM backlog](csm-implementation.md#deferred-backlog-transferred-from-alpha-32).
 They are not prerequisites for any remaining Alpha 3.2 generator phase.
 
 - [x] User approved advancing the capability-only one-projector probe; measure
@@ -2332,7 +2356,7 @@ VMF/VMX, installed map, compiler job or player data changed in this removal.
 <summary>Rejected experiment history (superseded; not an implementation checklist)</summary>
 
 Added 2026-10-14 at the user's request from
-[the safe-zone entrance design notes](docs/safezone_entrances/plan.md); it runs
+[the safe-zone entrance design notes](safezone_entrances/plan.md); it runs
 after Phase D and before Phase E. It replaced the earlier "safe-zone detail
 deferred" note for planning purposes. **The following design/source authorization
 was later superseded by rejection; it is no longer current.** On 2026-10-14 the user
@@ -2716,7 +2740,7 @@ travel and physical continuity remain live gates in Phase G.
       saved city coordinate or move a deployed survivor during a source check.
 CSM-specific lighting provenance (map/build key, direction and effective
 LDR/HDR direct/ambient metadata) is deferred to the
-[CSM metadata contract](docs/csm-implementation.md#53-lighting-metadata).
+[CSM metadata contract](csm-implementation.md#53-lighting-metadata).
 It does not block generator derivatives or require relighting maps.
 
 Exit: small derivative/compatibility fixtures pass; full skyline/material/
@@ -2748,7 +2772,7 @@ The user accepts the current client-local prototype and Options controls as an
 experiment. They remain off by default. This acceptance retains the lack of
 runtime/Options live review and does not assert seamless cascade coverage,
 complete lifecycle isolation or performance acceptance. Remaining work is
-owned only by [CSM tracker Phases 1-5](docs/csm-implementation.md#6-implementation-phases-and-acceptance-checklist).
+owned only by [CSM tracker Phases 1-5](csm-implementation.md#6-implementation-phases-and-acceptance-checklist).
 
 - [x] Implement the user-approved F-toggle chest lamp replacing the native
       flashlight bind in gameplay cells. It is a networked, light-only
@@ -2811,7 +2835,7 @@ lighting and unchanged global flashlight/server lighting settings.
 
 All CSM-specific mode comparisons, moving-caster correctness, shadow-update
 optimization, projector-cycle isolation and resource budgets are deferred to
-[CSM testing/performance](docs/csm-implementation.md#7-test-diagnostic-and-performance-specification).
+[CSM testing/performance](csm-implementation.md#7-test-diagnostic-and-performance-specification).
 
 Exit: accepted integrated prototypes with measurable budgets and retained limits.
 
@@ -2914,8 +2938,8 @@ The user's sequence is Cell Health Manager, then all-map navmeshes and
 screenshots. The detailed carried-closure checklist has been removed from this
 active plan; its evidence remains in the archived Alpha 3.1.5 tracker.
 Historical cross-reference:
-[Alpha 3.1.5 Phase D](docs/todo-alpha.3.1.5.md#phase-d---full-footprint-minimap-world-artwork-and-satellite-capture)
-and [Phase I](docs/todo-alpha.3.1.5.md#phase-i---integrated-acceptance-and-separately-approved-city-rollout).
+[Alpha 3.1.5 Phase D](todo-alpha.3.1.5.md#phase-d---full-footprint-minimap-world-artwork-and-satellite-capture)
+and [Phase I](todo-alpha.3.1.5.md#phase-i---integrated-acceptance-and-separately-approved-city-rollout).
 Use the final matching 3.2 geometry and artifacts, not stale 3.1.5 outputs.
 
 This deferral does not accept or discard the carried Phase D/I closure. Reopen it
@@ -2944,7 +2968,7 @@ in older dated notes.
 - **Final map outputs:** after the Cell Health Manager, produce the matching
   full-map runtime export, navmeshes, and all-map screenshots the user requested.
   Verify the revision hashes and actual coverage before staging or visual review.
-- Use [docs/readme.md](docs/readme.md) and existing build/stage scripts for exact commands. Ask again
+- Use [docs/readme.md](readme.md) and existing build/stage scripts for exact commands. Ask again
   before any substantially broader job than that final approved output batch.
 
 ## 5. Handoff and stop conditions

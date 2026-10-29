@@ -7,6 +7,10 @@ AddCSLuaFile( "sh_loading.lua" )
 AddCSLuaFile( "sh_walker_preload.lua" )
 AddCSLuaFile( "sh_compass.lua" )
 AddCSLuaFile( "sh_preview.lua" )
+AddCSLuaFile( "prefabs/sh_contract.lua" )
+AddCSLuaFile( "prefabs/sh_gizmo.lua" )
+AddCSLuaFile( "prefabs/sh_fixture_trace.lua" )
+AddCSLuaFile( "prefabs/cl_fixture_scale_sync.lua" )
 AddCSLuaFile( "sh_static_data.lua" )
 AddCSLuaFile( "sh_items.lua" )
 AddCSLuaFile( "sh_clothing.lua" )
@@ -15,12 +19,17 @@ AddCSLuaFile( "cl_wardrobe.lua" )
 AddCSLuaFile( "cl_changelog.lua" )
 AddCSLuaFile( "cl_third_party_licenses.lua" )
 AddCSLuaFile( "cl_launcher_tools.lua" )
+AddCSLuaFile( "cl_prefab_editor.lua" )
+AddCSLuaFile( "cl_prefab_explorer.lua" )
+AddCSLuaFile( "cl_prefab_spotlight_probe.lua" )
+AddCSLuaFile( "prefabs/cl_spotlight_probe.lua" )
 AddCSLuaFile( "cl_character_cards.lua" )
 AddCSLuaFile( "tests/cl_clothing_tests.lua" )
 AddCSLuaFile( "tests/cl_character_cards_tests.lua" )
 AddCSLuaFile( "tests/cl_launcher_presentation_tests.lua" )
 AddCSLuaFile( "tests/cl_imported_assets_tests.lua" )
 AddCSLuaFile( "tests/cl_atmosphere_tests.lua" )
+AddCSLuaFile( "tests/cl_prefab_fixture_trace.lua" )
 AddCSLuaFile( "tests/fixtures/cl_atmosphere_engine.lua" )
 AddCSLuaFile( "utils/test_harness.lua" )
 AddCSLuaFile( "sh_weapon_effects.lua" )
@@ -186,6 +195,28 @@ include( "sv_dev_console.lua" )
 include( "sv_world_capture.lua" )
 include( "sv_dependency_prompts.lua" )
 include( "sv_launcher.lua" )
+include( "sv_prefab_editor.lua" )
+include( "sv_prefab_spotlight_probe.lua" )
+include( "sv_prefabs.lua" )
+include( "tests/sv_prefab_registration.lua" )(
+    include( "prefabs/sh_contract.lua" ),
+    include( "prefabs/sv_storage.lua" ),
+    include( "tests/fixtures/sv_prefab_storage_engine.lua" ),
+    include( "tests/sh_prefab_contract_tests.lua" ),
+    include( "tests/sv_prefab_storage_tests.lua" ),
+    include( "prefabs/sh_gizmo.lua" ),
+    include( "tests/sh_prefab_gizmo_tests.lua" )
+)
+include( "tests/sv_prefab_spawn_live.lua" )(
+    include( "prefabs/sh_contract.lua" ),
+    include( "prefabs/sv_spawn.lua" ),
+    include( "prefabs/sv_loot.lua" )
+)
+include( "tests/sv_prefab_city_live.lua" )(
+    include( "prefabs/sh_contract.lua" ),
+    include( "prefabs/sv_spawn.lua" ),
+    include( "prefabs/sv_loot.lua" )
+)
 include( "sv_walker_sim.lua" )
 include( "sv_walker_materialization.lua" )
 include( "sv_transitions.lua" )
@@ -582,6 +613,7 @@ end
 // Restores persistent state, applies new-player defaults, and synchronizes the spawned player.
 function GM:PlayerSpawn( ply )
     ply.ZM_PersistentStateLoaded = false
+    if ZM_PrefabEditor and ZM_PrefabEditor:HandleSpawn(ply) then return end
     if not charactersReady then
         ply:StripWeapons()
         ply:Freeze(true)
@@ -725,8 +757,18 @@ function GM:LoadSelectedCharacter(ply, profile)
     if not bodiesOk then
         ErrorNoHalt("[ZombieSim] Fallen bodies failed to spawn: " .. tostring(bodiesError) .. "\n")
     end
-    ZM_LootSpots:OnPlayerReady(ply)
-    logLoading(ply, "Prepared loot spots")
+    local prefabsOk, prefabsError = ZM_Prefabs:OnPlayerReady(ply)
+    if prefabsOk == false then
+        ErrorNoHalt("[ZombieSim] Prefab placement failed: " .. tostring(prefabsError) .. "\n")
+    end
+    if prefabsOk == nil then
+        ZM_Loading:Step(ply, "Waiting for map initialization before prefab props and loot", "info")
+    else
+        ZM_Loading:Step(ply, prefabsOk and "Prepared prefab props" or "Prefab props unavailable",
+            prefabsOk and "ok" or "warn")
+        ZM_LootSpots:OnPlayerReady(ply)
+        logLoading(ply, "Prepared loot spots")
+    end
     local droppedItemsLoaded, droppedItemsLoadError = ZM_DroppedItems:OnPlayerReady(ply)
     if not droppedItemsLoaded then
         ErrorNoHalt("[ZombieSim] Dropped-item crates could not be loaded: " .. tostring(droppedItemsLoadError) .. "\n")
@@ -750,6 +792,7 @@ end
 
 // Persist progress that may have changed since the last explicit update.
 function GM:PlayerDisconnected( ply )
+    if ZM_PrefabEditor and ZM_PrefabEditor:IsEditorMap() then return end
     if ZM_AmmoService and ply.ZM_Inventory then
         local synced, syncError = ZM_AmmoService:SyncAll(ply)
         if not synced then

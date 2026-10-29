@@ -57,9 +57,21 @@ return function(Atmosphere, Modules)
 
     local colourCorrectionSettings = {}
     local emptyTable = {}
+    local prefabDarkPreview = {
+        ["$pp_colour_addr"] = 0, ["$pp_colour_addg"] = 0, ["$pp_colour_addb"] = 0,
+        ["$pp_colour_brightness"] = -0.15, ["$pp_colour_contrast"] = 0.8, ["$pp_colour_colour"] = 1,
+        ["$pp_colour_mulr"] = 0, ["$pp_colour_mulg"] = 0, ["$pp_colour_mulb"] = 0
+    }
 
     function Modules.ScreenEffects.RegisterHooks()
         hook.Add("RenderScreenspaceEffects", "ZM.Atmosphere.ColourCorrection", function()
+            if ZM_PrefabEditorClient and ZM_PrefabEditorClient:IsActive()
+                and ZM_PrefabEditorClient.PreviewDark then
+                DrawColorModify(prefabDarkPreview)
+                Core.RecordHookResult("RenderScreenspaceEffects", nil, true, nil, nil,
+                    "prefab editor simulated dark preview", prefabDarkPreview)
+                return
+            end
             if ZM_LauncherMenu and ZM_LauncherMenu.Active then
                 Core.RecordHookResult("RenderScreenspaceEffects", nil, false, nil, nil, "launcher menu active")
                 return

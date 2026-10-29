@@ -1,10 +1,15 @@
-param([string]$OutputDirectory = '')
+param(
+    [string]$OutputDirectory = '',
+    [string]$MapData = ''
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $testsRepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $testsBinDirectory = Join-Path $testsRepoRoot 'bin'
-$mapData = Join-Path $testsBinDirectory 'preview_grid_24x24_seed_1337.json'
+if ([string]::IsNullOrWhiteSpace($MapData) -or -not (Test-Path -LiteralPath $MapData -PathType Leaf)) {
+    throw 'Pass the current matching preview manifest with -MapData.'
+}
 Import-Module (Join-Path $testsBinDirectory 'skybox_models.psm1') -Force
 Import-Module (Join-Path $testsBinDirectory 'motorway_geometry.psm1') -Force
 $root = $testsRepoRoot

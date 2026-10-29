@@ -26,10 +26,319 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Active Task Tracker
 
-The 2026-10-17 entries below are current. Later dated entries preserve the
-status as of their checkpoint; their older "pending" wording is historical and
-does not supersede this snapshot.
+**Alpha 3.3 implementation is authorized; Phase A1 is accepted and A2 is next:** follow the
+[Alpha 3.3 phased plan](todo-alpha.3.3.md). The prefab editor and explorer are
+the top priority, zombie AI is medium priority, fog is the least-priority
+presentation work, and world-generation rules are last. The order of other
+features is a proposal, not user-approved priority. Settle each phase's open
+behavior decisions first; preserve the separate expensive-work gates.
+The user approved the initial prefab editor as a preview-launcher admin tool
+requiring no other connected humans, saving to server DATA with explicit addon
+export, and using 3D mouse gizmos plus numeric controls. Keep survivor state
+untouched and verify return to the preview launcher.
+An initial editor source prototype is in progress; focused offline fixtures
+pass 21 cases, export13, packaging68 and GLua295/0. GMod runs with
+`-disableluarefresh` on `zn_preview_start`/preview, and a connected admin was
+confirmed by a read-only slot probe before a same-map reload. `zn_test_prefabs`
+timed out without acknowledgement or a report while the server continued
+ticking; a separate slot probe still passed. The user reported a nil test
+factory caused by relative nested includes; dependencies are now injected from
+`gamemode/init.lua`, with an 11/11 offline registration fixture. A fresh
+preview-launcher reload and `zn_test_prefabs` pass 11/11. Ask the user to
+open the editor for the two-prop visual/interaction review, then compare the
+stored city/preview persistence baseline hash recorded in the tracker. The
+first live attempt reached `gm_flatgrass` but its trace missed ground at
+Z -12288 and exposed a danger-star HUD error. Source fixes and focused
+fixtures pass. The player returned to `zn_preview_start`/preview, the session
+marker is absent, and stored city/preview data matches the pre-editor baseline.
+Reload the current launcher and retry the editor before continuing.
+The 2026-10-28 continuation reopened the editor successfully; workspace status
+is `gm_flatgrass`/preview with one owner and no survivor loaded. The user
+confirmed prop placement and gizmo interaction. A valid-ID save failure was
+traced to text-field synchronization; the fix passed focused checks and was
+live-verified with the user's one-prop `test` prefab. The user requested a
+larger model thumbnail browser, a ground compass, many selectable authored
+tile references and possible fog/light controls. Browser/compass fixtures
+pass; the user confirmed both work and accepts the browser for now, with visual
+polish deferred to a separate Phase A3. The user approved an editor-only
+simulated bright/dark screen grade and inner-city fog preview. Preserve the
+user's saved `test` prefab; after this session return to the preview launcher
+and compare the recorded survivor baseline. One approved straight-road model
+was compiled and 18 temporary files staged with a hash ledger at
+`generated/prefab_road_reference_20261028/staging-ledger.json`; no map was
+rebuilt. The reference selector and atmosphere controls have passing focused
+fixtures but need a fresh-load human review before broader tile generation.
+The road extractor omits bottom faces and is not yet a general tile converter.
+After fresh reload, the user confirmed the prototype road is textured and
+aligned, both preview controls work, and No reference removes the road.
+They want the later A3 UI phase to organize editor workflows into top-level
+areas (starting with a top-left Prefab button and side panel), because the
+reference selector was hard to find. Do not redesign the UI in the current
+slice. The user saved and reopened a two-prop `test123` prefab, returned to
+`zn_preview_start`/preview, and the marker was absent and survivor baseline
+matched. They requested double-click mode cycling and chose bounded uniform
+scale first. Live mode cycling worked, but the prop did not visually scale
+and the handles did not identify modes. Source now uses a render-scale matrix
+and distinct arrow/ring/square handles; focused fixtures pass, and the player
+returned to the preview launcher with the survivor baseline unchanged.
+Reload and repeat the actual scale/handle review. Preserve user prefabs;
+independent-axis stretching stays deferred until collision support is designed
+and validated.
+The user subsequently confirmed visible scale and saved size restoration,
+but reported rotation rings were unintuitive. Source now tracks mouse
+movement on the selected ring plane with signed angle/wrap handling and
+orientation-aware axes; focused fixtures and GLua295/0 pass. The current
+editor session must be checked before any reload. Visually test rotation with
+snapping on/off and an orbited camera; do not infer acceptance from the
+offline fixtures.
+The user revised the ring interaction: single-click a ring to select it,
+then hold left and drag anywhere in the viewport. Release retains selection;
+a click elsewhere without dragging deselects it, and right-click during a drag
+cancels that drag. Focused client fixtures pass 24/24, atmosphere18/18 and
+GLua295/0. With save confirmation, the editor was reloaded on
+`gm_flatgrass`/preview; separate status confirmed one owner and no loaded
+survivor state. The user confirmed the new selection/drag/deselection,
+crossings, snapping, camera orbit, middle-click reset and prop mode cycling.
+After return to `zn_preview_start`/preview, a separate status check confirmed
+the editor session closed, its marker was absent and no survivor was loaded;
+the stored city/preview persistence hash matched the pre-editor baseline.
+The user also requested middle-click reset to default rotation. Source and
+focused fixtures now reset only the clicked prop's rotation, preserving its
+position/scale and releasing its selected ring; the user confirmed it works.
+The user chose a separate prefab explorer accessible from launcher and editor,
+with interactive 3D previews, duplicate display names and stable unique IDs,
+and a server-shared library manageable by authorized preview admins. Source
+now implements those entry points, search/tag filtering, preview and confirmed
+rename/delete; managing the document currently open in the editor requires
+closing it there first. The user confirmed the launcher preview, search,
+orbit/zoom and close behavior, then found **Open in Editor** missing there.
+Source now carries the validated selected ID into the editor session.
+Offline explorer6/6, editor24/24, session10/10, packaging68/68 and
+GLua297/0 pass. The user confirmed the launcher-to-editor transition and
+editor explorer work, and confirmed rename/delete/filtering using a disposable
+prefab. On return to `zn_preview_start`/preview the editor marker was absent,
+no survivor loaded and stored city/preview persistence matched the baseline.
+The user also requested much closer editor zoom and possible camera controls
+in the deferred A3 UI phase; do not implement those in this slice.
+The live `zn_test_prefabs` suite now passes 15/15 after a launcher reload,
+including real engine JSON/storage precision and four cardinal local yaw
+values in in-memory fixtures. World-anchor rotations, overlapping spawned
+prefabs and scaled gameplay collision remain A2 work. The user accepted A1
+with those limits and approved proceeding to A2.
+A2 decisions: normal spawning reads explicitly exported addon prefabs, not
+DATA overrides; multiple requested tags must all match; explicitly guaranteed
+lootable props bypass both the activation roll and 320-unit spacing. Ordinary
+loot remains unchanged. World regeneration and gate-access changes remain
+separately gated.
+The user chose per-prop stationary/movable behavior; new and legacy props
+default to stationary. Source now includes the editor setting, contract,
+storage and export validation; focused editor25/25, storage7/7, contract6/6,
+export23 and GLua299/0 pass. A fresh preview launch passed live
+`zn_test_prefabs` 17/17. The user confirmed the new control works per prop
+and persists on save/reopen. After return to the preview launcher, a
+connected-admin status confirmed no editor session or survivor loaded; the
+marker was absent and stored city/preview persistence matched the baseline.
+The user chose resetting moved props to their authored placement on cell
+load rather than persisting their moved positions.
+World physics and scaled collision still require implementation and live
+validation.
+An initial server-side exported catalog and deterministic all-tag selector
+exist, with offline catalog2/2 and GLua299/0. They are not yet wired to a
+runtime spawner or Hammer entity; no generated world or exported prefab changed.
+The unscaled spawn primitive now has offline spawn2/2 and GLua302/0.
+Fresh `zn_test_prefab_spawn` passes 1/1 in the preview launcher, checking
+four cardinal anchor transforms and stationary/movable native physics flags
+with transient entities removed by fixture cleanup. This is not sustained
+physics, collision-trace or visual verification. Scale other than 1 remains
+explicitly blocked. Normal map spawning is not wired yet; the next Hammer
+anchor needs the existing custom-point instance-transform handling, plus
+explicit permission for generator source changes and a bounded compile.
+The user then approved that narrow source change and one isolated compile,
+but not staging or entering it. The Hammer `zn_prefab_anchor`, FGD, existing
+custom-point instance emitter and `sv_prefabs.lua` runtime owner are wired.
+Tile-local anchors explicitly set `instance_local=1`; runtime ignores raw
+copies while preserving direct map anchors. Offline owner6/6, spawn2/2,
+packaging68/68 and GLua306/0 pass. The corrected isolated fixture in
+`generated/prefab_anchor_20261029` passes VBSP/VVIS/VRAD, 4 clusters/4 portals
+and 27 compiled-anchor assertions. Two earlier successful VBSP exits omitted
+instances due to fixture paths; only the corrected relative-path build is
+valid evidence. No authored tiles or staged worlds changed. Actual runtime
+anchor/physics/visual review, scaled collision, loot and gate content remain
+pending; do not claim A2 acceptance.
+The next collision probe passed actual server traces for an oil drum at
+scales0.1/0.5/1/2/10 on all three axes, stationary and movable, within
+5% or0.5 units versus the unscaled control; `zn_test_prefab_spawn`2/2.
+This does not validate client traces or gameplay/visual collision, so scaled
+world spawning remains blocked. Fixed early `PlayerSpawn` ordering so loot
+waits for prefab initialization and resumes even on a reported prefab
+failure. Offline prefab runner12/12, runtime owner7/7 and GLua306/0 pass;
+fresh launcher `zn_test_loot_spots`19/19 and spawn2/2 pass. Actual city-cell
+ordering and visual anchor review remain open.
+The user approved staging and entering the one isolated anchor fixture
+without loading a survivor. Source reuses the sole-human editor marker and
+a guarded synthetic-cell command; offline session11/11, owner8/8, staging7/7
+and GLua306/0 pass. The fixture stager refuses occupied destinations and
+records hashes before writing. Its synthetic cell is not evidence of actual
+city-cell/loot eligibility. Restore its exact ledger-owned files and verify
+launcher, marker and survivor persistence after the human review.
+The isolated fixture ran on `zn_dev_prefab_anchor`/preview with one owner
+and no loaded survivor. Synthetic cell0 spawned ten temporary props at five
+compiled anchors, and the user confirmed placement/rotation and unscaled
+stationary/movable collision. Owner-only return reached the preview launcher;
+the marker was absent, stored city/preview persistence matched the baseline,
+and the hash-verified temporary BSPs, prefab and ledger were removed. This
+does not verify actual city eligibility, loot, multiplayer or scaled collision.
+The same isolated fixture is currently staged again for scale review:
+0.5x stationary and 2x movable barrels, five anchors/ten props, synthetic
+cell0, one owner and no loaded survivor. Fixture-only scaling is guarded;
+normal world scaling remains blocked. Offline spawn4/4, staging9 and
+GLua308/0 plus live spawn4/4 pass. Ask the user to review visible scale and
+walking collision, then return to the launcher, verify the baseline and
+marker, and restore the exact hash-ledger files.
+The user initially reported full-size collision on the small drum, then
+observed that a box-shaped hull might explain it. Matched traces confirmed
+client/server disagreement: typical 0.5x server7.03/client14.5 units,
+2x server about28/client about14.5. The fixture is still loaded and owned.
+Source now tries the documented tiny nonzero `SetModelScale` transition in
+the fixture-only spawner; rerun the same comparison before drawing a conclusion.
+Normal scaled spawning remains blocked. Return/ledger restoration still due.
+The tiny nonzero-transition experiment failed: server collision for the
+0.5x prop also remained about14 units. It is reverted to zero transition.
+GMod issue #6405 suggests a client `Activate()` call; test only on the owned
+fixture props and retain the documented client-physics caveats.
+That fixture-only client activation brought all ten sampled client/server
+traces within0.001 units, and the user confirmed walking/standing/pushing.
+The isolated map now has an experimental automatic replication/transmission
+sync; offline scale-sync1/1 and GLua313/0 pass. After a fresh fixture reload,
+automatic activation matched client/server traces within0.002 units and the
+user confirmed walking/pushing. Return to the preview launcher, baseline
+comparison and hash-ledger cleanup all passed; temporary files are absent.
+Normal-world scale remains blocked; actual PVS leave/re-entry, multiplayer,
+additional models and deployed gameplay remain unverified.
+The prefab library currently has only editor test documents, not an authored
+roadblock or gate set piece. The existing gate cars/glass, approved motorway
+art, lane/arrival behavior and `ZM_World` route authority remain unchanged.
+Agree the first prefab content and replacement scope before integrating them;
+the isolated fixture approval does not authorize a world refresh.
+The user chose temporary mounted-prop roadblock/gate examples and an isolated
+review, retaining existing gate cars. Source-only fixture9/9 and catalog3/3
+pass; transition server12/12/client11/11 and GLua313/0 pass. Its left
+north–south road has a three-drum roadblock and its right road an open-centre
+two-drum gate placeholder, both using the approved straight-road reference.
+It has no travel trigger and cannot prove gate functionality. Ask before
+compiling/staging the new fixture; no production or full-world work is approved.
+The user approved the single isolated compile. The room under
+`generated/prefab_setpieces_20261029` passes VBSP/VVIS/VRAD, 4 clusters/
+4 portals and 15 source/BSP checks; the known sky texture warning remains.
+Hash-ledger staging supports both temporary prefab files and passes 11
+fixtures. The user approved temporary staging and entry. The set-piece room
+was loaded as `zn_dev_prefab_anchor`/preview with one owner and no survivor.
+Status confirmed two anchors, the correct test prefab IDs and five props.
+The user confirmed both road references and placeholder arrangements looked
+correct. After return, the marker was absent, stored city/preview persistence
+matched the baseline, and hash-ledger cleanup removed the temporary files.
+This is isolated placeholder alignment, not final artwork or gate travel.
+The user approved per-prop loot modes Off, Normal and Guaranteed, with
+legacy/default Off. Normal retains the ordinary roll and spacing; Guaranteed bypasses both. For
+Normal group overrides on models without a native rule, the author sets a
+per-prop activation chance. Source now implements authoring, validation,
+stable per-prop loot keys and atomic guaranteed-spot insertion without
+resetting searched rows. Offline editor26/26, session12/12, spawn3/3,
+owner8/8 and loot-validation1/1 pass; export28 and GLua308/0 pass. Fresh
+live prefab19/19, loot23/23 and isolated spawn3/3 pass. A first live loop
+failure was fixed; a later timeout was traced to a nested test include and
+fixed with injected dependencies. The user confirmed the loot-mode,
+group/chance and save/reopen controls using a disposable prefab. After return
+to the preview launcher, the editor marker was absent and stored city/preview
+persistence matched the baseline. Actual city-cell loot search/persistence
+remains open.
+Persisted loot acceptance now commits inventory and a conditional spot claim
+in the existing inventory transaction, preventing duplicate grants after
+write failure; stale offers, wrong profiles and failed declines report errors.
+Transient runtime drops retain their separate behavior. Fresh live loot30/30,
+inventory51/51 and isolated spawn3/3 pass; GLua308/0 and prefab runner14/14
+pass. Actual deployed city-cell search remains unverified.
+The user chose their existing preview survivor for a bounded city review.
+`zn_test_prefab_city` is prepared: one transient prefab prop, a unique
+throwaway loot profile and automatic decline; it does not grant inventory,
+move the player or change cheats. It restores the active loot owner and
+cleans up its test profile, with an explicit recovery marker on cleanup
+failure. Offline safety2/2 and GLua315/0 pass; a launcher probe correctly
+rejected the non-deployed context. Ask the user to deploy and confirm a
+safe city cell, then verify actual map/cell/player state before running it.
+The user deployed in preview logical cell14,0 on `zz_preview_ed3d3fa48090-cp`;
+separate status confirmed world/loot cell302. The real-city probe passed1/1,
+including candidate/target/search/decline and throwaway persistence, with no
+position or inventory change during the probe. Active city loot was restored
+and its marker absent. After user-approved return, the preview launcher kept
+saved cell14,0 and stored city/preview persistence matched the baseline.
+The anchor was synthetic; actual compiled-anchor eligibility, accepted
+rewards, multiplayer and scaled collision remain unverified. A final source
+change strengthens cleanup verification and passes offline safety2/2 but was
+not reloaded in the city.
+The user chose directional prefab spotlights with position, direction,
+colour, brightness, cone angle and range controls; at most eight visible per
+client, with only the nearest allowed to cast shadows. First prototype and
+visually review one isolated editor light; preserve existing chest-lamp/CSM
+owners and the shared engine shadow-projector limit. No spotlight content or
+world rollout has yet been implemented.
+An editor-only prototype now creates one shadowed warm spotlight and one
+temporary stationary drum, with five-minute expiry and owner/map cleanup.
+Offline client1/1, server2/2, atmosphere18/18 and GLua320/0 pass. It does
+not save prefab light data. In a fresh editor the user saw neither light nor
+shadow at brightness 1 in bright or simulated-dark preview; brightness 6
+showed both, and the equally bright unshadowed comparison retained light
+without the projected shadow. The user approved proceeding to configurable
+prefab lights. Client/server probe cleanup was verified, and the launcher
+return left the editor marker absent and survivor persistence unchanged.
+This proves only the single-light prototype, not a default brightness or
+the networked eight-light implementation.
+The user chose the existing move/rotate gizmos plus numeric controls for
+light authoring. A later live comparison found the manually drawn editable
+client drum showed neither illumination nor a projected shadow while the
+server drum showed both. Investigate editor preview rendering before
+claiming a working light editor. The user also pulled global model search
+forward: opt-in, incrementally indexed mounted-folder search now finds
+multiword `oil drum`; the user found and added it in game. Offline editor28/28,
+prefab runner20/20 and GLua320/0 pass. The rest of A3 remains deferred.
+An isolated engine-drawn opaque client model was lit and cast a shadow.
+After a temporary editor render-group change the user confirmed prop
+appearance and move/rotate/scale; the initial light had no visible effect on
+the moved prop, but after restart it was lit and its shadow followed movement.
+A matched comparison then showed both engine-drawn and original manually
+drawn client drums illuminated and shadowed when present before light update.
+The experimental editor render-group change was removed; preserve the
+original drawing path. Projector refresh timing remains an integration
+concern and transparent models/lifecycle remain unverified. The comparison
+resources were removed; the editor returned to the launcher with no marker
+or loaded survivor, and stored survivor persistence matched the baseline.
+The user requests a selectable list of available loot groups instead of the
+current ID text box in the deferred A3 editor-UI phase. Preserve server-side
+validation and the model-default option; do not redesign the UI in A2.
+preserve the sole-human editor guard and the separately deferred A3 UI phase.
 
+The [Alpha 3.2 tracker](docs/todo-alpha.3.2.md) is archived, not released or
+fully accepted. Its remaining full-world outputs, Cell Health execution,
+integration and carried Alpha 3.1.5 closure remain deferred, not prerequisites
+to the prefab phase. Preserve accepted motorway/CSM checks and keep generator,
+expensive output, production and publication work separately gated.
+
+### Historical Alpha 3.2 chronology
+
+The dated entries below preserve their checkpoint-specific status; their
+"active", "next" and "pending" wording is historical. The Alpha 3.3 plan above
+is authoritative for current priority.
+
+- **Motorway source cleanup, 2026-10-28:** normal planning and emission consume
+  approved trusted-plan motorway placements and gate records; the old
+  mouth/connector survey, measured assembly-report workflow and complex
+  inspection modes are retired. Normal roads remain on the 640-unit grid and
+  `ZM_World` owns route availability. Focused source checks pass: motorway
+  contracts132, retained corrected-plan/grid and gate writer/export checks1464
+  and infill scope6; all96 saved motorway gate contracts match their entrances. No VMFs, BSPs,
+  runtime exports or materials were regenerated, compiled or staged. The
+  cleanup has not received fresh compiled/live verification. Continue to keep
+  generator work paused and ask before any expensive output work.
 - **Alpha3.2 revised focus, 2026-10-17:** the user reports all motorway gates work and alignment is perfect in game. The two corrected BSPs (`zz_preview_74c1b0c24754`, `zz_preview_a30b0e90c7e2`) are staged in `content/maps` and engine `garrysmod/maps`; hashes match the isolated builds. `content/data_static/zombiesim_world_preview.json` routes logical IDs454 and113 to those names via the targeted map-name updater; only those two `map` fields changed, and current plan/capture hashes were preserved for now. All336 active preview cell materials and map-browser thumbnails are refreshed and old `-edge2` cell images removed. A live load found missing skyline footprints for the two new map names; the targeted updater now emits matching footprint entries and temporarily reuses each replaced recipe's skyline model arrays. The updated manifest is staged and the same preview map was reloaded; user confirmation that the warning is gone remains pending. Keep the world generator paused and defer exact skyline models/full revision hashes to the later all-map export.
 - **Phase J transition gate simplification, 2026-10-17:** gate access uses `CanTravelToNeighbour`/`ZM_World` exits as its only route-availability authority. The trigger-center comparison, invalid-measured-gate state, and runtime `route` default were removed. Optional `motorwayGates` records are used only for marker/arrival presentation. Server transition fixtures pass12/12 and GLua syntax passes277/0. Same-map reload and read-only gate report confirmed the west triggers published, the west neighbor available, and the marker unblocked; the user then confirmed all gates work.
 - **Targeted runtime map-name update:** the preview world JSON now maps cells113/454 to the staged BSP names; the update changes only those `map` fields and preserves the existing revision hashes until the final all-map export. GMod was closed at the staging checkpoint; the later same-map runtime load and skyline-manifest follow-up are recorded above.
@@ -212,7 +521,7 @@ does not supersede this snapshot.
   Phase E remains active, not accepted. Existing bounded preview approval stands.
 - **Alpha3.2 reconciled status, 2026-10-14 - authoritative over older next-action
   notes below:** user paused execution for a complete audit. Read the current
-  reconciled-status section at the top of `todo-alpha.3.2.md`. Phases0/A/B/D
+  reconciled-status section at the top of `docs/todo-alpha.3.2.md`. Phases0/A/B/D
   accepted; both straight and all seven complex motorway cells were reviewed.
   Accepted isolated inspection fixtures are NOT normal-world rollout: retained
   full density-preview plan has96 motorway cells, no measured assembly metadata
@@ -657,7 +966,7 @@ does not supersede this snapshot.
   or diagnose a crash. This is scoped straight-cell visual acceptance, not
   whole Phase B. Complex-cell approach/clearance/topology work remains; no
   compile/staging/runtime/default settings or authored assets changed.
-  See [the current tracker](todo-alpha.3.2.md) for exact artifacts and limits.
+  See [the current tracker](docs/todo-alpha.3.2.md) for exact artifacts and limits.
 
 - **Alpha 3.2 Phase B generated inspection gate, 2026-10-13:** continue-to-preview
   authorization produced an isolated overview plus eight four-rotation VMFs
@@ -671,7 +980,7 @@ does not supersede this snapshot.
   and both installed runtime exports unchanged; no compilation/staging ran.
   Phase B is not complete/accepted: review generated joins, resolve measured
   approach/tolerance/clearance and topology gates in
-  [the tracker](todo-alpha.3.2.md). Do not re-open individual asset correctness
+  [the tracker](docs/todo-alpha.3.2.md). Do not re-open individual asset correctness
   or orientation approval; both remain user-authoritative.
 
 - **Alpha 3.2 Phase B measured straight/bridge ports, 2026-10-13:** explicit
@@ -727,7 +1036,7 @@ does not supersede this snapshot.
   after checks/baseline approval. Density policy approved: cardinal land steps
   from actual ocean,0-2 protected low/3-7 medium/8+high; commercial/financial
   raise inland to high, settlement at least medium, coast wins. Approved small
-  fixture recorded in [the tracker](todo-alpha.3.2.md). Pure classifier/zoning/
+  fixture recorded in [the tracker](docs/todo-alpha.3.2.md). Pure classifier/zoning/
   roll/hash/pool module passes1490focused assertions across88authored templates,
   including exact roll thresholds and pinned hash/locale reproducibility,
   without normal generator imports or output changes. Settings/tuned-plan
@@ -759,7 +1068,7 @@ does not supersede this snapshot.
 
 - **Active milestone: Alpha 3.2, generator-first scheduling, 2026-10-13.**
   The user moved unfinished Alpha 3.1.5 Phase D output acceptance and Phase I
-  integration to the end of [the 3.2 master plan](todo-alpha.3.2.md):
+  integration to the end of [the 3.2 master plan](docs/todo-alpha.3.2.md):
   J bundles final-revision outputs; K owns carried closure/acceptance/restoration.
   They are not prerequisites to generator work and are not accepted by transfer.
   Execute 0/A/B/D/E/F/G (generator), then C/H/I (CSM/integration), then J/K/L
@@ -1134,7 +1443,7 @@ does not supersede this snapshot.
 
 - **Alpha 3.2 scope**, designated on 2026-10-10 and expanded in the
   user-approved planning decisions on 2026-10-13. Follow the
-  [master phased plan](todo-alpha.3.2.md) for density-aware buildings,
+  [master phased plan](docs/todo-alpha.3.2.md) for density-aware buildings,
   decorations, borders/edges and footprint-aware 3-wide motorways, plus the
   [CSM technical tracker](docs/csm-implementation.md). The 2026-10-13 user
   scheduling decision makes generator work the priority and carries 3.1.5
@@ -1539,17 +1848,12 @@ in `gamemode/utils/`; standalone PowerShell regression tests live in
 `tests/powershell/`, while generator/build/support scripts stay in `bin/`.
 Static-data fixtures remain under `tests/`.
 
-Run PowerShell commands from the repository root. For changes to planning or VMF generation, use the preview pipeline and start with the fast structural check:
+Run PowerShell commands from the repository root. When generator work is
+authorized, follow the [preview workflow](docs.md#preview-workflow) with
+matching isolated paths and start with the structural check. Never overwrite
+retained artifacts merely by copying a dated example.
 
-```powershell
-.\bin\generate_world_cells.ps1 -WorldProfile preview -Seed 1337
-.\bin\build_motorway_preview.ps1 -WorldProfile preview -OutputDirectory .\generated\measured-assemblies
-.\bin\plan_cell_templates.ps1 -WorldProfile preview -MapData .\bin\preview_grid_24x24_seed_1337.json -MotorwayAssemblyReport .\generated\measured-assemblies\assembly-report.json
-.\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData .\bin\preview_grid_24x24_seed_1337_template_plan.json -RefreshGenerated -PruneStaleGenerated
-.\bin\build_city.ps1 -WorldProfile preview -VBSPOnly -OnlyRequiredMaps -CleanStagedCity
-```
-
-Normal wide (3x) motorway cells plan only from current measured assemblies (`-MotorwayAssemblyReport`) and require the expanded border/outer rings. Root settings keep `vmfBuild.outerEdges.enabled` false, so full-world preview batches use an isolated settings copy with it enabled and redirected profile paths. Full terrain infill is three passes: `build_cell_vmfs.ps1 ... -MeasureCompleteTerrainInfill`, `create_terrain_infill_templates.ps1 -PartialGapLayoutDirectory <src> -CompletePatches`, then `build_cell_vmfs.ps1 ... -SizedTerrainInfill -CompleteTerrainInfill`.
+Normal wide (3x) motorway cells require the matching approved trusted plan and expanded border/outer rings; the old assembly-report workflow is retired. Root settings keep `vmfBuild.outerEdges.enabled` false, so full-world preview batches use an isolated settings copy with it enabled and redirected profile paths. Full terrain infill is three passes: `build_cell_vmfs.ps1 ... -MeasureCompleteTerrainInfill`, `create_terrain_infill_templates.ps1 -PartialGapLayoutDirectory <src> -CompletePatches`, then `build_cell_vmfs.ps1 ... -SizedTerrainInfill -CompleteTerrainInfill`.
 
 - After structural tile changes, run `./bin/check_vis_budgets.ps1 -WorldProfile preview -RefreshPortalData`; inspect affected layouts in Hammer, including generated developer zoos when applicable.
 - For planner yaw changes, extend and run focused regressions for the reported recipe and previously correct affected cases before broad regeneration. Building frontage changes must pass `./tests/powershell/test_building_frontage.ps1` and `./tests/powershell/test_multi_tile_templates.ps1` before refreshing the preview plan and VMFs.
