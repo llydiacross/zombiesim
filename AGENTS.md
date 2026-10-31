@@ -26,12 +26,586 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Active Task Tracker
 
-**Alpha 3.3 implementation is authorized; Phase A1 is accepted and A2 is next:** follow the
+**Calling-card D2 decisions, 2026-10-30:** unlocks are shared by a Steam
+account's survivors within each world profile; only the two defaults are free.
+Background/detail unlocks are independent, selections are per survivor and
+visible to others. Buy with survivor credits at den traders; availability and
+prices are per design, with quest rewards separately configurable. No quest
+integration or live/multiplayer acceptance is implied.
+
+**D2 calling-card source and offline checks:** account/profile unlocks,
+per-survivor selections, scoreboard selector and atomic den-trader purchases
+are source-wired. The server-only reward API is not integrated with quests.
+Seven cards are installed, including the two free defaults. Phase D offline fixtures41/41, artist
+pipeline88/88, packaging73/73 and GLua390/0 pass, including the isolated
+server-suite fixture, server/client wire correlation and the cached-factory
+bootstrap regression. The native calling-card suite passes4/4 and static-data
+fixtures22/22; after the approved staging reload, static validation loaded
+seven cards with zero errors and the existing Capitalist warning. The client
+state fixtures passed4/4, but all six client UI fixtures failed because their
+deferred loader returned nil. Source now caches the initializer during client
+bootstrap and restores its environment even if a fixture fails; offline state4/4
+and UI6/6 pass. After a user-approved preview-launcher reload, fresh client
+reports pass state4/4 and UI6/6. After the reload and tests, 21 table row sets
+match the verified pre-reload backup; the two new calling-card tables were
+absent from that backup and remain empty. Separate status confirms the preview
+launcher with one human, no editor participant and no loaded survivor, and a
+fresh client report confirms ready Home. The user deferred live artwork/survivor
+review; ask before another reload or deployment. Real UI, purchases and
+multiplayer remain unverified.
+
+**D3 credits source, 2026-10-31:** the user confirmed the supplied
+`content/sounds/music/credits.mp3` is cleared for inclusion and redistribution;
+this is not independently verified licence evidence. Credits music now uses
+the launcher audio owner, pauses/resumes the menu track, honors the music
+toggle and `snd_musicvolume`, and stops on close or shutdown. Workshop
+packaging owns the canonical `sound/music/credits.mp3` path. Offline
+audio lifecycle11/11, read-only dancer-probe6/6, isolated packaging74/74
+and GLua391/0 pass. After an approved preview-launcher reload, a fresh client
+report confirms the probe is loaded and correctly reports inactive credits;
+the launcher remains at Home with one human and no loaded survivor.
+The preview-admin-only status command records the current credits camera,
+music channel and four named ragdolls' head/eye matrices without changing
+physics or poses. The user opened Credits and confirmed the song is audible;
+the later client snapshot found credits inactive and did not capture dancers.
+The user deferred a further dancer snapshot; do not retry it without agreement.
+An active snapshot is still required before choosing head-tracking axes.
+Do not claim that any head tracks or that D3 is accepted.
+
+The user supplied `patterns/dirty_paper.png`, `symbols/creeper.png` and
+`symbols/weed.png` for calling-card generation. The paper is byte-identical
+to the existing default background; the symbols have transparency. The user
+confirmed all three are cleared for use and distribution, including the
+creeper; this is user confirmation, not independently verified licensing.
+They chose a small preview with separate backgrounds and details. Three paper
+colour variants and two tiled symbol details are generated under
+`generated/callingcards_preview/build-a4288f7edf9a4f05b395c31dab649bd8`.
+The user chose 5 credits per design at den traders, future quest rewards and
+no player resale; unlocks are not backpack items. Its artwork is byte-identical
+to the reviewed earlier preview; 750x125 dimensions, detail transparency and
+unclipped sides passed there. The user approved the approximate six-combination
+sheet for an initial in-game review, not final appearance. Isolated SQLite
+exercised all five exact catalogue entries as purchases and rewards and rejected
+resale; the expanded-catalogue fixture also passes14/14. The user approved
+staging these exact five PNGs and the shared catalogue; all seven installed
+materials and catalogue hashes were verified. The detail-default digest was
+updated to match its current image, without modifying either default image.
+The user deferred survivor review; do not deploy, purchase or select cards
+without separate approval. No quests are wired.
+
+The user reports an aesthetic redesign of the 1x1 roads and says a full
+world recompile is required. Preserve the edited/new road VMF/VMX sources.
+Existing BSPs do not yet include the redesign; inventory dependencies and
+profiles in Phase H and obtain separate approval before the full compile,
+matching output/staging or production changes.
+
+World-prefab placement is now source-wired: one explicitly enabled profile/
+logical-cell/tile/XYZ-offset/rotation placement per document, independent of
+tag selection. Saving remains server DATA; the existing explicit prefab
+exporter preserves placement metadata, and core packaging includes exports.
+No user prefab has been exported by this change. Disabled world prefabs stay
+out of tag selection; re-export disables gameplay placement on the next cell
+load. The editor adds suggested/custom tags and per-tab preview X/Y/Z offsets;
+the explorer shows placement kind/location and tag suggestions. World rotation
+is applied on cell load, not to the local editor preview.
+Offline prefab35/35, export66, packaging70 and GLua376/0 pass. After a
+verified empty-launcher reload, live prefab28/28 and native spawn7/7 pass,
+including a runtime-created anchor's stable loot/light IDs. This is not
+automatic deployed-cell, visual UI or multiplayer acceptance. Current status
+is `zn_preview_start`/preview, one human, no editor participant or survivor;
+the preceding cell-review survivor baseline matches. Ask for the new controls'
+human review and selection of the first saved world prefab before exporting
+or arranging its bounded real-cell test. Preserve normal-world scale blocks
+and the ground-shadow deferral; no map rebuild or world refresh is needed.
+During the new UI review the user reported `(20,0,0)` did not move the grid.
+Source now translates grid and compass XY with the prefab-preview offset,
+preserving reference geometry and the approved reference-surface guide height.
+Editor53/53 and GLua376/0 pass, but this correction is not yet live-loaded.
+Current state supersedes the launcher note above: `gm_flatgrass`/preview,
+one editor owner, no survivor. Preserve all tabs; prefer the existing
+snapshot-preserving Change Map flow, or confirm saved work before a reload.
+The next check is visible grid movement for X20, then world-prefab selection
+and explicit export. Do not mistake source tests for that human review.
+The user then changed maps and confirmed the grid moves correctly. Current
+status is `gm_construct`/preview with one owner and no survivor. They chose
+`test123`, but the saved DATA document has no world placement and a movable
+bench scaled1.4; only dry-run export ran. Keep the saved document unchanged
+and obtain an enabled unscaled world prefab or an explicit scaling decision.
+An exporter prefab/prop-ID variable collision is fixed; export67 passes.
+
+The metadata/save regression is corrected: explicit form docking order,
+focused-entry-safe refresh and opened-tab-bound saved IDs pass editor55,
+explorer10, transfer2, map-contract2 and GLua376/0. The user confirmed the
+layout and saving. The saved unscaled `test` stool was verified and explicitly
+exported at preview logical `(4,-11)`, tile `(0,0)`, offset `(0,1,0)`, loot Off.
+Launcher return cleared all editor/transfer markers and matched the stored
+survivor baseline. On a user-approved deployed visit, normal spawning produced
+one `world_test` anchor/one stool; the user confirmed placement and collision.
+Normal travel then restored the starting preview cell `(14,0)`/cell302 on
+`zz_preview_ed3d3fa48090-cp`, with zero prefab instances and health100.
+City data and preview attributes were unchanged; only normal survival ticks
+and save bookkeeping changed during gameplay. The export remains enabled.
+An approved follow-up confirmed same-BSP logical control `(7,-9)`/cell79
+has no prefab while revisiting `(4,-11)`/cell28 spawns one `world_test`.
+Both loads used `zz_preview_d56e6ff2981a` with `(14,0)` as an intermediate;
+direct same-BSP gate travel was not tested. The survivor returned to `(14,0)`
+alive at health100. Stable data matched; normal transitions replenished
+stamina. Multiplayer, scaled spawning and other A2 items remain open.
+No world refresh or map rebuild ran.
+The installed preview has no accessible adjacent same-BSP cell pair. The
+transition fixture models the existing asynchronous Walker preload and
+confirms forced same-map gate reloads; fresh `zn_test_safezones`27/27 and
+GLua376/0 pass. This does not claim a direct live same-BSP gate traversal.
+The isolated launcher scale suite now includes the `test123` bench at 1x
+and 1.4x, all axes and both motion settings, without changing that document.
+Offline matrix/tolerance/cleanup/launcher-guard checks and GLua376/0 pass;
+after a consented launcher return, native `zn_test_prefab_spawn` passed 7/7,
+the saved return cell remained `(14,0)`, and `test123` retained its hash.
+A separately gated `-ScaledBench` isolated fixture is prepared for matched
+client/server traces of five 1.4x movable benches. Owner18/18, focused
+trace/scale tests, staging23/23 and GLua376/0 pass. The user approved staging
+and confirmed bench size, walking and pushing. Matching client/server traces
+before and after interaction differed by at most0.018 units. The player
+returned to the launcher; saved cell, persistence and user prefab checks
+passed, and the hash-ledger files are absent. Normal scaled spawning remains
+blocked; actual PVS re-entry, multiplayer and deployed collision are untested.
+The existing isolated editor guard preview now accepts validated combat
+overrides and uses a non-player-targeting Walker with a15-second expiry.
+Offline probe3/3, config2/2, actor5/5, targeting2/2 and GLua376/0 pass;
+fresh prefab28/28, loot13/13 and loot-spots30/30 pass. The override firing
+check ran in `gm_flatgrass`/preview with one owner and no survivor: a pistol
+at damage23/interval0.2/spread0 fired12 shots in2.55s for276 health loss.
+Expiry removed the guard, weapon and Walker; a separate check reported zero.
+City/preview attributes and saved cell `(14,0)` match the baseline. The
+user returned to the launcher, with no editor or survivor loaded and no
+session marker. Actual guard kills/rewards and multiplayer remain open; no
+world work is authorized.
+**Guard testing deferred (user, 2026-10-30):** guards will not be used until
+later, so skip further guard verification to progress faster. The live
+kill/corpse-reward probe never reached `OnKilled`; leave it unverified and do
+not claim guard kills, rewards, deployed guards or multiplayer guard
+behavior. Preserve guard source and `testguard`; resume only when needed.
+**A2 accepted with limits (user, 2026-10-30); Phase B (zombie AI) is now
+active.** Unverified limits retained: multiplayer, normal-world scaling
+(blocked), real-cell gate/roadblock set piece, real-cell prefab loot accept
+and guard runtime. Do not claim them.
+**Phase B implemented and accepted with limits (2026-10-30):**
+behaviour decisions and implementation are recorded in the tracker's Phase B
+section and in `docs/walker_simulation.md`. A new `ZM_WalkerAwareness`
+module handles camera PVS, visibility, noise and alerts, and the despawn
+paths now honour camera visibility. The user's live review drove fixes for
+static re-pathing lag, ground spawns, in-view despawns, sky launches
+(airborne safety net only; cause unproven), a 0.9 s wind-up, prop/crowd
+sidestep/yield/hold recovery (walkers stay solid) and a radiated-glow fade.
+Walker fixtures 12/12 and GLua 378/0 pass; the user reports lag better, no
+ground spawns/visible despawns/sky launches and movement good enough for
+now; the radiated glow fades in smoothly. A ticket-seed clustering bug that
+left whole walker batches all or never radiated (0/100 in cell 302) now uses
+a murmur3-mixed seed; live 36/100 radiated. Measured performance and
+multiplayer remain unverified. **Phase B accepted with these limits (user,
+2026-10-30). Phase C is also accepted with the limits below; Phase D is
+active.** Decisions and review evidence are recorded in the tracker.
+
+The user requested a Change Map button beside Return to Launcher in the
+prefab editor, with recommended `gm_construct`/`gm_flatgrass` thumbnails and
+custom-map selection. Restore every open tab, including unsaved edits, across
+the reload; show mounted custom maps separately with missing-thumbnail
+placeholders. They
+also requested a directly placeable Hammer guard with clothing and other
+agreed guard settings available in Hammer and the prefab editor, including
+per-guard damage, fire rate and accuracy. Guards remain invulnerable with
+unlimited ammo. Preserve
+the preview-only session, existing guard decisions and separate output gates.
+The direct `zn_prefab_guard` Hammer definition and shared combat overrides
+are source-wired; blank overrides retain weapon defaults, firing interval is
+seconds per shot (minimum 0.05), and lower shot spread means greater accuracy.
+Offline prefab40/40, guard9/9, export44, packaging69 and GLua367/0 pass.
+Fresh preview-launcher prefab24/24, guard configuration1/1 and weapon
+registry1/1 pass; the session marker is absent and survivor persistence
+matches the baseline. A separately approved isolated compiled fixture passed
+VBSP/VVIS/VRAD, 4 clusters/4 portals, 33 source/BSP assertions and live guard
+fixture1/1. The user confirmed default/custom guards, clothing and weapons
+look correct. After returning to the launcher, the marker was absent, the
+survivor baseline matched and all temporary fixture files were removed.
+Actual firing of the overrides and deployed-world/multiplayer behavior remain
+unverified.
+Normal guard spawning and export are now source-wired after the isolated
+guard-anchor fixture and its user visual review passed; do not infer A2 or
+deployed-world acceptance from that fixture.
+Guard editor and explorer authoring/preview now exist in source, using
+server-supplied weapon choices and the existing shared-budget clothing queue.
+Offline prefab41/41, editor46/46, session16/16, guard preview3/3, export44,
+packaging69 and GLua370/0 pass. After a safe preview-launcher reload, live prefab25/25 and guard
+configuration1/1 pass. The user confirmed the editor controls and explorer
+preview work and saved a one-guard `testguard` document, independently
+verified in server DATA; preserve it. The editor remains open on
+`gm_flatgrass`/preview with one owner and no survivor loaded. Ask before a
+reload or discard and verify launcher return/baseline after the session. The map picker and automatic unsaved-tab recovery are now implemented in
+source, but need the fresh-client and actual map-transition checks recorded
+below.
+The user confirmed all three guard combat overrides stay checked after
+save/reopen, and a subsequent DATA read confirms the three fields exist.
+An earlier snapshot preceded that saved state; do not treat it as a save bug.
+Guard spawning reports deferred readiness, applies anchor transforms and
+rolls back on initialization failure. An in-memory live fixture was prepared for the
+preview launcher, checking four rotations and cleanup without a survivor.
+Offline guard11/11 and GLua371/0 pass. The user saved and returned; separate
+status and persistence checks confirmed the launcher, absent editor marker,
+no loaded survivor and matching baseline. After a fresh reload, the live
+fixture started1/1, checked four guard rotations/readiness/overrides1/1 and
+verified post-frame cleanup1/1. Preserve `testguard`; actual firing, normal
+actual deployed anchor integration, multiplayer and world behavior remain unverified.
+The fixture-only prefab owner now waits for all deferred guards before loot,
+rolls back failures and ignores callbacks from removed anchors or old maps.
+Offline owner15/15 and spawn9/9 pass; fresh live prefab25/25, existing
+spawn6/6 and loot-spot30/30 pass, but the pending-guard owner path has not
+run through a compiled anchor. One packaged static guard weapon catalogue
+serves both server and export validation; live catalogue1/1 and config1/1
+pass. The user then approved a separate four-anchor fixture: compiled
+source/BSP15, VBSP/VVIS/VRAD and 4 clusters/4 portals pass; live owner and
+guard-anchor suite1/1 show four ready guards and four props, and the user
+confirmed placement, rotations and clothing. Return, marker and survivor
+baseline checks passed; ledger-owned assets and generated fixture were
+removed. Normal guard spawning and export are now source-wired; prefab43/43,
+export57, GLua371/0 and a non-writing `testguard` export dry run pass.
+The normal-path wiring and pending-report fix are not yet fresh-loaded.
+Actual city-cell eligibility, overridden firing, kills/rewards, multiplayer
+and lifecycle remain unverified.
+The map picker uses recommended/custom mounted-map pages and a verified local
+tab snapshot plus an owner-bound server marker. Offline map contract2/2,
+transfer2/2, editor48/48, session20/20, prefab46/46, packaging70 and
+GLua376/0 pass. It has not been live-loaded: check actual thumbnail materials,
+JSON/DATA round-trip, switching between `gm_flatgrass` and `gm_construct`,
+dirty-tab restoration, UI appearance and custom-map behavior before acceptance.
+The first live `gm_construct` switch was safely rejected because the world
+index returns `nil` for no match; source and fixtures now accept that
+documented owner behavior while rejecting malformed results. The editor is
+still open on `gm_flatgrass`/preview, one owner, no survivor; the rejected
+transfer file is absent. Prefab contract runner35/35 and GLua376/0 pass.
+Ask before reloading or discarding the user's test tabs, then retry the switch.
+The user saved and approved the reload, then retried. Separate status now
+confirms `gm_construct`/preview, one owner and no survivor, with a valid
+workspace; the marker has no pending transfer and the local snapshot is
+absent. The user confirmed both unsaved tabs and edits restored. The editor
+remains open; verify reverse switching and saved-tab authorization before
+returning and comparing the survivor baseline. Do not reload or discard work
+without consent.
+The user then confirmed the reverse `gm_construct` to `gm_flatgrass` switch
+retained all tabs and an unsaved `testguard` edit. Separate status confirms
+the saved-tab authorization, absent transfer snapshot, one owner and no
+survivor; the saved `testguard` file is hash-unchanged. The user confirmed browser thumbnails, the Custom Maps tab and search. They
+returned to the preview launcher; separate checks show no editor owner or
+loaded survivor, no editor/transfer marker, unchanged saved `testguard` and
+matching city/preview persistence. An actual custom-map transition remains
+unverified.
+The user now requests a Cells tab in Change Map and tile X/Y controls in the
+left View/camera area for previewing a prefab on a cell. Default the editor
+to the cell centre, on the crossroads/T/straight road centre piece. Settle
+the tile range and workspace movement semantics first: the user chose the
+central 5x5 tiles at centred offsets `-2..2`, east +X/north +Y, and moving
+the entire preview workspace onto the detected surface without changing
+saved coordinates. Preserve
+preview-only and survivor isolation; do not regenerate or change production
+worlds.
+The cell-preview source now resolves preview cells through `ZM_World`, uses
+the centre surface by default and offers global workspace tile offsets
+`-2..2`. Same-BSP cells retain separate logical identities and reload; failed
+switch recovery restores the prior cell/tile. Offline editor/cell and session
+fixtures pass, as do prefab contract runner35/35 and GLua376/0. The source is
+not yet live-loaded. First review the existing preview crossroads cell
+logical `(14,0)`, ID302, map `zz_preview_ed3d3fa48090-cp`; check its engine
+mount before attempting entry. Do not regenerate or stage a world.
+The user instead selected existing preview cell `(17,-11)`, ID41, motorway
+straight map `zz_preview_fec25b5a01e6`. They confirmed the centre placement
+looks correct; separate status reports tile `(0,0)`, origin
+`(0,0,64.03125)`, one owner and no survivor. The `(14,0)` crossroads has not
+been reviewed. Test tile movement with the editor open, preserving user work.
+The user approved workspace/prefab placement after tile movement on this
+motorway cell. Separate marker/status checks verify X=-1 at -640, X=1 at
++640, and Y=1 at +640, with detected heights 68.03125/68.03125/64.03125.
+The first positive-X request initially selected -1; the later +1 check is
+independently verified. The editor remains open and no survivor is loaded.
+The user then confirmed the `(14,0)` crossroads and preserved tabs.
+Independent status verifies cell302, `zz_preview_ed3d3fa48090-cp`, centre
+tile `(0,0)`, origin `(0,0,36.03125)`, one owner, no survivor and no pending
+transfer/snapshot. These are bounded checks, not all-cell/25-tile coverage.
+Ask before returning; verify the marker and survivor baseline afterward.
+
+**User deferral, 2026-10-29:** stop investigating missing editable-prefab
+ground shadows and defer the issue until the end of Alpha 3.3. Continue other
+approved work without treating spotlight visuals, replication or visibility
+selection as accepted. Do not reopen this investigation early.
+
+**Alpha 3.3 implementation is authorized; A1/A2/A3, B and C are accepted
+with limits and D is active:** follow the
 [Alpha 3.3 phased plan](todo-alpha.3.3.md). The prefab editor and explorer are
 the top priority, zombie AI is medium priority, fog is the least-priority
 presentation work, and world-generation rules are last. The order of other
 features is a proposal, not user-approved priority. Settle each phase's open
 behavior decisions first; preserve the separate expensive-work gates.
+Phase C attribute and armour implementation and its transactional migration
+are source-wired. Live inventory52/52 and weapon-effects24/24 include the
+new equip/persistence and firearm-calculation cases; the user approved the
+scoreboard/inventory presentation and said temporary armour and a pistol
+worked and felt fine. Movement penalties were measured, but real damage and
+ordinary firing/reloading remain unverified. The identified test items were
+removed; a bandage stack that appeared during the review was left intact.
+The saved preview infinite-ammo toggle was enabled during the 64/9 clip
+sample; its engine-max top-up is consistent with the sample, but the live
+flag was not measured. This does not prove a normal-weapon fault. Do not
+change the user's cheats. The user accepted Phase C with those and
+multiplayer limits; detailed guard testing remains deferred.
+The world-map star's incomplete triangle initialization is corrected in
+source; focused world-map4/4 and GLua380/0 pass. After an approved same-map
+reload, the survivor's cell, attributes and inventory matched the pre-reload
+snapshot; the user confirmed that the scrolling stars look correct and the
+error does not return.
+The user next requested AFK protection for the world map and chose the
+existing three-second menu countdown, interruption and exit grace. Source
+routes M, the Tab menu and `zombiesim_map` through the server-owned AFK
+service and handles rapid cancel/reopen. Offline world-map/AFK13/13,
+GLua380/0 and fresh isolated in-game AFK14/14 pass. After an approved
+reload, the survivor's cell, attributes and inventory matched; the user
+confirmed M cancellation, an eight-second open-map AFK hold, M/X close
+and grace, restored controls, the Tab map entry and rapid reopening.
+Real survivor damage interruption, firing during grace, the console entry
+and multiplayer remain unverified live. Continue Phase D.
+The Phase D profession selector is source-wired: an icon grid and selected
+job details show placeholder backstory, services, delivery tiers and all
+attribute bonuses; narrow layouts stack without changing the saved draft.
+Offline picker7/7, missing-icon handling, launcher Cell Health2/2 and
+GLua382/0 pass. After a user-approved preview-launcher reload, the actual-client
+presentation suite passed23/23, and city/preview persistence, inventory,
+stash, implants and character slots matched the pre-reload baseline. No
+survivor is loaded or was created. Human review of the wizard using an empty
+slot found the attribute table extending outside its detail box. Source now
+expands that box to contain its text and rows and uses the page scrollbar;
+offline picker8/8 and GLua382/0 pass. After the user cancelled the draft and
+approved a launcher reload, fresh-client presentation24/24 passed, including
+detail bounds at four widths. City/preview persistence, inventory, stash,
+implants and slots match the baseline; no survivor is loaded. The user says
+the revised screen looks good and wants more noticeable profession bonuses,
+including Police shotgun/pistol/rifle proficiency and a more rounded Army.
+They chose a 10-point maximum for new survivors only, left Civilian and
+Capitalist's existing behavior unchanged, and want positive bonuses
+emphasized. Existing survivors retain their original bonus rules after job
+changes; the user delegated the other role-appropriate allocations. Some
+attributes have no gameplay effects yet. Capitalist's existing
+`playerLootBonuses` field is ignored by the static-data loader; do not claim
+that its cash bonus currently works.
+Source now stores legacy/current profession-bonus rules per survivor, retaining
+the chosen rules through job changes and refreshing dependent effects. Existing
+character rows default to legacy; new characters use current rules. Offline
+balance/persistence9/9, picker6/6 plus shared cases8/8, GLua382/0 and diff
+checks pass. After a user-approved launcher reload, both existing characters
+received legacy version1; 16 survivor-related tables match the verified
+pre-reload SQLite backup before and after the test suites. Live static20/20,
+professions14/14, characters13/13, mastercraft9/9, weapon effects24/24 and
+movement6/6 pass. Native hydration/snapshot cases use fake players/networking;
+deployed and multiplayer replication remain unverified. Fresh client
+profession cases pass; an earlier 23/24 result failed its Home Earth input
+case before Home readiness was established. After the camera reload below,
+the confirmed-Home client suite passes25/25, including that case. The user
+confirmed the new bonus highlighting looks good without saving a survivor.
+The user added the preview launcher's `create_character` point camera and
+requested the same marker in the city launcher; a room will be authored later.
+City source now has the same initial pose. Server/client camera transport,
+creation/legacy-appearance view selection, PVS, credit priority and a warned
+fallback for old BSPs are source-wired. Launcher fixtures pass15/15 including
+eight camera cases; parity checks both source markers and the compiled
+preview camera. The user approved the preview-only compile/stage/reload:
+VBSP/VVIS/VRAD pass, both staged preview BSPs hash `BFF1D6689B9AAF7060676D87217DE0AF4CDBDB791B17361D517A39874976502E`,
+and previous preview BSP copies are hash-backed in session files. Fresh
+client status received the authored camera within0.04 units/degrees and
+confirmed ready Home after the25/25 client suite. City/preview survivor
+persistence matched before and after reload/tests. The user confirmed the
+preview creation view and Back/Cancel navigation look good; separate
+post-review status shows ready Home, no survivor loaded and matching
+city/preview persistence. Actual legacy appearance and pending-save
+navigation remain unverified live. The user separately approved the city
+launcher build/stage and temporary review. VBSP/VVIS/VRAD and compiled-camera
+checks pass; both staged city BSPs hash `D25AB5A6F489AA8BA8FCC8419D3A49814FCC160264F0AD8B1E44B0F555A58639`
+and previous copies are hash-backed in session files. The user confirmed
+city creation view and Back/Cancel; a fresh user-run status verifies the
+received pose within0.04 units/degrees and ready Home. The approved return
+is complete: separate status confirms ready `zn_preview_start`/preview, no
+survivor, restored selected profile and city/preview persistence matching
+the pre-visit snapshot. No room or cell map changed.
+Phase D calling-card artist decisions: `_background.png`/`_details.png`
+classify finished PNGs; unclassified files must be referenced ingredients or
+reported. Preserve original bytes/transparency for any 6:1 finished PNG and
+generate750x125 cards from ordered cover/repeat layers with colour, opacity,
+scale, spacing and position. Use stable category/name IDs and explicit rename
+aliases; removed selections fall back to defaults without losing ownership.
+The first-review ceiling is512 generated designs, not silent truncation.
+At this decision point artist source had no PNGs; temporary original fixtures
+were not approved staged artwork. The supplied ingredients and current D2
+status are recorded at the top of this guide.
+The D1 source pipeline was implemented and documented in
+`docs/calling-card-artist-workflow.md`; at that checkpoint the installed
+catalogue contained only the two unchanged defaults. Calling-card fixtures73/73,
+Workshop packaging73/73, Phase D offline integration20/20 and GLua383/0 passed.
+Ownership, selection and later staging are recorded above. After the user confirmed
+the draft safe and approved a preview-launcher reload, native static-data
+fixtures pass22/22, validation reports zero errors and two cards, and the fresh
+client launcher suite passes25/25. A separate client status confirms Home;
+no survivor is loaded, city/preview data and slots match before/after, and
+19 survivor/related SQLite table digests match. The existing Capitalist warning
+remains. Real handcrafted/generated scoreboard review remains open.
+The user brought A3 editor UI refinement forward after the bounded particle
+slice, when A2 was still incomplete. Use top-left Prefab,
+Place and Scene buttons with one left panel at a time, initially closed; keep
+the right inspector in place, allow much closer zoom, and match the game's
+existing visual style. The editable-prop shadow investigation remains deferred.
+The user also requested Cell Health in the launcher Tools sidebar. Source
+opens the existing preview-admin manager and restores Tools focus on close;
+no batch starts on opening and server deployment guards remain unchanged.
+Offline launcher2/2, Cell Health6/6 and GLua352/0 pass. Fresh launcher and
+human interaction review remain pending.
+The first A3 source pass adds initially closed, mutually exclusive
+Prefab/Place/Scene panels using the game skin, keeps the right inspector,
+lowers the zoom minimum to64 and replaces the loot-group text field with a
+sorted registry selector and Model default. Offline editor36/36,
+session13/13, explorer7/7, launcher2/2, Cell Health6/6 and GLua352/0 pass.
+Fresh-load interaction, resolution and visual review remain open.
+The user expanded A3 to include a context-aware right inspector, compact
+X/Y/Z position and rotation rows, separate camera/grid controls, prefab
+explorer UI refinement and multiple simultaneously open prefab document
+tabs along the top. Frame padding has been removed in source but not yet
+live-loaded; preserve all saved prefabs.
+The user chose one tab per saved prefab (reopening focuses it), independent
+unsaved documents and per-tab view/preview state, Save/Discard/Cancel on dirty
+close, and a new blank tab after closing the last. A combined View panel owns
+camera and grid controls: zoom, yaw/pitch, reset, Shift+right-drag pan,
+grid/compass visibility, grid spacing and snap settings. Keep the 640-unit
+guide and existing right-drag orbit/middle-click reset.
+The user additionally chose a per-tab, preview-only reference-tile height
+offset. It moves only the reference tile; prefab objects and saved/world
+placement must remain unchanged.
+Multi-tab source tracks all server-authorized open IDs, correlates
+asynchronous requests to their tabs, restores per-tab document/preview state,
+and protects dirty tabs and pending loads during exit. The View panel,
+preview-only reference offset, selection-aware inspector with compact axis
+rows, and themed explorer are implemented. The full offline prefab runner
+passes31/31, including editor44/44, session14/14 and explorer8/8;
+GLua352/0, launcher Cell Health2/2 and Cell Health contract6/6 pass.
+Live acceptance remains open. A read-only status confirms the editor on
+`gm_flatgrass`/preview with one owner and no survivor loaded; obtain consent
+before a reload or discarding unsaved work.
+The user confirmed their work was saved and approved the reload; a fresh
+status again confirms the same map/profile, sole owner and no survivor.
+A local capture shows the new toolbar, tabs and empty inspector. The console
+log is stale, and human interaction/visual review remains pending; preserve
+the user's saved prefabs.
+The user gave a positive overall editor review and requested a separate Scene
+height offset for the whole prefab. They selected preview-only behavior:
+props, selection, light and particle previews move together, while saved
+coordinates, world placement and the reference remain unchanged. The offset
+is per-tab. Offline editor45/45, light preview1/1, particle preview4/4 and
+GLua352/0 pass. After a user-approved reload, the user confirmed the new
+control works; live `zn_test_prefabs` passes23/23. The user returned through
+the editor UI; separate status confirms `zn_preview_start`/preview with no
+editor participant or loaded survivor, the marker is absent and the stored
+city/preview persistence hash matches the baseline. Formal A3 acceptance
+and any unreviewed resolution/close-path limits remain separate. The user
+subsequently accepted A3 with those limits; resume A2 without reopening the
+deferred editable-prop ground-shadow investigation.
+For A2 guards, the user chose stationary, named, non-interactive,
+invulnerable guards that zombies do not target, with selectable compatible
+weapons, editable engagement range, no fixed guard cap but a performance
+warning, and a chosen idle animation interrupted during combat and resumed
+afterward. Use clothing-compatible citizen models, not rebel catalogue
+clothing; verify real engine compatibility before promising supported assets.
+Start weapons with a small verified subset. Guards turn toward targets then
+return to their authored facing, cannot harm survivors or friendly NPCs,
+and their zombie kills can produce loot without awarding player XP. Existing
+enemy rewards require a player killer, so wire a guard-specific loot path.
+Use normal enemy drop chances and interpolate guard-kill item levels across
+each item's allowed range by danger, without player bonuses; preserve the
+separate guaranteed maximum-level boss reward. The user chose unlimited guard
+ammunition after being told about unattended farming.
+The guard-kill reward foundation is implemented but no guard entity is wired:
+offline guard-reward3/3 and GLua353/0 pass, as do fresh preview live loot13/13,
+enemies14/14 and bosses6/6. Stored survivor persistence remains at baseline.
+Actual guard spawning, combat, clothing and editor authoring are not verified.
+The bounded engine model probe now passes1/1, and its separate post-frame
+cleanup check passes1/1 after fixing an invalid same-frame removal assertion.
+The clothing-compatible male_03 model reports idle index2, right-hand bone11,
+attachment5, and pistol/SMG idle and range sequence names. This is metadata,
+not visible animation, attachment, clothing or combat evidence; GLua354/0.
+An isolated, nonlethal guard-shot feasibility probe is prepared. It requires
+the sole-human editor workspace, blocks damage to other entities and removes
+both temporary entities; cleanup is checked separately after the frame.
+Offline safety/cleanup fixtures and GLua355/0 pass, and the launcher correctly
+rejects it. Ask the user to open the editor before the live probe.
+The user opened the editor; separate status confirmed the sole preview owner
+and no survivor. Live nonlethal shot1/1 and post-frame cleanup1/1 pass.
+This does not prove real guard presentation, player friendly-fire safety or
+multiplayer. The editor remains open; protect any unsaved work on reload.
+The new guard-targeting primitive selects the nearest visible living Walker
+or boss within range and filters damage to that selected target. The shot
+probe now exercises it. Offline targeting2/2, rewards3/3, probe safety and
+GLua357/0 pass; fresh in-engine verification awaits consent to reload the
+current editor.
+After a user-approved reload, the real targeting primitive's nonlethal engine
+shot passes1/1 and post-frame cleanup1/1; separate status confirms the
+sole-owner/no-survivor editor workspace. Target selection and friendly-fire
+filtering remain offline-fixture evidence; guard entity/authoring remain open.
+An initial guard actor and owner-only editor preview now exist in source; the
+preview owns a high-health temporary Walker and cleans up on stop, disconnect,
+map cleanup or expiry. Offline actor3/3, config1/1, weapon1/1, targeting2/2,
+reward3/3, probe2/2, clothing queue1/1, GLua367/0 and packaging fixtures69
+pass. The actor, clothing, weapon placement and animations have not been
+live-loaded or visually accepted, and normal prefab authoring/spawning is
+not wired. Obtain consent before reloading the current editor.
+After a user-approved reload, the engine resolved both candidate weapons and
+the isolated guard fired at the high-health Walker. The user reported
+outstretched/T-pose arms while shooting. The Walker was intentionally
+nonlethal for the preview. Guard, Walker and weapon cleanup was independently
+verified; the editor remains open. Test a firing gesture layered over the
+weapon idle rather than resetting the firing sequence as the whole-body pose.
+Source now layers and reuses the firing gesture over the weapon idle and
+removes it on combat exit; focused guard fixtures and GLua367/0 pass. This
+is a candidate correction only, not a visually verified animation fix.
+After a fresh user-approved reload, the guard fired with a live gesture layer;
+the user reported the gun faces the wrong way and did not explicitly accept
+the body pose. The preview was stopped and zero owned entities remained.
+Preview-only orientation controls and muzzle diagnostics now pass focused
+fixtures and GLua367/0; reload with consent before the next check.
+The user clarified that the barrel pointed backward. Temporary local yaw180
+corrected the barrel direction, but the grip still does not fit the hand;
+the body pose has not been explicitly accepted. The preview is stopped and
+cleanup verified. Test the documented bone-merge attachment before committing
+an offset; do not treat muzzle-position alignment as visual proof.
+The owner-only bone-merge comparison is prepared and restores its previous
+attachment transform when disabled. Focused guard fixtures and GLua367/0
+pass; it needs a consented fresh reload and human hand/weapon review.
+After that reload the user confirmed the bone-merged pistol's hand placement,
+direction and arm pose. Source now uses bone merge for guard weapons; focused
+fixtures and GLua367/0 pass, and the pistol comparison was stopped with zero
+owned entities remaining. The source change and SMG visual remain unverified;
+normal prefab authoring/spawning is still open.
+After a user-approved reload, the source-backed pistol preview was visually
+confirmed. The user also confirmed the SMG weapon, pose and sound, but two
+SMG status samples showed `firingGesture=false` while shots increased; retain
+that diagnostic limit. Both previews were stopped and their owned entities
+were confirmed absent. Guard authoring, world spawning, real kill/reward,
+multiplayer and friendly-fire checks remain open; the editor is still open.
+Guard record schema and server content validation are now source-wired, with
+legacy documents retaining an empty guard list. Nonempty guard exports and
+world spawns explicitly refuse until integration is ready. Offline prefab
+runner31/31, guard fixtures9/9, export44 and GLua367/0 pass; the schema is
+not yet live-loaded and guard editor controls remain absent.
+Fresh actual-client launcher Tools8/8 passes; the user confirmed Cell Health
+opens with unchecked categories and closes back to Tools, without starting a
+batch. Editor screenshot capture now includes VGUI (focused case and
+GLua352/0 pass). The preview launcher is loaded with no survivor; open the
+editor for human A3 review.
+The initial editor capture exposed bright default list backgrounds and unused
+frame title padding. Source now uses the existing dark/red palette for editor
+lists and removes that padding; focused editor36/36, explorer7/7 and
+GLua352/0 pass. The styling fix needs a fresh editor reload; ask before
+discarding any unsaved work and obtain a new human review.
 The user approved the initial prefab editor as a preview-launcher admin tool
 requiring no other connected humans, saving to server DATA with explicit addon
 export, and using 3D mouse gizmos plus numeric controls. Keep survivor state
@@ -315,7 +889,131 @@ or loaded survivor, and stored survivor persistence matched the baseline.
 The user requests a selectable list of available loot groups instead of the
 current ID text box in the deferred A3 editor-UI phase. Preserve server-side
 validation and the model-default option; do not redesign the UI in A2.
-preserve the sole-human editor guard and the separately deferred A3 UI phase.
+Spotlight source now includes validated saved/exported light data, editor
+controls/gizmos/preview, server-owned transformed network entities and a
+client pool (eight nearest, one shadow). Offline editor30/30, explorer7/7,
+spawn5/5, runtime-owner9/9, pool5/5, preview1/1, world client1/1, prefab
+runner23/23, export37, packaging68, CSM/chest5/5 and GLua331/0 pass. Current
+world selection uses all networked lights without visibility filtering:
+nearest-visible behavior remains unresolved. Live editor appearance, engine
+replication, actual city, multiplayer and performance remain unverified.
+GMod was launched on `zn_preview_start` with `-disableluarefresh`; after the
+user confirmed readiness, status showed one human and no editor or survivor.
+Fresh live prefab21/21 and spawn5/5 pass, including server light fields and
+anchor transforms; a separate client report shows zero lights after cleanup.
+The user then opened `test123`, saved a spotlight and reported no apparent
+shadow on the bench. The editor is still open; preserve the saved file and
+session. Client status reports one shadow-enabled projector and valid
+texture, not proof of a rendered shadow. A temporary reference projector made
+editable and server props cast ground shadows, but the editor projector did
+not, even after matching settings and forcing an update. The temporary probe
+is removed. Source adds actual-projector getter diagnostics (pool5/5,
+preview1/1, world1/1, GLua331/0), not yet live-loaded. After an approved reload, actual projector getters matched the reference
+settings and reported shadows enabled; no visible-shadow cause is proven.
+The user saved their comparison work in `test123`; preserve the current file.
+New owner-only probe controls remove the temporary
+server drum and suspend/resume the editor projector. The user corrected their
+earlier response: with the reference projector alone and no server drum,
+editable props had no visible shadows. In a separate two-client-drum
+comparison the user identified a shadow on the southern manually drawn drum.
+In an empty-editor identity-matrix comparison, neither drum showed a shadow;
+a subsequent engine/manual comparison was corrected by the user to say the
+southern manual drum did have a shadow. The comparisons used different
+positions, so the matrix is not proven responsible. Temporary resources were
+removed and editor preview resumed. A new source-only owner probe toggles an
+identity matrix on the same manual drum (client1/1, server2/2, GLua331/0).
+The user saw that drum's shadow both with and without the identity matrix;
+matrix alone is not the reproduced cause. An editable drum at the same
+position showed no visible shadow under the same isolated reference light.
+The probe is stopped; the editable drum remains unsaved. Source now supports
+isolating the reference manual drum and applying the editor's skin/matrix/
+bounds setup (preview1/1, client1/1, server2/2, GLua331/0). Ask before a
+fresh reload or discarding that drum. Client world-light replication remains
+unverified.
+The user later approved the reload, then requested deferral of this shadow
+issue to the end of Alpha 3.3. Temporary probe resources were removed and
+client-confirmed absent; editor preview resumed. The user returned to
+`zn_preview_start`/preview; separate status showed no editor or survivor,
+the marker was absent and stored city/preview persistence matched the
+pre-editor baseline.
+The user chose prefab particles next: start with a selectable verified steam
+effect, support continuous and individually triggered one-shot modes, include
+steam sound, and impose no fixed simultaneous-effect cap. The mounted HL2
+`train_steam.pcf` contains candidate name `steam_train`; the appearance and
+lifecycle are unverified. First build one isolated editor prototype and obtain
+visual/audio review before broader authoring or world integration.
+The temporary steam/audio probe now has offline client3/3, server1/1,
+editor30/30, packaging68 and GLua336/0; a fresh launcher correctly rejected
+starting it outside the editor. Open an isolated editor and separately verify
+client creation, then ask for visual/audio review. It does not save particles.
+The first live candidate became invalid before the later status; the user
+was unsure whether a puff or sound played. The original status path also
+used a nonexistent getter while the effect was active. Source now uses
+`GetEffectName` and tracks observed completion/invalidity; offline client4/4,
+server1/1 and GLua336/0 pass. The probe was stopped and client cleanup
+verified. Ask before reloading the current editor to measure actual duration.
+After an approved reload, the user saw and heard the mounted steam example
+and approved both as a starting point. The particle became invalid after
+about 5.68 seconds without an observed finished state; it is not yet a
+continuous effect. The prototype was stopped and its client resources
+verified absent. Continue with a bounded continuous-loop prototype and
+individually triggered one-shot design; do not claim world acceptance.
+The source-only loop probe now recreates an invalid steam handle while
+retaining its sound, with explicit replacement-failure cleanup. Offline
+client5/5, server1/1 and GLua336/0 pass. It needs a fresh approved editor
+reload and a multi-cycle visual/audio review; no continuous behavior is yet
+accepted.
+After an approved reload, the user confirmed the looping steam and sound
+looked/sounded continuous and suitable; the probe was stopped and client
+cleanup verified. Repeated one-shot triggers have a per-effect overlap
+toggle, on by default; with overlap off, a new trigger restarts the burst.
+These decisions authorize the particle authoring/world slice, not world
+regeneration or acceptance of untested multiplayer behavior.
+Particle data now has a packaged verified-effect catalog and optional
+schema-1 records with stable IDs, transform, mode and overlap default true.
+Storage/export reject unknown effects; world spawning explicitly rejects
+particle-bearing prefabs until implemented. Offline contract9/9, storage10/10,
+catalog2/2, editor session13/13, spawn6/6, runner26/26, export42, packaging69
+and GLua338/0 pass. Continue with editor authoring and world triggering.
+Editor particle source now includes catalog selection, handle/gizmo and
+numeric transforms, Continuous/Triggered selection, overlap toggle and
+explicit trigger preview. Shared lifecycle fixtures exercise 40 uncapped
+overlapping bursts, restart-on-trigger and cleanup. Offline editor32/32,
+session13/13, preview3/3, effect/probe6/6 and GLua341/0 pass. The source is
+not yet live-loaded; fresh editor visual/audio/interaction review remains.
+World particle spawning is still explicitly blocked.
+The user confirmed editor continuous steam/sound and movement, triggered
+preview/overlap, and save/reopen after a fresh load; live prefab23/23 passes.
+Preserve their saved `teststeam` prefab. The editor remains open with one
+owner and no survivor. World particle source now includes anchored continuous
+emitters, individual Hammer inputs, uncapped triggered overlap/restart,
+cleanup and an owner-only synthetic editor probe. Focused spawn6/6,
+owner10/10, world client4/4, transport1/1, anchor input1/1, probe1/1,
+anchor20 assertions and GLua351/0 pass. The source is not live-loaded;
+ask before reloading the open editor, then exercise the synthetic probe.
+Compiled Hammer routing (especially instance-local name fixups), multiplayer
+and actual city behavior remain unverified. Keep the shadow issue deferred.
+After an approved reload, the isolated synthetic world probe showed one
+client continuous effect, two overlapping bursts and one restart-only burst
+after paired triggers. The user confirmed continuous and triggered steam
+were visible and audible. Probe stop and client cleanup were verified.
+This is not compiled Hammer, city-cell or multiplayer evidence. The editor
+is open; return to the launcher, verify the survivor baseline and run the
+live launcher spawn suite.
+The user returned to `zn_preview_start`/preview; editor marker absent,
+survivor baseline matched, live prefab23/23 and spawn6/6 pass. A particle
+variant of the hash-ledger stager and guarded compiled-anchor input command
+are source-ready (stage14, owner11/11, retained BSP28, GLua351/0); inspection
+is read-only and no staging ran. Ask before temporarily staging/entering the
+exact fixture. It will not prove Hammer instance-name fixups or city play.
+The user approved the fixture. Five compiled anchors produced five continuous
+and ten triggered records; client status showed five continuous effects,
+two overlapping bursts and one restart-only burst through the actual anchor
+input. The user approved steam placement/audio. After return, client effects
+were absent, marker and ledger-owned files were removed, and survivor
+persistence matched baseline. Hammer target-name fixups, actual city,
+multiplayer, late joins and matched performance remain unverified.
+Preserve the sole-human editor guard and the user's approved A3 UI direction.
 
 The [Alpha 3.2 tracker](docs/todo-alpha.3.2.md) is archived, not released or
 fully accepted. Its remaining full-world outputs, Cell Health execution,

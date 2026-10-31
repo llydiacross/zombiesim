@@ -73,8 +73,10 @@ function ply:FetchAttributes()
             Intelligence = 0,
             Endurance = 0,
             MachineGuns = 0,
+            Pistols = 0,
             Shotguns = 0,
-            Snipers = 0,
+            Rifles = 0,
+            Explosives = 0,
             WeaponCrafting = 0,
             ArmorCrafting = 0,
             Medicine = 0,
@@ -91,8 +93,10 @@ function ply:FetchAttributes()
     self.Attributes.Intelligence = tonumber(attr.Intelligence) or 0
     self.Attributes.Endurance = tonumber(attr.Endurance) or 0
     self.Attributes.MachineGuns = tonumber(attr.MachineGuns) or 0
+    self.Attributes.Pistols = tonumber(attr.Pistols) or 0
     self.Attributes.Shotguns = tonumber(attr.Shotguns) or 0
-    self.Attributes.Snipers = tonumber(attr.Snipers) or 0
+    self.Attributes.Rifles = tonumber(attr.Rifles) or 0
+    self.Attributes.Explosives = tonumber(attr.Explosives) or 0
     self.Attributes.WeaponCrafting = tonumber(attr.WeaponCrafting) or 0
     self.Attributes.ArmorCrafting = tonumber(attr.ArmorCrafting) or 0
     self.Attributes.Medicine = tonumber(attr.Medicine) or 0
@@ -126,7 +130,8 @@ function ply:SendPlayerData()
         Stamina = tonumber(self.Stamina) or 100,
         Hunger = tonumber(self.Hunger) or 100,
         Thirst = tonumber(self.Thirst) or 100,
-        Job = self.Job or "Civilian"
+        Job = self.Job or "Civilian",
+        ProfessionBonusVersion = self:GetProfessionBonusVersion()
     }
     net.Start("ZM.RefreshPlayerData")
         net.WriteString(util.TableToJSON(snapshot, false) or "{}")
@@ -258,8 +263,10 @@ function ply:ResetForWorldOrigin()
         Intelligence = 0,
         Endurance = 0,
         MachineGuns = 0,
+        Pistols = 0,
         Shotguns = 0,
-        Snipers = 0,
+        Rifles = 0,
+        Explosives = 0,
         WeaponCrafting = 0,
         ArmorCrafting = 0,
         Medicine = 0,
@@ -360,11 +367,11 @@ function ply:FetchPlayerData()
     self.SkillPoints = tonumber(data.SkillPoints) or 0
     self.Cash = tonumber(data.Cash) or 0
     self.SavedHealth = tonumber(data.Health) or 100
+    self.Job = ZM_NormalizeJob(data.Job)
     self.Stamina = tonumber(data.Stamina) or 100
     self.Stamina = math.Clamp(self.Stamina, 0, self:GetMaxStamina())
     self.Hunger = math.Clamp(tonumber(data.Hunger) or 100, 0, 100)
     self.Thirst = math.Clamp(tonumber(data.Thirst) or 100, 0, 100)
-    self.Job = ZM_NormalizeJob(data.Job)
     if ZM_World.ActiveProfile == "preview" and ZM_DevConsole and ZM_DevConsole.WritePlayerHydration then
         ZM_DevConsole:WritePlayerHydration({
             steamId = self:SteamID(),
@@ -390,8 +397,10 @@ function ply:SetNetworkAttributes()
     self:SetNWInt("Intelligence", self.Attributes.Intelligence)
     self:SetNWInt("Endurance", self.Attributes.Endurance)
     self:SetNWInt("MachineGuns", self.Attributes.MachineGuns)
+    self:SetNWInt("Pistols", self.Attributes.Pistols)
     self:SetNWInt("Shotguns", self.Attributes.Shotguns)
-    self:SetNWInt("Snipers", self.Attributes.Snipers)
+    self:SetNWInt("Rifles", self.Attributes.Rifles)
+    self:SetNWInt("Explosives", self.Attributes.Explosives)
     self:SetNWInt("WeaponCrafting", self.Attributes.WeaponCrafting)
     self:SetNWInt("ArmorCrafting", self.Attributes.ArmorCrafting)
     self:SetNWInt("Medicine", self.Attributes.Medicine)
@@ -399,6 +408,12 @@ function ply:SetNetworkAttributes()
     self:SetNWInt("WeaponRepairing", self.Attributes.WeaponRepairing)
     self:SetNWInt("ArmorRepairing", self.Attributes.ArmorRepairing)
     self:SetNWInt("Mechanics", self.Attributes.Mechanics)
+    if ZM_Items and ZM_Items.RefreshEquippedWeaponSkills then
+        ZM_Items:RefreshEquippedWeaponSkills(self)
+    end
+    if ZM_ImplantService and self.ZM_PersistentStateLoaded then
+        ZM_ImplantService:ApplyMovement(self)
+    end
 end
 
 // Copies progression, logical world cell, health, and stamina to replicated NW values.
@@ -418,6 +433,7 @@ function ply:SetNetworkPlayerData()
     self:SetNWFloat("Hunger", self.Hunger)
     self:SetNWFloat("Thirst", self.Thirst)
     self:SetNWString("Job", self.Job or "Civilian")
+    self:SetNWInt("ZM_ProfessionBonusVersion", self:GetProfessionBonusVersion())
 end
 
 // ZombieSim reserves +use for interactions and never allows Source's physics-prop carry behavior.
@@ -445,7 +461,9 @@ hook.Add("Think", "ZM.Stamina", function()
             local agility = ply:GetStat("Agility")
             local strength = ply:GetStat("Strength")
             local stamina = tonumber(ply.Stamina) or maxStamina
-            ply.Stamina = ZM_Movement.Step(stamina, maxStamina, isSprinting, agility, strength, delta)
+            local armour = ZM_Items:GetArmourEffects(ply.ZM_Inventory, ply:GetStat("Endurance"))
+            ply.Stamina = ZM_Movement.Step(stamina, maxStamina, isSprinting, agility, strength, delta,
+                1 - armour.staminaRegenPenalty)
 
             ply:SetNWFloat("Stamina", ply.Stamina)
             ply:SetNWFloat("MaxStamina", maxStamina)

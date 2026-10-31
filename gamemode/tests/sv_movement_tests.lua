@@ -81,18 +81,38 @@ suite:Add("exhaustion_caps_server_move_without_removing_other_buttons", function
     check(move.maximum == nil, "unloaded state is not treated as an exhausted survivor")
 end)
 
+suite:Add("armour_penalties_are_endurance_mitigated_without_compounding", function(check)
+    local inventory = { equipped = { [ZM_Items.ArmourSlot] = { itemId = "itemHeavyArmour" } } }
+    local untrained = ZM_Items:GetArmourEffects(inventory, 0)
+    local trained = ZM_Items:GetArmourEffects(inventory, 10)
+    check(near(untrained.damageReduction, 0.35), "heavy damage reduction is unchanged by Endurance")
+    check(near(untrained.speedPenalty, 0.12) and near(untrained.staminaRegenPenalty, 0.3),
+        "heavy penalties match their authored values")
+    check(near(trained.speedPenalty, 0.06) and near(trained.staminaRegenPenalty, 0.15),
+        "ten Endurance removes half of each movement and recovery penalty")
+    local user = target(200, 400)
+    user.ZM_Inventory, user.GetStat = inventory, function() return 0 end
+    Movement.Apply(user, 0)
+    check(near(user.walk, 118.8) and near(user.run, 269.28), "armour scales balanced base speeds")
+    for _ = 1, 10 do Movement.Apply(user, 0) end
+    check(near(user.walk, 118.8) and near(user.run, 269.28), "armour refreshes do not compound")
+    local _, recovery = Movement.Rates(0, 0, 1 - untrained.staminaRegenPenalty)
+    check(near(recovery, 3.85), "heavy armour reduces stamina recovery by 30 percent")
+end)
+
 suite:Add("deployed_players_use_balanced_runtime_speeds_and_rates", function(check)
     for _, user in ipairs(player.GetAll()) do
         if user.ZM_PersistentStateLoaded == true and user.ZM_Modifiers then
             local state = Movement.Snapshot(user)
-            local scale = 1 + state.moveSpeedBonus
+            local scale = (1 + state.moveSpeedBonus) * (1 - state.armour.speedPenalty)
             check(state.baseWalkSpeed ~= nil and near(state.walkSpeed, state.baseWalkSpeed * 0.675 * scale),
                 "actual player walk speed matches the captured base and modifiers")
             check(state.baseRunSpeed ~= nil and near(state.runSpeed, state.baseRunSpeed * 0.765 * scale),
                 "actual player run speed matches the captured base and modifiers")
             check(near(state.sprintDrain, 60 / (1 + state.agility * 0.05 + state.strength * 0.03)),
                 "actual stat-derived drain matches the authoritative rate")
-            check(near(state.recovery, 5.5 * (1 + state.agility * 0.05)),
+            check(near(state.recovery,
+                5.5 * (1 + state.agility * 0.05) * (1 - state.armour.staminaRegenPenalty)),
                 "actual stat-derived recovery matches the authoritative rate")
         end
     end

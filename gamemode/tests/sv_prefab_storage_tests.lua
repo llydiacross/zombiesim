@@ -29,6 +29,24 @@ return function(createEngine, contract, createStorage)
         check(engine.state.files["zombiesim/prefabs/test_prefab.json"] ~= nil, "document is stored in DATA")
     end)
 
+    suite:Add("world placement can be saved, edited, disabled and removed", function(check)
+        local _, storage = setup()
+        local input = document()
+        input.worldPlacement = { enabled = true, profile = "preview", cellX = 14, cellY = 0,
+            tileX = 1, tileY = -1, offset = { x = 1.25, y = 2, z = 3 }, angles = { p = 0, y = 90, r = 0 } }
+        check(storage.Save(input), "world placement saves")
+        local loaded = storage.Load("test_prefab")
+        check(loaded and loaded.worldPlacement.offset.x == 1.25 and loaded.worldPlacement.angles.y == 90,
+            "placement reopens without losing precision")
+        loaded.worldPlacement.tileX, loaded.worldPlacement.enabled = -2, false
+        check(storage.Save(loaded, "test_prefab"), "edited disabled placement saves")
+        loaded = storage.Load("test_prefab")
+        check(loaded.worldPlacement.tileX == -2 and not loaded.worldPlacement.enabled, "disable retains edited location")
+        loaded.worldPlacement = nil
+        check(storage.Save(loaded, "test_prefab") and storage.Load("test_prefab").worldPlacement == nil,
+            "conversion back to tag selection removes automatic placement")
+    end)
+
     suite:Add("existing unscaled prefabs load without rewriting the original", function(check)
         local engine, storage = setup()
         local path = "zombiesim/prefabs/test_prefab.json"
@@ -70,6 +88,31 @@ return function(createEngine, contract, createStorage)
         local again = storage.Load("test_prefab")
         check(again and again.props[1].propId == "legacy_2" and again.props[1].lootMode == "guaranteed",
             "removing an earlier prop does not remap the surviving ID")
+    end)
+
+    suite:Add("spotlights survive save and reopen", function(check)
+        local _, storage = setup()
+        local input = document()
+        input.lights = { { lightId = "light_1", position = { x = 1, y = 2, z = 3 },
+            angles = { p = 40, y = 45, r = 0 }, color = { r = 255, g = 235, b = 200 },
+            brightness = 6, fov = 60, range = 512 } }
+        check(storage.Save(input), "document with a spotlight saves")
+        local loaded = storage.Load("test_prefab")
+        check(loaded and loaded.lights[1].lightId == "light_1" and loaded.lights[1].brightness == 6
+            and loaded.lights[1].position.z == 3, "spotlight survives reload")
+    end)
+
+    suite:Add("particle modes and overlap survive save and reopen", function(check)
+        local _, storage = setup()
+        local input = document()
+        input.particles = { { particleId = "steam_1", effect = "steam",
+            position = { x = 1, y = 2, z = 3 }, angles = { p = 4, y = 5, r = 6 },
+            mode = "triggered", overlap = false } }
+        check(storage.Save(input), "document with a particle saves")
+        local loaded = storage.Load("test_prefab")
+        check(loaded and loaded.particles[1].particleId == "steam_1"
+            and loaded.particles[1].mode == "triggered" and loaded.particles[1].overlap == false
+            and loaded.particles[1].position.z == 3, "particle settings survive reload")
     end)
 
     suite:Add("saving requires the existing prefab to be opened", function(check)

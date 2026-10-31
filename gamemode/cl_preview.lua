@@ -441,7 +441,7 @@ net.Receive("ZM.PreviewDataResponse", function()
 end)
 
 local dataAttributeFields = {
-    "Strength", "Agility", "Intelligence", "Endurance", "MachineGuns", "Shotguns", "Snipers",
+    "Strength", "Agility", "Intelligence", "Endurance", "MachineGuns", "Pistols", "Shotguns", "Rifles", "Explosives",
     "WeaponCrafting", "ArmorCrafting", "Medicine", "Farming", "WeaponRepairing", "ArmorRepairing", "Mechanics"
 }
 local dataPlayerFields = {

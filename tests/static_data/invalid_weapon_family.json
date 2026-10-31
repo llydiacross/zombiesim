@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "items": {
+    "weaponFixture": {
+      "name": "Fixture Weapon",
+      "entityClass": "weapon",
+      "type": "bullet_weapon"
+    }
+  }
+}

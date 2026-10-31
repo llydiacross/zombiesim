@@ -5,7 +5,10 @@ local statusSequence = 0
 function Probe:Stop()
     timer.Remove(timerName)
     if IsValid(self.Entity) then self.Entity:Remove() end
-    if IsValid(self.Owner) then self.Owner:ConCommand("zombiesim_dev_prefab_spotlight_client off") end
+    if IsValid(self.Owner) then
+        self.Owner:ConCommand("zombiesim_dev_prefab_spotlight_client off")
+        self.Owner:ConCommand("zombiesim_prefab_light_preview_control_client resume")
+    end
     self.Entity, self.Owner = nil, nil
 end
 
@@ -14,10 +17,10 @@ function Probe:Start(target, mode)
         or not target.ZM_PrefabEditorOrigin then
         return false, "The sole prefab-editor owner and a ready workspace are required."
     end
-    if mode ~= "normal" and mode ~= "bright" and mode ~= "unshadowed" and mode ~= "compare" then
-        return false, "Use normal, bright, unshadowed or compare spotlight mode."
+    if mode ~= "normal" and mode ~= "bright" and mode ~= "unshadowed" and mode ~= "compare" and mode ~= "matrix" then
+        return false, "Use normal, bright, unshadowed, compare or matrix spotlight mode."
     end
-    if IsValid(self.Entity) then return false, "The spotlight preview is already active." end
+    if IsValid(self.Entity) or IsValid(self.Owner) then return false, "The spotlight preview is already active." end
     local model = "models/props_c17/oildrum001.mdl"
     if not util.IsValidModel(model) or not util.IsValidProp(model) then
         return false, "The spotlight preview prop is unavailable."
@@ -57,6 +60,29 @@ ZM_Util.RegisterCommands({
         Probe:Stop()
         return true
     end
+    if action == "prop_off" then
+        if not ZM_PrefabEditor:IsParticipant(target) or target ~= Probe.Owner or not IsValid(Probe.Entity) then
+            return false, "The active preview owner and its temporary prop are required."
+        end
+        Probe.Entity:Remove()
+        Probe.Entity = nil
+        return true
+    end
+    if action == "pause_editor" or action == "resume_editor" then
+        if not ZM_PrefabEditor:IsParticipant(target) or target ~= Probe.Owner then
+            return false, "The active preview owner is required."
+        end
+        target:ConCommand("zombiesim_prefab_light_preview_control_client "
+            .. (action == "pause_editor" and "pause" or "resume"))
+        return true
+    end
+    if action == "matrix_on" or action == "matrix_off" or action == "comparison_off" or action == "editor_setup" then
+        if not ZM_PrefabEditor:IsParticipant(target) or target ~= Probe.Owner then
+            return false, "The active preview owner is required."
+        end
+        target:ConCommand("zombiesim_dev_prefab_spotlight_client " .. action)
+        return true
+    end
     if action == "status" then
         if not ZM_PrefabEditor:IsParticipant(target) then return false, "The editor owner is required." end
         statusSequence = statusSequence + 1
@@ -66,5 +92,5 @@ ZM_Util.RegisterCommands({
         target:ConCommand("zombiesim_dev_prefab_spotlight_client status " .. requestId)
         return true
     end
-    return false, "Use start, stop or status."
+    return false, "Use start, prop_off, pause_editor, resume_editor, matrix_on, matrix_off, comparison_off, editor_setup, stop or status."
 end)

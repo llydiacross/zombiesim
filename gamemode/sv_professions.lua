@@ -535,6 +535,8 @@ end
 function Pro:BuildState(target)
     local job = jobOf(target)
     local profession = Professions:Get(job)
+    local bonusVersion = Professions.LegacyBonusVersion
+    if target.GetProfessionBonusVersion then bonusVersion = target:GetProfessionBonusVersion() end
     local day = self:Day()
     local claim = target.SteamID and self:GetClaim(target, day) or nil
     local planned = target.SteamID and self:PlanDelivery(target, day) or nil
@@ -542,7 +544,7 @@ function Pro:BuildState(target)
         job = job, storedJob = target.GetStoredJob and target:GetStoredJob() or job,
         professionName = profession and profession.name or job,
         description = profession and profession.description or "",
-        statBonuses = profession and profession.statBonuses or {},
+        statBonuses = Professions:GetStatBonuses(job, bonusVersion) or {},
         services = profession and table.GetKeys(profession.services) or {},
         level = levelOf(target), cash = cashOf(target), day = day,
         inDen = Service:CanAccessStash(target),
@@ -714,6 +716,12 @@ function Pro:ApplyJob(target, id)
     target.Job = id
     if target.SetNWString then target:SetNWString("Job", id) end
     self:CancelOffers(target, "The professional changed jobs.")
+    if target.ZM_PersistentStateLoaded then
+        local maximumStamina = target:GetMaxStamina()
+        target.Stamina = math.Clamp(target.Stamina or maximumStamina, 0, maximumStamina)
+        target:SetNetworkAttributes()
+        target:SetNetworkPlayerData()
+    end
     if target.SendPlayerData then target:SendPlayerData() end
 end
 
@@ -722,14 +730,16 @@ function Pro:SetJob(target, job)
     if not id then
         return false, reason
     end
+    local previousJob = target.Job
     target.Job = id
-    if target.SetNWString then target:SetNWString("Job", id) end
-    self:CancelOffers(target, "The professional changed jobs.")
     if target.UpdatePlayerData then
         local saved, saveError = target:UpdatePlayerData("job change")
-        if not saved then return false, "Could not save the job: " .. tostring(saveError) end
+        if not saved then
+            target.Job = previousJob
+            return false, "Could not save the job: " .. tostring(saveError)
+        end
     end
-    if target.SendPlayerData then target:SendPlayerData() end
+    self:ApplyJob(target, id)
     return true, "Job set to " .. id .. "."
 end
 

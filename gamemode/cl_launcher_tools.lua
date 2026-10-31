@@ -1,4 +1,4 @@
-// Read-only asset inspection; no gameplay requests or survivor mutations.
+// Launcher tools route inspection and explicitly user-started preview workflows.
 ZM_LauncherTools = ZM_LauncherTools or {}
 local Tools = ZM_LauncherTools
 local colours = ZM_DermaSkin.Palette
@@ -17,6 +17,7 @@ function Tools:GetCapabilities(profile, mapName)
         wardrobe = preview,
         prefabEditor = preview,
         prefabExplorer = preview,
+        cellHealth = preview,
         skyBrowser = launcher,
         profile = profile,
         map = mapName
@@ -540,6 +541,12 @@ function Tools:BuildMenu(content, addButton, addLabelLine, refresh)
     entry("PREFAB EXPLORER", nil, function() ZM_PrefabExplorer:Open() end,
         capabilities.prefabExplorer and IsValid(LocalPlayer()) and LocalPlayer():IsAdmin(),
         "Prefab browsing requires a preview launcher admin.")
+    local cellHealth = entry("CELL HEALTH", nil, function() ZM_CellHealth:Open(self.Host) end,
+        capabilities.cellHealth and IsValid(LocalPlayer()) and LocalPlayer():IsAdmin(),
+        "Cell Health is available only to a preview launcher admin.")
+    if cellHealth:IsEnabled() then
+        cellHealth:SetTooltip("Opens a window: preview navmesh, photos and cubemap status.")
+    end
     entry("SKY BROWSER", nil, function() ZM_SkyBrowser:Open(self.Host) end,
         capabilities.skyBrowser, "Sky Browser is unavailable outside a launcher.")
         :SetTooltip("Opens a window: skies and automatic palette artwork.")
@@ -556,9 +563,12 @@ end
 
 function Tools:GetDiagnosticSnapshot()
     local menu = ZM_LauncherMenu
+    local cellHealthOpen = ZM_CellHealth and IsValid(ZM_CellHealth.Frame) or false
+    local prefabExplorerOpen = ZM_PrefabExplorer and IsValid(ZM_PrefabExplorer.Frame) or false
     return { available = self:IsAvailable(), open = menu ~= nil and IsValid(menu.Frame) and menu.Page == "tools",
         workspace = IsValid(self.Body), page = self.Page, selected = self.Selected, cards = #(self.Cards or {}),
-        items = #self:GetItems(), maps = #self:GetMaps(), readOnly = true }
+        items = #self:GetItems(), maps = #self:GetMaps(), readOnly = not cellHealthOpen and not prefabExplorerOpen,
+        cellHealthOpen = cellHealthOpen }
 end
 
 concommand.Remove("zombiesim_dev_test_launcher_tools_profile")
@@ -588,6 +598,8 @@ concommand.Add("zombiesim_dev_test_launcher_tools_profile", function()
             "Wardrobe enabled state retains its preview-admin guard")
         check(buttons["PREFAB EXPLORER"]:IsEnabled() == capabilities.prefabExplorer,
             "Prefab Explorer enabled state retains its preview-admin guard")
+        check(buttons["CELL HEALTH"]:IsEnabled() == (capabilities.cellHealth and LocalPlayer():IsAdmin()),
+            "Cell Health enabled state retains its preview-admin guard")
     end)
     local summary = suite:Run()
     menu:SetPage(originalPage)
@@ -620,8 +632,8 @@ concommand.Add("zombiesim_dev_test_launcher_tools", function()
             "city launcher retains profile-safe read-only tools")
         check(not city.mapAtlas and not city.wardrobe,
             "city disables preview artwork and wardrobe actions instead of hiding Tools")
-        check(preview.prefabExplorer and not city.prefabExplorer,
-            "prefab explorer is available only in the preview launcher")
+        check(preview.prefabExplorer and not city.prefabExplorer and preview.cellHealth and not city.cellHealth,
+            "prefab explorer and Cell Health are available only in the preview launcher")
         check(not Tools:GetCapabilities("preview", "zn_preview_0_0").launcher,
             "deployed gameplay maps do not expose launcher Tools")
     end)

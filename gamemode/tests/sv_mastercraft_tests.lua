@@ -25,6 +25,7 @@ local function person(values)
         nearStation = values.nearStation ~= false,
         alive = true,
         job = values.job or "Civilian",
+        bonusVersion = values.bonusVersion or Professions.LegacyBonusVersion,
         Credits = 0,
         IsValid = function() return true end,
         IsPlayer = function() return false end,
@@ -33,6 +34,8 @@ local function person(values)
         Nick = function(self) return self.steamId end,
         GetJobRole = function(self) return Professions:Resolve(self.job) end,
         GetStoredJob = function(self) return self.job end,
+        GetProfessionBonusVersion = function(self) return self.bonusVersion end,
+        GetStat = function(self, name) return Professions:GetStatBonus(self.job, name, self.bonusVersion) end,
         CurrentSafeZoneId = testDen,
         ZM_Inventory = Service.NewInventory(),
         ZM_Implants = {},
@@ -253,11 +256,19 @@ test("a_paid_job_change", function(check)
     syncJob(target)
     check(ok, "the job change succeeds: " .. tostring(message))
     check(target.Job == "Doctor" and (ZM_GetPlayerData(playerId, testProfile) or {}).Job == "Doctor", "the job is applied and stored")
+    check(target.bonusVersion == Professions.LegacyBonusVersion and target:GetStat("Medicine") == 3,
+        "the paid change keeps the legacy survivor's rules")
     check(Credits:Get(target) == 5 and stored(target) == 5, "the job change cost 25 credits")
     check(not Svc:Quote(target, "job", "Chef"), "too few credits are refused")
     local missing = person({ profile = otherProfile })
     Credits:Grant(missing, 30, "test grant")
     check(not quoteAndConfirm(missing, "job", "Doctor") and stored(missing) == 30, "without a player record nothing is spent")
+    ZM_SetPlayerData(playerId, otherProfile, { Cash = 0 })
+    missing.bonusVersion = Professions.CurrentBonusVersion
+    check(quoteAndConfirm(missing, "job", "Doctor"), "a new survivor can change jobs in another profile")
+    syncJob(missing)
+    check(missing.bonusVersion == Professions.CurrentBonusVersion and missing:GetStat("Medicine") == 4,
+        "the paid change keeps the new survivor's rules")
 end)
 
 function Svc:RunTests()

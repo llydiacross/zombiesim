@@ -1,6 +1,7 @@
 local Music = ZM_Music
 if Music.Pause then Music:Pause() end
 if Music.StopSkyPreview then Music:StopSkyPreview() end
+if Music.StopCredits then Music:StopCredits(false) end
 local enabled = CreateClientConVar("zombiesim_music_enabled", "1", true, false, "Enables environment music.", 0, 1)
 local volume = GetConVar("snd_musicvolume")
 Music.Generation = (Music.Generation or 0) + 1
@@ -75,7 +76,7 @@ function Music:StartLauncherFile(phase)
         self.LauncherTrack = channel
         self.LauncherTrackPhase = phase
         channel:SetVolume(self:GetLauncherTrackGain())
-        channel:Play()
+        if not self.CreditsMusic then channel:Play() end
     end)
     return true
 end
@@ -112,9 +113,107 @@ function Music:ToggleLauncherTrackLevel()
     return self:SetLauncherTrackLowered(not self.LauncherTrackLowered)
 end
 
+local function loadCreditsTrack(music, session)
+    if session.phase ~= "waiting" or not enabled:GetBool() then return end
+    local path = "sounds/music/credits.mp3"
+    if not file.Exists(path, "GAME") then path = "sound/music/credits.mp3" end
+    if not file.Exists(path, "GAME") then
+        session.phase = "failed"
+        ErrorNoHalt("[ZombieSim] Credits music is missing: credits.mp3\n")
+        return
+    end
+    session.path, session.phase = path, "loading"
+    sound.PlayFile(path, "noplay", function(channel, errorId, errorName)
+        if music.CreditsMusic ~= session or session.stoppingAt
+            or not ZM_LauncherMenu or not ZM_LauncherMenu.Active or not ZM_LauncherMenu.Credits then
+            if IsValid(channel) then channel:Stop() end
+            return
+        end
+        if not IsValid(channel) then
+            session.phase = "failed"
+            ErrorNoHalt("[ZombieSim] Credits music failed: " .. tostring(errorName) ..
+                " (" .. tostring(errorId) .. ")\n")
+            return
+        end
+        session.channel, session.phase = channel, "paused"
+        music:UpdateCredits()
+    end)
+end
+
+function Music:StartCredits()
+    if self.CreditsMusic then self:StopCredits(false) end
+    self:StopSkyPreview()
+    if IsValid(self.LauncherTrack) then self.LauncherTrack:Pause() end
+    self.CreditsMusic = { phase = "waiting" }
+    loadCreditsTrack(self, self.CreditsMusic)
+end
+
+function Music:EndCredits()
+    local session = self.CreditsMusic
+    if session and not session.stoppingAt then session.stoppingAt = RealTime() end
+end
+
+function Music:StopCredits(resumeLauncher)
+    local session = self.CreditsMusic
+    if not session then return end
+    self.CreditsMusic = nil
+    if IsValid(session.channel) then session.channel:Stop() end
+    if not resumeLauncher or not enabled:GetBool() or not ZM_LauncherMenu
+        or not ZM_LauncherMenu.Active or ZM_LauncherMenu.Credits then return end
+    if IsValid(self.LauncherTrack) then
+        self.LauncherTrack:SetVolume(self:GetLauncherTrackGain())
+        self.LauncherTrack:Play()
+    elseif not self.LauncherTrackPhase and not self.LauncherTrackStarted then
+        self:PlayLauncherTrackOnce()
+    end
+end
+
+function Music:UpdateCredits()
+    local session = self.CreditsMusic
+    if not session then return end
+    if not ZM_LauncherMenu or not ZM_LauncherMenu.Active or not ZM_LauncherMenu.Credits then
+        self:StopCredits(false)
+        return
+    end
+    if not enabled:GetBool() then
+        if session.phase == "playing" and IsValid(session.channel) then
+            session.channel:Pause()
+            session.phase = "paused"
+        end
+        return
+    end
+    if session.phase == "waiting" and not session.stoppingAt then loadCreditsTrack(self, session) end
+    local channel = session.channel
+    if channel and not IsValid(channel) then
+        session.channel, session.phase = nil, "failed"
+        ErrorNoHalt("[ZombieSim] Credits music channel became invalid.\n")
+        return
+    end
+    if not IsValid(channel) then return end
+    if session.phase == "paused" and not session.stoppingAt then
+        session.phase, session.startedAt = "playing", RealTime()
+        channel:SetVolume(0)
+        channel:Play()
+    end
+    if session.phase ~= "playing" then return end
+    if channel:GetState() == GMOD_CHANNEL_STOPPED then
+        channel:Stop()
+        session.channel, session.phase = nil, "finished"
+        return
+    end
+    local now = RealTime()
+    local fadeIn = math.Clamp((now - session.startedAt) / 0.4, 0, 1)
+    local fadeOut = session.stoppingAt and math.Clamp(1 - (now - session.stoppingAt) / 0.4, 0, 1) or 1
+    channel:SetVolume(volume:GetFloat() * math.min(fadeIn, fadeOut))
+end
+
 function Music:StartSkyPreview(owner)
     self:StopSkyPreview()
     if not enabled:GetBool() then return end
+    if self.CreditsMusic then
+        ErrorNoHalt("[ZombieSim] Sky-preview music cannot start during credits.\n")
+        return
+    end
     local path = "sounds/music/preview skybox 1.mp3"
     if not file.Exists(path, "GAME") then path = "sound/music/preview skybox 1.mp3" end
     if not file.Exists(path, "GAME") then
@@ -308,12 +407,13 @@ end
 
 local nextContext = 0
 hook.Add("Think", "ZM.Music", function()
+    Music:UpdateCredits()
     if Music.LauncherTrackPhase and (active() or not enabled:GetBool()) then
         Music:StopLauncherTrack()
     elseif IsValid(Music.LauncherTrack) then
         Music:UpdateLauncherTrackDuck()
         Music.LauncherTrack:SetVolume(Music:GetLauncherTrackGain())
-        if Music.LauncherTrackPhase == "intro" then
+        if not Music.CreditsMusic and Music.LauncherTrackPhase == "intro" then
             local length, position = Music.LauncherTrack:GetLength(), Music.LauncherTrack:GetTime()
             if length > 0 and position >= length - 0.15 then Music:PlayLauncherLoop() end
         end
@@ -378,7 +478,11 @@ hook.Add("Think", "ZM.Music", function()
 end)
 
 hook.Add("ZM.MusicDeparture", "ZM.Music", function(seconds) Music:Depart(seconds) end)
-hook.Add("ShutDown", "ZM.Music", function() Music:Pause() end)
+hook.Add("ShutDown", "ZM.Music", function()
+    Music:StopCredits(false)
+    Music:StopLauncherTrack()
+    Music:Pause()
+end)
 
 function Music:GetDiagnosticSnapshot()
     return {
@@ -394,6 +498,10 @@ function Music:GetDiagnosticSnapshot()
         lastTransition = self.LastTransition,
         skyPreview = self.SkyPreview and { file = self.SkyPreview.file,
             playing = IsValid(self.SkyPreview.channel) } or nil,
+        creditsMusic = self.CreditsMusic and { file = self.CreditsMusic.path,
+            phase = self.CreditsMusic.phase,
+            playing = self.CreditsMusic.phase == "playing" and IsValid(self.CreditsMusic.channel),
+            position = IsValid(self.CreditsMusic.channel) and self.CreditsMusic.channel:GetTime() or nil } or nil,
         assets = table.Copy(self.Assets)
     }
 end

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "effects": [
+    {
+      "id": "steam",
+      "label": "Steam",
+      "particleFile": "particles/train_steam.pcf",
+      "particleSystem": "steam_train",
+      "sound": "ambient/gas/steam_loop1.wav"
+    }
+  ]
+}

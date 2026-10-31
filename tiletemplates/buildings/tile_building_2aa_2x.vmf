@@ -1,8 +1,8 @@
 versioninfo
 {
 	"editorversion" "400"
-	"editorbuild" "8871"
-	"mapversion" "28"
+	"editorbuild" "8873"
+	"mapversion" "29"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "28"
+	"mapversion" "29"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -1979,7 +1979,7 @@ entity
 {
 	"id" "991284"
 	"classname" "zn_road_connection"
-	"connection_type" "none"
+	"connection_type" "bus"
 	"origin" "-640 384 32"
 	editor
 	{
@@ -29136,8 +29136,8 @@ cameras
 	"activecamera" "0"
 	camera
 	{
-		"position" "[-1033.77 81.0066 387.823]"
-		"look" "[-1032.9 81.1108 387.347]"
+		"position" "[-973.839 88.1848 355.032]"
+		"look" "[-972.966 88.2893 354.555]"
 	}
 }
 cordons

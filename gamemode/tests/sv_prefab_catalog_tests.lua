@@ -1,4 +1,4 @@
-return function(contract, createCatalog)
+return function(contract, createCatalog, crc)
     local suite = ZM_TestHarness.NewSuite()
     local function fixture()
         local state = { files = {}, decoded = {}, names = {} }
@@ -14,7 +14,7 @@ return function(contract, createCatalog)
         }
         local json = {
             JSONToTable = function(text) return state.decoded[text] end,
-            CRC = function(text)
+            CRC = crc or function(text)
                 local hash = 0
                 for index = 1, #text do hash = (hash * 33 + string.byte(text, index)) % 4294967296 end
                 return tostring(hash)
@@ -54,6 +54,27 @@ return function(contract, createCatalog)
         state.files["data_static/prefabs/a.json"] = "broken"
         loaded, problem = catalog.Load()
         check(not loaded and type(problem) == "string", "invalid JSON does not silently disappear")
+    end)
+
+    suite:Add("world placements are explicit, profile scoped and never tag-selected", function(check)
+        local state, catalog = fixture()
+        state:Add("world", "Unique placement", { "road" })
+        state:Add("ordinary", "Ordinary", { "road" })
+        state.decoded.world.worldPlacement = { enabled = true, profile = "preview", cellX = 14, cellY = 0,
+            tileX = 0, tileY = 0, offset = { x = 0, y = 0, z = 0 }, angles = { p = 0, y = 0, r = 0 } }
+        local documents = catalog.Load()
+        local selected = catalog.ForWorldCell(documents, "preview", 14, 0)
+        check(#selected == 1 and selected[1].id == "world", "only the exact logical cell gets its placement")
+        check(#catalog.ForWorldCell(documents, "preview", 15, 0) == 0
+            and #catalog.ForWorldCell(documents, "city", 14, 0) == 0, "neighbor and other profile cannot inherit a shared-map placement")
+        check(catalog.Select(documents, { "road" }, "preview", 1337, 42, 17).id == "ordinary",
+            "world-prefab tags cannot add random copies")
+        for _, document in ipairs(documents) do
+            if document.worldPlacement then document.worldPlacement.enabled = false end
+        end
+        check(#catalog.ForWorldCell(documents, "preview", 14, 0) == 0
+            and catalog.Select(documents, { "road" }, "preview", 1337, 42, 17).id == "ordinary",
+            "disabled world prefabs stay disabled, not tag-selected")
     end)
 
     suite:Add("selection requires all tags and a stable cell and anchor", function(check)

@@ -766,6 +766,38 @@ DevConsole.DirectCommands.zombiesim_dev_test_character_cards = function()
     return true, "requested read-only character card client tests"
 end
 
+DevConsole.DirectCommands.zombiesim_dev_test_calling_card_client = function()
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    target:ConCommand("zombiesim_dev_test_calling_card_client")
+    return true, "requested calling-card client state fixtures"
+end
+
+DevConsole.DirectCommands.zombiesim_dev_test_calling_card_ui = function()
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    target:ConCommand("zombiesim_dev_test_calling_card_ui")
+    return true, "requested calling-card selector and shop fixtures"
+end
+
+DevConsole.DirectCommands.zombiesim_dev_credits_status = function(argumentString)
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    local requestId = string.Trim(argumentString or "")
+    if game.GetMap() ~= "zn_preview_start" or #requestId > 32 or not string.match(requestId, "^%d+$") then
+        return false, "requires the preview launcher and a numeric credits status request ID"
+    end
+    target:ConCommand("zombiesim_dev_credits_status " .. requestId)
+    return true, "requested read-only credits status " .. requestId
+end
+
+DevConsole.DirectCommands.zombiesim_dev_test_prefab_map_client = function()
+    local target, targetError = previewAdmin()
+    if not target then return false, targetError end
+    target:ConCommand("zombiesim_dev_test_prefab_map_client")
+    return true
+end
+
 DevConsole.DirectCommands.zombiesim_dev_character_card_status = function()
     local target, targetError = previewAdmin()
     if not target then return false, targetError end

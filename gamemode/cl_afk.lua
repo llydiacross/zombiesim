@@ -6,7 +6,8 @@ local AFK = ZM_AFK
 AFK.Actions = { begin = 1, immediate = 2, cancel = 3, leave = 4, hold = 5 }
 AFK.HeartbeatSeconds = 2
 AFK.State = AFK.State or { afk = false, countdownUntil = 0, countdownMenu = "", graceUntil = 0 }
-AFK.MenuLabels = { inventory = "INVENTORY", scoreboard = "SCOREBOARD", options = "OPTIONS", cheats = "CHEATS" }
+AFK.MenuLabels = { inventory = "INVENTORY", scoreboard = "SCOREBOARD", options = "OPTIONS", map = "MAP", cheats = "CHEATS" }
+AFK.PendingMapOpen = false
 
 surface.CreateFont("ZM_AFKTitle", { font = "Trebuchet MS", size = 22, weight = 900, antialias = true })
 surface.CreateFont("ZM_AFKDetail", { font = "Trebuchet MS", size = 15, weight = 700, antialias = true })
@@ -15,6 +16,7 @@ local openers = {
 	inventory = function() ZM_Inventory:Open() end,
 	scoreboard = function() ZM_Scoreboard:Open() end,
 	options = function() ZM_Options:Open() end,
+	map = function() ZM_WorldMap:Open() end,
 	cheats = function() ZM_PreviewCheats:Open() end
 }
 
@@ -22,6 +24,7 @@ local menuOwners = {
 	function() return ZM_Inventory end,
 	function() return ZM_Scoreboard end,
 	function() return ZM_Options end,
+	function() return ZM_WorldMap end,
 	function() return ZM_PreviewCheats end,
 	function() return ZM_Wardrobe end
 }
@@ -62,6 +65,10 @@ function AFK:OpenMenu(menu)
 		self:Request(self.Actions.immediate, menu)
 		return true
 	end
+	if menu == "map" and self.LeaveSent then
+		self.PendingMapOpen = true
+		return true
+	end
 	if self.State.afk then
 		opener()
 		return true
@@ -77,6 +84,11 @@ end
 
 // Pressing the menu key during a countdown cancels it. Returns true when the key press was consumed.
 function AFK:CancelFromInput()
+	if self.PendingMapOpen then
+		self.PendingMapOpen = false
+		self.Notice = { text = "CANCELLED", at = RealTime() }
+		return true
+	end
 	if not self:IsCountingDown() then
 		return false
 	end
@@ -102,6 +114,10 @@ net.Receive("ZM.AFKState", function()
 	end
 	if openMenu ~= "" and openers[openMenu] then
 		openers[openMenu]()
+	end
+	if AFK.PendingMapOpen and not state.afk then
+		AFK.PendingMapOpen = false
+		AFK:OpenMenu("map")
 	end
 end)
 
@@ -157,8 +173,11 @@ hook.Add("PostRenderVGUI", "ZM.AFK.Status", function()
 		drawBanner(centerX, y, "AFK", "Zombies ignore you while this menu is open", palette.red)
 	elseif AFK:IsCountingDown() then
 		local remaining = math.max(0, state.countdownUntil - now)
+		local cancelHint = state.countdownMenu == "map"
+			and "Press M or TAB to cancel. Taking damage interrupts."
+			or "Press TAB to cancel. Taking damage interrupts."
 		drawBanner(centerX, math.floor(ScrH() * 0.62), string.format("OPENING %s  %.1f", AFK.MenuLabels[state.countdownMenu] or "MENU", remaining),
-			"Press TAB to cancel. Taking damage interrupts.", palette.redBright, 1 - remaining / 3)
+			cancelHint, palette.redBright, 1 - remaining / 3)
 	elseif state.graceUntil > now then
 		drawBanner(centerX, y, string.format("PROTECTED  %.1f", state.graceUntil - now), "Firing ends protection", palette.red)
 	elseif AFK.Notice and RealTime() - AFK.Notice.at < 1.5 then

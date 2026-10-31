@@ -19,6 +19,32 @@ class WalkerSpawningTests(unittest.TestCase):
         self.runner = FixtureRunner(ROOT, [])
         self.lua = self.runner.lua
 
+    def test_neighbouring_tickets_roll_independent_radiated_variants(self):
+        self.lua.execute("Enemies, Generation = {}, {}")
+        self.lua.execute(section("gamemode/sv_enemies.lua", "local function multiply32", "function Enemies.ResolveKiller"))
+        self.lua.execute(section("gamemode/sv_item_generation.lua", "local Rng = {}", "function Rng:Int"))
+        result = self.lua.execute("""
+            local radiated, picksDiffer = 0, 0
+            for low = 5000, 5399 do
+                local ticket = { TicketIdLow = low, TicketIdHigh = 0 }
+                assert(Enemies.GetTicketSeed(ticket) == Enemies.GetTicketSeed(ticket))
+                assert(Enemies.GetTicketSeed(ticket, 1) ~= Enemies.GetTicketSeed(ticket))
+                if Generation.NewRng(Enemies.GetTicketSeed(ticket, 1)):Next() < 0.778 * 0.5 then
+                    radiated = radiated + 1
+                end
+                local nextTicket = { TicketIdLow = low + 1, TicketIdHigh = 0 }
+                if math.abs(Generation.NewRng(Enemies.GetTicketSeed(ticket)):Next()
+                    - Generation.NewRng(Enemies.GetTicketSeed(nextTicket)):Next()) > 0.05 then
+                    picksDiffer = picksDiffer + 1
+                end
+            end
+            return radiated, picksDiffer
+        """)
+        radiated, picks_differ = result
+        self.assertGreater(radiated, 120)
+        self.assertLess(radiated, 195)
+        self.assertGreater(picks_differ, 300)
+
     def test_mounted_model_catalogue_excludes_nonexistent_refugees(self):
         self.lua.execute("ENT = {}")
         self.lua.execute(section(
@@ -128,6 +154,10 @@ class WalkerSpawningTests(unittest.TestCase):
             local function isWalkerZombieTooClose() return zombieTooClose == true end
             local function hasSpawnClearance() return blockedClearance ~= true end
             local function isHiddenFromPlayers() return visibleToPlayer ~= true end
+            local function snapToGround(p)
+                if noGround == true then return nil end
+                return Vector(p.x, p.y, p.z + 5)
+            end
         """
         self.lua.execute(prefix + section(
             "gamemode/sv_walker_sim.lua",
@@ -137,9 +167,10 @@ class WalkerSpawningTests(unittest.TestCase):
         self.lua.execute("""
             local p = WalkerSim:FindZombieSpawnPosition({LocalU=32767.5,LocalV=32767.5})
             assert(p.x == 1, "equal-distance candidates retain nav enumeration order")
+            assert(p.z == 5, "spawn uses the ground-snapped height, not the nav-area centre")
             for i=1,4 do assert(areas[i].reads == 1) end
             assert(areas[5].reads == 0)
-            for _, guard in ipairs({"playerTooClose","zombieTooClose","blockedClearance","visibleToPlayer"}) do
+            for _, guard in ipairs({"playerTooClose","zombieTooClose","blockedClearance","visibleToPlayer","noGround"}) do
                 _G[guard] = true
                 assert(WalkerSim:FindZombieSpawnPosition({LocalU=32767.5,LocalV=32767.5}) == nil)
                 _G[guard] = false

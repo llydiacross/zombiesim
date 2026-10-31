@@ -5,7 +5,11 @@ param(
     [string]$EngineMapDirectory = '',
     [string]$LedgerPath = '',
     [switch]$Scaled,
+    [switch]$ScaledBench,
     [switch]$Setpieces,
+    [switch]$Particles,
+    [switch]$MapOnly,
+    [switch]$Guards,
     [string]$SetpiecesDirectory = ''
 )
 
@@ -13,7 +17,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $profile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile preview
-if ($Scaled -and $Setpieces) { throw 'Scaled and set-piece fixtures are separate.' }
+if (@($Scaled, $ScaledBench, $Setpieces, $Particles, $MapOnly, $Guards).Where({ $_ }).Count -gt 1) {
+    throw 'Scaled drum, scaled bench, set-piece, particle, guard and map-only fixtures are separate.'
+}
 if (-not $BspPath) {
     $BspPath = if ($Setpieces) { Join-Path $root 'generated\prefab_setpieces_20261029\build\zn_dev_prefab_anchor.bsp' }
         else { Join-Path $root 'generated\prefab_anchor_20261029\build\zn_dev_prefab_anchor.bsp' }
@@ -30,7 +36,8 @@ $ContentDirectory = [IO.Path]::GetFullPath($ContentDirectory)
 $EngineMapDirectory = [IO.Path]::GetFullPath($EngineMapDirectory)
 $LedgerPath = [IO.Path]::GetFullPath($LedgerPath)
 $mapName = 'zn_dev_prefab_anchor.bsp'
-$prefabNames = @(if ($Setpieces) { 'zz_dev_roadblock.json'; 'zz_dev_transition_gate.json' } else { 'zz_dev_anchor_fixture.json' })
+$prefabNames = @(if ($Setpieces) { 'zz_dev_roadblock.json'; 'zz_dev_transition_gate.json' }
+    elseif (-not $MapOnly) { 'zz_dev_anchor_fixture.json' })
 $mapContent = Join-Path $ContentDirectory "maps\$mapName"
 $mapEngine = Join-Path $EngineMapDirectory $mapName
 $destinations = @($mapContent, $mapEngine) + @($prefabNames | ForEach-Object { Join-Path $ContentDirectory "data_static\prefabs\$_" })
@@ -38,6 +45,15 @@ $json = '{"schemaVersion":1,"id":"zz_dev_anchor_fixture","name":"Temporary ancho
 if ($Scaled) {
     $json = $json.Replace('"scale":1,"movable":false', '"scale":0.5,"movable":false').
         Replace('"scale":1,"movable":true', '"scale":2,"movable":true')
+}
+if ($ScaledBench) {
+    $json = '{"schemaVersion":1,"id":"zz_dev_anchor_fixture","name":"Temporary scaled bench fixture","description":"Isolated preview test only","tags":["road","motorway"],"props":[{"model":"models/props_c17/bench01a.mdl","position":{"x":0,"y":0,"z":-64},"angles":{"p":0,"y":0,"r":0},"skin":0,"scale":1.4,"movable":true}]}'
+}
+if ($Particles) {
+    $json = '{"schemaVersion":1,"id":"zz_dev_anchor_fixture","name":"Temporary particle anchor fixture","description":"Isolated preview test only","tags":["road","motorway"],"props":[],"particles":[{"particleId":"continuous","effect":"steam","position":{"x":0,"y":0,"z":-48},"angles":{"p":0,"y":0,"r":0},"mode":"continuous","overlap":true},{"particleId":"burst_overlap","effect":"steam","position":{"x":64,"y":0,"z":-48},"angles":{"p":0,"y":0,"r":0},"mode":"triggered","overlap":true},{"particleId":"burst_restart","effect":"steam","position":{"x":-64,"y":0,"z":-48},"angles":{"p":0,"y":0,"r":0},"mode":"triggered","overlap":false}]}'
+}
+if ($Guards) {
+    $json = '{"schemaVersion":1,"id":"zz_dev_anchor_fixture","name":"Temporary guard anchor fixture","description":"Isolated preview test only","tags":["guardFixture"],"props":[{"propId":"p_drum","model":"models/props_c17/oildrum001.mdl","position":{"x":-64,"y":0,"z":0},"angles":{"p":0,"y":0,"r":0},"skin":0,"scale":1,"movable":false,"lootMode":"off"}],"guards":[{"guardId":"guard_1","name":"Anchor fixture","model":"models/player/group01/male_03.mdl","position":{"x":32,"y":16,"z":4},"angles":{"p":0,"y":90,"r":0},"idle":"idle_all_01","weapon":"smg","range":1200,"shirt":"catalogue_fabric_shirt_blue_plain","pants":"catalogue_fabric_pants_black_plain","damage":25,"fireInterval":0.075,"spread":0.04}]}'
 }
 $encoding = [Text.UTF8Encoding]::new($false)
 $prefabBytes = $encoding.GetBytes($json)
@@ -96,7 +112,7 @@ if ($Setpieces) {
             source = $source
         }
     }
-} else {
+} elseif (-not $MapOnly) {
     $prefabRecords += [ordered]@{ path = $destinations[2]; sha256 = $prefabHash }
 }
 if ($Action -eq 'Inspect') {
@@ -118,7 +134,7 @@ foreach ($destination in $destinations) { [IO.Directory]::CreateDirectory((Split
 [IO.File]::Copy($BspPath, $mapEngine, $false)
 if ($Setpieces) {
     foreach ($record in $prefabRecords) { [IO.File]::Copy($record.source, $record.path, $false) }
-} else {
+} elseif (-not $MapOnly) {
     Write-NewFixtureFile $destinations[2] $prefabBytes
 }
 foreach ($record in $ledger.files) {

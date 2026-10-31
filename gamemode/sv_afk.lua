@@ -1,4 +1,4 @@
-// Server-owned AFK protection for the inventory, scoreboard, options and cheats menus.
+// Server-owned AFK protection for the inventory, scoreboard, options, map and cheats menus.
 // A counted menu opens only after the server finishes a countdown; damage or a client cancel stops it. While AFK,
 // zombies cannot target or damage the player. Leaving AFK grants a short grace that firing ends early.
 ZM_AFK = ZM_AFK or {}
@@ -9,7 +9,7 @@ AFK.GraceSeconds = 3
 // The client re-confirms an open AFK menu; a silent client loses protection rather than keeping it forever.
 AFK.HeartbeatTimeoutSeconds = 6
 AFK.MinRequestInterval = 0.1
-AFK.CountdownMenus = { inventory = true, scoreboard = true, options = true }
+AFK.CountdownMenus = { inventory = true, scoreboard = true, options = true, map = true }
 AFK.ImmediateMenus = { cheats = true }
 AFK.Actions = { begin = 1, immediate = 2, cancel = 3, leave = 4, hold = 5 }
 
@@ -213,7 +213,8 @@ end
 function AFK:HandleRequest(playerEntity, action, menu)
     local at = now()
     local state = self:GetState(playerEntity)
-    if action ~= self.Actions.hold then
+    // Closing or cancelling must not throttle a subsequent menu request.
+    if action ~= self.Actions.hold and action ~= self.Actions.cancel and action ~= self.Actions.leave then
         if at - (state.lastRequestAt or 0) < self.MinRequestInterval then
             self:Send(playerEntity)
             return false, "too fast"

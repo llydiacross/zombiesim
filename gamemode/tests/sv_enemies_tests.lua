@@ -302,6 +302,16 @@ test("kills_reward_xp_and_place_loot_on_corpse_once", function(check)
         local worldRewarded = Enemies:OnEnemyKilled(worldKill, game.GetWorld())
         check(not worldRewarded, "a non-player kill gives no reward")
         check(Enemies:OnEnemyKilled({}, killer) == false, "an entity without an enemy definition gives no reward")
+        local guard = {
+            IsValid = function() return true end, IsPlayer = function() return false end,
+            GetClass = function() return "zn_prefab_guard" end
+        }
+        local guardKill = { EnemyId = "testLootEnemy", EnemyDanger = 0.5 }
+        local guardRewarded, guardReward = Enemies:OnEnemyKilled(guardKill, guard, { rng = Generation.NewRng(3) })
+        check(guardRewarded and guardReward.xp == 0 and guardReward.killer == nil
+            and guardReward.item and guardReward.item.itemId == "itemBandage",
+            "a guard kill rolls normal loot without granting player XP")
+        check(not Enemies:OnEnemyKilled(guardKill, guard), "guard loot is awarded only once")
     end)
     registry.enemies.testLootEnemy = original
     check(ok, "error: " .. tostring(err))

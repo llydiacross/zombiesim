@@ -1,14 +1,16 @@
 {
   "schemaVersion": 1,
-  "professionVersion": 1,
+  "professionVersion": 2,
   "professions": {
     "Civilian": {
       "name": "Civilian",
-      "description": "No trade. Civilians receive no daily delivery and offer no services."
+      "description": "No trade. Civilians receive no daily delivery and offer no services.",
+      "legacyStatBonuses": {}
     },
 	"Capitalist": {
       "name": "Capitalist",
       "description": "You are a capitalist by nature. Trading is your life and blood. You must make a profit out of all costs.",
+      "legacyStatBonuses": {},
 	  "playerLootBonuses": {
 		"lootCashBundles": 0.25
 	  }
@@ -16,7 +18,8 @@
     "Farmer": {
       "name": "Farmer",
       "description": "Grows produce. Receives vegetables and fruit every day.",
-      "statBonuses": { "Farming": 3, "Endurance": 1 },
+      "legacyStatBonuses": { "Farming": 3, "Endurance": 1 },
+      "statBonuses": { "Farming": 4, "Endurance": 3, "Strength": 2, "Agility": 1 },
       "deliveries": [
         { "minLevel": 1, "items": [ { "item": "itemPotato", "min": 2, "max": 4 }, { "item": "itemCarrot", "min": 1, "max": 3 } ] },
         { "minLevel": 10, "items": [ { "item": "itemPotato", "min": 3, "max": 5 }, { "item": "itemCarrot", "min": 2, "max": 4 }, { "item": "itemTomato", "min": 1, "max": 3 } ] },
@@ -27,7 +30,8 @@
       "name": "Doctor",
       "description": "Treats the wounded and installs or removes implants. Medical items applied by a Doctor heal 50% more.",
       "aliases": [ "Medic" ],
-      "statBonuses": { "Medicine": 3, "Intelligence": 1 },
+      "legacyStatBonuses": { "Medicine": 3, "Intelligence": 1 },
+      "statBonuses": { "Medicine": 4, "Intelligence": 3, "Endurance": 2, "Agility": 1 },
       "services": [ "treat", "implant", "extract" ],
       "deliveries": [
         { "minLevel": 1, "items": [ { "item": "itemBandage", "min": 1, "max": 2 }, { "item": "itemPainkillers", "min": 1, "max": 2 } ] },
@@ -39,7 +43,8 @@
     "Mechanic": {
       "name": "Mechanic",
       "description": "Keeps things running. Receives wire, fixings, and engine parts.",
-      "statBonuses": { "Mechanics": 3, "WeaponRepairing": 1 },
+      "legacyStatBonuses": { "Mechanics": 3, "WeaponRepairing": 1 },
+      "statBonuses": { "Mechanics": 4, "WeaponRepairing": 3, "ArmorRepairing": 1, "Intelligence": 2 },
       "deliveries": [
         { "minLevel": 1, "items": [ { "item": "itemScrews", "min": 3, "max": 6 }, { "item": "itemScrapMetal", "min": 1, "max": 3 } ] },
         { "minLevel": 10, "items": [ { "item": "itemScrews", "min": 4, "max": 8 }, { "item": "itemCopperWire", "min": 1, "max": 3 }, { "item": "itemGlue", "min": 1, "max": 2 } ] },
@@ -49,7 +54,8 @@
     "Hunter": {
       "name": "Hunter",
       "description": "Hunts game and cooks it. Receives birds and shells.",
-      "statBonuses": { "Shotguns": 2, "Agility": 1 },
+      "legacyStatBonuses": { "Shotguns": 2, "Agility": 1 },
+      "statBonuses": { "Shotguns": 3, "Rifles": 2, "Agility": 2, "Endurance": 2, "Strength": 1 },
       "services": [ "cook" ],
       "deliveries": [
         { "minLevel": 1, "items": [ { "item": "itemRawGameBird", "min": 1, "max": 2 }, { "item": "ammoShells", "min": 4, "max": 8 } ] },
@@ -59,7 +65,8 @@
     "Scavenger": {
       "name": "Scavenger",
       "description": "Finds what others miss. Receives salvage and tinned food.",
-      "statBonuses": { "Agility": 2, "Endurance": 1 },
+      "legacyStatBonuses": { "Agility": 2, "Endurance": 1 },
+      "statBonuses": { "Agility": 3, "Endurance": 2, "Strength": 2, "Pistols": 2, "WeaponRepairing": 1 },
       "deliveries": [
         { "minLevel": 1, "items": [ { "item": "itemCannedBeans", "min": 1, "max": 2 }, { "item": "itemScrapMetal", "min": 1, "max": 3 }, { "item": "itemCloth", "min": 1, "max": 2 } ] },
         { "minLevel": 10, "items": [ { "item": "itemCannedBeans", "min": 1, "max": 2 }, { "item": "itemScrapMetal", "min": 2, "max": 4 }, { "item": "itemGunpowder", "min": 1, "max": 2 }, { "item": "itemCloth", "min": 1, "max": 3 } ] },
@@ -69,7 +76,8 @@
     "Chef": {
       "name": "Chef",
       "description": "Cooks raw food for others. Receives vegetables, spices, and oil.",
-      "statBonuses": { "Farming": 1, "Endurance": 2 },
+      "legacyStatBonuses": { "Farming": 1, "Endurance": 2 },
+      "statBonuses": { "Farming": 3, "Endurance": 3, "Agility": 2, "Strength": 2 },
       "services": [ "cook" ],
       "deliveries": [
         { "minLevel": 1, "items": [ { "item": "itemPotato", "min": 1, "max": 3 }, { "item": "itemSpices", "min": 1, "max": 2 }, { "item": "itemOil", "min": 1, "max": 2 } ] },
@@ -80,19 +88,22 @@
       "name": "Police Officer",
       "description": "Trained to handle firearms and keep going.",
       "aliases": [ "Police" ],
-      "statBonuses": { "Endurance": 2, "Strength": 1, "Snipers": 1 }
+      "legacyStatBonuses": { "Endurance": 2, "Strength": 1, "Rifles": 1 },
+      "statBonuses": { "Pistols": 3, "Shotguns": 2, "Rifles": 2, "Endurance": 2, "Strength": 1 }
     },
     "ArmySoldier": {
       "name": "Army Soldier",
       "description": "Military training in automatic weapons and endurance.",
       "aliases": [ "Soldier" ],
-      "statBonuses": { "MachineGuns": 2, "Strength": 2, "Endurance": 1 }
+      "legacyStatBonuses": { "MachineGuns": 2, "Strength": 2, "Endurance": 1 },
+      "statBonuses": { "MachineGuns": 2, "Rifles": 2, "Pistols": 1, "Shotguns": 1, "Strength": 2, "Endurance": 2 }
     },
     "Scientist": {
       "name": "Scientist",
       "description": "Researches medicine from raw materials for anyone who brings them.",
-      "statBonuses": { "Intelligence": 3 },
+      "legacyStatBonuses": { "Intelligence": 3 },
+      "statBonuses": { "Intelligence": 4, "Medicine": 2, "WeaponCrafting": 2, "Mechanics": 1, "Endurance": 1 },
       "services": [ "research" ]
-    },
+    }
   }
 }

@@ -643,6 +643,81 @@ test("radiation_suit_requires_its_own_equipped_slot_and_persists", function(chec
     check(not Items:HasRadiationProtection(target.ZM_Inventory), "unequipping removes protection")
 end)
 
+test("stat_armour_equips_persists_and_restores_effects", function(check)
+    local target = stubPlayer()
+    local endurance = 0
+    target.GetLevel = function() return 1 end
+    target.GetStat = function(_, name) return name == "Endurance" and endurance or 0 end
+    target.walk, target.run = 200, 400
+    target.GetWalkSpeed = function(self) return self.walk end
+    target.GetRunSpeed = function(self) return self.run end
+    target.SetWalkSpeed = function(self, value) self.walk = value end
+    target.SetRunSpeed = function(self, value) self.run = value end
+
+    local suit = instance("itemRadiationSuit")
+    local tiers = {
+        { item = instance("itemLightArmour"), damage = 0.1, speed = 0, recovery = 0.05 },
+        { item = instance("itemMediumArmour"), damage = 0.2, speed = 0.05, recovery = 0.15 },
+        { item = instance("itemHeavyArmour"), damage = 0.35, speed = 0.12, recovery = 0.3 }
+    }
+    check(Ops.Add(target.ZM_Inventory, "backpack", suit), "add radiation suit")
+    for _, tier in ipairs(tiers) do
+        check(Ops.Add(target.ZM_Inventory, "backpack", tier.item), "add " .. tier.item.itemId)
+    end
+    check(Service:EquipItem(target, suit.instanceId), "equip the separate radiation suit")
+    check(Items:HasRadiationProtection(target.ZM_Inventory), "the equipped suit protects against radiation")
+
+    local damageHook = hook.GetTable().EntityTakeDamage["ZM.Armour.DamageReduction"]
+    check(type(damageHook) == "function", "armour damage hook is registered")
+    if type(damageHook) ~= "function" then return end
+    local damageTarget = { IsPlayer = function() return true end, GetStat = target.GetStat }
+    local function near(actual, expected) return math.abs(actual - expected) < 0.0001 end
+    local function checkDamage(inventory, damageType, expected, message)
+        damageTarget.ZM_Inventory = inventory
+        local damage = DamageInfo()
+        damage:SetDamage(100)
+        damage:SetDamageType(damageType)
+        damageHook(damageTarget, damage)
+        check(near(damage:GetDamage(), expected), message)
+    end
+
+    for _, tier in ipairs(tiers) do
+        local equipped, reason = Service:EquipItem(target, tier.item.instanceId)
+        check(equipped, "equip " .. tier.item.itemId .. ": " .. tostring(reason))
+        check(not Items:HasRadiationProtection(target.ZM_Inventory), "ordinary armour replaces radiation protection")
+        local restored = Service.FromRows(ZM_GetPlayerItems(testSteamId, testProfile))
+        check(restored.equipped[Items.ArmourSlot] and
+            restored.equipped[Items.ArmourSlot].instanceId == tier.item.instanceId,
+            tier.item.itemId .. " survives the inventory persistence round trip")
+        checkDamage(target.ZM_Inventory, DMG_SLASH, 100 * (1 - tier.damage), tier.item.itemId .. " reduces combat damage")
+        checkDamage(target.ZM_Inventory, DMG_RADIATION, 100, tier.item.itemId .. " does not reduce radiation damage")
+        ZM_Movement.Apply(target, 0.2)
+        ZM_Movement.Apply(target, 0.2)
+        check(near(target.walk, 200 * 0.675 * 1.2 * (1 - tier.speed)) and
+            near(target.run, 400 * 0.765 * 1.2 * (1 - tier.speed)),
+            tier.item.itemId .. " applies its speed penalty without compounding")
+        local effects = Items:GetArmourEffects(target.ZM_Inventory, endurance)
+        local _, recovery = ZM_Movement.Rates(0, 0, 1 - effects.staminaRegenPenalty)
+        check(near(recovery, 5.5 * (1 - tier.recovery)), tier.item.itemId .. " applies its recovery penalty")
+    end
+
+    endurance = 10
+    ZM_Movement.Apply(target, 0.2)
+    check(near(target.walk, 200 * 0.675 * 1.2 * 0.94) and
+        near(target.run, 400 * 0.765 * 1.2 * 0.94), "Endurance halves the heavy armour speed penalty")
+    local trained = Items:GetArmourEffects(target.ZM_Inventory, endurance)
+    check(near(trained.staminaRegenPenalty, 0.15), "Endurance halves the heavy armour recovery penalty")
+    checkDamage(target.ZM_Inventory, DMG_SLASH, 65, "Endurance does not alter heavy armour damage reduction")
+    check(Service:MoveItem(target, tiers[3].item.instanceId, "backpack"), "unequip heavy armour")
+    ZM_Movement.Apply(target, 0.2)
+    check(near(target.walk, 200 * 0.675 * 1.2) and near(target.run, 400 * 0.765 * 1.2),
+        "unequipping restores movement")
+    checkDamage(target.ZM_Inventory, DMG_SLASH, 100, "unequipping restores ordinary damage")
+    check(Service:EquipItem(target, suit.instanceId), "re-equip the radiation suit")
+    check(Items:HasRadiationProtection(target.ZM_Inventory), "radiation protection returns when the suit is re-equipped")
+    checkDamage(target.ZM_Inventory, DMG_SLASH, 100, "the radiation suit does not reduce ordinary damage")
+end)
+
 test("cosmetic_clothing_slots_replace_persist_and_restore_independently", function(check)
     local target = stubPlayer()
     target.GetWeapons = function() return {} end

@@ -1,0 +1,48 @@
+{
+	"id": "test",
+	"particles": [],
+	"worldPlacement": {
+		"angles": {
+			"y": 0,
+			"r": 0,
+			"p": 0
+		},
+		"cellY": -11,
+		"profile": "preview",
+		"offset": {
+			"y": 1,
+			"x": 0,
+			"z": 0
+		},
+		"tileX": 0,
+		"enabled": true,
+		"tileY": 0,
+		"cellX": 4
+	},
+	"schemaVersion": 1,
+	"guards": [],
+	"tags": [],
+	"lights": [],
+	"props": [
+		{
+			"scale": 1,
+			"movable": false,
+			"model": "models/props_c17/chair_stool01a.mdl",
+			"lootMode": "off",
+			"skin": 0,
+			"propId": "legacy_1",
+			"position": {
+				"y": 0,
+				"x": 0,
+				"z": 0
+			},
+			"angles": {
+				"y": 0,
+				"r": 0,
+				"p": 0
+			}
+		}
+	],
+	"name": "test",
+	"description": "test"
+}

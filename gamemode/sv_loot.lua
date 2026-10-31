@@ -75,6 +75,7 @@ function Loot:RollItem(entries, options)
         level = options.level,
         playerLevel = options.playerLevel,
         danger = danger,
+        levelFromDanger = options.levelFromDanger,
         mastercraft = entry.mastercraft,
         mastercraftChance = entry.mastercraftChance
     })

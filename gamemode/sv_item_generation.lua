@@ -100,7 +100,7 @@ function Generation:RollAttributes(definition, level, mastercraft, rng, perfectC
     return attributes
 end
 
-// Builds a validated instance. Options: count, level, playerLevel, danger, mastercraft, mastercraftChance,
+// Builds a validated instance. Options: count, level, playerLevel, danger, levelFromDanger, mastercraft, mastercraftChance,
 // attributes, seed or rng, instanceId. Returns the instance or nil and a reason.
 function Generation:CreateInstance(itemId, options)
     options = options or {}
@@ -110,6 +110,10 @@ function Generation:CreateInstance(itemId, options)
     end
     local rng = options.rng or self.NewRng(options.seed)
     local level = options.level
+    if level == nil and options.levelFromDanger then
+        local danger = math.Clamp(tonumber(options.danger) or 0, 0, 1)
+        level = math.Round(Lerp(danger, definition.minLevel, definition.maxLevel))
+    end
     if level == nil then
         level = definition.attributes and self:RollLevel(definition, options.playerLevel, options.danger, rng) or definition.minLevel
     end

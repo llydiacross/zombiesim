@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "aliases": {},
+  "shopPrices": {
+    "background_paper_ash": 5,
+    "background_paper_rust": 5,
+    "background_paper_moss": 5,
+    "detail_creeper_pattern": 5,
+    "detail_weed_pattern": 5
+  },
+  "questRewards": {
+    "background_paper_ash": true,
+    "background_paper_rust": true,
+    "background_paper_moss": true,
+    "detail_creeper_pattern": true,
+    "detail_weed_pattern": true
+  },
+  "recipes": [
+    {
+      "category": "background",
+      "layers": [
+        {
+          "image": "patterns\\dirty_paper.png",
+          "mode": "cover",
+          "color": "paper"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "background_paper_ash",
+          "name": "Ash paper",
+          "colors": { "paper": "#b6c4cf" }
+        },
+        {
+          "id": "background_paper_rust",
+          "name": "Rust paper",
+          "colors": { "paper": "#d2a28b" }
+        },
+        {
+          "id": "background_paper_moss",
+          "name": "Moss paper",
+          "colors": { "paper": "#afc69c" }
+        }
+      ]
+    },
+    {
+      "category": "detail",
+      "layers": [
+        {
+          "image": "symbols\\creeper.png",
+          "mode": "repeat",
+          "scale": 0.2,
+          "spacingX": 30,
+          "offsetX": 14,
+          "offsetY": -10
+        }
+      ],
+      "outputs": [
+        { "id": "detail_creeper_pattern", "name": "Creeper pattern" }
+      ]
+    },
+    {
+      "category": "detail",
+      "layers": [
+        {
+          "image": "symbols\\weed.png",
+          "mode": "repeat",
+          "scale": 0.17,
+          "spacingX": 24,
+          "spacingY": 6,
+          "offsetX": 5,
+          "offsetY": 3
+        }
+      ],
+      "outputs": [
+        { "id": "detail_weed_pattern", "name": "Weed pattern" }
+      ]
+    }
+  ]
+}

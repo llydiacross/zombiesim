@@ -97,6 +97,8 @@ The Phase D controller requests tickets only for the active logical cell and onl
 
 No valid loaded navmesh, map shutdown, profile change, absent eligible player, failed entity creation, or invalid placement is a no-spawn condition. Lua rejects unusable reservations and removes zombies that remain outside the relevance radius for the configured grace period; it never alters virtual population directly. On shutdown it saves a native checkpoint before the worker stops; compatible state persists across level changes and restarts.
 
+Relevance and excess despawn are camera-aware (Alpha 3.3 Phase B). The third-person camera reports its origin and forward vector to the server through `ZM.WalkerCameraView` at most every 0.2 seconds, with a 1.2-second heartbeat. `ZM_WalkerAwareness` (`gamemode/sv_walker_awareness.lua`) accepts a report only from a living player, with finite values, at least 0.1 seconds after the previous report, within 720 units of the eye and with a near-unit forward vector; a report stays fresh for 2 seconds. A fresh camera origin is added to that player's PVS. A walker counts as visible when it is in the player's cell, within 3200 units of the camera (1600 from the eye without a report), inside the camera cone and unobstructed by world brushes. A visible walker restarts its relevance grace instead of despawning. Excess removal keeps visible walkers first and then the nearest, and never removes a visible walker; `cameraVisibilityDeferrals` in the materializer status counts these deferrals. Cell-change and shutdown cleanup remain unconditional.
+
 ## Diagnostics
 
 Use server-admin commands only:
@@ -129,6 +131,24 @@ zombiesim_walker_materializer_request [count]
 ### Phase E AI Controls
 
 Each live Walker performs target scans at most once every 0.5 seconds, staggered by entity id. An eligible player within 2400 units is a pursuit target even before direct line of sight is available; melee still requires both line of sight and the 64-unit attack range. Paths are reused and recomputed only when the goal moves 96 units, becomes invalid, or reaches the 0.75-second refresh interval. An invalid path or stuck event enters a two-second retry cooldown. `zombiesim_walker_zombie_status` records every active entity's state plus aggregate target scans, path computes, path failures, stuck recoveries, and attacks in `DATA/zombiesim/walker_zombie_status.json`.
+
+### Alpha 3.3 Phase B Behaviour
+
+These rules supersede the 2400-unit no-line-of-sight pursuit above. Tunables live in `entities/entities/zn_walker_zombie/shared.lua`; stimulus routing lives in `ZM_WalkerAwareness`.
+
+- **Idle:** walkers wander slowly (0.6 of walk speed) to nav points within 256 units of their spawn position, pausing 3–8 seconds between moves, with occasional mounted HL2 idle moans every 15–40 seconds.
+- **Vision:** a 120° forward cone to 800 units plus a 150-unit all-round close sense, always requiring a world line of sight. A target that is already held is tracked regardless of facing.
+- **Hearing:** gunshots (1400 units), sprinting footsteps (350), player melee impacts (450) and prop breakage (700) send unengaged walkers to investigate the sound for up to 15 seconds. Sound needs no line of sight and never grants a target directly. Players with notarget or AFK protection make no noise, and each player has a per-kind cooldown.
+- **Alerts:** a walker that spots a player through its own perception plays an alert sound and wakes unengaged walkers within 400 units, with an 8-second cooldown. Woken walkers investigate but do not pass the alert on, so alerts never chain.
+- **Memory:** a lost target is pursued to its last known position for 10 seconds, after which the walker returns to wandering near its spawn. Nothing persists across a cell load.
+- **Attack:** a 0.9-second wind-up (tuned from 0.5 after live review), then one damage event (12, unchanged) only if the target is still valid, within reach plus a 16-unit tolerance and in line of sight; otherwise a miss. Recovery is 0.6 seconds. Death during the wind-up cancels the swing.
+- **Exploratory:** `zombiesim_walker_grouping` (default 1) lets idle walkers sometimes drift beside an idle neighbour. `zombiesim_walker_infighting` (default 1) enables a rare cosmetic shove between idle neighbours, which deals no damage and does not affect rewards or tickets.
+
+- **Movement recovery:** static wander, investigation and last-known moves compute their path once rather than every 1.25 seconds. Engine stuck detection, or under 12 units of progress in about a second towards a goal more than 96 units away, picks the first clear sidestep from six candidates (lateral, forward-diagonal and back-diagonal on each side) and follows it for up to 1.5 seconds. A walker blocked by another walker waits 0.4–1.2 seconds before sidestepping (walkers stay solid), or holds for 0.5–1.0 seconds when packed in with no clear sidestep. Target and memory are retained; only a non-walker block without a sidestep falls back to the old path reset. A 0.25-second airborne check in the idle and chase loops returns an unsupported walker to its nearest nav point, and `OnLeaveGround` records upward launches above 250 units/s.
+- **Spawn and visibility:** spawn placement snaps the hull to ground with `MASK_NPCSOLID`. Visibility samples the walker's head, centre and feet within 6000 units of the camera. The materializer keeps the last ten despawns in `recentDespawns`.
+- **Radiated overlay:** the client sheen and eyes fade in smoothly from 1500 units to full strength at 900. The server's radiated roll (`radiation × 0.5`) uses `ZM_Enemies.GetTicketSeed(ticket, 1)`; ticket seeds pass through a murmur3 finaliser so near-sequential ticket ids roll independently.
+
+The walker status adds attack hits and misses, noises heard, alerts sent, grouping moves, scuffles, detours, yields, holds, airborne recoveries and upward launches. In the user's live review, lag improved, ground spawns, in-view despawns and sky launches stopped, the wind-up felt right, crowd/prop movement was good enough for now and the radiated glow faded in smoothly on the stationary probe. The sky-launch root cause, measured performance, hearing/alert specifics and multiplayer remain unverified.
 
 ## Build And Test
 

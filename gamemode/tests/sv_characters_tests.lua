@@ -7,6 +7,7 @@ local characterOne = "character-test-one-" .. suffix
 local characterTwo = "character-test-two-" .. suffix
 local legacySteamId = "STEAM_0:1:" .. tostring(tonumber(suffix) + 1)
 local legacyCharacterId = legacySteamId .. "|character|" .. profile .. "|1"
+local createdCharacterIds = {}
 
 Suite:Add("launcher geographic anchors and credits data", function(check)
     local scene = ZM_LauncherScene
@@ -33,6 +34,9 @@ local function cleanup()
     for _, tableName in ipairs(Characters.StorageTables) do
         run("DELETE FROM " .. tableName .. " WHERE steamid IN ("
             .. sql.SQLStr(characterOne) .. ", " .. sql.SQLStr(characterTwo) .. ", " .. sql.SQLStr(legacyCharacterId) .. ")")
+        for _, characterId in ipairs(createdCharacterIds) do
+            run("DELETE FROM " .. tableName .. " WHERE steamid = " .. sql.SQLStr(characterId))
+        end
         run("DELETE FROM " .. tableName .. " WHERE steamid = " .. sql.SQLStr(rawSteamId)
             .. " OR steamid = " .. sql.SQLStr(legacySteamId))
     end
@@ -42,6 +46,10 @@ local function cleanup()
         .. " OR steamid = " .. sql.SQLStr(legacySteamId))
     run("DELETE FROM character_bios WHERE characterId IN ("
         .. sql.SQLStr(characterOne) .. ", " .. sql.SQLStr(characterTwo) .. ", " .. sql.SQLStr(legacyCharacterId) .. ")")
+    for _, characterId in ipairs(createdCharacterIds) do
+        run("DELETE FROM character_bios WHERE characterId = " .. sql.SQLStr(characterId))
+    end
+    createdCharacterIds = {}
 end
 
 local function insertCharacter(steamId, slot, characterId, name)
@@ -303,6 +311,35 @@ Suite:Add("failed creation writes no character rows", function(check)
     end, debug.traceback)
     cleanup()
     check(ok, "isolated creation fixture completes: " .. tostring(failure))
+end)
+
+Suite:Add("profession bonus versions stay isolated by survivor and profile", function(check)
+    cleanup()
+    insertCharacter(rawSteamId, 1, characterOne, "Legacy Test")
+    local payload = { name = "New Test", job = "Police",
+        appearance = { model = ZM_CharacterRules.Models[1], skin = 0, bodygroups = {},
+            playerColour = { 1, 1, 1 } }, attributes = { Strength = 10 } }
+    local previewCreated, previewId = Characters:CreateOwned(rawSteamId, "preview", 2, payload)
+    if previewCreated then table.insert(createdCharacterIds, previewId) end
+    local cityCreated, cityId = Characters:CreateOwned(rawSteamId, "city", 1, payload)
+    if cityCreated then table.insert(createdCharacterIds, cityId) end
+    check(previewCreated and cityCreated, "new survivors are created in both profiles")
+    local rows = run("SELECT profile, slot, characterId, professionBonusVersion FROM characters WHERE steamid = "
+        .. sql.SQLStr(rawSteamId) .. " ORDER BY profile, slot") or {}
+    check(#rows == 3 and rows[1].profile == "city" and tonumber(rows[1].professionBonusVersion) == 2
+        and rows[2].characterId == characterOne and tonumber(rows[2].professionBonusVersion) == 1
+        and rows[3].characterId == previewId and tonumber(rows[3].professionBonusVersion) == 2,
+        "existing and new survivors retain separate rules across profiles and slots")
+    local data = previewCreated and ZM_GetPlayerAttributes(previewId, "preview") or nil
+    check(data and tonumber(data.Strength) == 10 and tonumber(data.Pistols) == 0,
+        "profession bonuses are not added to saved starting attributes")
+    local forged = table.Copy(payload)
+    forged.professionBonusVersion = 1
+    check(not Characters:CreateOwned(rawSteamId, "preview", 3, forged),
+        "a client cannot choose a different bonus ruleset")
+    cleanup()
+    check(not run("SELECT characterId FROM characters WHERE steamid = " .. sql.SQLStr(rawSteamId)),
+        "the isolated survivors are removed")
 end)
 
 Suite:Add("three character slots are the maximum", function(check)

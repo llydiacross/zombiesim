@@ -143,6 +143,18 @@ end
 function Materializer:DespawnZombie(key, zombie, reason)
     self.Registry[key] = nil
     if IsValid(zombie) then
+        local record = {
+            reason = reason,
+            at = math.floor(CurTime()),
+            visibleAtRemoval = ZM_WalkerAwareness ~= nil and ZM_WalkerAwareness:IsVisibleToAnyPlayer(zombie)
+        }
+        local playerEntity = getEligiblePlayer()
+        if IsValid(playerEntity) then
+            record.playerDistance = math.floor(zombie:GetPos():Distance(playerEntity:GetPos()))
+        end
+        self.RecentDespawns = self.RecentDespawns or {}
+        table.insert(self.RecentDespawns, 1, record)
+        self.RecentDespawns[11] = nil
         zombie:RecordWalkerLifecycle("despawnRequested", { reason = reason })
         zombie:Remove()
     end
@@ -161,6 +173,14 @@ function Materializer:DespawnAll(reason)
     self.PendingRequest = nil
 end
 
+local function isCameraVisible(zombie)
+    if ZM_WalkerAwareness and ZM_WalkerAwareness:IsVisibleToAnyPlayer(zombie) then
+        ZM_WalkerAwareness.VisibilityDeferrals = ZM_WalkerAwareness.VisibilityDeferrals + 1
+        return true
+    end
+    return false
+end
+
 function Materializer:DespawnIrrelevant(playerEntity)
     local radius = math.max(1, tonumber(getConfig().materializationRadius) or 1200)
     local graceSeconds = math.max(0, tonumber(getConfig().despawnGraceSeconds) or 10)
@@ -172,7 +192,12 @@ function Materializer:DespawnIrrelevant(playerEntity)
             elseif zombie:GetPos():DistToSqr(playerEntity:GetPos()) > maximumDistanceSquared then
                 zombie.WalkerOutsideRelevanceAt = zombie.WalkerOutsideRelevanceAt or CurTime()
                 if CurTime() - zombie.WalkerOutsideRelevanceAt >= graceSeconds then
-                    self:DespawnZombie(key, zombie, "outside relevance radius")
+                    // A walker still in camera view restarts its grace instead of vanishing on screen.
+                    if isCameraVisible(zombie) then
+                        zombie.WalkerOutsideRelevanceAt = CurTime()
+                    else
+                        self:DespawnZombie(key, zombie, "outside relevance radius")
+                    end
                 end
             else
                 zombie.WalkerOutsideRelevanceAt = nil
@@ -194,18 +219,44 @@ function Materializer:GetPopulationTarget(cell)
     return target, population
 end
 
-function Materializer:DespawnExcess(targetCount)
-    local entries = {}
-    for key, zombie in pairs(self.Registry) do
-        if IsValid(zombie) and (type(zombie.IsWalkerEngaged) ~= "function" or not zombie:IsWalkerEngaged()) then
-            table.insert(entries, { key = key, zombie = zombie })
-        end
-    end
+// Keeps camera-visible walkers first, then the nearest, so excess removal takes distant unseen walkers.
+function Materializer.OrderExcessCandidates(entries)
     table.sort(entries, function(left, right)
+        if left.visible ~= right.visible then
+            return left.visible
+        end
+        if left.distance ~= right.distance then
+            return left.distance < right.distance
+        end
         return left.key > right.key
     end)
+    return entries
+end
+
+function Materializer:DespawnExcess(targetCount, playerEntity)
+    local entries = {}
+    local origin = IsValid(playerEntity) and playerEntity:GetPos() or nil
+    for key, zombie in pairs(self.Registry) do
+        if IsValid(zombie) and (type(zombie.IsWalkerEngaged) ~= "function" or not zombie:IsWalkerEngaged()) then
+            table.insert(entries, {
+                key = key,
+                zombie = zombie,
+                visible = false,
+                distance = origin and zombie:GetPos():DistToSqr(origin) or 0
+            })
+        end
+    end
+    if #entries <= targetCount then
+        return
+    end
+    for _, entry in ipairs(entries) do
+        entry.visible = isCameraVisible(entry.zombie)
+    end
+    Materializer.OrderExcessCandidates(entries)
     for index = targetCount + 1, #entries do
-        self:DespawnZombie(entries[index].key, entries[index].zombie, "cell population target decreased")
+        if not entries[index].visible then
+            self:DespawnZombie(entries[index].key, entries[index].zombie, "cell population target decreased")
+        end
     end
 end
 
@@ -359,7 +410,7 @@ function Materializer:Reconcile()
     self.CurrentTargetCount = targetCount
     self:DespawnIrrelevant(playerEntity)
     activeCount = self:SynchronizeRegistry()
-    self:DespawnExcess(targetCount)
+    self:DespawnExcess(targetCount, playerEntity)
     activeCount = self:SynchronizeRegistry()
     local deferred
     activeCount, deferred = self:MaterializeReservations(tickets, cell, playerEntity, activeCount, targetCount)
@@ -386,7 +437,9 @@ function Materializer:GetStatus()
             requestIdHigh = self.PendingRequest.requestIdHigh
         } or nil,
         lastError = self.LastError,
-        errorCount = self.ErrorCount
+        errorCount = self.ErrorCount,
+        cameraVisibilityDeferrals = ZM_WalkerAwareness and ZM_WalkerAwareness.VisibilityDeferrals or 0,
+        recentDespawns = self.RecentDespawns or {}
     }
 end
 

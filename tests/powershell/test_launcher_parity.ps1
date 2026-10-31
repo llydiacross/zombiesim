@@ -1,3 +1,8 @@
+param(
+    [string]$CompiledBspPath,
+    [ValidateSet('preview', 'city')][string]$CompiledProfile = 'preview'
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -21,12 +26,12 @@ foreach ($profile in @('preview', 'city')) {
             if ($null -ne $previewSkybox) { throw "$profile has duplicate preview_skybox cameras" }
             $previewSkybox = $entity.Value
         }
-        if ($name -in @('credits_camera', 'menu_camera', 'menu_globe', 'dancing_gman')) {
+        if ($name -in @('credits_camera', 'menu_camera', 'menu_globe', 'dancing_gman', 'create_character')) {
             if ($named.ContainsKey($name)) { throw "$profile has duplicate $name" }
             $named[$name] = $entity.Value
         }
     }
-    foreach ($name in @('credits_camera', 'menu_camera', 'menu_globe', 'dancing_gman')) {
+    foreach ($name in @('credits_camera', 'menu_camera', 'menu_globe', 'dancing_gman', 'create_character')) {
         if (-not $named.ContainsKey($name)) { throw "$profile is missing $name" }
     }
     foreach ($name in @('credits_camera', 'menu_camera')) {
@@ -35,6 +40,20 @@ foreach ($profile in @('preview', 'city')) {
             $named[$name] -notmatch '"FOV" "90"') {
             throw "$profile $name must be a Start Off point_camera with FOV 90"
         }
+    }
+    if ($named.create_character -notmatch '"classname" "point_camera"' -or
+        $named.create_character -notmatch '"spawnflags" "1"') {
+        throw "$profile create_character must be a Start Off point_camera"
+    }
+    foreach ($key in @('origin', 'angles', 'FOV')) {
+        if ($named.create_character -notmatch ('"' + $key + '" "[^"]+"')) {
+            throw "$profile create_character is missing $key"
+        }
+    }
+    $creationId = [regex]::Match($named.create_character, '(?m)^\s*"id" "(\d+)"')
+    if (-not $creationId.Success -or
+        [regex]::Matches($text, '(?m)^\s*"id" "' + $creationId.Groups[1].Value + '"$').Count -ne 1) {
+        throw "$profile create_character must have a unique Hammer ID"
     }
     if ($named.menu_camera -notmatch '"origin" "0 -160 112"' -or
         $named.menu_camera -notmatch '"angles" "0 90 0"' -or
@@ -67,4 +86,36 @@ foreach ($profile in @('preview', 'city')) {
 if ($skyboxPoses.city -cne $skyboxPoses.preview) {
     throw 'Launcher skybox camera runtime poses differ between city and preview.'
 }
-Write-Output 'Launcher checks passed: menu entities/profile, one sky_camera per scene, aligned preview sky_camera, and matching Start Off preview_skybox poses. Authored room geometry is checked independently.'
+Write-Output 'Launcher checks passed: menu and character-creation cameras in both profiles, one sky_camera per scene, aligned preview sky_camera, and matching Start Off preview_skybox poses. Authored room geometry is checked independently.'
+
+if ($CompiledBspPath) {
+    if (-not (Test-Path -LiteralPath $CompiledBspPath -PathType Leaf)) {
+        throw "Compiled launcher BSP not found: $CompiledBspPath"
+    }
+    Import-Module (Join-Path $testsBinDirectory 'skybox_models.psm1') -Force
+    $sourcePath = Join-Path $projectRoot "celltemplates\launchers\zn_${CompiledProfile}_start.vmf"
+    $source = [ZombieSim.Skybox.KeyValuesParser]::Parse((Get-Content -LiteralPath $sourcePath -Raw)).Children
+    $bytes = [IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $CompiledBspPath).Path)
+    if ($bytes.Length -lt 24 -or [Text.Encoding]::ASCII.GetString($bytes, 0, 4) -ne 'VBSP') {
+        throw "Invalid launcher BSP: $CompiledBspPath"
+    }
+    $offset = [BitConverter]::ToInt32($bytes, 8)
+    $length = [BitConverter]::ToInt32($bytes, 12)
+    if ($offset -lt 0 -or $length -lt 1 -or [long]$offset + $length -gt $bytes.Length) {
+        throw "Invalid launcher BSP entity lump: $CompiledBspPath"
+    }
+    $entities = [ZombieSim.Skybox.KeyValuesParser]::Parse(
+        [Text.Encoding]::ASCII.GetString($bytes, $offset, $length).TrimEnd([char]0)
+    ).Children
+    $authored = @($source | Where-Object { $_.Get('targetname') -eq 'create_character' })
+    $compiled = @($entities | Where-Object { $_.Get('targetname') -eq 'create_character' })
+    if ($authored.Count -ne 1 -or $compiled.Count -ne 1) {
+        throw "$CompiledProfile launcher must have exactly one authored and compiled creation camera"
+    }
+    foreach ($key in @('classname', 'targetname', 'origin', 'angles', 'FOV', 'spawnflags')) {
+        if ($authored[0].Get($key) -ne $compiled[0].Get($key)) {
+            throw "$CompiledProfile compiled creation camera differs from its source: $key"
+        }
+    }
+    Write-Output "Compiled $CompiledProfile launcher creation camera matches the authored pose."
+}

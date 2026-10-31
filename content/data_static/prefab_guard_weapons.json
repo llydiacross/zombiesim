@@ -1,0 +1,16 @@
+[
+  {
+    "id": "pistol",
+    "label": "9mm Handgun",
+    "class": "weapon_zn_handgun_9mm",
+    "idle": "idle_pistol",
+    "attack": "range_pistol"
+  },
+  {
+    "id": "smg",
+    "label": "HL2 SMG",
+    "class": "weapon_zn_hl2_smg",
+    "idle": "idle_smg1",
+    "attack": "range_smg1"
+  }
+]

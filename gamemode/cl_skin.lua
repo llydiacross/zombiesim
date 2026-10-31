@@ -8,6 +8,7 @@ local palette = {
     red = Color(173, 28, 43),
     redBright = Color(239, 57, 72),
     redDark = Color(82, 14, 23),
+    bonus = Color(92, 214, 112),
     text = Color(232, 232, 234),
     muted = Color(158, 165, 171)
 }

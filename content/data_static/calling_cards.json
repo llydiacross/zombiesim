@@ -1,0 +1,108 @@
+{
+    "schemaVersion":  1,
+    "cards":  [
+                  {
+                      "id":  "background_default",
+                      "name":  "Default",
+                      "category":  "background",
+                      "source":  "builtin",
+                      "material":  "scoreboard/backgrounds/default.png",
+                      "bytes":  67835,
+                      "sha256":  "07c563507780c0c0f2788827dd1884f645a26c88648e552488cbf00ab2f37fe3"
+                  },
+                  {
+                      "id":  "background_paper_ash",
+                      "name":  "Ash paper",
+                      "category":  "background",
+                      "source":  "generated",
+                      "material":  "scoreboard/backgrounds/generated_background_paper_ash.png",
+                      "bytes":  104993,
+                      "sha256":  "636111511c6f1349fde95c0a0492b7940796aa7b2b377ed235e5e26d21324c3e",
+                      "shopCredits":  5,
+                      "questReward":  true
+                  },
+                  {
+                      "id":  "background_paper_moss",
+                      "name":  "Moss paper",
+                      "category":  "background",
+                      "source":  "generated",
+                      "material":  "scoreboard/backgrounds/generated_background_paper_moss.png",
+                      "bytes":  108472,
+                      "sha256":  "86e9e4c42b1fda1b24d255a4f545ef999719503951abd931da5947fbb9678841",
+                      "shopCredits":  5,
+                      "questReward":  true
+                  },
+                  {
+                      "id":  "background_paper_rust",
+                      "name":  "Rust paper",
+                      "category":  "background",
+                      "source":  "generated",
+                      "material":  "scoreboard/backgrounds/generated_background_paper_rust.png",
+                      "bytes":  107577,
+                      "sha256":  "a87a089775c79c8e2a9131cd7ad55df821269fc94bf54844eb73be8bd953f7cb",
+                      "shopCredits":  5,
+                      "questReward":  true
+                  },
+                  {
+                      "id":  "detail_creeper_pattern",
+                      "name":  "Creeper pattern",
+                      "category":  "detail",
+                      "source":  "generated",
+                      "material":  "scoreboard/details/generated_detail_creeper_pattern.png",
+                      "bytes":  2486,
+                      "sha256":  "f431760f6c6db3f8e3b8e402da3a8d1369a24ad3ee04a8a3acb424aa0b5a9efa",
+                      "shopCredits":  5,
+                      "questReward":  true
+                  },
+                  {
+                      "id":  "detail_default",
+                      "name":  "Default",
+                      "category":  "detail",
+                      "source":  "builtin",
+                      "material":  "scoreboard/details/default.png",
+                      "bytes":  60536,
+                      "sha256":  "e64bd6836553bd8e19c049504d13fa92f16416f62c3a255a593eb4f4168c7762"
+                  },
+                  {
+                      "id":  "detail_weed_pattern",
+                      "name":  "Weed pattern",
+                      "category":  "detail",
+                      "source":  "generated",
+                      "material":  "scoreboard/details/generated_detail_weed_pattern.png",
+                      "bytes":  16514,
+                      "sha256":  "85640651e21b79b20004c0b05c4bdcdb6efe040b7ccf38472bddf0d223ee96b1",
+                      "shopCredits":  5,
+                      "questReward":  true
+                  }
+              ],
+    "aliases":  {
+
+                },
+    "ownedFiles":  [
+                       {
+                           "material":  "scoreboard/backgrounds/generated_background_paper_ash.png",
+                           "bytes":  104993,
+                           "sha256":  "636111511c6f1349fde95c0a0492b7940796aa7b2b377ed235e5e26d21324c3e"
+                       },
+                       {
+                           "material":  "scoreboard/backgrounds/generated_background_paper_moss.png",
+                           "bytes":  108472,
+                           "sha256":  "86e9e4c42b1fda1b24d255a4f545ef999719503951abd931da5947fbb9678841"
+                       },
+                       {
+                           "material":  "scoreboard/backgrounds/generated_background_paper_rust.png",
+                           "bytes":  107577,
+                           "sha256":  "a87a089775c79c8e2a9131cd7ad55df821269fc94bf54844eb73be8bd953f7cb"
+                       },
+                       {
+                           "material":  "scoreboard/details/generated_detail_creeper_pattern.png",
+                           "bytes":  2486,
+                           "sha256":  "f431760f6c6db3f8e3b8e402da3a8d1369a24ad3ee04a8a3acb424aa0b5a9efa"
+                       },
+                       {
+                           "material":  "scoreboard/details/generated_detail_weed_pattern.png",
+                           "bytes":  16514,
+                           "sha256":  "85640651e21b79b20004c0b05c4bdcdb6efe040b7ccf38472bddf0d223ee96b1"
+                       }
+                   ]
+}

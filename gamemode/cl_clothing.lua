@@ -155,6 +155,15 @@ hook.Add("PreRender", "ZM.Clothing.Equipped", function()
             local selection = Clothing:GetEntitySelection(walker)
             if selection then enqueue(walker, selection) end
         end
+        for _, guard in ipairs(ents.FindByClass("zn_prefab_guard")) do
+            local selection = Clothing:GetEntitySelection(guard)
+            if selection then enqueue(guard, selection) end
+        end
+        if ZM_PrefabGuardPreview then
+            for _, preview in ipairs(ZM_PrefabGuardPreview:ClothingSelections()) do
+                enqueue(preview.entity, { shirt = preview.shirt, pants = preview.pants })
+            end
+        end
         local ragdolls = ents.FindByClass("class C_HL2MPRagdoll")
         table.Add(ragdolls, ents.FindByClass("prop_ragdoll"))
         for _, corpse in ipairs(ragdolls) do

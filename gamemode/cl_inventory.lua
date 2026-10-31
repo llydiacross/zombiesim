@@ -150,6 +150,19 @@ local function describe(instance)
         table.insert(lines, "While worn: blocks all radiation damage and radiation screen effects.")
         table.insert(lines, "The radiation meter and Geiger counter still warn about exposure.")
     end
+    if definition.armourStats then
+        local player = LocalPlayer()
+        local endurance = IsValid(player) and player:GetStat("Endurance") or 0
+        local effects = ZM_Items:GetArmourEffects({
+            equipped = { [ZM_Items.ArmourSlot] = instance }
+        }, endurance)
+        table.insert(lines, string.format("Worn: %d%% damage reduction.",
+            math.floor(effects.damageReduction * 100 + 0.5)))
+        table.insert(lines, string.format("Movement penalty: %d%% after Endurance.",
+            math.floor(effects.speedPenalty * 100 + 0.5)))
+        table.insert(lines, string.format("Stamina recovery penalty: %d%% after Endurance.",
+            math.floor(effects.staminaRegenPenalty * 100 + 0.5)))
+    end
     if definition.type == "bullet_weapon" then
         table.insert(lines, "Loaded: " .. tostring(tonumber(instance.clip) or 0))
         table.insert(lines, "Ammo: " .. tostring(definition.ammoId))

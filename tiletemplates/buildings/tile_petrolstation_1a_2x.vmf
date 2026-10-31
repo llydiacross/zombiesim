@@ -1,8 +1,8 @@
 versioninfo
 {
 	"editorversion" "400"
-	"editorbuild" "8871"
-	"mapversion" "28"
+	"editorbuild" "8873"
+	"mapversion" "29"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "28"
+	"mapversion" "29"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -5719,9 +5719,9 @@ entity
 				"v" "-448 -448 36"
 				"v" "-320 -320 36"
 			}
-			"material" "CONCRETE/CONCRETEFLOOR037A"
+			"material" "CONCRETE/CONCRETEFLOOR027A"
 			"uaxis" "[1 0 0 325.818] 0.55"
-			"vaxis" "[0 -1 0 -0] 0.25"
+			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -5857,8 +5857,8 @@ entity
 				"v" "-192 -192 36"
 				"v" "-0 -192 36"
 			}
-			"material" "CONCRETE/CONCRETEFLOOR037A"
-			"uaxis" "[-0 1 0 325.818] 0.55"
+			"material" "CONCRETE/CONCRETEFLOOR027A"
+			"uaxis" "[0 1 0 325.818] 0.55"
 			"vaxis" "[1 0 0 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"

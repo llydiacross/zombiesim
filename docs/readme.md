@@ -5,10 +5,11 @@ documented here. For a player overview, see the [root README](../readme.md).
 
 ## Development status
 
-**Alpha 3.3 implementation is authorized; the prefab editor prototype is active.** See the
-[phased plan](../todo-alpha.3.3.md): prefab editor first, zombie AI medium
-priority, fog least-priority presentation work and world-generation rules
-last. Alpha 3.2 is [archived](todo-alpha.3.2.md), not released or fully
+**Alpha 3.3 implementation is authorized; Phase D jobs and calling cards are
+active.** Phase C attributes and armour were accepted with documented limits.
+See the
+[phased plan](../todo-alpha.3.3.md) for phase order and acceptance gates.
+Alpha 3.2 is [archived](todo-alpha.3.2.md), not released or fully
 accepted; its outstanding outputs and carried closure are deferred. The
 historical 3.2 evidence below does not define the current phase order.
 
@@ -185,6 +186,68 @@ to `zn_preview_start` without loading a survivor. In launcher Tools, choose
 from the launch error prompt; inspect invalid markers rather than deleting
 unknown data.
 
+The top-left **Prefab**, **Place**, **Scene** and **View** buttons open one workflow
+panel at a time; all start closed, and clicking the active button closes it.
+Prefab contains the library and document actions, Place contains model,
+guard, spotlight and particle placement, and Scene contains the reference tile and
+atmosphere preview. View contains camera, grid and snap controls. The
+selected-object inspector remains on the right and shows the settings relevant
+to the current selection, and
+**Return to Launcher** remains visible in the top bar. The user accepted the
+editor UI with detailed dirty-tab close paths and resolution changes retained
+as live-review limits.
+
+**Change Map** offers recommended `gm_construct` and `gm_flatgrass`, searchable
+mounted custom maps, and a **Cells** tab for the existing preview world.
+Choosing a different map or logical cell preserves every open tab, including
+unsaved edits and per-tab view settings. The client verifies a temporary
+`data/zombiesim/prefab_editor_map_transfer.json` snapshot before switching;
+the owner-bound server session restores tab authorization on arrival. If a
+switch fails, follow the recovery prompt and preserve any reported snapshot or
+session backup rather than deleting it. Known ZombieSim world maps cannot be
+selected as custom workspaces.
+
+In a preview cell, the View panel adds **Cell Tile** X/Y controls. The default
+`(0,0)` is the cell's centre tile; values from `-2` to `2` cover the central
+5×5 grid, with east +X and north +Y. The workspace, grid, reference and prefab
+preview move together to the detected surface at the selected tile centre.
+This is preview placement only and does not change saved prefab coordinates.
+Tiles without a detectable solid surface report an error and retain the prior
+workspace. Actual cell previews and tile-surface behavior are still awaiting
+in-game review.
+
+Prefab tabs run across the top. New tabs start blank; opening a saved prefab
+that is already open focuses its existing tab. Each tab retains its unsaved
+document and view settings. Closing a dirty tab or returning to the launcher
+asks whether to save, discard or cancel; closing the final tab opens a blank
+one.
+
+The in-development `zn_prefab_guard` Hammer point entity uses the guard's
+server-validated citizen model, idle, weapon, range and optional shirt/pants
+finish IDs. Its optional damage, fire interval and shot-spread overrides
+leave the selected weapon's values unchanged when blank. Fire interval is
+seconds per shot (minimum 0.05); smaller shot spread means greater accuracy,
+with zero producing no random spread. Guard actors remain stationary,
+invulnerable and have unlimited ammunition. A small isolated compiled fixture
+verified direct map placement, default/custom settings and clothing/weapon
+appearance. An isolated nonlethal pistol test at
+damage 23, a 0.2-second interval and zero spread confirmed the applied
+settings and measured 12 shots for 276 health loss over 2.55 seconds; actual
+guard kills/rewards and deployed-world/multiplayer combat remain unverified.
+
+For an isolated nonlethal editor-workspace check, an admin can run
+`zombiesim_prefab_guard_probe start pistol 23 0.2 0`, inspect `status`, then
+`stop`. The arguments are damage, seconds per shot and spread. Override
+values use the normal guard validator, and the temporary test Walker cannot
+target players. The override probe expires after 15 seconds. This does not
+edit a prefab or test deployed-world combat.
+
+In the editor, **Place → Add Guard** creates a stationary guard. Its inspector
+offers citizen model, idle, name, clothing, weapon and range choices, together
+with optional damage, fire interval and shot-spread overrides. Guards use
+the normal move/rotate gizmos and per-tab preview height. The explorer shows
+the guard's clothing and weapon in its 3D preview.
+
 The 640x640 grid is a guide, not an overhang restriction. Its ground compass
 uses north +Y and east +X. Open the larger model browser to navigate mounted
 model folders, search their contents and select a thumbnail. Enable **Search
@@ -205,10 +268,20 @@ dimensions together. Middle-click a prop to reset its local rotation to
 zero without changing its position or scale.
 The supported scale range is
 0.1 to 10, with 0.1 increments when snapping is enabled. Right-drag orbits the
-view and the wheel zooms. Numeric fields edit local position, rotation, skin
+view, Shift + right-drag pans, and the wheel zooms from 64 to 2400 units.
+The View panel also offers numeric camera controls, camera reset, grid and
+compass visibility, grid spacing, and snapping. Numeric fields edit local position, rotation, skin
 and scale; position and rotation snaps are configurable and can be disabled. Name, description
-and comma-separated tags are saved with the prefab. A saved ID is stable;
+and tags are saved with the prefab. **Add a suggested tag** offers built-in
+examples such as `burningCar` and `burningBarrel`, plus existing library tags;
+the comma-separated field still accepts custom tags and removes unwanted ones.
+Tags classify content; selecting a burning tag does not create fire.
+The explorer also offers suggested exact-tag filters.
+A saved ID is stable;
 rename the display name rather than silently changing the ID.
+Saving an open saved tab updates that tab's bound ID. A new draft cannot
+overwrite an existing ID: open that saved prefab (or select its existing tab)
+to edit it, or give the draft a genuinely new ID.
 Each selected prop has a **Movable physics prop** setting; unchecked means
 stationary and is the default for new and existing prefabs. This is currently
 an authoring setting only: world spawning and actual physics collision
@@ -217,12 +290,46 @@ validation are still in development.
 The separately approved straight-road reference prototype is available under
 **Reference Tile** when its preview model is staged. It is an editor-only
 background, not a prefab prop; selecting or removing it does not change saved
-prefab data. The grid and compass rise above the reference geometry while it
-is visible, but prop coordinates still use the authored tile origin.
+prefab data. Its height offset moves the reference and its guide only; the
+offset is per-tab preview state, not saved in the prefab or applied in the
+world. **Prefab offset (preview only)** has compact X/Y/Z controls and
+separately moves the entire prefab preview, including its props, guards,
+lights and particles, without moving the reference or changing saved local
+coordinates. X increases east and Y north. These offsets are remembered per
+tab and across editor map switches. They do not automatically alter world
+placement; **Use current preview placement** explicitly copies them.
+The grid and compass follow the horizontal prefab offsets; their height
+remains aligned with the reference surface, preserving the existing height guide.
+Prop coordinates still use the authored tile origin.
 **Preview inner-city fog** uses the installed preview world's inner-city fog
 profile. **Dark preview (simulated)** is a temporary screen grade, not a
 change to physical lights, shadows, time of day or saved settings. Both
 controls reset when the editor closes.
+
+The in-development **Spotlights** section adds independent lights to the
+prefab. Select a light in the list or by its wireframe handle, then use the
+move/rotate gizmos or numeric position and direction fields. RGB, brightness,
+cone angle and range are saved per light; the initial warm settings use
+brightness 6, a 60-degree cone and 512-unit range. The editor previews at
+most eight lights and only the nearest projector enables shadows. Explorer
+reports the light count but previews illumination only in the editor. This
+feature still requires fresh in-game and visual verification.
+The missing ground shadows from editable props are deferred to the end of
+Alpha 3.3; do not interpret a shadow-enabled status as visual acceptance.
+
+The **Particles** section offers the verified Steam effect with spatial sound.
+Use the list or viewport handle to select it, then use move/rotate gizmos or
+numeric transforms. Continuous effects run automatically. Triggered effects
+run only when requested; **Preview Trigger** tests the selected effect in the
+editor. Repeated triggers overlap by default. Turn overlap off to restart the
+current burst instead. There is no fixed concurrent-effect cap, so crowded
+prefabs may be expensive. Particle records are saved with the prefab; the
+Explorer reports their count but does not render them.
+
+Prefab guards are still in development and cannot yet be placed. Their
+guard-kill reward path uses the normal enemy drop chance, scales item level
+across the item's allowed range by danger, and awards no player XP or implant
+bonuses. Bosses retain their separate guaranteed maximum-level reward.
 
 Save, reopen and explicitly confirm deletion through the editor. Prefabs are
 server-owned JSON files under `garrysmod/data/zombiesim/prefabs`. Metadata
@@ -236,11 +343,14 @@ editor. Search names, IDs and descriptions, or filter by an exact tag; select
 a prefab to inspect its assembled 3D preview, drag to orbit and use the wheel
 to zoom. The server-shared library permits duplicate display names with unique
 stable IDs. Rename and delete require confirmation. Before managing the
-prefab currently open in the editor through Explorer, start a new document or
-open a different prefab; this protects unsaved editor work. In the editor,
-**Open in Editor** respects the unsaved-changes prompt. From the launcher it
+prefab through Explorer, close its editor tab; merely switching tabs does
+not permit management of an open document. In the editor, **Open in Editor**
+opens another tab without discarding the current draft. From the launcher it
 confirms the transition, starts an isolated editor session and loads the
 selected prefab there.
+Launcher Tools also offers **Cell Health** to preview admins. Opening it only
+inspects the preview artifacts; starting a selected maintenance batch still
+requires a deployed, living preview admin and an explicit click.
 Existing prefabs without a scale field load at their original size, and
 prefabs without a mobility setting load as stationary; they are not rewritten
 until explicitly saved. Matching scaled collision and
@@ -249,7 +359,8 @@ independent-axis stretching are later world-integration work.
 Each selected prop also has **Off**, **Normal**, or **Guaranteed** loot.
 Older prefabs default to Off. Normal uses the existing model's loot rule and
 the ordinary halved activation chance and 320-unit spacing. A loot-group ID
-can override the model's items; if the model has no rule, choose a group and
+can override the model's items; select a group from the list or choose
+**Model default** to remove the override. If the model has no rule, choose a group and
 enable an explicit configured chance. The displayed configured percentage is
 halved for normal searchable activation. Guaranteed bypasses both the roll
 and spacing, but a searched spot stays searched until its normal refresh; it
@@ -269,8 +380,54 @@ For explicit export to addon content, inspect the dry run first:
 
 An existing different export is protected unless `-Replace` is explicitly
 supplied. Exported definitions are included in the Workshop core package;
-export alone does not stage maps or place any anchors.
-`zn_test_prefabs` checks the document, storage and gizmo contracts; the
+export alone does not stage or rebuild maps. Guard export validates
+the shared weapon IDs, citizen/clothing choices, transforms and override
+bounds; the server additionally verifies mounted models and the selected
+weapon's actual range when loading the exported document.
+
+#### Explicit world-prefab placements
+
+In the Prefab panel, **World prefab: automatic placement** enables one unique
+placement for that document, separate from tag-selected Hammer anchors.
+It initially uses the current editor cell/tile and prefab preview offsets.
+Outside a cell, the initial logical cell is `(0,0)`; select the intended cell
+before exporting. Choose the profile, logical cell X/Y, centred core tile
+X/Y (`-2..2`), XYZ offsets and world rotation. **Use current preview placement**
+captures the current preview cell/tile/offset again; it preserves rotation and
+the enabled state. World rotation is applied on gameplay cell load, not to
+the editor's local-transform view.
+
+The runtime detects the surface at the selected tile centre before spawning
+any world prefabs, adds the XYZ offsets in map axes, then composes the
+prefab-local transforms with the world rotation. Missing surfaces fail
+explicitly. Cell identity uses profile plus logical coordinates, never just
+the BSP filename. Multiple documents may occupy the same tile and overlap;
+use another prefab ID for another placement.
+
+The publishing process is:
+
+1. Save in the editor. This writes the editable server DATA document only.
+2. Inspect `.\bin\export_prefab.ps1 -Id my_prefab`, then use `-Apply`.
+   After edits, use `-Apply -Replace` to explicitly replace the earlier export.
+3. On the next normal gameplay cell load, the server reads the exported addon
+   definition and automatically spawns it before loot initialization. A
+   connected editor or launcher player does not activate gameplay placements.
+   No map rebuild or world regeneration is needed.
+4. The normal Workshop builder includes exported definitions in core.
+   Distribution/publication remain separately gated.
+
+Unchecking the world-prefab option retains its placement settings but disables
+spawning; save and re-export with `-Apply -Replace` to publish that change.
+World-prefab documents, including disabled ones, are excluded from tag-based
+random selection. **Convert back to tag prefab** removes the placement
+metadata. Deleting a DATA draft alone does not remove a previously exported
+definition: disable and re-export it before deleting the draft. Existing live
+instances change only on cell reload/map cleanup; there is no hot deployment.
+World loot/effect identities remain stable across runtime entity IDs.
+Existing normal-world scale restrictions still apply.
+
+`zn_test_prefabs` checks the document, storage, exported-catalog selection and
+gizmo contracts, including selection with the engine CRC implementation; the
 offline editor-session fixtures run with
 `python .\tests\prefabs\test_contract.py`. In-game behavior and appearance
 require a separate live review.
@@ -280,11 +437,11 @@ unscaled spawn primitive. It requires the preview launcher with one admin
 and no loaded survivor, creates transient test props at four cardinal anchor
 rotations, checks their transforms and motion flags, and requests their
 removal before returning. It also checks native model-scale values and
-isolated server collision traces for one oil-drum model at scales 0.1, 0.5,
-1, 2 and 10 on all three axes, both stationary and movable. It does not read
-or modify saved prefabs. It does not verify client traces, sustained physics
-motion, visible collision or normal-world spawning. Non-unit scales currently
-fail explicitly rather than spawn with unverified collision.
+isolated server collision traces for an oil drum at scales 0.1, 0.5, 1, 2 and
+10 and a bench at 1 and 1.4 on all three axes, both stationary and movable.
+It does not read or modify saved prefabs. It does not verify client traces,
+sustained physics motion, visible collision or normal-world spawning. Non-unit
+scales currently fail explicitly rather than spawn with unverified collision.
 
 ### Prefab map anchors (A2 integration in progress)
 
@@ -304,10 +461,37 @@ anchors. Existing safe-zone marker handling is unchanged.
 Runtime waits for map initialization and a loaded survivor in the matching
 city cell. Each anchor spawns once per map session, with cleanup rebuilding
 its authored layout. Loot initialization waits if the survivor loads before
-map initialization completes, so prefab placement runs first; ordinary loot
-still initializes if placement reports an error. Non-unit scales and models without valid physics fail
+map initialization completes or guards are still initializing, so prefab
+placement runs first; ordinary loot still initializes if placement reports an
+error. Guard initialization failure removes that anchor's prefab entities and
+is reported. An isolated four-anchor fixture has verified guard transforms
+and appearance, but actual city-cell and multiplayer behavior remain
+unverified. Non-unit scales and models without valid physics fail
 explicitly; there is no default prefab or geometry-overlap veto.
-`zombiesim_prefab_status` reports runtime anchors, surviving props and errors.
+`zombiesim_prefab_status` reports runtime anchors, surviving props, lights and
+errors. The experimental world-light path networks server-owned anchor
+transforms to clients and currently selects the nearest eight networked
+lights, without prefiltering for camera visibility; only the nearest is
+shadow-enabled. `zombiesim_prefab_lights_status` asks the connected admin's
+client for diagnostics in `data/zombiesim/prefab-lights-status.json`; match
+its request ID to the server report. The engine's shadow-projector limit is
+shared with other effects. Multiplayer, visibility selection, frame cost and
+actual city-cell presentation remain unverified.
+
+For individually triggered prefab particles, a Hammer output can send the
+`TriggerParticle` input to a `zn_prefab_anchor`, with the particle's stable
+editor ID (for example `particle_1`) as the parameter. Only a triggered
+particle on that anchor is addressed; continuous or unknown IDs report an
+error. Events go to clients connected at the time, rather than replaying
+earlier bursts to late joiners. Continuous effects are recreated locally
+from server-owned anchor transforms. Direct-map and instance-local Hammer
+input routing, multiplayer, actual city maps and performance remain
+unverified; tile-instance target-name fixups need separate validation before
+relying on them. An isolated compiled-anchor test confirmed the engine input,
+continuous playback, overlap/restart counts and user-reviewed steam/audio.
+`zombiesim_prefab_particles_status` requests client
+diagnostics in `data/zombiesim/prefab-particles-status.json`; match its
+request ID to the server report.
 Prefab loot uses the shared loot-spot owner; gate replacement remains
 unimplemented. City-cell persistence, searching and visual behavior still
 require an in-game review.
@@ -341,6 +525,9 @@ returning to the launcher, `-Action Restore` checks every remaining hash
 before removing its own temporary BSPs and prefab. Its owner-only test
 session reuses the editor guard without loading a survivor. The fixture
 spawn command uses synthetic cell ID 0, not a deployed city-cell transition.
+The separately approved `-ScaledBench` option supplies five 1.4x movable
+bench instances for matched client/server collision traces; it does not
+enable normal-world scaling or edit saved prefab documents.
 
 ## CS 1.6 weapon assets
 
@@ -707,7 +894,20 @@ On `zn_preview_start` or `zn_city_start`, the optional Volt/Walker briefings pre
 
 The main menu draws a textured Earth at the authored `menu_globe` marker. Its public-domain Natural Earth I base is blended with a grayscale NASA Black Marble 2016 night map using a soft day/night terminator; night imagery fades out on the daylight hemisphere, and the orange city marker remains a separate presentation element. Coherent, seam-wrapped procedural cloud wisps replace the old scattered oval puffs. Random straight distress scratches are excluded. `.\bin\build_launcher_earth.ps1 -StageToGame` verifies both pinned source hashes, builds the cloud/distress/rim/space-fog derivatives, compiles the six VTF layers plus two 4096x2048 close-zoom layers, stages the source notice and writes `launcher_earth.json` ownership/size diagnostics. The close-zoom day map is resampled from the full 10800x5400 Natural Earth TIFF, and the close-zoom night lights from NASA's 13500x6750 3 km Black Marble 2016 image. Both are downloaded once into `generated/launcher_earth/archive` and verified against pinned hashes. At high globe quality, the close-zoom day and night-light layers crossfade in between 1.5x and 2.1x zoom and load only when first needed. Low quality never loads them. Dragging Earth works like a gimbal: horizontal drag spins the planet about its pole, and vertical drag tilts it about the screen-horizontal axis, so north stays upright at every longitude. The drag also carries damped spin momentum on release; zooming stops residual spin, and zoom reaches up to 3x while respecting the authored camera clearance. Middle-click smoothly recentres on the selected waypoint, while page changes cancel the motion. The launcher soundtrack plays `menu.mp3` once, then continues with looping `menu 2.mp3`; **Lower Menu Music** affects only those launcher tracks. Each slot's origin uses the profile's fictional geographic anchor in `content/data_static/launcher_scene.json`; it is presentation, **not** a real-world geolocation of generated cells. Low detail uses a 960-triangle static sphere and omits cloud/distress draws; high uses 3968 triangles and all five layers. Existing saved `zombiesim_globe_quality` choices are preserved, while new/reset and medium/high presets use high detail. The bounded Phase G prototype can show one revision-matched selected-cell skyline model without mutating the gameplay skybox owner. The halo is a translucent orange-red rim. An original procedural `space_fog` puff layer drifts behind the globe as dark rust nebula, with a few faint near puffs framing it. Purely cosmetic missiles launch from fictional silo regions, then arc along great circles to major cities away from the selected waypoint. Each impact shows a flash, a shockwave ring, a rising mushroom cloud and a fading ember glow. There are at most 9 strikes, with 3 missiles in flight, and all of them fade out with the descent. In the preview launcher, the 15 skybox G-Men are parented to `launcher_gman_carousel`, a non-solid `func_rotating` that turns once a minute.
 
-Credits uses the same maintained JSON file for its crawl. It hides the menu and cuts to `credits_camera`, then cycles through the four named dancers; Escape, Enter, Space, or click returns to the menu. The server supplies camera poses, dancer entity indexes, and credits-area visibility; credits fog is confined to the credits view. For camera tuning, `zombiesim_credits_shot gman` (or `alyx`, `barney`, `kleiner`; empty to unlock) and `zombiesim_credits_debug 1` expose the shot and obstruction trace. Admins can run `zombiesim_launcher_flexes` to inspect available model flex controllers. The dancing, flex replication, camera clearance, and presentation still require live-client verification.
+Credits uses the same maintained JSON file for its crawl. It hides the menu and cuts to `credits_camera`, then cycles through the four named dancers; Escape, Enter, Space, or click returns to the menu. The server supplies camera poses, dancer entity indexes, and credits-area visibility; credits fog is confined to the credits view. The supplied credits soundtrack uses the existing music enable setting and engine `snd_musicvolume`; it replaces the launcher soundtrack during credits and the launcher track resumes after exit. The user confirmed the track is cleared for distribution, without separate licence verification. For camera tuning, `zombiesim_credits_shot gman` (or `alyx`, `barney`, `kleiner`; empty to unlock) and `zombiesim_credits_debug 1` expose the shot and obstruction trace. Admins can run `zombiesim_launcher_flexes` to inspect available model flex controllers.
+
+For a bounded read-only dancer/audio diagnostic in an active preview-launcher
+credits session, a connected preview admin can run
+`.\bin\invoke_dev_bridge.ps1 -Command 'zombiesim_dev_credits_status 123'` from
+the repository root, using a fresh numeric request ID. The client writes
+`data/zombiesim/credits-status.json`: check its matching ID, camera age, four
+head/eye records, music phase and explicit errors. The bridge acknowledgement
+only confirms forwarding, not client completion. The diagnostic refreshes
+bone caches but does not modify ragdoll poses or physics. This source has not
+yet been reviewed in an active credits session; after a preview-launcher reload
+its inactive-session report was verified. The user confirmed the music was
+audible once; volume, exit/re-entry, dancing, head tracking, flex replication,
+camera clearance and presentation remain live checks.
 
 For admin development sessions, `zombiesim_dev_autoload_character 1` (or slot 2/3) attempts to deploy that existing, appearance-complete slot after the dependency briefings; `0` disables autoload. It does not create a character. Run `zn_test_characters` in an admin console for server-side character storage and validation checks. Player models/hands, menu camera framing, first-run briefings, and cross-map transitions still require verification in a running client.
 
@@ -772,7 +972,7 @@ Short-lived dust appears only on concrete, dirt, sand, wood or tile impacts and 
 
 ## AFK menus
 
-Choosing **Inventory**, **Scoreboard** or **Options** from the Tab radial starts a three-second server countdown ("OPENING INVENTORY 2.4"). You can move during it; pressing Tab again or taking any damage cancels it. When it finishes the menu opens and you are AFK: zombies drop you as a target and cannot damage you. **Cheats** opens instantly and makes operators AFK at once. Switching between AFK menus does not restart the countdown. Closing the last AFK menu leaves AFK with three seconds of protection, shown as "PROTECTED"; firing ends it early, moving does not. Death, respawn and cell/den transitions clear all AFK state without grace. The server owns the state (`gamemode/sv_afk.lua`); the client (`gamemode/cl_afk.lua`) reports when the last menu closes and sends a heartbeat, so a client that stops reporting loses AFK after six seconds. The world map and den service windows are not AFK menus.
+Choosing **Inventory**, **Scoreboard**, **Options** or **World Map** from the Tab radial starts a three-second server countdown ("OPENING INVENTORY 2.4"). Opening the world map with M or `zombiesim_map` uses the same countdown. You can move during it; pressing Tab again, pressing M again for the map, or taking any damage cancels it. When it finishes the menu opens and you are AFK: zombies drop you as a target and cannot damage you. **Cheats** opens instantly and makes operators AFK at once. Switching between AFK menus does not restart the countdown. Closing the last AFK menu leaves AFK with three seconds of protection, shown as "PROTECTED"; firing ends it early, moving does not. Death, respawn and cell/den transitions clear all AFK state without grace. The server owns the state (`gamemode/sv_afk.lua`); the client (`gamemode/cl_afk.lua`) reports when the last menu closes and sends a heartbeat, so a client that stops reporting loses AFK after six seconds. Den service windows are not AFK menus.
 
 # Folder Structure
 
@@ -1092,6 +1292,10 @@ Preview builds default to Hammer's `-fast` VVIS/VRAD preset. Production `city` b
 
 The two authored launchers are `celltemplates\launchers\zn_preview_start.vmf` and `zn_city_start.vmf`. Their menu room camera is `menu_camera` at `(0, -160, 112)`, facing north (+Y); the `menu_globe` marker is at `(96, 32, 112)`, to the camera's right, leaving the left of the view for menu options. Both launchers also carry a Start Off `point_camera` named `preview_skybox`. In launcher maps, the optional sky-browser inspection starts at that marker's origin, angles, and FOV, then gently takes off into a banking glide during its 10-second camera-only preview; it never moves the player. Deployed city/den previews retain their existing camera-only upward sweep. The preview launcher's `sky_camera` anchors the map-to-miniature transform at scale 16: its origin maps the full-scale island center and waterline to the miniature ocean center and waterline. Keep that origin aligned when changing the launcher island or its miniature surroundings. Both menu cameras and the credits cameras are scene pose markers, not active monitor feeds. The dance rigs in the credits area remain unchanged. Check camera framing, globe size, lighting and dance visibility in Hammer and in a running client; a successful compile alone does not verify the view.
 
+Both launcher sources also contain a Start Off `point_camera` named `create_character`. With the corresponding launcher BSP and current Lua loaded, its pose owns the view throughout character creation and legacy appearance editing, including while a save is pending; the existing character model panel remains separate. Credits keep their own camera, and leaving creation returns to `menu_camera`. The server adds the creation camera origin to the launcher PVS. If an older BSP lacks a valid marker, the server warns once per map and creation falls back to `menu_camera`. Building and staging each launcher require their own approval; the authored marker alone does not change installed BSPs.
+
+`zombiesim_dev_launcher_presentation_status` also writes `data/zombiesim/launcher-presentation-status.json` with the current client page, Home input readiness and received creation-camera pose. The received pose reflects network compression. A bridge acknowledgement is not proof the client wrote the report; check that it is fresh.
+
 Launcher flight follows a smooth 480-unit-radius circuit, climbs about 512 units, and uses subtle takeoff pulses and bounded banking rather than a stationary spin or camera shake. Keep the whole flight corridor clear in both authored launcher scenes; obstruction checks refuse a blocked takeoff or stop a newly obstructed flight with a browser error. The shared flight path also supplies server PVS points so launcher entities remain available along the route. Space/Escape and timeout still return to the same browser without changing the survivor or saved sky.
 
 Automatic profiles, including personal copies, preview all four assigned slots (Day, Overcast, Dusk, Night) for five seconds each in one continuous 20-second flight, with brief fades at the slot boundaries. The existing catalogue has no separate Dawn slot. Individual/native selections retain a ten-second preview. The tour overrides only the displayed sky/fog, never the saved selection or server clock/weather, and restores the normal context on return. Launcher inspection replaces the main scene through `RenderScene` rather than drawing a second full scene over the menu; city/den inspection keeps its existing render path. `zombiesim_dev_profile_hooks` now includes this render hook and the inspection snapshot. Nested hook timings overlap the encompassing scene-render time; do not sum them as independent rendering costs or interpret them as GPU timings.
@@ -1107,7 +1311,9 @@ Run the focused scene/camera contract check and compile launchers independently,
 ```powershell
 .\tests\powershell\test_launcher_parity.ps1
 .\bin\build_launchers.ps1 -WorldProfile preview
+.\tests\powershell\test_launcher_parity.ps1 -CompiledProfile preview -CompiledBspPath .\generated\launcher_build\zn_preview_start.bsp
 .\bin\build_launchers.ps1 -WorldProfile city
+.\tests\powershell\test_launcher_parity.ps1 -CompiledProfile city -CompiledBspPath .\generated\launcher_build\zn_city_start.bsp
 ```
 
 Each build copies the current VMF into `generated\launcher_build`, runs VBSP/VVIS/VRAD, fails on a leak or nonzero compiler exit, and copies the resulting BSP to both `content\maps` and Garry's Mod `garrysmod\maps` (which otherwise can shadow the content copy). The script verifies SHA-256 equality of the built and staged files. Reload each launcher map after staging. Hammer `.vmx` backups are not build inputs and are not modified.
@@ -1567,21 +1773,52 @@ Regenerate and validate the metadata-only candidate catalog without extracting a
 
 The catalog is written to `generated/asset_catalog/mounted_asset_catalog.json`. The builder lists `*_dir.vpk` archives under the installed `garrysmod` and `sourceengine` trees and paths configured in `garrysmod/cfg/mount.cfg`; disabled addon archives are reported as unmounted. It retains one canonical record per virtual model path, its source archive(s), family/tags, mounted status, and whether an authored item uses it as an icon or world model. Item and loot data remain curated in `content/data_static/`; catalog output and reports are generated artifacts.
 
+## Calling-card artwork
+
+The [calling-card artist workflow](calling-card-artist-workflow.md) documents
+finished PNG discovery, JSON recipes, isolated previews, staging, rights and
+recovery. The installed catalogue contains the two defaults and five generated
+designs, each priced at five credits and eligible for future quest rewards.
+Source implements account unlocks per world profile, independent per-survivor
+background/detail selections from the scoreboard pencil, and credit purchases
+through den traders. Defaults are free and calling cards do not use inventory
+slots or permit resale. Individual designs can be shop-only, quest-only or
+both; the server reward API is not yet connected to a quest system. Actual UI,
+purchases and rendered artwork still require live review.
+
+```powershell
+.\tests\powershell\test_calling_cards.ps1
+python -m unittest discover -s .\tests\phase_d -p 'test_*.py'
+.\tests\powershell\test_workshop_packages.ps1
+.\tests\powershell\test_glua_syntax.ps1
+```
+
+In game, `zn_test_calling_cards` exercises native persistence with synthetic,
+preflighted and cleaned-up profiles; its report is
+`data/zombiesim/calling_card_tests.json`. The preview-admin client commands
+`zombiesim_dev_test_calling_card_client` and `zombiesim_dev_test_calling_card_ui`
+run isolated mocked fixtures and write their own DATA reports. They can also
+be forwarded through the development bridge to a connected preview admin;
+inspect the fresh client reports rather than treating forwarding as completion.
+`zombiesim_dev_calling_card_materials` reports requested material diagnostics.
+Those fixtures do not replace real UI, artwork, multiplayer or gameplay review.
+
 # Static Data (Items, Loot, Enemies, Bosses, Economy)
 
 `ZM_StaticData` loads these files from `content/data_static/` in both realms. A load that has any error keeps the previous registry.
 
 | File | Contents | Documented in |
 | --- | --- | --- |
-| `item_definitions.json` | Items: weapons (SWEP class, CSS models, ammo, firing mode), ammo, food, materials, medical, implants | [Inventory](#inventory), [Food](#food), [Implants](#implants) |
+| `item_definitions.json` | Items: weapons (SWEP class, CSS models, ammo, firing mode, weapon family), armour stats, ammo, food, materials, medical, implants | [Inventory](#inventory), [Food](#food), [Implants](#implants) |
 | `loot.json`, `entity_loot.json` | Loot groups and container-to-group rules | [Loot Rolls](#loot-rolls), [World Loot Spots](#world-loot-spots) |
 | `enemy_definitions.json`, `enemy_spawns.json`, `boss_spawns.json` | Enemies, spawn groups, bosses | [Enemies](#enemies) |
 | `recipe_definitions.json` | Den crafting recipes and profession research services | [Crafting](#crafting), [Professions](#professions) |
 | `profession_definitions.json` | Jobs, stat bonuses, daily deliveries, services | [Professions](#professions) |
+| `calling_cards.json` | Validated background/detail catalogue and artwork ownership | [Calling-card artwork](#calling-card-artwork) |
 | `den_service_definitions.json` | Mastercraft and job-change credit prices | [Credits and Mastercrafting](#credits-and-mastercrafting) |
 | `trade_definitions.json` | Trader tables, multipliers, limits, NPC fees, essential ammo | [Den Trading and NPCs](#den-trading-and-npcs) |
 
-The authoritative field bounds are the validators in `gamemode/sh_static_data.lua`; `tests/static_data/` holds one malformed fixture per file with the errors each must produce. Admin/server commands:
+The authoritative field bounds are the validators in `gamemode/sh_static_data.lua`; `tests/static_data/cases.json` holds representative valid and malformed cases for each schema, including weapon-family and armour-stat validation. Admin/server commands:
 
 ```
 zn_validate_static [file ...]   // validate the files on disk; the live registry is unchanged
@@ -1592,6 +1829,13 @@ zn_test_weapon_catalog          // check local SWEP/model/item mappings at runti
 ```
 
 `zn_validate_static`, `zn_reload_static`, `zn_test_static_data`, and `zn_test_weapon_catalog` run synchronously through the development bridge and add structured reports to `consolecommands.result.json`. Warnings for missing SWEPs, icon models, models, or entity classes never block a load.
+
+The attribute schema migration is tested against isolated in-memory SQLite
+databases with the production `gamemode/utils/sql.lua` implementation:
+
+```powershell
+python -m unittest discover -s .\tests\phase_c -p test_attribute_migration.py -v
+```
 
 ## Automated Test Suites
 
@@ -1625,6 +1869,7 @@ Each gameplay service has a server-side suite that uses throwaway SteamIDs and p
 zn_test_static_data zn_test_weapon_catalog zn_test_inventory zn_test_loot zn_test_loot_spots zn_test_enemies
 zn_test_bosses zn_test_crafting zn_test_implants zn_test_professions zn_test_mastercraft zn_test_bank zn_test_trading zn_test_foliage
 zn_test_atmosphere zn_test_gore zn_test_afk zn_test_damage_feedback
+zn_test_armour zn_test_movement zn_test_weapon_effects
 ```
 
 Standalone GLua suites live in `gamemode/tests/`, including client suites. Keep realm prefixes and register client suites through both `AddCSLuaFile` and client `include` after their dependencies. Root `tests/` holds static-data fixtures; `bin/` holds offline PowerShell checks.
@@ -1696,7 +1941,44 @@ All recipes use the workbench for now. Separate stations (for example ammunition
 
 ## Professions
 
-Professions live in `content/data_static/profession_definitions.json` (`professionVersion`, `professions`). Each PascalCase id has a `name`, a `description`, optional `aliases`, `statBonuses` (at most 5 per attribute and 6 in total), `services` (`cook`, `treat`, `research`, `implant`, `extract`), and `deliveries`: level bands that start at `minLevel` 1 and ascend, each listing up to 8 `{ "item", "min", "max" }` entries (no weapons). `Civilian` is the default, with no bonuses, services, or deliveries. `ZM_Professions` (`sh_professions.lua`) resolves ids and aliases. `ply:GetStat` returns the stored stat plus the profession bonus; the bonus is never saved.
+Professions live in `content/data_static/profession_definitions.json`
+(`professionVersion`, `professions`). Each PascalCase id has a `name`, a
+`description`, optional `aliases`, `legacyStatBonuses`, `statBonuses`,
+`services` (`cook`, `treat`, `research`, `implant`, `extract`), and
+`deliveries`: level bands that start at `minLevel` 1 and ascend, each listing
+up to 8 `{ "item", "min", "max" }` entries (no weapons). Each bonus is at most
+5 points; the legacy and current tables allow at most 6 and 10 total,
+respectively. `Civilian` is the default, with no bonuses, services, or
+deliveries.
+
+The server stores a profession-bonus ruleset per survivor. Existing characters
+use the original bonuses; characters created after this change use the current
+bonuses. Admin and paid job changes retain the survivor's ruleset, and den
+professionals retain the legacy bonuses. `ZM_Professions`
+(`sh_professions.lua`) resolves ids and aliases, and `ply:GetStat` adds the
+appropriate derived bonus to the saved base stat without writing the bonus to
+the attribute row. Weapon-family handling uses at most 10 effective points;
+some specialties do not yet have gameplay effects. Capitalist has no
+attribute bonus, and its existing `playerLootBonuses` field is not consumed by
+the static-data loader, so no Capitalist cash bonus is currently applied.
+
+The character-creation job step presents selectable profession cards with mounted
+Garry's Mod icons and a detail panel showing the description, placeholder
+backstory, services, delivery tiers and each current job bonus; positive
+bonuses are highlighted. Select a card, then
+choose **Next: Attributes**; going Back preserves the draft and allocated
+points. Future jobs without a dedicated icon use a generic mounted icon.
+Character creation and job validation remain server-owned.
+
+Run the focused offline picker fixtures with
+`python .\tests\launcher\test_profession_picker.py` and the isolated
+profession balance/persistence fixtures with
+`python -m unittest discover -s .\tests\phase_d -p test_profession_balance.py -v`.
+The latter models engine networking and does not replace live verification.
+The actual-client
+`zombiesim_dev_test_launcher_presentation_client` suite also exercises the
+picker and writes `data/zombiesim/launcher-presentation-client-tests.json`;
+check that report separately from any server-bridge acknowledgement.
 
 `ZM_ProfessionService` (`sv_professions.lua`) handles:
 

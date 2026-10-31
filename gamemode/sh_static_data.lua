@@ -15,13 +15,15 @@ StaticData.Files = {
     professions = "data_static/profession_definitions.json",
     denServices = "data_static/den_service_definitions.json",
     trade = "data_static/trade_definitions.json",
-    music = "data_static/music_definitions.json"
+    music = "data_static/music_definitions.json",
+    callingCards = "data_static/calling_cards.json"
 }
 StaticData.MaximumItemLevel = 300
 StaticData.DefaultMastercraftChance = 0.05
+StaticData.WeaponFamilies = { Pistols = true, MachineGuns = true, Rifles = true, Shotguns = true }
 StaticData.PlayerAttributes = {
     Strength = true, Agility = true, Intelligence = true, Endurance = true,
-    MachineGuns = true, Shotguns = true, Snipers = true,
+    MachineGuns = true, Pistols = true, Shotguns = true, Rifles = true, Explosives = true,
     WeaponCrafting = true, ArmorCrafting = true, Medicine = true, Farming = true,
     WeaponRepairing = true, ArmorRepairing = true, Mechanics = true
 }
@@ -244,8 +246,8 @@ end
 local itemFields = {
     name = true, entityClass = true, type = true, thumbnail = true, value = true, maxStack = true,
     unit = true, minLevel = true, maxLevel = true, statRequirements = true, minAttributes = true, maxAttributes = true,
-    weaponClass = true, cssFamily = true, viewModel = true, worldModel = true, ammoId = true, firingMode = true, rarity = true,
-    iconModel = true, food = true, medical = true, implant = true, lootCategory = true, radiationProtection = true, clothing = true
+    weaponClass = true, cssFamily = true, weaponFamily = true, viewModel = true, worldModel = true, ammoId = true, firingMode = true, rarity = true,
+    iconModel = true, food = true, medical = true, implant = true, lootCategory = true, radiationProtection = true, armourStats = true, clothing = true
 }
 
 // Loot categories are derived from each definition (see deriveLootCategory) unless an item sets lootCategory.
@@ -432,8 +434,26 @@ local function validateItem(context, itemId, raw)
             item.radiationProtection = readBoolean(context, raw, "radiationProtection", path, false)
         end
     end
+    if raw.armourStats ~= nil then
+        local statsPath = joinPath(path, "armourStats")
+        if item.entityClass ~= "armour" then
+            context:Error(statsPath, "only wearable armour can define armour stats")
+        elseif not isObject(raw.armourStats) then
+            context:Error(statsPath, "must define damageReduction, speedPenalty, and staminaRegenPenalty")
+        else
+            checkFields(context, raw.armourStats, {
+                damageReduction = true, speedPenalty = true, staminaRegenPenalty = true
+            }, nil, statsPath)
+            item.armourStats = {
+                damageReduction = readNumber(context, raw.armourStats, "damageReduction", statsPath, { min = 0, max = 0.95, required = true }),
+                speedPenalty = readNumber(context, raw.armourStats, "speedPenalty", statsPath, { min = 0, max = 0.95, required = true }),
+                staminaRegenPenalty = readNumber(context, raw.armourStats, "staminaRegenPenalty", statsPath, { min = 0, max = 0.95, required = true })
+            }
+        end
+    end
 
     item.type = readString(context, raw, "type", path, {})
+    item.weaponFamily = readString(context, raw, "weaponFamily", path, {})
     if item.entityClass == "weapon" then
         if not string.match(itemId, "^weapon%u") then
             context:Error(path, "weapon item ids must start with 'weapon' followed by an uppercase letter")
@@ -445,6 +465,13 @@ local function validateItem(context, itemId, raw)
         end
         if item.type == nil then
             context:Error(joinPath(path, "type"), "is required for weapon items (bullet_weapon or melee_weapon)")
+        end
+        if item.type == "bullet_weapon" then
+            if not item.weaponFamily or not StaticData.WeaponFamilies[item.weaponFamily] then
+                context:Error(joinPath(path, "weaponFamily"), "is required and must be Pistols, MachineGuns, Rifles, or Shotguns")
+            end
+        elseif raw.weaponFamily ~= nil then
+            context:Error(joinPath(path, "weaponFamily"), "only bullet weapons can have a weapon family")
         end
 
         item.cssFamily = readString(context, raw, "cssFamily", path, {})
@@ -481,7 +508,7 @@ local function validateItem(context, itemId, raw)
             context:Error(joinPath(path, "rarity"), "must be common, uncommon, rare, or very_rare")
         end
     elseif raw.weaponClass ~= nil or raw.cssFamily ~= nil or raw.viewModel ~= nil or raw.worldModel ~= nil
-        or raw.ammoId ~= nil or raw.firingMode ~= nil or raw.rarity ~= nil then
+        or raw.weaponFamily ~= nil or raw.ammoId ~= nil or raw.firingMode ~= nil or raw.rarity ~= nil then
         context:Error(path, "weapon mapping fields may only be used by weapon items")
     end
     if item.type ~= nil then
@@ -1253,10 +1280,13 @@ end
 // the fallback for unknown jobs. Stat bonuses are derived at runtime and never persisted.
 StaticData.ProfessionServices = { cook = true, treat = true, research = true, implant = true, extract = true }
 StaticData.DefaultProfession = "Civilian"
+StaticData.LegacyProfessionBonusVersion = 1
+StaticData.CurrentProfessionBonusVersion = 2
 StaticData.MaximumProfessionBonus = 5
-StaticData.MaximumProfessionBonusTotal = 6
+StaticData.MaximumLegacyProfessionBonusTotal = 6
+StaticData.MaximumProfessionBonusTotal = 10
 StaticData.MaximumDeliveryItems = 8
-local professionFields = { name = true, description = true, aliases = true, statBonuses = true, services = true, deliveries = true }
+local professionFields = { name = true, description = true, aliases = true, legacyStatBonuses = true, statBonuses = true, services = true, deliveries = true }
 local deliveryTierFields = { minLevel = true, items = true }
 local deliveryItemFields = { item = true, min = true, max = true }
 local professionIdPattern = "^%u%a*$"
@@ -1325,6 +1355,34 @@ local function validateDeliveries(context, raw, path, registry)
     return tiers
 end
 
+local function validateProfessionBonuses(context, raw, path, maximumTotal, required)
+    local bonuses = {}
+    if raw == nil then
+        if required then context:Error(path, "is required to preserve existing survivor bonuses") end
+        return bonuses
+    end
+    if not isObject(raw) then
+        context:Error(path, "must be an object of attribute name to bonus points")
+        return bonuses
+    end
+    local total = 0
+    for _, attribute in ipairs(sortedKeys(raw)) do
+        if not StaticData.PlayerAttributes[attribute] then
+            context:Error(joinPath(path, attribute), "is not a player attribute")
+        else
+            local bonus = readNumber(context, raw, attribute, path, { integer = true, min = 1, max = StaticData.MaximumProfessionBonus, required = true })
+            if bonus then
+                bonuses[attribute] = bonus
+                total = total + bonus
+            end
+        end
+    end
+    if total > maximumTotal then
+        context:Error(path, "bonuses total " .. total .. "; at most " .. maximumTotal .. " points are allowed")
+    end
+    return bonuses
+end
+
 local function validateProfession(context, professionId, raw, registry)
     local path = "professions." .. tostring(professionId)
     if not string.match(professionId, professionIdPattern) or #professionId > 32 then
@@ -1336,7 +1394,7 @@ local function validateProfession(context, professionId, raw, registry)
         return nil
     end
     checkFields(context, raw, professionFields, nil, path)
-    local profession = { id = professionId, aliases = {}, statBonuses = {}, services = {} }
+    local profession = { id = professionId, aliases = {}, services = {} }
     profession.name = readString(context, raw, "name", path, { required = true })
     profession.description = readString(context, raw, "description", path, { default = "" })
 
@@ -1354,28 +1412,10 @@ local function validateProfession(context, professionId, raw, registry)
         end
     end
 
-    if raw.statBonuses ~= nil then
-        local bonusesPath = joinPath(path, "statBonuses")
-        if not isObject(raw.statBonuses) then
-            context:Error(bonusesPath, "must be an object of attribute name to bonus points")
-        else
-            local total = 0
-            for _, attribute in ipairs(sortedKeys(raw.statBonuses)) do
-                if not StaticData.PlayerAttributes[attribute] then
-                    context:Error(joinPath(bonusesPath, attribute), "is not a player attribute")
-                else
-                    local bonus = readNumber(context, raw.statBonuses, attribute, bonusesPath, { integer = true, min = 1, max = StaticData.MaximumProfessionBonus, required = true })
-                    if bonus then
-                        profession.statBonuses[attribute] = bonus
-                        total = total + bonus
-                    end
-                end
-            end
-            if total > StaticData.MaximumProfessionBonusTotal then
-                context:Error(bonusesPath, "bonuses total " .. total .. "; at most " .. StaticData.MaximumProfessionBonusTotal .. " points are allowed")
-            end
-        end
-    end
+    profession.legacyStatBonuses = validateProfessionBonuses(context, raw.legacyStatBonuses,
+        joinPath(path, "legacyStatBonuses"), StaticData.MaximumLegacyProfessionBonusTotal, true)
+    profession.statBonuses = validateProfessionBonuses(context, raw.statBonuses,
+        joinPath(path, "statBonuses"), StaticData.MaximumProfessionBonusTotal, false)
 
     if raw.services ~= nil then
         if not isArray(raw.services) then
@@ -1401,7 +1441,10 @@ local function validateProfessions(report, registry)
         return
     end
     checkFields(context, data, { schemaVersion = true, professionVersion = true, professions = true }, nil, "")
-    registry.professionVersion = readNumber(context, data, "professionVersion", "", { integer = true, min = 1, required = true })
+    registry.professionVersion = readNumber(context, data, "professionVersion", "", {
+        integer = true, min = StaticData.CurrentProfessionBonusVersion,
+        max = StaticData.CurrentProfessionBonusVersion, required = true
+    })
     if not isObject(data.professions) then
         context:Error("professions", "must be an object keyed by profession id")
         return
@@ -1427,7 +1470,7 @@ local function validateProfessions(report, registry)
     local default = registry.professions[StaticData.DefaultProfession]
     if not default then
         context:Error("professions", "must define the " .. StaticData.DefaultProfession .. " fallback profession")
-    elseif next(default.statBonuses) or next(default.services) then
+    elseif next(default.legacyStatBonuses) or next(default.statBonuses) or next(default.services) then
         context:Error("professions." .. StaticData.DefaultProfession, "the fallback profession must not grant bonuses or services")
     end
 end
@@ -1846,6 +1889,14 @@ local function validateMusic(report, registry)
     registry.music = music
 end
 
+local function validateCallingCards(report, registry)
+    local data, context = readJsonFile(report, "callingCards")
+    if not data then return end
+    local catalogue, errors = ZM_CallingCards.Validate(data, function(path) return file.Exists(path, "GAME") end)
+    for _, issue in ipairs(errors) do context:Error(issue.path, issue.message) end
+    registry.callingCards = catalogue
+end
+
 // Reads and validates every file into a new registry without touching the live one.
 // `files` optionally replaces StaticData.Files (used by fixture tests).
 // Returns the registry (nil when any error was found) and the report.
@@ -1885,6 +1936,7 @@ function StaticData:Build(files)
     validateDenServices(report, registry)
     validateTrade(report, registry)
     validateMusic(report, registry)
+    validateCallingCards(report, registry)
     activeFiles = self.Files
     if #report.errors > 0 then
         return nil, report
@@ -1937,13 +1989,13 @@ function StaticData:GetSummary()
         if item.implant then implantCount = implantCount + 1 end
     end
     return string.format(
-        "%d items (%d implants), %d loot groups, %d entity loot rules, %d enemies, %d spawn groups, %d bosses, %d recipes (v%s), %d professions (v%s), den services v%s, %d traders (v%s), %d music tracks",
+        "%d items (%d implants), %d loot groups, %d entity loot rules, %d enemies, %d spawn groups, %d bosses, %d recipes (v%s), %d professions (v%s), den services v%s, %d traders (v%s), %d music tracks, %d calling cards",
         table.Count(registry.items), implantCount, table.Count(registry.lootGroups), #registry.entityLoot.rules,
         table.Count(registry.enemies), table.Count(registry.spawnGroups), table.Count(registry.bosses),
         table.Count(registry.recipes or {}), tostring(registry.recipeVersion),
         table.Count(registry.professions or {}), tostring(registry.professionVersion), tostring(registry.denServiceVersion),
         table.Count(registry.trade and registry.trade.traders or {}), tostring(registry.tradeVersion),
-        table.Count(registry.music and registry.music.tracks or {})
+        table.Count(registry.music and registry.music.tracks or {}), table.Count(registry.callingCards and registry.callingCards.byId or {})
     )
 end
 

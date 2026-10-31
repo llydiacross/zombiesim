@@ -8,6 +8,7 @@ ZM_TradeService = ZM_TradeService or {}
 local Trade = ZM_TradeService
 local Service = ZM_InventoryService
 local Credits = ZM_CreditService
+local CallingCards = ZM_CallingCardService
 local Items = ZM_Items
 local Generation = ZM_ItemGeneration
 local StaticData = ZM_StaticData
@@ -261,6 +262,34 @@ function Trade:Buy(target, npc, request)
     return true, string.format("Bought %d x %s%s for %d %s.", units, offer.bundle > 1 and (offer.bundle .. " ") or "", offer.name, total, offer.currency), result
 end
 
+function Trade:BuyCallingCard(target, npc, request)
+    local context, reason = self:CheckAccess(target, npc)
+    if not context then return false, reason end
+    if type(request) ~= "table" then return false, "Invalid calling-card purchase." end
+    local requestId, idError = self:CheckRequestId(target, request.requestId)
+    if not requestId then return false, idError end
+    local snapshot, snapshotError = CallingCards:Snapshot(target)
+    if not snapshot then return false, snapshotError end
+    if snapshot.identity.profile ~= context.profile then return false, "Your world profile changed; reopen the trader." end
+    local card = snapshot.catalogue.byId[request.id]
+    if not card or not card.shopCredits then return false, "That calling-card design is not for sale." end
+    if request.price ~= card.shopCredits then return false, "The calling-card price changed; refresh the trader." end
+    if snapshot.owned[card.id] then return false, "Your account already owns that calling card." end
+    local creditStep, creditError = Credits:Step(target, -card.shopCredits, "calling card", card.id)
+    if not creditStep then return false, creditError end
+    local saved, saveError = ZM_CommitWrites(context.profile, {
+        creditStep,
+        { kind = "callingCardUnlock", steamid = snapshot.identity.character, account = snapshot.identity.account,
+            cardId = card.id, source = "trade" },
+        { kind = "tradeLedger", steamid = snapshot.identity.character, requestId = requestId,
+            safeZoneId = context.den.id, traderId = context.traderId, day = context.day, tradeKind = "buy",
+            itemId = "calling_card:" .. card.id, count = 1, cash = 0, credits = card.shopCredits }
+    })
+    if not saved then return false, "Could not save the calling-card purchase: " .. tostring(saveError) end
+    Credits:Apply(target, creditStep)
+    return true, "Unlocked " .. card.name .. " for " .. card.shopCredits .. " credits."
+end
+
 local function isEquipped(target, instanceId)
     for _, slot in pairs(target.ZM_WeaponSlots or {}) do
         if slot.instanceId == instanceId then return true end
@@ -434,6 +463,8 @@ function Trade:HandleRequest(target, request)
         return npc, true
     elseif request.action == "buy" then
         return npc, self:Buy(target, npc, { key = request.key, units = tonumber(request.units), requestId = request.requestId, price = tonumber(request.price), currency = request.currency, day = request.day })
+    elseif request.action == "buy_calling_card" then
+        return npc, self:BuyCallingCard(target, npc, { id = request.id, price = tonumber(request.price), requestId = request.requestId })
     elseif request.action == "sell" then
         local ok, message = self:Sell(target, npc, { ref = request.ref, count = tonumber(request.count), requestId = request.requestId, price = tonumber(request.price) })
         return npc, ok, message
@@ -442,9 +473,13 @@ function Trade:HandleRequest(target, request)
 end
 
 net.Receive("ZM.TradeRequest", function(length, target)
-    if not IsValid(target) or length > 2048 then return end
-    local npc, ok, message = Trade:HandleRequest(target, util.JSONToTable(net.ReadString()))
+    if not IsValid(target) or length > 4096 then return end
+    local request = util.JSONToTable(net.ReadString())
+    local npc, ok, message = Trade:HandleRequest(target, request)
     Trade:SendState(target, npc, ok, message)
+    if type(request) == "table" and request.action == "buy_calling_card" then
+        CallingCards:SendState(target, ok, message, request.requestId)
+    end
 end)
 
 // ---------------------------------------------------------------------------------------------------------------

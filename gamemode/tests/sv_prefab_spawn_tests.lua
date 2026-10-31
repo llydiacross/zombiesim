@@ -14,6 +14,14 @@ return function(contract, createSpawn)
                 if prop.lootGroup == "invalid" then return nil, "invalid group" end
                 return { entries = { "fixture" }, activationChance = 0.4 }
             end,
+            ResolveParticle = function(id)
+                if id == "steam" then return { id = "steam" } end
+                return nil, "Unknown particle effect."
+            end,
+            ResolveGuard = function(guard)
+                if state.invalidGuard == guard.guardId then return nil, "invalid guard settings" end
+                return { name = guard.name, weapon = guard.weapon, damage = guard.damage, spread = guard.spread }
+            end,
             ents = {}
         }
         api.LocalToWorld = function(position, angles, origin, orientation)
@@ -24,9 +32,38 @@ return function(contract, createSpawn)
                 z = origin.z + position.z }, { p = angles.p, y = angles.y + orientation.y, r = angles.r }
         end
         function api.ents.Create(class)
-            assert(class == "prop_physics")
+            assert(class == "prop_physics" or class == "zn_prefab_spotlight" or class == "zn_prefab_particle"
+                or class == "zn_prefab_guard")
             local index = #state.entities + 1
             if state.failCreate == index then return nil end
+            if class == "zn_prefab_guard" then
+                local guard = { valid = true }
+                function guard:SetPos(value) self.position = value end
+                function guard:SetAngles(value) self.angles = value end
+                function guard:Spawn() self.spawned = true end
+                function guard:Complete(ok, problem)
+                    local callback = self.ZM_GuardReadyCallback
+                    self.ZM_GuardReadyCallback = nil
+                    if callback then callback(self, ok, problem) end
+                end
+                function guard:Remove()
+                    self.valid = false
+                    self:Complete(false, "removed before ready")
+                end
+                state.entities[index] = guard
+                return guard
+            end
+            if class == "zn_prefab_spotlight" or class == "zn_prefab_particle" then
+                local light = { valid = true }
+                for _, name in ipairs({ "SetPos", "SetAngles", "SetPrefabLightId", "SetLightColor",
+                    "SetLightBrightness", "SetLightFov", "SetLightRange", "SetPrefabParticleId", "SetParticleEffectId" }) do
+                    light[name] = function(self, value) self[name .. "Value"] = value end
+                end
+                function light:Spawn() self.spawned = true end
+                function light:Remove() self.valid = false end
+                state.entities[index] = light
+                return light
+            end
             local physics = { valid = state.failPhysics ~= index }
             function physics:EnableMotion(value) self.motion = value end
             function physics:Wake() self.awake = true end
@@ -111,6 +148,161 @@ return function(contract, createSpawn)
         anchor2.valid = false
         entities, problem = spawn2.Create(document2, anchor2)
         check(not entities and type(problem) == "string", "invalid anchors fail explicitly")
+    end)
+    suite:Add("guard spawning is rejected in unsupported contexts before creating entities", function(check)
+        local state, spawn, anchor, document = fixture()
+        document.guards = { {
+            guardId = "guard_1", name = "Guard", model = "models/props_c17/oildrum001.mdl",
+            position = { x = 0, y = 0, z = 0 }, angles = { p = 0, y = 0, r = 0 },
+            idle = "idle_all_01", weapon = "pistol", range = 1000, shirt = "", pants = ""
+        } }
+        local entities, problem = spawn.Create(document, anchor)
+        check(not entities and type(problem) == "string" and string.find(problem, "guard", 1, true)
+            and #state.entities == 0, "guard-bearing prefabs fail explicitly before any partial spawn")
+    end)
+    suite:Add("fixture guards wait for every actor and use anchor transforms", function(check)
+        local state, spawn, anchor, document, api = fixture()
+        api.AllowGuards = true
+        anchor.orientation.y = 90
+        document.guards = {
+            { guardId = "guard_1", name = "First", model = "models/props_c17/oildrum001.mdl",
+                position = { x = 10, y = 20, z = 4 }, angles = { p = 0, y = 45, r = 0 },
+                idle = "idle_all_01", weapon = "pistol", range = 1000, shirt = "", pants = "",
+                damage = 25, spread = 0 },
+            { guardId = "guard_2", name = "Second", model = "models/props_c17/oildrum001.mdl",
+                position = { x = 0, y = 0, z = 0 }, angles = { p = 0, y = 0, r = 0 },
+                idle = "idle_all_01", weapon = "pistol", range = 1000, shirt = "", pants = "" }
+        }
+        local missing, message = spawn.Create(document, anchor)
+        check(not missing and type(message) == "string" and #state.entities == 0,
+            "a guard prefab requires a readiness owner before creating entities")
+        local calls = {}
+        local entities, problem, pending = spawn.Create(document, anchor, function(ok, reason)
+            calls[#calls + 1] = { ok = ok, reason = reason }
+        end)
+        local first, second = entities and entities[3], entities and entities[4]
+        check(entities and pending and first.ZM_PrefabGuard and first.ZM_GuardConfig.damage == 25
+            and first.ZM_GuardConfig.spread == 0 and math.abs(first.position.x - 80) < 0.00001
+            and math.abs(first.position.y - 210) < 0.00001 and first.position.z == 14 and first.angles.y == 135,
+            "guard settings and local transform follow the rotated anchor: " .. tostring(problem))
+        first:Complete(true)
+        check(#calls == 0, "one ready guard cannot complete a multi-guard prefab")
+        second:Complete(true)
+        check(#calls == 1 and calls[1].ok and #anchor.children == 4,
+            "the owner is notified once after both guards are ready")
+        spawn.Remove(entities)
+        check(#calls == 1 and not first.valid and not second.valid, "cleanup does not repeat readiness")
+    end)
+    suite:Add("fixture guard failures roll back every owned entity", function(check)
+        local state, spawn, anchor, document, api = fixture()
+        api.AllowGuards = true
+        document.guards = { {
+            guardId = "guard_1", name = "Guard", model = "models/props_c17/oildrum001.mdl",
+            position = { x = 0, y = 0, z = 0 }, angles = { p = 0, y = 0, r = 0 },
+            idle = "idle_all_01", weapon = "pistol", range = 1000, shirt = "", pants = ""
+        } }
+        state.invalidGuard = "guard_1"
+        local entities, problem = spawn.Create(document, anchor, function() end)
+        check(not entities and type(problem) == "string" and #state.entities == 0,
+            "invalid guard settings fail before any props are created")
+        state.invalidGuard = nil
+        local calls = {}
+        entities, problem = spawn.Create(document, anchor, function(ok, reason)
+            calls[#calls + 1] = { ok = ok, reason = reason }
+        end)
+        local guard = entities and entities[3]
+        if guard then guard:Complete(false, "missing animation") end
+        check(#calls == 1 and not calls[1].ok and string.find(calls[1].reason, "missing animation", 1, true)
+            and not state.entities[1].valid and not state.entities[2].valid and not guard.valid,
+            "a deferred guard failure reports the error and removes all earlier props")
+    end)
+    suite:Add("world prefab identities keep loot and effects stable across runtime entity IDs", function(check)
+        local state, spawn, anchor, document = fixture()
+        anchor.ZM_PrefabInstanceId = "world_test"
+        function anchor:MapCreationID() return -1 end
+        document.props[1].lootMode = "guaranteed"
+        document.lights = { { lightId = "lamp", position = { x = 0, y = 0, z = 100 },
+            angles = { p = 45, y = 0, r = 0 }, color = { r = 255, g = 255, b = 255 },
+            brightness = 6, fov = 60, range = 512 } }
+        document.particles = { { particleId = "steam", effect = "steam", position = { x = 0, y = 0, z = 0 },
+            angles = { p = 0, y = 0, r = 0 }, mode = "triggered", overlap = false } }
+        local result, problem = spawn.Create(document, anchor)
+        check(result and result[1].ZM_LootSpotKey == "pworld_test_4_test_legacy_1"
+            and result[3].SetPrefabLightIdValue == "world_test:lamp"
+            and result.particles.steam.id == "world_test:steam",
+            "loot, projector and particle keys use document identity: " .. tostring(problem))
+        spawn.Remove(result)
+        anchor.ZM_PrefabInstanceId = "world_different"
+        local previousCount = #state.entities
+        result, problem = spawn.Create(document, anchor)
+        check(not result and type(problem) == "string" and #state.entities == previousCount,
+            "a mismatched document identity is rejected before creating anything")
+    end)
+
+    suite:Add("spotlights use authoritative anchor transforms and roll back on failure", function(check)
+        local state, spawn, anchor, document = fixture()
+        document.lights = { { lightId = "light_1", position = { x = 10, y = 0, z = 100 },
+            angles = { p = 40, y = 45, r = 0 }, color = { r = 255, g = 235, b = 200 },
+            brightness = 6, fov = 60, range = 512 } }
+        anchor.orientation.y = 90
+        local result, problem = spawn.Create(document, anchor)
+        local light = result and result[3]
+        check(light and light.ZM_PrefabLight and light.spawned and light.SetPrefabLightIdValue == "1234:light_1"
+            and math.abs(light.SetPosValue.x - 100) < 0.00001
+            and math.abs(light.SetPosValue.y - 210) < 0.00001 and light.SetPosValue.z == 110
+            and light.SetAnglesValue.y == 135 and light.SetLightColorValue.y == 235
+            and light.SetLightBrightnessValue == 6 and light.SetLightFovValue == 60
+            and light.SetLightRangeValue == 512 and #anchor.children == 3,
+            "light transform, settings and cleanup ownership follow the anchor: " .. tostring(problem))
+        spawn.Remove(result)
+        check(not light.valid and not state.entities[1].valid, "cleanup removes lights and props")
+        local state2, spawn2, anchor2, document2 = fixture()
+        document2.lights = document.lights
+        state2.failCreate = 3
+        result, problem = spawn2.Create(document2, anchor2)
+        check(not result and type(problem) == "string" and not state2.entities[1].valid
+            and not state2.entities[2].valid and #anchor2.children == 0,
+            "a failed light creation removes all prior props")
+        local state3, spawn3, anchor3, document3 = fixture()
+        document3.lights = document.lights
+        function anchor3:MapCreationID() return -1 end
+        result, problem = spawn3.Create(document3, anchor3)
+        check(not result and type(problem) == "string" and #state3.entities == 0,
+            "missing stable anchor identity fails before spawning")
+    end)
+    suite:Add("particles use authoritative anchor transforms and roll back on failure", function(check)
+        local state, spawn, anchor, document = fixture()
+        anchor.orientation.y = 90
+        document.particles = {
+            { particleId = "steam_1", effect = "steam", position = { x = 10, y = 0, z = 16 },
+                angles = { p = 0, y = 45, r = 0 }, mode = "continuous" },
+            { particleId = "steam_2", effect = "steam", position = { x = 20, y = 0, z = 16 },
+                angles = { p = 0, y = 90, r = 0 }, mode = "triggered", overlap = false }
+        }
+        local result, problem = spawn.Create(document, anchor)
+        local entity = result and result[3]
+        local triggered = result and result.particles.steam_2
+        check(entity and entity.ZM_PrefabParticle and entity.spawned
+            and entity.SetPrefabParticleIdValue == "1234:steam_1" and entity.SetParticleEffectIdValue == "steam"
+            and math.abs(entity.SetPosValue.y - 210) < 0.00001 and entity.SetAnglesValue.y == 135
+            and triggered and triggered.id == "1234:steam_2" and triggered.mode == "triggered"
+            and triggered.overlap == false and math.abs(triggered.position.y - 220) < 0.00001
+            and #anchor.children == 3, "continuous entity and triggered metadata use the anchor: " .. tostring(problem))
+        spawn.Remove(result)
+        check(not entity.valid and not state.entities[1].valid, "cleanup removes owned particle and props")
+        local state2, spawn2, anchor2, document2 = fixture()
+        document2.particles = document.particles
+        state2.failCreate = 3
+        result, problem = spawn2.Create(document2, anchor2)
+        check(not result and type(problem) == "string" and not state2.entities[1].valid
+            and not state2.entities[2].valid and #anchor2.children == 0,
+            "particle entity failure rolls back previously created props")
+        local state3, spawn3, anchor3, document3 = fixture()
+        document3.particles = document.particles
+        document3.particles[1].effect = "unknown"
+        result, problem = spawn3.Create(document3, anchor3)
+        check(not result and type(problem) == "string" and #state3.entities == 0,
+            "unknown catalog effects fail before creating entities")
     end)
     suite:Add("loot keys identify stable props and distinct anchors", function(check)
         local _, spawn, anchor, document = fixture()

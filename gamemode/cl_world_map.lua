@@ -1853,7 +1853,7 @@ end
 
 local function drawCellInspectorDangerStar(centerX, centerY, radius, color)
     local shape = WorldMap.InspectorDangerStarShape
-    if not shape then
+    if not shape or not shape.triangles or not shape.triangles[1] or not shape.triangles[1][3] then
         shape = {
             tipUnits = {},
             innerUnits = {},
@@ -1871,6 +1871,8 @@ local function drawCellInspectorDangerStar(centerX, centerY, radius, color)
             }
             shape.tipPoints[pointIndex] = {}
             shape.innerPoints[pointIndex] = {}
+        end
+        for pointIndex = 1, 5 do
             shape.triangles[pointIndex] = {
                 shape.tipPoints[pointIndex],
                 shape.innerPoints[pointIndex],
@@ -2080,6 +2082,14 @@ end
 
 function WorldMap:Open()
     if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
+    if not ZM_AFK then
+        ErrorNoHalt("[ZombieSim] Cannot open the world map: AFK service is unavailable.\n")
+        return
+    end
+    if not ZM_AFK.State.afk or ZM_AFK.LeaveSent then
+        ZM_AFK:OpenMenu("map")
+        return
+    end
     self:LoadPersistentState()
     self:ReloadCapturedWorld()
     if IsValid(self.Frame) then
@@ -2737,6 +2747,7 @@ function WorldMap:Toggle()
         self.Frame:Remove()
         return
     end
+    if ZM_AFK and ZM_AFK:CancelFromInput() then return end
 
     self:Open()
 end

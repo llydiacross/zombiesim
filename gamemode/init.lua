@@ -8,10 +8,14 @@ AddCSLuaFile( "sh_walker_preload.lua" )
 AddCSLuaFile( "sh_compass.lua" )
 AddCSLuaFile( "sh_preview.lua" )
 AddCSLuaFile( "prefabs/sh_contract.lua" )
+AddCSLuaFile( "prefabs/sh_editor_map.lua" )
+AddCSLuaFile( "prefabs/cl_editor_transfer.lua" )
+AddCSLuaFile( "prefabs/sh_particle_catalog.lua" )
 AddCSLuaFile( "prefabs/sh_gizmo.lua" )
 AddCSLuaFile( "prefabs/sh_fixture_trace.lua" )
 AddCSLuaFile( "prefabs/cl_fixture_scale_sync.lua" )
 AddCSLuaFile( "sh_static_data.lua" )
+AddCSLuaFile( "sh_calling_cards.lua" )
 AddCSLuaFile( "sh_items.lua" )
 AddCSLuaFile( "sh_clothing.lua" )
 AddCSLuaFile( "cl_clothing.lua" )
@@ -20,16 +24,36 @@ AddCSLuaFile( "cl_changelog.lua" )
 AddCSLuaFile( "cl_third_party_licenses.lua" )
 AddCSLuaFile( "cl_launcher_tools.lua" )
 AddCSLuaFile( "cl_prefab_editor.lua" )
+AddCSLuaFile( "cl_prefab_guard_preview.lua" )
+AddCSLuaFile( "prefabs/cl_guard_preview.lua" )
 AddCSLuaFile( "cl_prefab_explorer.lua" )
 AddCSLuaFile( "cl_prefab_spotlight_probe.lua" )
 AddCSLuaFile( "prefabs/cl_spotlight_probe.lua" )
+AddCSLuaFile( "cl_prefab_light_preview.lua" )
+AddCSLuaFile( "cl_prefab_world_lights.lua" )
+AddCSLuaFile( "cl_prefab_particle_probe.lua" )
+AddCSLuaFile( "cl_prefab_particle_world.lua" )
+AddCSLuaFile( "prefabs/cl_light_preview.lua" )
+AddCSLuaFile( "prefabs/cl_light_runtime.lua" )
+AddCSLuaFile( "prefabs/cl_particle_probe.lua" )
+AddCSLuaFile( "prefabs/cl_particle_effect.lua" )
+AddCSLuaFile( "prefabs/cl_particle_preview.lua" )
+AddCSLuaFile( "prefabs/cl_particle_world.lua" )
+AddCSLuaFile( "prefabs/cl_spotlight_pool.lua" )
 AddCSLuaFile( "cl_character_cards.lua" )
+AddCSLuaFile( "cl_calling_card_state.lua" )
+AddCSLuaFile( "cl_calling_cards.lua" )
+AddCSLuaFile( "tests/cl_calling_card_state_tests.lua" )
+AddCSLuaFile( "tests/cl_calling_card_ui_tests.lua" )
+AddCSLuaFile( "tests/fixtures/cl_calling_card_engine.lua" )
 AddCSLuaFile( "tests/cl_clothing_tests.lua" )
 AddCSLuaFile( "tests/cl_character_cards_tests.lua" )
 AddCSLuaFile( "tests/cl_launcher_presentation_tests.lua" )
+AddCSLuaFile( "tests/cl_launcher_profession_picker_tests.lua" )
 AddCSLuaFile( "tests/cl_imported_assets_tests.lua" )
 AddCSLuaFile( "tests/cl_atmosphere_tests.lua" )
 AddCSLuaFile( "tests/cl_prefab_fixture_trace.lua" )
+AddCSLuaFile( "tests/cl_prefab_editor_map_engine_tests.lua" )
 AddCSLuaFile( "tests/fixtures/cl_atmosphere_engine.lua" )
 AddCSLuaFile( "utils/test_harness.lua" )
 AddCSLuaFile( "sh_weapon_effects.lua" )
@@ -100,8 +124,10 @@ AddCSLuaFile( "cl_scoreboard.lua" )
 AddCSLuaFile( "cl_map_batch.lua" )
 AddCSLuaFile( "cl_preview.lua" )
 AddCSLuaFile( "cl_dependency_prompts.lua" )
+AddCSLuaFile( "cl_launcher_profession_picker.lua" )
 AddCSLuaFile( "cl_launcher_menu.lua" )
 AddCSLuaFile( "cl_launcher_scene.lua" )
+AddCSLuaFile( "tests/cl_credits_probe.lua" )
 AddCSLuaFile( "cl_pause_log.lua" )
 AddCSLuaFile( "cl_dev_profiler.lua" )
 AddCSLuaFile( "cl_clothing_preview.lua" )
@@ -154,6 +180,7 @@ include( "sv_damage_feedback.lua" )
 include( "tests/sv_damage_feedback_tests.lua" )
 include( "sv_item_generation.lua" )
 include( "sv_inventory.lua" )
+include( "sv_armour.lua" )
 include( "sv_dropped_items.lua" )
 include( "sv_bank.lua" )
 include( "tests/sv_bank_tests.lua" )
@@ -162,16 +189,19 @@ include( "sv_crafting.lua" )
 include( "sv_implants.lua" )
 include( "sv_professions.lua" )
 include( "sv_credits.lua" )
+include( "sv_calling_cards.lua" )
 include( "sv_mastercraft.lua" )
 include( "sv_den_npcs.lua" )
 include( "sv_trading.lua" )
 include( "tests/sv_inventory_tests.lua" )
+include( "tests/sv_armour_tests.lua" )
 include( "tests/sv_imported_assets_tests.lua" )
 include( "tests/sv_crafting_tests.lua" )
 include( "tests/sv_professions_tests.lua" )
 include( "tests/sv_implants_tests.lua" )
 include( "tests/sv_mastercraft_tests.lua" )
 include( "tests/sv_trading_tests.lua" )
+include( "tests/sv_calling_card_tests.lua" )
 include( "sv_loot.lua" )
 include( "tests/sv_loot_tests.lua" )
 include( "sv_enemies.lua" )
@@ -195,9 +225,23 @@ include( "sv_dev_console.lua" )
 include( "sv_world_capture.lua" )
 include( "sv_dependency_prompts.lua" )
 include( "sv_launcher.lua" )
+ZM_PrefabGuardWeapons = include( "prefabs/sv_guard_weapons.lua" )({ weapons = weapons, util = util, file = file })
+ZM_PrefabGuardConfig = include( "prefabs/sv_guard_config.lua" )(
+    ZM_Clothing, ZM_PrefabGuardWeapons, util.IsValidModel, include( "prefabs/sh_contract.lua" ))
+ZM_PrefabGuardTargeting = include( "prefabs/sv_guard_targeting.lua" )({
+    IsValid = IsValid, IsVector = isvector, Vector = Vector, ents = ents, util = util, MASK_SHOT = MASK_SHOT
+})
 include( "sv_prefab_editor.lua" )
+include( "sv_prefab_guard_probe.lua" )
 include( "sv_prefab_spotlight_probe.lua" )
+include( "sv_prefab_particle_probe.lua" )
 include( "sv_prefabs.lua" )
+include( "sv_prefab_particle_world_probe.lua" )(
+    include( "prefabs/sh_contract.lua" ),
+    include( "prefabs/sv_spawn.lua" ),
+    include( "prefabs/sv_loot.lua" ),
+    include( "prefabs/sh_particle_catalog.lua" )
+)
 include( "tests/sv_prefab_registration.lua" )(
     include( "prefabs/sh_contract.lua" ),
     include( "prefabs/sv_storage.lua" ),
@@ -205,12 +249,36 @@ include( "tests/sv_prefab_registration.lua" )(
     include( "tests/sh_prefab_contract_tests.lua" ),
     include( "tests/sv_prefab_storage_tests.lua" ),
     include( "prefabs/sh_gizmo.lua" ),
-    include( "tests/sh_prefab_gizmo_tests.lua" )
+    include( "tests/sh_prefab_gizmo_tests.lua" ),
+    include( "prefabs/sv_catalog.lua" ),
+    include( "tests/sv_prefab_catalog_tests.lua" )
 )
+include( "tests/sv_prefab_guard_engine.lua" )({
+    Clothing = ZM_Clothing, util = util, weapons = weapons, ents = ents, IsValid = IsValid, file = file,
+    Vector = Vector, SOLID_NONE = SOLID_NONE, DevConsole = ZM_DevConsole, GuardConfig = ZM_PrefabGuardConfig,
+    Editor = ZM_PrefabEditor, FirstHuman = ZM_Util.FirstHuman, Prefabs = ZM_Prefabs,
+    World = ZM_World, Angle = Angle, LocalToWorld = LocalToWorld, AngleDifference = math.AngleDifference
+}, include( "prefabs/sv_guard_weapons.lua" ))
+include( "tests/sv_prefab_guard_shot.lua" )({
+    Editor = ZM_PrefabEditor, FirstHuman = ZM_Util.FirstHuman,
+    util = util, ents = ents, IsValid = IsValid, IsVector = isvector, Vector = Vector,
+    SOLID_NONE = SOLID_NONE, MASK_SHOT = MASK_SHOT
+}, include( "prefabs/sv_guard_targeting.lua" ))
+include( "tests/sv_prefab_guard_kill_live.lua" )({
+    player = player, game = game, World = ZM_World, IsValid = IsValid, ents = ents,
+    Vector = Vector, Angle = Angle, LootSpots = ZM_LootSpots, StaticData = ZM_StaticData,
+    Enemies = ZM_Enemies, Targeting = ZM_PrefabGuardTargeting
+})
+include( "tests/sv_prefab_guard_spawn_live.lua" )({
+    player = player, game = game, World = ZM_World, IsValid = IsValid, ents = ents,
+    Vector = Vector, Angle = Angle, LocalToWorld = LocalToWorld, util = util,
+    GuardConfig = ZM_PrefabGuardConfig, timer = timer, hook = hook, AngleDifference = math.AngleDifference
+}, include( "prefabs/sh_contract.lua" ), include( "prefabs/sv_spawn.lua" ))
 include( "tests/sv_prefab_spawn_live.lua" )(
     include( "prefabs/sh_contract.lua" ),
     include( "prefabs/sv_spawn.lua" ),
-    include( "prefabs/sv_loot.lua" )
+    include( "prefabs/sv_loot.lua" ),
+    include( "prefabs/sh_particle_catalog.lua" )
 )
 include( "tests/sv_prefab_city_live.lua" )(
     include( "prefabs/sh_contract.lua" ),
@@ -218,6 +286,7 @@ include( "tests/sv_prefab_city_live.lua" )(
     include( "prefabs/sv_loot.lua" )
 )
 include( "sv_walker_sim.lua" )
+include( "sv_walker_awareness.lua" )
 include( "sv_walker_materialization.lua" )
 include( "sv_transitions.lua" )
 include( "sv_chest_lamp.lua" )
@@ -240,10 +309,11 @@ ZM_Foliage.StorageReady = foliageReady
 local professionsReady, professionsError = ZM_CreateProfessionTables()
 local implantsReady, implantsError = ZM_CreateImplantTables()
 local creditsReady, creditsError = ZM_CreateCreditTables()
+local callingCardsReady, callingCardsError = ZM_CreateCallingCardTables()
 local bankReady, bankError = ZM_BankService:Init()
 local tradeReady, tradeError = ZM_TradeService:Init()
 local charactersReady, charactersError = false, "character migration prerequisites are not ready"
-if attributesReady and playerDataReady and playerItemsReady and professionsReady and implantsReady and creditsReady and bankReady and tradeReady then
+if attributesReady and playerDataReady and playerItemsReady and professionsReady and implantsReady and creditsReady and callingCardsReady and bankReady and tradeReady then
     local mapProfile = ZM_World.LauncherMapProfiles[game.GetMap()] or GetConVar("zombiesim_world_profile"):GetString()
     local legacyReady, legacyError = ZM_EnsureProfiledPlayerData(mapProfile)
     if legacyReady then
@@ -275,6 +345,9 @@ if not implantsReady then
 end
 if not creditsReady then
     ErrorNoHalt("[ZombieSim] Could not prepare credits: " .. tostring(creditsError) .. "\n")
+end
+if not callingCardsReady then
+    ErrorNoHalt("[ZombieSim] Could not prepare calling-card storage: " .. tostring(callingCardsError) .. "\n")
 end
 if not bankReady then
     ErrorNoHalt("[ZombieSim] Could not prepare banking: " .. tostring(bankError) .. "\n")
@@ -613,6 +686,7 @@ end
 // Restores persistent state, applies new-player defaults, and synchronizes the spawned player.
 function GM:PlayerSpawn( ply )
     ply.ZM_PersistentStateLoaded = false
+    ZM_CallingCardService:Reset(ply)
     if ZM_PrefabEditor and ZM_PrefabEditor:HandleSpawn(ply) then return end
     if not charactersReady then
         ply:StripWeapons()
@@ -640,6 +714,7 @@ function GM:PlayerSpawn( ply )
     ply.ZM_CharacterKeyCache = nil
     ply.ZM_CharacterId = nil
     ply.ZM_CharacterSlot = nil
+    ply.ZM_ProfessionBonusVersion = nil
     if launcher then
         ply.ZM_LauncherState = "dependency_prompts"
         ply:StripWeapons()
@@ -718,6 +793,13 @@ function GM:LoadSelectedCharacter(ply, profile)
         return false, creditsError
     end
     logLoading(ply, "Loaded implants and credits")
+    local cardsLoaded, cardsError = ZM_CallingCardService:Load(ply)
+    if not cardsLoaded then
+        ErrorNoHalt("[ZombieSim] Could not load calling cards: " .. tostring(cardsError) .. "\n")
+        ZM_Loading:Step(ply, "Calling cards unavailable", "warn")
+    else
+        logLoading(ply, "Loaded calling cards")
+    end
     self:ReconcilePlayerOriginCell(ply)
     local cellX, cellY = ply:GetWorldCellCoordinates()
     logLoading(ply, cellX and cellY and string.format("Resolved world cell %s, %s", cellX, cellY) or "Resolved world cell")

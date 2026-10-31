@@ -77,6 +77,27 @@ test("boss_reward_policy_has_a_rewardable_result", function(check)
     end
 end)
 
+test("guard_boss_kill_keeps_boss_loot_without_player_xp", function(check)
+    local definition = ZM_StaticData:GetBoss("bossWalker")
+    local instance = Bosses:BeginSpawn(definition, { id = 5 }, "guard-test", 200)
+    check(instance ~= nil, "the isolated boss instance is registered")
+    if not instance then return end
+    local entity = { BossId = definition.id, BossInstanceId = instance.id, BossProfile = "guard-test", EnemyDanger = 0.5 }
+    local guard = {
+        IsValid = function() return true end, IsPlayer = function() return false end,
+        GetClass = function() return "zn_prefab_guard" end
+    }
+    local rewarded, reward = Bosses:OnBossKilled(entity, guard)
+    check(rewarded and reward.xp == 0 and reward.killer == nil and reward.item ~= nil,
+        "guard kills preserve the boss reward without assigning player XP")
+    if reward and reward.item then
+        local item = ZM_Items:GetDefinition(reward.item.itemId)
+        check(item and reward.item.level == item.maxLevel, "boss loot keeps its maximum level")
+    end
+    check(Bosses:GetActiveCount("guard-test", definition.id) == 0, "the boss lifecycle is finished")
+    check(not Bosses:OnBossKilled(entity, guard), "duplicate guard kills do not reward again")
+end)
+
 function Bosses:RunTests()
     return suite:Run()
 end

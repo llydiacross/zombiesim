@@ -2,6 +2,7 @@
 // { instanceId, itemId, count, level, mastercraft, attributes } and are created and changed only by the server.
 ZM_Items = ZM_Items or {}
 local Items = ZM_Items
+local StaticData = ZM_StaticData
 
 Items.Containers = { backpack = true, stash = true, equipped = true }
 Items.ContainerCapacity = { backpack = 20, stash = 60, equipped = 6 }
@@ -23,8 +24,12 @@ end
 
 // Returns an effective attribute value such as Strength or Medicine: allocated points plus the profession bonus.
 function ply:GetStat(name)
-    local bonus = ZM_Professions and ZM_Professions:GetStatBonus(self:GetJobRole(), name) or 0
+    local bonus = ZM_Professions and ZM_Professions:GetStatBonus(self:GetJobRole(), name, self:GetProfessionBonusVersion()) or 0
     return self:GetBaseStat(name) + bonus
+end
+
+function ply:GetProfessionBonusVersion()
+    return self.ZM_ProfessionBonusVersion or self:GetNWInt("ZM_ProfessionBonusVersion", ZM_Professions.LegacyBonusVersion)
 end
 
 // Raw stored job name (may be an alias or an unknown legacy value).
@@ -56,6 +61,21 @@ function Items:HasRadiationProtection(inventory)
     local instance = inventory and inventory.equipped and inventory.equipped[self.ArmourSlot]
     local definition = instance and self:GetDefinition(instance.itemId)
     return definition ~= nil and definition.entityClass == "armour" and definition.radiationProtection == true
+end
+
+function Items:GetArmourEffects(inventory, endurance)
+    local instance = inventory and inventory.equipped and inventory.equipped[self.ArmourSlot]
+    local definition = instance and self:GetDefinition(instance.itemId)
+    local stats = definition and definition.armourStats or nil
+    local mitigation = math.Clamp((tonumber(endurance) or 0) * 0.05, 0, 0.5)
+    local speedPenalty = tonumber(stats and stats.speedPenalty) or 0
+    local staminaRegenPenalty = tonumber(stats and stats.staminaRegenPenalty) or 0
+    return {
+        damageReduction = tonumber(stats and stats.damageReduction) or 0,
+        speedPenalty = speedPenalty * (1 - mitigation),
+        staminaRegenPenalty = staminaRegenPenalty * (1 - mitigation),
+        itemId = definition and definition.id or nil
+    }
 end
 
 function ply:HasRadiationProtection()
@@ -179,6 +199,33 @@ function Items:GetWeaponScales(instance)
     return scales
 end
 
+function Items:GetWeaponSkillScales(owner, definition)
+    local family = definition and definition.weaponFamily
+    if not family or not StaticData.WeaponFamilies[family] or not owner or not owner.GetStat then
+        return 1, 1
+    end
+    local skill = math.Clamp(tonumber(owner:GetStat(family)) or 0, 0, ZM_CharacterRules.MaximumAttribute)
+    return 1 - skill * 0.03, 1 - skill * 0.02
+end
+
+function Items:ApplyWeaponSkillEffects(weapon, owner, definition)
+    if not IsValid(weapon) or not weapon.SetNWFloat then return end
+    local accuracyScale, reloadScale = self:GetWeaponSkillScales(owner, definition)
+    weapon:SetNWFloat("ZM_WeaponSkillAccuracyScale", accuracyScale)
+    weapon:SetNWFloat("ZM_WeaponSkillReloadScale", reloadScale)
+end
+
+function Items:RefreshEquippedWeaponSkills(owner)
+    if not IsValid(owner) or not owner.IsPlayer or not owner:IsPlayer() or not owner.ZM_Inventory
+        or not ZM_InventoryService or not ZM_InventoryService.Ops then return end
+    for _, weapon in ipairs(owner:GetWeapons()) do
+        local instanceId = weapon.GetItemInstanceId and weapon:GetItemInstanceId() or ""
+        local _, _, instance = ZM_InventoryService.Ops.FindInstance(owner.ZM_Inventory, instanceId)
+        local definition = instance and self:GetDefinition(instance.itemId)
+        self:ApplyWeaponSkillEffects(weapon, owner, definition)
+    end
+end
+
 // Stack value. Weapon value rises with level and attribute scores and triples for mastercrafts.
 function Items:GetInstanceValue(instance)
     local definition = self:GetDefinition(instance.itemId)
@@ -286,6 +333,7 @@ end
 // Server: copies an instance's attribute multipliers onto a ZombieSim weapon's networked scale variables.
 function Items:ApplyInstanceToWeapon(weapon, instance)
     local scales = self:GetWeaponScales(instance)
+    local definition = self:GetDefinition(instance.itemId)
     weapon:SetDamageScale(scales.Damage)
     weapon:SetRangeScale(scales.Range)
     weapon:SetSpeedScale(scales.Swiftness * scales.FiringSpeed)
@@ -293,6 +341,7 @@ function Items:ApplyInstanceToWeapon(weapon, instance)
     weapon:SetReloadScale(scales.ReloadSpeed)
     weapon:SetClipScale(scales.ClipSize)
     weapon:SetItemInstanceId(instance.instanceId)
+    self:ApplyWeaponSkillEffects(weapon, weapon:GetOwner(), definition)
     if weapon.OnItemInstanceApplied then
         weapon:OnItemInstanceApplied(instance)
     end

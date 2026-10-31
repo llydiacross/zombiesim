@@ -23,13 +23,29 @@ local serviceLabels = {
 
 function UI:SendRequest(request)
     request.npc = self.NpcIndex
+    local encoded = util.TableToJSON(request, false)
+    if not encoded then
+        local message = "Could not encode the trader request."
+        self.Message = { text = message, ok = false }
+        ErrorNoHalt("[ZombieSim] " .. message .. "\n")
+        if IsValid(self.Frame) then self:Rebuild() end
+        return false, message
+    end
     net.Start("ZM.TradeRequest")
-        net.WriteString(util.TableToJSON(request, false) or "{}")
+        net.WriteString(encoded)
     net.SendToServer()
+    return true
 end
 
 local function newRequestId()
     return string.format("c%08x%06x", os.time(), math.random(0, 0xFFFFFF))
+end
+
+function UI:SendCallingCardPurchase(id, price)
+    local requestId = newRequestId()
+    local sent, message = self:SendRequest({ action = "buy_calling_card", id = id, price = price, requestId = requestId })
+    if not sent then return nil, message end
+    return requestId
 end
 
 local function currencyText(amount, currency)
@@ -611,6 +627,7 @@ net.Receive("ZM.TradeState", function()
         UI.Message = { text = state.message, ok = state.ok ~= false }
     end
     UI:Rebuild()
+    if ZM_CallingCardUI then ZM_CallingCardUI:OnTradeState(state) end
 end)
 
 // Pressing E on a den NPC: traders open this window; professionals without a trade table open the Services window.
@@ -681,6 +698,13 @@ function UI:Rebuild()
         services:SetText("Services")
         services.DoClick = function() ZM_ProfessionsUI:Open("n:" .. tostring(UI.NpcIndex)) end
     end
+    local cards = vgui.Create("DButton", footer)
+    cards:Dock(RIGHT)
+    cards:DockMargin(0, 0, 6, 0)
+    cards:SetWide(130)
+    cards:SetText("Calling Cards")
+    cards:SetEnabled(state.available == true)
+    cards.DoClick = function() ZM_CallingCardUI:OpenShop(frame) end
 
     local sellColumn = vgui.Create("DPanel", body)
     sellColumn:Dock(RIGHT)

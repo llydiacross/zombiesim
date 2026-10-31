@@ -148,11 +148,13 @@ function Bosses:OnBossKilled(entity, attacker)
     entity.BossRewarded = true
     local boss = ZM_StaticData:GetBoss(entity.BossId)
     local killer = ZM_Enemies.ResolveKiller(attacker)
-    if not boss or not killer then return false, "boss or player killer is missing" end
+    local guard = not killer and ZM_Enemies.IsPrefabGuard(attacker)
+    if not boss or (not killer and not guard) then return false, "boss or player killer is missing" end
     local enemy = ZM_StaticData:GetEnemy(boss.enemy)
-    local reward = { boss = boss.id, xp = enemy.xp or 0, killer = killer:SteamID() }
+    local reward = { boss = boss.id, xp = guard and 0 or enemy.xp or 0, killer = killer and killer:SteamID() or nil }
     if reward.xp > 0 then ZM_Enemies.AwardXP(killer, reward.xp) end
-    local instance = ZM_Loot:RollBossLoot(boss, { danger = entity.EnemyDanger, playerLevel = killer:GetLevel(), seed = entity.BossInstanceId })
+    local instance = ZM_Loot:RollBossLoot(boss, { danger = entity.EnemyDanger,
+        playerLevel = killer and killer:GetLevel() or nil, seed = entity.BossInstanceId })
     reward.item = instance
     reward.given = false
     reward.error = instance and nil or "boss loot could not be rolled"

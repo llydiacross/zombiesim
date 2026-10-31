@@ -63,7 +63,7 @@ local function person(values)
         GetLevel = function(self) return self.level end,
         GetJobRole = function(self) return Professions:Resolve(self.job) end,
         GetStoredJob = function(self) return self.job end,
-        GetStat = function(self, name) return Professions:GetStatBonus(self.job, name) end,
+        GetStat = function(self, name) return Professions:GetStatBonus(self.job, name, Professions.LegacyBonusVersion) end,
         Health = function(self) return self.health end,
         GetMaxHealth = function() return 100 end,
         SetHealth = function(self, value) self.health = value end,

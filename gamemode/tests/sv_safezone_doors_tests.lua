@@ -62,6 +62,12 @@ local function playerEntity()
         IsBot = function() return false end,
         GetPos = function() return Vector(0, 0, 0) end,
         WorldSpaceCenter = function() return Vector(0, 0, 32) end,
+        CompleteWalkerPreload = function(self)
+            local waiting = self.ZM_WalkerPreloadWaiting
+            assert(waiting and type(waiting.complete) == "function", "No fixture Walker preload is pending")
+            self.ZM_WalkerPreloadWaiting = nil
+            waiting.complete()
+        end,
         PrintMessage = function(self, _, message) table.insert(self.messages, message) end
     }
 end
@@ -83,11 +89,17 @@ local function withFixture(callback, overrides)
     local originalFindByClass = ents.FindByClass
     local originalFindByName = ents.FindByName
     local originalFindInSphere = ents.FindInSphere
+    local originalHoldPlayer = ZM_WalkerPreload.HoldPlayer
     local currentMap = "city_test_recipe"
     local target = playerEntity()
     local ensureResult = true
     local ensureCalls = {}
 
+    ZM_WalkerPreload.HoldPlayer = function(_, recipient, complete)
+        assert(recipient == target and type(complete) == "function" and not recipient.ZM_WalkerPreloadWaiting,
+            "Invalid fixture Walker preload request")
+        recipient.ZM_WalkerPreloadWaiting = { complete = complete }
+    end
     IsValid = function(value) return value ~= nil and value.valid ~= false end
     player.GetAll = function() return { target } end
     game.GetMap = function() return currentMap end
@@ -151,6 +163,7 @@ local function withFixture(callback, overrides)
     ents.FindByClass = originalFindByClass
     ents.FindByName = originalFindByName
     ents.FindInSphere = originalFindInSphere
+    ZM_WalkerPreload.HoldPlayer = originalHoldPlayer
     if not ok then error(errorMessage) end
 end
 
@@ -310,7 +323,13 @@ Suite:Add("pending_entry_fades_in_after_arrival", function(check)
 
         local originalLock = Transitions.GetEngineInputLockRemaining
         Transitions.GetEngineInputLockRemaining = function() return 0 end
-        local ok, applied = pcall(function() return Transitions:ApplyPendingEntry(target) end)
+        local ok, applied = pcall(function()
+            local result = Transitions:ApplyPendingEntry(target)
+            check(result and target.ZM_WalkerPreloadWaiting and not target.screenFade
+                and not target.ZM_TransitionEntry, "city arrival waits for Walker preload before fading or walking")
+            if result then target:CompleteWalkerPreload() end
+            return result
+        end)
         Transitions.GetEngineInputLockRemaining = originalLock
         net.Start = originalStart
         net.WriteFloat = originalWriteFloat
@@ -358,7 +377,11 @@ Suite:Add("obstructed_recorded_return_falls_back_to_anchor", function(check)
 
         local originalLock = Transitions.GetEngineInputLockRemaining
         Transitions.GetEngineInputLockRemaining = function() return 0 end
-        local ok, applied = pcall(function() return Transitions:ApplyPendingEntry(target) end)
+        local ok, applied = pcall(function()
+            local result = Transitions:ApplyPendingEntry(target)
+            if result then target:CompleteWalkerPreload() end
+            return result
+        end)
         Transitions.GetEngineInputLockRemaining = originalLock
         net.Start = originalStart
         net.WriteFloat = originalWriteFloat
@@ -405,7 +428,16 @@ Suite:Add("den_arrival_teleports_past_walk_with_double_fade", function(check)
         local key = "zombiesim_transition_entry_zn_test_safezones"
         target.pending[key] = util.TableToJSON({ anchorClass = "zn_safezone_arrival", yaw = 90 }, false)
 
-        local ok, applied = pcall(function() return Transitions:ApplyPendingEntry(target) end)
+        local originalLock = Transitions.GetEngineInputLockRemaining
+        Transitions.GetEngineInputLockRemaining = function() return 0 end
+        local ok, applied = pcall(function()
+            local result = Transitions:ApplyPendingEntry(target)
+            check(result and target.ZM_WalkerPreloadWaiting and not target.screenFade,
+                "den arrival waits for Walker preload before fading")
+            if result then target:CompleteWalkerPreload() end
+            return result
+        end)
+        Transitions.GetEngineInputLockRemaining = originalLock
         net.Start = originalStart
         net.WriteFloat = originalWriteFloat
         net.Send = originalSend
@@ -450,7 +482,13 @@ Suite:Add("arrival_holds_black_through_engine_input_lock", function(check)
         local key = "zombiesim_transition_entry_zn_test_safezones"
         target.pending[key] = util.TableToJSON({ anchorClass = "zn_safezone_arrival", yaw = 0 }, false)
         local now = CurTime()
-        local ok, applied = pcall(function() return Transitions:ApplyPendingEntry(target) end)
+        local ok, applied = pcall(function()
+            local result = Transitions:ApplyPendingEntry(target)
+            check(result and target.ZM_WalkerPreloadWaiting and not target.ZM_TransitionEntry,
+                "the input-lock walk does not start before Walker preload finishes")
+            if result then target:CompleteWalkerPreload() end
+            return result
+        end)
         local walkHook = hook.GetTable().SetupMove["ZM.TransitionEntryWalk"]
         local held = { GetButtons = function() return IN_FORWARD end }
         held.SetMoveAngles = function() end

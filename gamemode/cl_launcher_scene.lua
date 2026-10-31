@@ -98,6 +98,7 @@ end
 function Scene:IsPresentationHidden()
     return not Menu.Active or Menu.Credits or not Menu.Globe
         or (ZM_SkyInspection and ZM_SkyInspection:IsActive())
+        or (Menu.GetCharacterCreationCamera and Menu:GetCharacterCreationCamera() ~= nil)
         or (Menu.IsCharacterPreviewVisible and Menu:IsCharacterPreviewVisible())
 end
 
@@ -1196,13 +1197,29 @@ end)
 
 concommand.Remove("zombiesim_dev_launcher_presentation_status")
 concommand.Add("zombiesim_dev_launcher_presentation_status", function()
-    print("[ZombieSim] Launcher presentation: " .. util.TableToJSON({
+    local camera = Menu.CreationCamera
+    local status = {
+        map = game.GetMap(),
+        launcher = {
+            active = Menu.Active == true,
+            page = Menu.Page or "uninitialized",
+            frameVisible = IsValid(Menu.Frame) and Menu.Frame:IsVisible() or false,
+            earthControlsActive = Menu:IsEarthControlsActive() == true,
+            creationCamera = camera and {
+                origin = { x = camera.origin.x, y = camera.origin.y, z = camera.origin.z },
+                angles = { p = camera.angles.p, y = camera.angles.y, r = camera.angles.r },
+                fov = camera.fov
+            } or false
+        },
         stats = Scene.Stats or { state = Scene:GetPresentationState() },
         materials = Scene:GetMaterialStatus(),
         horizonMaterials = Scene:GetHorizonMaterialStatus(),
         cityError = Scene.CityError,
         presentationAssetLoads = Scene.PresentationAssetLoads or 0
-    }))
+    }
+    file.CreateDir("zombiesim")
+    file.Write("zombiesim/launcher-presentation-status.json", util.TableToJSON(status, true))
+    print("[ZombieSim] Launcher presentation: " .. util.TableToJSON(status))
 end)
 
 local function dancerPoint(entity)
@@ -1235,6 +1252,8 @@ function Scene:BeginCredits()
     self.Dancer = nil
     self.Hit = nil
     self.LastDancer = nil
+    self.LastCreditsView = nil
+    self.LastCreditsViewAt = nil
     Menu.Credits = true
 end
 
@@ -1347,7 +1366,10 @@ function Scene:CreditsView()
         end
         angles = ((self.Target or target) - origin):Angle()
     end
-    return { origin = origin, angles = angles, fov = fov, drawviewer = false, drawviewmodel = false }
+    local view = { origin = origin, angles = angles, fov = fov, drawviewer = false, drawviewmodel = false }
+    self.LastCreditsView = view
+    self.LastCreditsViewAt = now
+    return view
 end
 
 hook.Add("SetupWorldFog", "ZombieSim.Launcher.CreditsFog", function()

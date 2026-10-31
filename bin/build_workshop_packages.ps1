@@ -107,6 +107,7 @@ Add-WorkshopFile $inventory $musicPath 'data_static/music_definitions.json' 'cor
 Add-WorkshopFile $inventory (Join-Path $content 'sounds\music\preview skybox 1.mp3') 'sound/music/preview skybox 1.mp3' 'common' 'audio:launcher-sky-preview'
 Add-WorkshopFile $inventory (Join-Path $content 'sounds\music\menu.mp3') 'sound/music/menu.mp3' 'common' 'audio:launcher-menu'
 Add-WorkshopFile $inventory (Join-Path $content 'sounds\music\menu 2.mp3') 'sound/music/menu 2.mp3' 'common' 'audio:launcher-menu-loop'
+Add-WorkshopFile $inventory (Join-Path $content 'sounds\music\credits.mp3') 'sound/music/credits.mp3' 'common' 'audio:launcher-credits'
 
 $assetsPath = Join-Path $content 'data_static\imported_assets.json'
 $assets = Read-PackageJson $assetsPath
@@ -154,6 +155,20 @@ foreach ($directory in $settings.commonMaterialDirectories) {
                 $settings.coreStaticFiles -contains 'sky_catalogue.json' -and
                 $relative -notin $skyCatalogue.ownedFiles) { continue }
             Add-Content $relative 'common' ([IO.Path]::GetFileNameWithoutExtension($relative))
+        }
+    }
+}
+if ($settings.coreStaticFiles -contains 'calling_cards.json') {
+    Import-Module (Join-Path $PSScriptRoot 'calling_cards.psm1') -Force -DisableNameChecking
+    $cardsPath = Join-Path $content 'data_static\calling_cards.json'
+    $cards = Read-CardJson $cardsPath
+    $snapshots[$cardsPath] = (Get-FileHash -LiteralPath $cardsPath -Algorithm SHA256).Hash
+    Assert-CallingCardCatalogue $cards
+    foreach ($card in $cards.cards) {
+        $key = ConvertTo-WorkshopPath ('materials/' + $card.material)
+        if (-not $inventory.ContainsKey($key)) { throw "Calling-card material is not included in Workshop packaging: $key" }
+        if ($inventory[$key].sha256 -cne $card.sha256 -or $inventory[$key].bytes -ne $card.bytes) {
+            throw "Calling-card material does not match the catalogue: $key"
         }
     }
 }

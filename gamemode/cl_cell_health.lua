@@ -348,13 +348,14 @@ function CellHealth:Refresh()
     return true
 end
 
-function CellHealth:Open()
+function CellHealth:Open(parent)
     local allowed, reason = hasPreviewAdmin()
     if not allowed then
         ErrorNoHalt("[ZombieSim] " .. reason .. "\n")
         return false
     end
     if IsValid(self.Frame) then
+        if IsValid(parent) then self.ReturnParent = parent end
         self.Frame:MakePopup()
         self:Refresh()
         self:RequestCubemapStatus()
@@ -363,15 +364,29 @@ function CellHealth:Open()
 
     local frame = vgui.Create("DFrame")
     self.Frame = frame
+    self.ReturnParent = IsValid(parent) and parent or nil
     frame:SetSkin("ZombieSim")
     frame:SetSize(math.min(980, ScrW() - 40), math.min(700, ScrH() - 40))
     frame:Center()
     frame:SetTitle("PREVIEW CELL HEALTH")
+    frame:SetDeleteOnClose(true)
     frame:MakePopup()
     frame.OnRemove = function()
         if self.Frame ~= frame then return end
+        local returnParent = self.ReturnParent
+        self.ReturnParent = nil
         self.Frame, self.Body, self.Snapshot = nil, nil, nil
+        if IsValid(returnParent) and returnParent:IsVisible()
+            and ZM_LauncherMenu and ZM_LauncherMenu.Frame == returnParent and ZM_LauncherMenu.Page == "tools" then
+            returnParent:MakePopup()
+        end
     end
+    frame.Think = function()
+        if self.ReturnParent and (not IsValid(self.ReturnParent)
+            or not ZM_LauncherMenu or ZM_LauncherMenu.Frame ~= self.ReturnParent
+            or ZM_LauncherMenu.Page ~= "tools") then frame:Close() end
+    end
+    frame.OnKeyCodePressed = function(_, key) if key == KEY_ESCAPE then frame:Close() end end
     self:Refresh()
     self:RequestCubemapStatus()
     return true

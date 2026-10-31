@@ -4,6 +4,8 @@
       "name": "shipped_data_is_valid",
       "files": {},
       "expectValues": [
+        { "path": "callingCards.byId.background_default.material", "value": "scoreboard/backgrounds/default.png" },
+        { "path": "callingCards.byId.detail_default.material", "value": "scoreboard/details/default.png" },
         { "path": "items.weaponMeleeCrowbar.weaponClass", "value": "weapon_zn_melee_crowbar" },
         { "path": "items.weaponHandgun9mm.weaponClass", "value": "weapon_zn_handgun_9mm" },
         { "path": "items.weaponHandgun9mm.ammoId", "value": "ammo9mm" },
@@ -35,9 +37,14 @@
         { "path": "lootGroups.lootGenericMedical.entries.1.minCount", "value": 1 },
         { "path": "lootGroups.lootGenericMedical.entries.1.maxCount", "value": 3 },
         { "path": "defaultSpawnGroup", "value": "cellGenericEnemies" },
-        { "path": "professionVersion", "value": 1 },
+        { "path": "professionVersion", "value": 2 },
         { "path": "professionAliases.Medic", "value": "Doctor" },
-        { "path": "professions.Farmer.statBonuses.Farming", "value": 3 },
+        { "path": "professions.Farmer.legacyStatBonuses.Farming", "value": 3 },
+        { "path": "professions.Farmer.statBonuses.Farming", "value": 4 },
+        { "path": "professions.PoliceOfficer.legacyStatBonuses.Rifles", "value": 1 },
+        { "path": "professions.PoliceOfficer.statBonuses.Pistols", "value": 3 },
+        { "path": "professions.PoliceOfficer.statBonuses.Shotguns", "value": 2 },
+        { "path": "professions.PoliceOfficer.statBonuses.Rifles", "value": 2 },
         { "path": "professions.Doctor.services.treat", "value": true },
         { "path": "professions.Doctor.deliveries.2.minLevel", "value": 10 },
         { "path": "items.itemPotato.food.cooksInto", "value": "itemBakedPotato" },
@@ -63,11 +70,34 @@
         { "path": "items.itemRadiationSuit.entityClass", "value": "armour" },
         { "path": "items.itemRadiationSuit.radiationProtection", "value": true },
         { "path": "items.itemRadiationSuit.maxStack", "value": 1 },
+        { "path": "items.weaponHandgun9mm.weaponFamily", "value": "Pistols" },
+        { "path": "items.weaponLewis.weaponFamily", "value": "MachineGuns" },
+        { "path": "items.weaponHl2Crossbow.weaponFamily", "value": "Rifles" },
+        { "path": "items.weaponShotgunM3.weaponFamily", "value": "Shotguns" },
+        { "path": "items.itemLightArmour.armourStats.damageReduction", "value": 0.1 },
+        { "path": "items.itemMediumArmour.armourStats.speedPenalty", "value": 0.05 },
+        { "path": "items.itemHeavyArmour.armourStats.staminaRegenPenalty", "value": 0.3 },
         { "path": "trade.buyMultiplier", "value": 1.5 },
         { "path": "trade.sellMultiplier", "value": 0.4 },
         { "path": "trade.npcServiceFees.cook", "value": 5 },
         { "path": "trade.traders.general.name", "value": "General Trader" },
         { "path": "trade.traders.quartermaster.offers.10.credits", "value": 30 }
+      ]
+    },
+    {
+      "name": "calling_card_aliases",
+      "files": { "callingCards": "calling_card_aliases.json" },
+      "expectValues": [
+        { "path": "callingCards.aliases.background_old", "value": "background_default" }
+      ]
+    },
+    {
+      "name": "invalid_calling_cards_are_rejected",
+      "files": { "callingCards": "bad_calling_cards.json" },
+      "expectErrors": [
+        { "file": "calling_cards.json", "path": "cards[3].material", "message": "material file is missing" },
+        { "file": "calling_cards.json", "path": "cards[4].id", "message": "duplicates a card ID" },
+        { "file": "calling_cards.json", "path": "aliases.background_first", "message": "contains a cycle" }
       ]
     },
     {
@@ -131,6 +161,20 @@
       ]
     },
     {
+      "name": "bullet_weapons_require_a_valid_family",
+      "files": { "items": "invalid_weapon_family.json" },
+      "expectErrors": [
+        { "file": "item_definitions.json", "path": "items.weaponFixture.weaponFamily", "message": "is required and must be Pistols" }
+      ]
+    },
+    {
+      "name": "armour_stats_are_bounded",
+      "files": { "items": "invalid_armour_stats.json" },
+      "expectErrors": [
+        { "file": "item_definitions.json", "path": "items.itemBadArmour.armourStats.damageReduction", "message": "must be at most 0.95" }
+      ]
+    },
+    {
       "name": "food_tiers_bound_effects_and_shelf_life",
       "files": { "items": "bad_food_items.json" },
       "expectErrors": [
@@ -176,7 +220,9 @@
         { "file": "profession_definitions.json", "path": "professions", "message": "must define the Civilian fallback profession" },
         { "file": "profession_definitions.json", "path": "professions.lowercase", "message": "PascalCase" },
         { "file": "profession_definitions.json", "path": "professions.Farmer.statBonuses.Medical", "message": "is not a player attribute" },
-        { "file": "profession_definitions.json", "path": "professions.Farmer.statBonuses", "message": "at most 6 points" },
+        { "file": "profession_definitions.json", "path": "professions.Farmer.statBonuses", "message": "at most 10 points" },
+        { "file": "profession_definitions.json", "path": "professions.Farmer.legacyStatBonuses", "message": "at most 6 points" },
+        { "file": "profession_definitions.json", "path": "professions.Doctor.legacyStatBonuses", "message": "is required" },
         { "file": "profession_definitions.json", "path": "professions.Farmer.services[1]", "message": "must be one of" },
         { "file": "profession_definitions.json", "path": "professions.Farmer.deliveries[1].minLevel", "message": "must start at level 1" },
         { "file": "profession_definitions.json", "path": "professions.Farmer.deliveries[1].items[1].item", "message": "references unknown item 'itemNope'" },

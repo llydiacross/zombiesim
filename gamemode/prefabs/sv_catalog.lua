@@ -49,13 +49,27 @@ return function(files, json, contract, validModel, validateContent)
             for _, tag in ipairs(requestedTags) do
                 if not available[string.lower(tag)] then matched = false break end
             end
-            if matched then matches[#matches + 1] = document end
+            if matched and document.worldPlacement == nil then matches[#matches + 1] = document end
         end
+
         if #matches == 0 then return nil, "No exported prefab matches all requested tags." end
         table.sort(matches, function(a, b) return a.id < b.id end)
         local hash = tonumber(json.CRC(table.concat({ profile, worldSeed, cellId, anchorId }, "|")))
         if not hash then return nil, "Could not compute the deterministic prefab selection." end
         return matches[(hash % #matches) + 1]
+    end
+
+    function Catalog.ForWorldCell(documents, profile, cellX, cellY)
+        local result = {}
+        for _, document in ipairs(documents) do
+            local placement = document.worldPlacement
+            if placement and placement.enabled and placement.profile == profile
+                and placement.cellX == cellX and placement.cellY == cellY then
+                result[#result + 1] = document
+            end
+        end
+        table.sort(result, function(a, b) return a.id < b.id end)
+        return result
     end
 
     return Catalog

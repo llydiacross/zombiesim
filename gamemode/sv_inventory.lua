@@ -378,6 +378,9 @@ function Service:Send(target)
     self:NormalizeWeaponSlots(target)
     target:SetNWBool("ZM_RadiationProtected", target:HasRadiationProtection())
     self:RefreshWearableAppearance(target)
+    if target.ZM_PersistentStateLoaded and ZM_ImplantService then
+        ZM_ImplantService:ApplyMovement(target)
+    end
     for garment in pairs(ZM_Clothing.Slots) do
         target:SetNWString("ZM_Clothing_" .. garment, ZM_Clothing:GetEquipped(target.ZM_Inventory, garment))
     end

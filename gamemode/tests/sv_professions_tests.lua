@@ -32,6 +32,7 @@ local function person(values)
         alive = true,
         level = values.level or 1,
         job = values.job or "Civilian",
+        bonusVersion = values.bonusVersion,
         Cash = values.cash or 0,
         health = values.health or 100,
         pos = values.pos or Vector(0, 0, 0),
@@ -43,7 +44,8 @@ local function person(values)
         GetLevel = function(self) return self.level end,
         GetJobRole = function(self) return Professions:Resolve(self.job) end,
         GetStoredJob = function(self) return self.job end,
-        GetStat = function(self, name) return Professions:GetStatBonus(self.job, name) end,
+        GetProfessionBonusVersion = function(self) return self.bonusVersion or Professions.LegacyBonusVersion end,
+        GetStat = function(self, name) return Professions:GetStatBonus(self.job, name, self:GetProfessionBonusVersion()) end,
         Health = function(self) return self.health end,
         GetMaxHealth = function() return 100 end,
         SetHealth = function(self, value) self.health = value end,
@@ -105,13 +107,16 @@ end
 
 test("profession_registry_resolves_ids_aliases_and_fallback", function(check)
     local registry = StaticData:GetRegistry()
-    check(registry.professionVersion == 1, "the shipped profession registry declares version 1")
+    check(registry.professionVersion == 2, "the shipped profession registry declares version 2")
     check(registry.professions.Civilian ~= nil, "Civilian exists")
     check(Professions:Resolve("Medic") == "Doctor" and Professions:Resolve("Soldier") == "ArmySoldier" and Professions:Resolve("Police") == "PoliceOfficer", "aliases resolve to canonical ids")
     check(Professions:Resolve("Wizard") == "Civilian", "unknown jobs fall back to Civilian")
     check(Pro:ResolveJob("Army Soldier") == "ArmySoldier" and Pro:ResolveJob("police officer") == "PoliceOfficer", "authored display names resolve to canonical ids")
     check(Pro:ResolveJob("Wizard") == nil, "unknown authored jobs are still rejected")
-    check(Professions:GetStatBonus("Farmer", "Farming") == 3 and Professions:GetStatBonus("Civilian", "Farming") == 0, "stat bonuses come from the profession")
+    check(Professions:GetStatBonus("Farmer", "Farming", Professions.LegacyBonusVersion) == 3
+        and Professions:GetStatBonus("Farmer", "Farming", Professions.CurrentBonusVersion) == 4
+        and Professions:GetStatBonus("Civilian", "Farming", Professions.CurrentBonusVersion) == 0,
+        "both profession bonus rulesets are available")
     check(Professions:OffersService("Doctor", "treat") and not Professions:OffersService("Doctor", "cook"), "services come from the profession")
     check(Professions:GetDeliveryTier("Doctor", 1).minLevel == 1, "level 1 gets the first Doctor tier")
     check(Professions:GetDeliveryTier("Doctor", 15).minLevel == 10, "level 15 gets the level-10 Doctor tier")
@@ -123,11 +128,90 @@ test("stat_bonuses_are_derived_not_persisted", function(check)
     local meta = FindMetaTable("Player")
     local fake = setmetatable({ Attributes = { Medicine = 2 }, Job = "Doctor" }, { __index = function(_, key) return meta[key] end })
     fake.GetNWString = function(_, _, default) return default end
+    fake.GetNWInt = function(_, _, default) return default end
     check(fake:GetBaseStat("Medicine") == 2, "the base stat is the allocated points")
     check(fake:GetStat("Medicine") == 5, "the effective stat adds the Doctor bonus, got " .. tostring(fake:GetStat("Medicine")))
     check(fake.Attributes.Medicine == 2, "the bonus is never written into Attributes")
+    fake.ZM_ProfessionBonusVersion = Professions.CurrentBonusVersion
+    check(fake:GetStat("Medicine") == 6 and fake.Attributes.Medicine == 2,
+        "new survivors use their own rules without changing allocated points")
     fake.Job = "Medic"
     check(fake:GetJobRole() == "Doctor", "a stored alias reports the canonical job")
+end)
+
+test("job_changes_keep_the_survivor_ruleset_and_refresh_effects", function(check)
+    local meta = FindMetaTable("Player")
+    for _, version in ipairs({ Professions.LegacyBonusVersion, Professions.CurrentBonusVersion }) do
+        local fake = setmetatable({
+            Attributes = {}, Job = "Civilian", ZM_ProfessionBonusVersion = version,
+            ZM_PersistentStateLoaded = true, Stamina = 150, networks = 0, refreshes = 0, snapshots = 0
+        }, { __index = function(_, key) return meta[key] end })
+        fake.GetNWString = function(_, _, default) return default end
+        fake.SetNWString = function(self, _, value) self.networks = self.networks + 1 self.networkedJob = value end
+        fake.GetMaxStamina = function() return 100 end
+        fake.SetNetworkAttributes = function(self) self.refreshes = self.refreshes + 1 end
+        fake.SetNetworkPlayerData = function(self) self.networks = self.networks + 1 end
+        fake.SendPlayerData = function(self) self.snapshots = self.snapshots + 1 end
+        fake.UpdatePlayerData = function(self) return not self.failSave, "injected failure" end
+        local changed = Pro:SetJob(fake, "Police")
+        local expectedPistols = version == Professions.LegacyBonusVersion and 0 or 3
+        check(changed and fake:GetStat("Pistols") == expectedPistols
+            and fake.ZM_ProfessionBonusVersion == version,
+            "job changes retain version " .. version .. " and use its Police bonuses")
+        check(fake.Stamina == 100 and fake.refreshes == 1 and fake.networks == 2 and fake.snapshots == 1,
+            "a saved job change refreshes stamina, equipment effects and client state")
+        fake.failSave = true
+        local failed, reason = Pro:SetJob(fake, "Doctor")
+        check(not failed and string.find(tostring(reason), "injected failure", 1, true) ~= nil
+            and fake.Job == "PoliceOfficer" and fake.networkedJob == "PoliceOfficer"
+            and fake.refreshes == 1 and fake.networks == 2,
+            "a failed save leaves the previous job and effects intact")
+    end
+end)
+
+test("hydration_and_replication_use_the_saved_bonus_rules", function(check)
+    local originalGetPlayerData = ZM_GetPlayerData
+    local originalStart, originalWriteString, originalSend = net.Start, net.WriteString, net.Send
+    local devConsole = ZM_DevConsole
+    local originalHydration = devConsole and devConsole.WritePlayerHydration
+    local ok, failure = xpcall(function()
+        ZM_GetPlayerData = function(key)
+            assert(key == customerId, "unexpected hydration owner")
+            return { Job = "Scavenger", Stamina = 115, Health = 100, CellX = 0, CellY = 0 }
+        end
+        if devConsole then devConsole.WritePlayerHydration = function() end end
+        for _, version in ipairs({ Professions.LegacyBonusVersion, Professions.CurrentBonusVersion }) do
+            local meta = FindMetaTable("Player")
+            local fake = setmetatable({
+                Attributes = {}, Job = "Civilian", ZM_ProfessionBonusVersion = version, nw = {}
+            }, { __index = function(_, key) return meta[key] end })
+            fake.GetCharacterKey = function() return customerId end
+            fake.SteamID = function() return customerId end
+            fake.GetNWString = function(_, _, default) return default end
+            fake.SetNWInt = function(self, key, value) self.nw[key] = value end
+            fake.SetNWFloat = function(self, key, value) self.nw[key] = value end
+            fake.SetNWString = function(self, key, value) self.nw[key] = value end
+            check(fake:FetchPlayerData(), "the fixture player data loads")
+            local expectedMaximum = version == Professions.LegacyBonusVersion and 110 or 121
+            check(fake:GetMaxStamina() == expectedMaximum and fake.Stamina == math.min(115, expectedMaximum),
+                "saved stamina is clamped after loading version " .. version .. " job bonuses")
+            fake:SetNetworkPlayerData()
+            check(fake.nw.Job == "Scavenger" and fake.nw.ZM_ProfessionBonusVersion == version,
+                "the job and ruleset are networked together")
+            local snapshot, recipient
+            net.Start = function(name) assert(name == "ZM.RefreshPlayerData") end
+            net.WriteString = function(value) snapshot = util.JSONToTable(value) end
+            net.Send = function(value) recipient = value end
+            fake:SendPlayerData()
+            check(recipient == fake and snapshot and snapshot.Job == "Scavenger"
+                and tonumber(snapshot.ProfessionBonusVersion) == version,
+                "the owning client snapshot includes the same ruleset")
+        end
+    end, debug.traceback)
+    ZM_GetPlayerData = originalGetPlayerData
+    net.Start, net.WriteString, net.Send = originalStart, originalWriteString, originalSend
+    if devConsole then devConsole.WritePlayerHydration = originalHydration end
+    if not ok then error(failure, 0) end
 end)
 
 test("delivery_plan_is_deterministic_and_bounded", function(check)

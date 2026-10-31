@@ -1,6 +1,6 @@
 // Server-side SQLite schema and persistence helpers for player attributes and progress.
 
-local playerAttributeSchema = "CREATE TABLE player_attributes (steamid TEXT NOT NULL, profile TEXT NOT NULL, Strength INTEGER, Agility INTEGER, Intelligence INTEGER, Endurance INTEGER, MachineGuns INTEGER, Shotguns INTEGER, Snipers INTEGER, WeaponCrafting INTEGER, ArmorCrafting INTEGER, Medicine INTEGER, Farming INTEGER, WeaponRepairing INTEGER, ArmorRepairing INTEGER, Mechanics INTEGER, Revision INTEGER NOT NULL DEFAULT 0, UpdatedAt INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (steamid, profile))"
+local playerAttributeSchema = "CREATE TABLE player_attributes (steamid TEXT NOT NULL, profile TEXT NOT NULL, Strength INTEGER, Agility INTEGER, Intelligence INTEGER, Endurance INTEGER, MachineGuns INTEGER, Pistols INTEGER, Shotguns INTEGER, Rifles INTEGER, Explosives INTEGER, WeaponCrafting INTEGER, ArmorCrafting INTEGER, Medicine INTEGER, Farming INTEGER, WeaponRepairing INTEGER, ArmorRepairing INTEGER, Mechanics INTEGER, Revision INTEGER NOT NULL DEFAULT 0, UpdatedAt INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (steamid, profile))"
 local playerDataSchema = "CREATE TABLE player_data (steamid TEXT NOT NULL, profile TEXT NOT NULL, XP INTEGER, Level INTEGER, MaxLevel INTEGER, Difficulty INTEGER, CellX INTEGER, CellY INTEGER, CurrentSafeZoneId TEXT, SkillPoints INTEGER, Cash INTEGER NOT NULL DEFAULT 0, Health INTEGER, Stamina REAL, Hunger REAL, Thirst REAL, Job TEXT DEFAULT 'Civilian', Revision INTEGER NOT NULL DEFAULT 0, UpdatedAt INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (steamid, profile))"
 local playerItemsSchema = "CREATE TABLE IF NOT EXISTS player_items (steamid TEXT NOT NULL, profile TEXT NOT NULL, instanceId TEXT NOT NULL, container TEXT NOT NULL, slot INTEGER NOT NULL, itemId TEXT NOT NULL, count INTEGER NOT NULL, level INTEGER NOT NULL, mastercraft INTEGER NOT NULL DEFAULT 0, attributes TEXT, clip INTEGER NOT NULL DEFAULT 0, createdAt INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (steamid, profile, instanceId), UNIQUE (steamid, profile, container, slot))"
 local denStashItemsSchema = "CREATE TABLE IF NOT EXISTS den_stash_items (steamid TEXT NOT NULL, profile TEXT NOT NULL, safeZoneId TEXT NOT NULL, instanceId TEXT NOT NULL, slot INTEGER NOT NULL, itemId TEXT NOT NULL, count INTEGER NOT NULL, level INTEGER NOT NULL, mastercraft INTEGER NOT NULL DEFAULT 0, attributes TEXT, clip INTEGER NOT NULL DEFAULT 0, createdAt INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (steamid, profile, safeZoneId, instanceId), UNIQUE (steamid, profile, safeZoneId, slot))"
@@ -43,14 +43,23 @@ local function addColumnIfMissing(tableName, columns, columnDefinition)
     return runQuery("ALTER TABLE " .. tableName .. " ADD COLUMN " .. columnDefinition)
 end
 
-local function migrateLegacyAttributes()
+local playerAttributeColumns = {
+    "Strength", "Agility", "Intelligence", "Endurance", "MachineGuns", "Pistols", "Shotguns",
+    "Rifles", "Explosives", "WeaponCrafting", "ArmorCrafting", "Medicine", "Farming",
+    "WeaponRepairing", "ArmorRepairing", "Mechanics", "Revision", "UpdatedAt"
+}
+
+local function migratePlayerAttributes(columns)
     local started, startError = runQuery("BEGIN")
     if not started then
         return false, startError
     end
 
     local function rollback(message)
-        sql.Query("ROLLBACK")
+        local rolledBack, rollbackError = runQuery("ROLLBACK")
+        if not rolledBack then
+            return false, tostring(message) .. "; rollback failed: " .. tostring(rollbackError)
+        end
         return false, message
     end
 
@@ -62,7 +71,24 @@ local function migrateLegacyAttributes()
     if not created then
         return rollback(createError)
     end
-    local copied, copyError = runQuery("INSERT INTO player_attributes (steamid, profile, Strength, Agility, Intelligence, Endurance, MachineGuns, Shotguns, Snipers, WeaponCrafting, ArmorCrafting, Medicine, Farming, WeaponRepairing, ArmorRepairing, Mechanics, Revision, UpdatedAt) SELECT steamid, 'city', Strength, Agility, Intelligence, Endurance, MachineGuns, Shotguns, Snipers, WeaponCrafting, ArmorCrafting, Medicine, Farming, WeaponRepairing, ArmorRepairing, Mechanics, 0, 0 FROM player_attributes_legacy")
+    local selectColumns = {}
+    for _, name in ipairs(playerAttributeColumns) do
+        local source = name
+        if name == "Rifles" and not columns.Rifles and columns.Snipers then
+            source = "Snipers"
+        end
+        if columns[source] then
+            table.insert(selectColumns, source)
+        else
+            table.insert(selectColumns, "0")
+        end
+    end
+    local profile = columns.profile and "profile" or "'city'"
+    local copied, copyError = runQuery(
+        "INSERT INTO player_attributes (steamid, profile, " .. table.concat(playerAttributeColumns, ", ") .. ") "
+        .. "SELECT steamid, " .. profile .. ", " .. table.concat(selectColumns, ", ")
+        .. " FROM player_attributes_legacy"
+    )
     if not copied then
         return rollback(copyError)
     end
@@ -72,7 +98,7 @@ local function migrateLegacyAttributes()
     end
     local committed, commitError = runQuery("COMMIT")
     if not committed then
-        return false, commitError
+        return rollback(commitError)
     end
     return true
 end
@@ -87,22 +113,11 @@ function ZM_CreatePlayerAttributesTable()
     if not columns then
         return false, columnsError
     end
-    if not columns.profile then
-        return migrateLegacyAttributes()
+    local needsMigration = not columns.profile or columns.Snipers ~= nil
+    for _, name in ipairs(playerAttributeColumns) do
+        if not columns[name] then needsMigration = true break end
     end
-
-    local armorRepairingAdded, armorRepairingError = addColumnIfMissing("player_attributes", columns, "ArmorRepairing INTEGER DEFAULT 0")
-    if not armorRepairingAdded then
-        return false, armorRepairingError
-    end
-    local revisionAdded, revisionError = addColumnIfMissing("player_attributes", columns, "Revision INTEGER NOT NULL DEFAULT 0")
-    if not revisionAdded then
-        return false, revisionError
-    end
-    local updatedAtAdded, updatedAtError = addColumnIfMissing("player_attributes", columns, "UpdatedAt INTEGER NOT NULL DEFAULT 0")
-    if not updatedAtAdded then
-        return false, updatedAtError
-    end
+    if needsMigration then return migratePlayerAttributes(columns) end
     return true
 end
 
@@ -531,6 +546,30 @@ function ZM_DeletePlayerCredits(steamid, profile)
     end)
 end
 
+function ZM_CreateCallingCardTables()
+    local unlocked, unlockError = runQuery("CREATE TABLE IF NOT EXISTS calling_card_unlocks (account TEXT NOT NULL, profile TEXT NOT NULL, cardId TEXT NOT NULL, source TEXT NOT NULL, unlockedAt INTEGER NOT NULL, PRIMARY KEY (account, profile, cardId))")
+    if not unlocked then return false, unlockError end
+    return runQuery("CREATE TABLE IF NOT EXISTS calling_card_selections (steamid TEXT NOT NULL, profile TEXT NOT NULL, background TEXT NOT NULL DEFAULT 'background_default', detail TEXT NOT NULL DEFAULT 'detail_default', updatedAt INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (steamid, profile))")
+end
+
+function ZM_GetCallingCardUnlocks(account, profile)
+    profile = getPlayerDataProfile(profile)
+    if not profile or type(account) ~= "string" or account == "" then return nil, "Invalid calling-card account or profile" end
+    local result = sql.Query("SELECT cardId FROM calling_card_unlocks WHERE account = " .. sql.SQLStr(account)
+        .. " AND profile = " .. sql.SQLStr(profile) .. " ORDER BY cardId")
+    if result == false then return nil, sql.LastError() or "Could not read calling-card unlocks" end
+    return result or {}
+end
+
+function ZM_GetCallingCardSelection(steamid, profile)
+    profile = getPlayerDataProfile(profile)
+    if not profile or type(steamid) ~= "string" or steamid == "" then return nil, "Invalid calling-card survivor or profile" end
+    local result = sql.Query("SELECT background, detail FROM calling_card_selections WHERE steamid = "
+        .. sql.SQLStr(steamid) .. " AND profile = " .. sql.SQLStr(profile))
+    if result == false then return nil, sql.LastError() or "Could not read calling-card selection" end
+    return result and result[1] or { background = "background_default", detail = "detail_default" }
+end
+
 // Offline den trading. trade_stock holds each den's shared daily stock per trader offer (sold counts only; the
 // stock itself is regenerated deterministically). trade_ledger records every buy and sell once per request id.
 function ZM_CreateTradeTables()
@@ -600,6 +639,24 @@ function ZM_DeleteTradeData(steamid, profile, includeStock)
 end
 
 local commitWriters = {
+    callingCardUnlock = function(profile, step)
+        if type(step.account) ~= "string" or not string.match(step.account, "^STEAM_[0-5]:[01]:%d+$")
+            or not ZM_CallingCards.Category(step.cardId) or type(step.source) ~= "string"
+            or step.source == "" or #step.source > 64 then
+            return false, "invalid calling-card unlock"
+        end
+        return runQuery("INSERT INTO calling_card_unlocks (account, profile, cardId, source, unlockedAt) VALUES ("
+            .. sql.SQLStr(step.account) .. ", " .. sql.SQLStr(profile) .. ", " .. sql.SQLStr(step.cardId)
+            .. ", " .. sql.SQLStr(step.source) .. ", " .. os.time() .. ")")
+    end,
+    callingCardSelection = function(profile, step)
+        if ZM_CallingCards.Category(step.background) ~= "background" or ZM_CallingCards.Category(step.detail) ~= "detail" then
+            return false, "invalid calling-card selection"
+        end
+        return runQuery("INSERT OR REPLACE INTO calling_card_selections (steamid, profile, background, detail, updatedAt) VALUES ("
+            .. sql.SQLStr(step.steamid) .. ", " .. sql.SQLStr(profile) .. ", " .. sql.SQLStr(step.background)
+            .. ", " .. sql.SQLStr(step.detail) .. ", " .. os.time() .. ")")
+    end,
     lootSpotClaim = function(profile, step)
         if not validInteger(step.cellId) or type(step.spotKey) ~= "string" or step.spotKey == ""
             or type(step.instanceId) ~= "string" or step.instanceId == "" then
@@ -777,7 +834,7 @@ local commitWriters = {
 }
 
 // Writes a list of persistence steps for one profile in a single transaction: every step lands or none do.
-// Steps: { kind = "playerItems"|"denStash"|"cash"|"professionClaim"|"playerImplants"|"credits"|"mastercraftAttempt"|"job"|"tradeStock"|"tradeLedger"|"bankLedger"|"worldDropInsert"|"worldDropUpdate"|"worldDropDelete"|"lootSpotClaim", steamid = ..., ... }.
+// Steps include callingCardUnlock and callingCardSelection alongside inventory, currency, trade and other writes.
 function ZM_CommitWrites(profile, steps)
     profile = getPlayerDataProfile(profile)
     if not profile then return false, "Invalid commit profile" end
@@ -1151,7 +1208,7 @@ function ZM_SetPlayerAttributes(steamid, profile, attributes)
     end
     local revision = integerValue(existing and existing.Revision, 0) + 1
     local updatedAt = os.time()
-    local query = "INSERT OR REPLACE INTO player_attributes (steamid, profile, Strength, Agility, Intelligence, Endurance, MachineGuns, Shotguns, Snipers, WeaponCrafting, ArmorCrafting, Medicine, Farming, WeaponRepairing, ArmorRepairing, Mechanics, Revision, UpdatedAt) VALUES (" .. sql.SQLStr(steamid) .. ", " .. sql.SQLStr(profile) .. ", " .. integerValue(attributes.Strength) .. ", " .. integerValue(attributes.Agility) .. ", " .. integerValue(attributes.Intelligence) .. ", " .. integerValue(attributes.Endurance) .. ", " .. integerValue(attributes.MachineGuns) .. ", " .. integerValue(attributes.Shotguns) .. ", " .. integerValue(attributes.Snipers) .. ", " .. integerValue(attributes.WeaponCrafting) .. ", " .. integerValue(attributes.ArmorCrafting) .. ", " .. integerValue(attributes.Medicine) .. ", " .. integerValue(attributes.Farming) .. ", " .. integerValue(attributes.WeaponRepairing) .. ", " .. integerValue(attributes.ArmorRepairing) .. ", " .. integerValue(attributes.Mechanics) .. ", " .. revision .. ", " .. updatedAt .. ")"
+    local query = "INSERT OR REPLACE INTO player_attributes (steamid, profile, Strength, Agility, Intelligence, Endurance, MachineGuns, Pistols, Shotguns, Rifles, Explosives, WeaponCrafting, ArmorCrafting, Medicine, Farming, WeaponRepairing, ArmorRepairing, Mechanics, Revision, UpdatedAt) VALUES (" .. sql.SQLStr(steamid) .. ", " .. sql.SQLStr(profile) .. ", " .. integerValue(attributes.Strength) .. ", " .. integerValue(attributes.Agility) .. ", " .. integerValue(attributes.Intelligence) .. ", " .. integerValue(attributes.Endurance) .. ", " .. integerValue(attributes.MachineGuns) .. ", " .. integerValue(attributes.Pistols) .. ", " .. integerValue(attributes.Shotguns) .. ", " .. integerValue(attributes.Rifles) .. ", " .. integerValue(attributes.Explosives) .. ", " .. integerValue(attributes.WeaponCrafting) .. ", " .. integerValue(attributes.ArmorCrafting) .. ", " .. integerValue(attributes.Medicine) .. ", " .. integerValue(attributes.Farming) .. ", " .. integerValue(attributes.WeaponRepairing) .. ", " .. integerValue(attributes.ArmorRepairing) .. ", " .. integerValue(attributes.Mechanics) .. ", " .. revision .. ", " .. updatedAt .. ")"
     return runQuery(query)
 end
 

@@ -18,7 +18,17 @@ local eyeCore = Color(255, 105, 70)
 local sheenTint = Vector(0.12, 0.65, 0.24)
 local attachmentCache = setmetatable({}, { __mode = "k" })
 local candidates = {}
-local maximumDistanceSquared = 1500 * 1500
+local maximumDistance, fullStrengthDistance = 1500, 900
+local maximumDistanceSquared = maximumDistance * maximumDistance
+local eyeDraw, eyeCoreDraw = Color(255, 12, 4), Color(255, 105, 70)
+
+// Additive overlays: scaling strength fades the effect in with distance instead of popping.
+function Visuals.FadeForDistance(distance)
+    if distance >= maximumDistance then return 0 end
+    if distance <= fullStrengthDistance then return 1 end
+    local t = (maximumDistance - distance) / (maximumDistance - fullStrengthDistance)
+    return t * t * (3 - 2 * t)
+end
 local nextRefresh = 0
 local sheenTexture = sheen:GetTexture("$basetexture")
 local eyeTexture = eyeGlow:GetTexture("$basetexture")
@@ -45,7 +55,7 @@ hook.Add("Think", "ZM.RadiatedZombies.Refresh", function()
     end)
 end)
 
-local function drawEyes(entity)
+local function drawEyes(entity, fade)
     if bit.band(entity:GetNWInt("ZM_GoreSevered", 0), 8) ~= 0 then return end
     local model = entity:GetModel()
     local cached = attachmentCache[entity]
@@ -62,11 +72,13 @@ local function drawEyes(entity)
     local scale = entity:GetModelScale()
     local center = eyes.Pos + eyes.Ang:Forward() * 0.8 * scale
     local side = eyes.Ang:Right() * 1.35 * scale
+    eyeDraw.r, eyeDraw.g, eyeDraw.b = eyeColor.r * fade, eyeColor.g * fade, eyeColor.b * fade
+    eyeCoreDraw.r, eyeCoreDraw.g, eyeCoreDraw.b = eyeCore.r * fade, eyeCore.g * fade, eyeCore.b * fade
     render.SetMaterial(eyeGlow)
-    render.DrawSprite(center + side, 2.4 * scale, 2.4 * scale, eyeColor)
-    render.DrawSprite(center - side, 2.4 * scale, 2.4 * scale, eyeColor)
-    render.DrawSprite(center + side, 0.65 * scale, 0.65 * scale, eyeCore)
-    render.DrawSprite(center - side, 0.65 * scale, 0.65 * scale, eyeCore)
+    render.DrawSprite(center + side, 2.4 * scale, 2.4 * scale, eyeDraw)
+    render.DrawSprite(center - side, 2.4 * scale, 2.4 * scale, eyeDraw)
+    render.DrawSprite(center + side, 0.65 * scale, 0.65 * scale, eyeCoreDraw)
+    render.DrawSprite(center - side, 0.65 * scale, 0.65 * scale, eyeCoreDraw)
     Visuals.EyeCount = Visuals.EyeCount + 2
 end
 
@@ -78,18 +90,22 @@ hook.Add("PostDrawTranslucentRenderables", "ZM.RadiatedZombies.Draw", function(d
     local maximum = detail == 1 and 8 or 24
     sheenTint.z = 0.24 + 0.10 * math.sin(CurTime() * 0.7)
     sheen:SetVector("$envmaptint", sheenTint)
+    local viewer = LocalPlayer()
+    if not IsValid(viewer) then return end
+    local origin = viewer:GetPos()
     for _, entity in ipairs(candidates) do
         if Visuals.DrawCount >= maximum then break end
-        if IsValid(entity) and not entity:IsDormant() and not entity:GetNoDraw()
+        local fade = IsValid(entity) and Visuals.FadeForDistance(origin:Distance(entity:GetPos())) or 0
+        if fade > 0.01 and not entity:IsDormant() and not entity:GetNoDraw()
             and entity:GetNWBool("ZM_Radiated", false) then
             // Overlay the animated model without replacing its skin or severed-bone transforms.
-            render.SetBlend(0.5)
+            render.SetBlend(0.5 * fade)
             render.MaterialOverride(sheen)
             entity:DrawModel()
             render.MaterialOverride()
             render.SetBlend(1)
             Visuals.DrawCount = Visuals.DrawCount + 1
-            drawEyes(entity)
+            drawEyes(entity, fade)
         end
     end
 end)

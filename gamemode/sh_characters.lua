@@ -3,8 +3,8 @@ ZM_CharacterRules = {
 	StartingPoints = 10,
 	MaximumAttribute = 10,
 	Attributes = {
-		"Strength", "Agility", "Intelligence", "Endurance", "MachineGuns", "Shotguns",
-		"Snipers", "WeaponCrafting", "ArmorCrafting", "Medicine", "Farming",
+		"Strength", "Agility", "Intelligence", "Endurance", "MachineGuns", "Pistols",
+		"Shotguns", "Rifles", "Explosives", "WeaponCrafting", "ArmorCrafting", "Medicine", "Farming",
 		"WeaponRepairing", "ArmorRepairing", "Mechanics"
 	},
 	Models = {}

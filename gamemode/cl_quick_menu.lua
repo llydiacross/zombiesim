@@ -737,7 +737,7 @@ net.Receive("ZM.WalkerMaterializationSettings", function()
 end)
 
 function QuickMenu:OpenDestination(entryId)
-    // Inventory, scoreboard and options open after the AFK countdown; cheats enter AFK immediately.
+    // Inventory, scoreboard, options and map open after the AFK countdown; cheats enter AFK immediately.
     if ZM_AFK and ZM_AFK:IsMenu(entryId) then
         ZM_AFK:OpenMenu(entryId)
     elseif entryId == "inventory" then

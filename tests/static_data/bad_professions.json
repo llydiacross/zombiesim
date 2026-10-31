@@ -4,7 +4,8 @@
     "Farmer": {
       "name": "Farmer",
       "aliases": [ "Grower", "Doctor" ],
-      "statBonuses": { "Farming": 5, "Endurance": 3, "Medical": 1 },
+      "legacyStatBonuses": { "Farming": 5, "Endurance": 2 },
+      "statBonuses": { "Farming": 5, "Endurance": 5, "Strength": 2, "Medical": 1 },
       "services": [ "juggle" ],
       "deliveries": [
         { "minLevel": 5, "items": [ { "item": "itemNope", "min": 1, "max": 2 } ] },

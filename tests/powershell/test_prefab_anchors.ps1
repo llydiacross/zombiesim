@@ -46,6 +46,8 @@ try {
     Assert-Anchor ($assignment.Count -eq 1) 'Missing instance class registry.'
     . ([scriptblock]::Create($assignment[0].Extent.Text))
     Assert-Anchor ($instanceTransformedClasses -contains 'zn_prefab_anchor') 'Prefab anchors are not transformed.'
+    $fgd = [IO.File]::ReadAllText((Join-Path $root 'zombiesim.fgd'))
+    Assert-Anchor ($fgd -match 'input\s+TriggerParticle\(string\)') 'Prefab anchor particle input is missing from the FGD.'
     $script:nextId = 100
     $localAnchor = New-ZooEntity ([ordered]@{
         classname = 'zn_prefab_anchor'; origin = '32 16 64'; angles = '0 90 0'

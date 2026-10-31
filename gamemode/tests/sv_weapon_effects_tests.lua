@@ -1,6 +1,56 @@
 local suite = ZM_TestHarness.NewSuite()
 local Effects = ZM_WeaponEffects
 
+suite:Add("family_skill_scales_spread_recoil_and_reload", function(check)
+    local scores = { Pistols = 0, MachineGuns = 5, Rifles = 10, Shotguns = 20 }
+    local owner = { GetStat = function(_, name) return scores[name] or 0 end }
+    local pistolAccuracy, pistolReload = ZM_Items:GetWeaponSkillScales(owner, { weaponFamily = "Pistols" })
+    local machineAccuracy, machineReload = ZM_Items:GetWeaponSkillScales(owner, { weaponFamily = "MachineGuns" })
+    local rifleAccuracy, rifleReload = ZM_Items:GetWeaponSkillScales(owner, { weaponFamily = "Rifles" })
+    local shotgunAccuracy, shotgunReload = ZM_Items:GetWeaponSkillScales(owner, { weaponFamily = "Shotguns" })
+    check(pistolAccuracy == 1 and pistolReload == 1, "zero family skill is neutral")
+    check(math.abs(machineAccuracy - 0.85) < 0.00001 and math.abs(machineReload - 0.9) < 0.00001,
+        "five family points reduce spread/recoil 15 percent and reload time 10 percent")
+    check(math.abs(rifleAccuracy - 0.7) < 0.00001 and math.abs(rifleReload - 0.8) < 0.00001,
+        "ten family points reach the approved caps")
+    check(shotgunAccuracy == rifleAccuracy and shotgunReload == rifleReload,
+        "effective skill is capped at ten")
+    local neutralAccuracy, neutralReload = ZM_Items:GetWeaponSkillScales(owner, {})
+    check(neutralAccuracy == 1 and neutralReload == 1, "unclassified weapons remain unchanged")
+end)
+
+suite:Add("all_supported_bullet_weapons_have_expected_families", function(check)
+    local expected = { Pistols = 14, MachineGuns = 14, Rifles = 22, Shotguns = 5 }
+    local counts = { Pistols = 0, MachineGuns = 0, Rifles = 0, Shotguns = 0 }
+    local total = 0
+    for id, item in pairs(ZM_StaticData:GetRegistry().items) do
+        if item.type == "bullet_weapon" then
+            check(counts[item.weaponFamily] ~= nil, id .. ": missing or invalid weapon family")
+            if counts[item.weaponFamily] ~= nil then counts[item.weaponFamily] = counts[item.weaponFamily] + 1 end
+            total = total + 1
+        end
+    end
+    check(total == 55, "all 55 bullet weapons must be classified")
+    for family, count in pairs(expected) do
+        check(counts[family] == count, family .. ": unexpected classified weapon count")
+    end
+end)
+
+suite:Add("weapon_skill_scales_are_replicated_to_the_weapon", function(check)
+    local weapon = ents.Create("info_target")
+    if not IsValid(weapon) then
+        check(false, "temporary info_target could not be created")
+        return
+    end
+    local owner = { GetStat = function(_, attribute) return attribute == "Pistols" and 10 or 0 end }
+    ZM_Items:ApplyWeaponSkillEffects(weapon, owner, { weaponFamily = "Pistols" })
+    check(math.abs(weapon:GetNWFloat("ZM_WeaponSkillAccuracyScale", 1) - 0.7) < 0.00001,
+        "weapon accuracy scale is replicated from family skill")
+    check(math.abs(weapon:GetNWFloat("ZM_WeaponSkillReloadScale", 1) - 0.8) < 0.00001,
+        "weapon reload scale is replicated from family skill")
+    weapon:Remove()
+end)
+
 suite:Add("preview_prop_probe_is_registered_without_firing", function(check)
     check(type(concommand.GetTable().zombiesim_dev_muzzle_blast_probe) == "function", "console probe is not registered")
     check(type(ZM_DevConsole.DirectCommands.zombiesim_dev_muzzle_blast_probe) == "function", "bridge probe is not registered")
@@ -43,6 +93,10 @@ local function fixture(class)
     local weapon = setmetatable({ rounds = 3, firingCalls = 0 }, { __index = base })
     weapon.IsSafeZoneHolstered = weapons.GetStored("weapon_zn_base").IsSafeZoneHolstered
     weapon.GetScale = function() return 1 end
+    weapon.GetNWFloat = function(_, name, fallback)
+        local value = weapon.skillScales and weapon.skillScales[name]
+        return value ~= nil and value or fallback
+    end
     weapon.Clip1 = function(self) return self.rounds end
     weapon.SetClip1 = function(self, value) self.rounds = value end
     weapon.IsReloading = function(self) return self.reloading == true end
@@ -78,6 +132,52 @@ local function fixture(class)
     weapon.GetOwner = function() return owner end
     return weapon, owner
 end
+
+suite:Add("family_skill_reaches_firearm_spread_recoil_and_reload", function(check)
+    local weapon, owner = fixture("weapon_zn_auto_pistol_9mm")
+    local definition = ZM_Items:GetDefinition("weaponAutoPistol9mm")
+    check(definition and definition.weaponFamily == "Pistols", "fixture uses the pistol family")
+    if not definition then return end
+
+    local skill = 0
+    owner.GetStat = function(_, name) return name == "Pistols" and skill or 0 end
+    owner.ZM_Inventory = { backpack = { { itemId = "ammo9mm", count = 10 } } }
+    weapon.IsValid = function() return true end
+    weapon.IsSafeZoneHolstered = function() return false end
+    weapon.GetMappedAmmoId = function() return "ammo9mm" end
+    weapon.GetScale = function(_, name) return name == "ReloadScale" and 1.25 or 1 end
+    weapon.SetNWFloat = function(self, name, value) self.skillScales[name] = value end
+    weapon.SetReloadFinishTime = function(self, value) self.finish = value end
+    weapon.GetReloadFinishTime = function(self) return self.finish or 0 end
+    weapon.skillScales = {}
+    weapon.IsReloading = weapons.Get("weapon_zn_base_hitscan").IsReloading
+    weapon.Reload = weapons.Get("weapon_zn_base_hitscan").Reload
+
+    for _, points in ipairs({ 0, 5, 10 }) do
+        skill = points
+        ZM_Items:ApplyWeaponSkillEffects(weapon, owner, definition)
+        local accuracy = 1 - points * 0.03
+        local reload = 1 - points * 0.02
+        local bullet = weapon:GetBulletData(owner, vector_origin, Vector(1, 0, 0))
+        check(math.abs(bullet.Spread.x - weapon.BulletSpread * accuracy) < 0.00001 and
+            math.abs(bullet.Spread.y - weapon.BulletSpread * accuracy) < 0.00001,
+            points .. " pistol points scale both spread axes")
+        weapon.recoilPitch, weapon.recoilYaw, weapon.recoilTime = 0, 0, CurTime()
+        weapon:AddAimRecoil()
+        check(math.abs(weapon.recoilPitch + weapon.RecoilPitch * accuracy) < 0.00001,
+            points .. " pistol points scale recoil")
+        weapon.finish = 0
+        local started = CurTime()
+        weapon:Reload()
+        local duration = weapon.ReloadTime * 1.25 * reload
+        check(weapon.finish and math.abs(weapon.finish - started - duration) < 0.00001,
+            points .. " pistol points compose with the instance reload scale")
+        check(weapon:IsReloading(), "the scaled reload remains active until completion")
+        check(weapon.nextFire and math.abs(weapon.nextFire - started - duration) < 0.00001,
+            "firing remains blocked for the scaled reload duration")
+        check(ZM_AmmoService:GetReserve(owner, "ammo9mm") == 10, "starting a reload does not consume reserve ammunition")
+    end
+end)
 
 suite:Add("bullet_data_preserves_ballistics_and_records_actual_spread_endpoints", function(check)
     local weapon, owner = fixture()

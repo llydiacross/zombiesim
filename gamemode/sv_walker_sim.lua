@@ -755,18 +755,37 @@ local function isWalkerZombieTooClose(position, radius)
     return false
 end
 
+// Nav-area centres average the corner heights, so on slopes and kerbs they can sit inside the ground.
+// Drop onto the actual walkable surface (world and static props) before testing the standing hull.
+local function snapToGround(position)
+    local trace = util.TraceHull({
+        start = position + Vector(0, 0, 48),
+        endpos = position - Vector(0, 0, 64),
+        mins = Vector(-12, -12, 0),
+        maxs = Vector(12, 12, 8),
+        mask = MASK_NPCSOLID
+    })
+    if trace.StartSolid or not trace.Hit then
+        return nil
+    end
+    return trace.HitPos + Vector(0, 0, 2)
+end
+
 local function hasSpawnClearance(position)
     local trace = util.TraceHull({
         start = position + Vector(0, 0, 1),
         endpos = position + Vector(0, 0, 1),
         mins = Vector(-16, -16, 0),
         maxs = Vector(16, 16, 72),
-        mask = MASK_NPCSOLID_BRUSHONLY
+        mask = MASK_NPCSOLID
     })
     return not trace.StartSolid and not trace.AllSolid
 end
 
 local function isHiddenFromPlayers(position)
+    if ZM_WalkerAwareness and type(ZM_WalkerAwareness.IsPositionVisibleToAnyPlayer) == "function" then
+        return not ZM_WalkerAwareness:IsPositionVisibleToAnyPlayer(position)
+    end
     for _, playerEntity in ipairs(player.GetAll()) do
         if IsValid(playerEntity) and playerEntity:Alive() then
             local trace = util.TraceLine({
@@ -826,9 +845,9 @@ function WalkerSim:FindZombieSpawnPosition(ticket, relevancePosition, relevanceR
     for index = 1, attempts do
         local area = candidates[index].area
         if area:IsValid() and not area:IsBlocked() and not area:IsUnderwater() then
-            local position = candidates[index].position
-            local withinRelevance = not relevancePosition or not relevanceRadius or
-                position:DistToSqr(relevancePosition) <= relevanceRadius * relevanceRadius
+            local position = snapToGround(candidates[index].position)
+            local withinRelevance = position and (not relevancePosition or not relevanceRadius or
+                position:DistToSqr(relevancePosition) <= relevanceRadius * relevanceRadius)
             if withinRelevance and not isPlayerTooClose(position, self.MaterializationConfig.playerExclusionRadius) and
                 not isWalkerZombieTooClose(position, self.MaterializationConfig.minimumZombieSeparation) and
                 hasSpawnClearance(position) and isHiddenFromPlayers(position) then
@@ -865,7 +884,7 @@ function WalkerSim:SpawnTicketZombie(ticket, cellId, relevancePosition, relevanc
     zombie:ApplyEnemyDefinition(enemy, context.danger)
     // A separate deterministic stream keeps variant selection from changing the enemy/reward draw sequence.
     ZM_Enemies:ApplyRadiatedVariant(zombie, context, enemy,
-        ZM_ItemGeneration.NewRng((ZM_Enemies.GetTicketSeed(ticket) + 104729) % 2147483646 + 1))
+        ZM_ItemGeneration.NewRng(ZM_Enemies.GetTicketSeed(ticket, 1)))
     if not zombie:SetWalkerTicket(ticket, cellId) then
         zombie:Remove()
         return nil, "could not assign ticket metadata to zombie"
@@ -1445,6 +1464,8 @@ concommand.Add("zombiesim_walker_zombie_status", function(ply)
             acknowledged = activeZombie.WalkerTicketAcknowledged == true,
             resolutionQueued = activeZombie.WalkerTicketResolved == true,
             ticketState = ticket and ticket.State or "not yet published",
+            class = activeZombie:GetClass(),
+            radiated = activeZombie:GetNWBool("ZM_Radiated", false),
             performance = performance
         }
         table.insert(result.zombies, entry)

@@ -28,9 +28,32 @@ The launcher presents three survivor slots for each world profile. Creating a su
    - Intelligence: Affects crafting and skill usage
    - Endurance: Affects health and stamina
 
-- The type of weapon you can use is based on your base stats along as weapon stats. Machinegun stats, Shutgun stats, and Sniper stats are based on your base stats. For example, if you have a low strength stat, you will not be able to use a machinegun effectively. If you have a low agility stat, you will not be able to use a shotgun effectively. If you have a low intelligence stat, you will not be able to use a sniper rifle effectively.
+ Weapon specialist attributes are Pistols, MachineGuns, Rifles, and Shotguns.
+ The former Snipers attribute is renamed to Rifles without duplicating existing
+ points. Pistols and the reserved Explosives attribute start at zero. Each point
+ in a weapon family reduces that family's spread and recoil by 3% and reload
+ duration by 2%, up to 10 effective points. Crossbows use the Rifles family;
+ their projectile has no hitscan spread to reduce.
 
-- Player at the start of the game can choose a previous job which will give them a starting stat bonus. For example, if you choose the job of "Soldier", you will start with a higher strength stat. If you choose the job of "Engineer", you will start with a higher intelligence stat. If you choose the job of "Athlete", you will start with a higher agility stat. If you choose the job of "Medic", you will start with a higher endurance stat.
+ Light, Medium, and Heavy armour reduce ordinary incoming damage by 10%, 20%,
+ and 35%, and reduce stamina recovery by 5%, 15%, and 30%, respectively. Medium
+ and Heavy armour also reduce movement speed by 5% and 12%; Light armour has no
+ speed penalty. Each Endurance point reduces armour's speed and recovery
+ penalties by 5%, up to half of each penalty. Endurance does not alter damage
+ reduction. These stat-only armour items do not replace the separate Radiation
+ Protection Suit, which remains the radiation protection owner.
+
+- Weapon use depends on survivor attributes and each weapon's requirements. Specialist handling is tracked by weapon family as described below.
+
+- A new survivor chooses a previous job and receives its current bonuses in
+  addition to the ten allocated starting points. For example, Police receive
+  pistol, shotgun and rifle proficiency, while Army training covers several
+  weapon families and physical attributes. Existing survivors retain their
+  original profession-bonus rules, including after a job change. Bonuses are
+  derived from the current job rather than written into the saved base stats.
+  Civilian and Capitalist have no attribute bonus; Capitalist's configured
+  cash bonus is not currently applied. Some specialty attributes remain
+  planned and do not yet have gameplay effects.
 
 - There are also stats for crafting, medicine and scavenging and armor repariring. These stats are based on your base stats. For example, if you have a high intelligence stat, you will be able to craft better items. If you have a high endurance stat, you will be able to heal better. If you have a high agility stat, you will be able to scavenge better. Having a high medicine stat will allow you to heal with better medicine as you will know how to use it better. Having a high scavenging stat will allow you to find better loot as you will know where to look for it.
 
@@ -44,6 +67,18 @@ The launcher presents three survivor slots for each world profile. Creating a su
 - The map will guide your way through the city, showing you how to get to further into the city for better loot. It will also mark lootable buildings on the map, and any other lootable cars or containers. The map will also mark any other players on the map, as well as any zombies or other enemies. The map will also mark any other points of interest, such as safe zones, quest locations, and other important locations. The map will also mark any other players on the map, as well as any zombies or other enemies. The map will also mark any other points of interest, such as safe zones, quest locations, and other important locations.
 
 - The player will have a compass with the geographic information so they know which direction they are moving through the city. The player may find a GPS which adds a line to follow to a specific location on the map. The player may also find a map in the world which reveals more of the city and all the points of interest.
+
+## Calling cards
+
+The scoreboard displays a calling card with independently selected background
+and detail layers. The two defaults are free. Unlocks belong to the Steam
+account within each world profile, while each survivor saves its own choices.
+They do not occupy inventory space. A survivor can buy available designs at
+den traders with that survivor's credits. Designs may also be configured as
+quest rewards, but the reward API is not connected to a quest system yet and
+cards are not world loot. The installed catalogue contains the two defaults
+and five approved generated designs; live UI, purchase and multiplayer
+behavior remain unverified.
 
 # Equippabe Items in the world
 

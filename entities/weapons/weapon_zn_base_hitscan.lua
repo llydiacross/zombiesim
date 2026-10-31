@@ -55,8 +55,10 @@ end
 function SWEP:AddAimRecoil()
     local offset = self:GetAimRecoil()
     if not self.SetRecoilUpdatedAt then return end
-    self:SetRecoilPitchOffset(math.Clamp(offset.p - self.RecoilPitch, -4, 0))
-    self:SetRecoilYawOffset(math.Clamp(offset.y + util.SharedRandom("ZM.WeaponRecoil", -self.RecoilYaw, self.RecoilYaw), -1.5, 1.5))
+    local recoilScale = self:GetNWFloat("ZM_WeaponSkillAccuracyScale", 1)
+    self:SetRecoilPitchOffset(math.Clamp(offset.p - self.RecoilPitch * recoilScale, -4, 0))
+    self:SetRecoilYawOffset(math.Clamp(offset.y + util.SharedRandom("ZM.WeaponRecoil",
+        -self.RecoilYaw * recoilScale, self.RecoilYaw * recoilScale), -1.5, 1.5))
     self:SetRecoilUpdatedAt(CurTime())
 end
 
@@ -118,6 +120,7 @@ function SWEP:Reload()
         return
     end
     local duration = self.ReloadTime * self:GetScale("ReloadScale")
+        * self:GetNWFloat("ZM_WeaponSkillReloadScale", 1)
     self:SetReloadFinishTime(CurTime() + duration)
     self:SetNextPrimaryFire(CurTime() + duration)
     self:SendWeaponAnim(ACT_VM_RELOAD)
@@ -153,7 +156,8 @@ function SWEP:GetBulletData(owner, source, direction, impacts)
         Num = self.BulletCount,
         Src = source,
         Dir = direction,
-        Spread = Vector(self.BulletSpread, self.BulletSpread, 0),
+        Spread = Vector(self.BulletSpread * self:GetNWFloat("ZM_WeaponSkillAccuracyScale", 1),
+            self.BulletSpread * self:GetNWFloat("ZM_WeaponSkillAccuracyScale", 1), 0),
         Tracer = 0,
         Force = self.BulletForce,
         Damage = self:GetScaledDamage(self.BulletDamage),

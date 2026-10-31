@@ -1,6 +1,10 @@
 local Suite = ZM_TestHarness.NewSuite()
 local Scene = ZM_LauncherSceneClient
 
+for _, entry in ipairs(ZM_LauncherProfessionPicker.Tests.cases) do
+    Suite:Add(entry.name, entry.body)
+end
+
 Suite:Add("Earth materials and bounded static spheres", function(check)
     local materials = Scene:GetMaterialStatus()
     for name, status in pairs(materials) do
@@ -394,6 +398,96 @@ Suite:Add("page lifecycle returns to the survivor grid and releases Earth input"
     menu:Render()
 end)
 
+Suite:Add("creation camera owns every creation and appearance step", function(check)
+    local menu = ZM_LauncherMenu
+    local inspection = ZM_SkyInspection
+    local calcView = hook.GetTable().CalcView["ZombieSim.Launcher.MenuCamera"]
+    local original = {
+        active = menu.Active, page = menu.Page, step = menu.Step, waiting = menu.Waiting,
+        credits = menu.Credits, camera = menu.Camera, creationCamera = menu.CreationCamera,
+        preview = menu.PreviewPanel, globe = menu.Globe, inspection = inspection.State,
+        creditsView = Scene.CreditsView
+    }
+    local ok, failure = pcall(function()
+        local main = { origin = Vector(1, 2, 3), angles = Angle(4, 5, 6), fov = 70 }
+        local creation = { origin = Vector(11, 12, 13), angles = Angle(14, 15, 16), fov = 80 }
+        menu.Active, menu.Credits, menu.Camera, menu.CreationCamera = true, false, main, creation
+        menu.PreviewPanel, menu.Globe, inspection.State = nil, Vector(1, 1, 1), nil
+        menu.Page = "create"
+        for step = 2, 6 do
+            menu.Step = step
+            local view = calcView(nil, nil, nil, 90)
+            check(view.origin == creation.origin and view.angles == creation.angles and view.fov == 80,
+                "creation step " .. step .. " uses the authored pose")
+        end
+        menu.Waiting = "create"
+        check(calcView(nil, nil, nil, 90).origin == creation.origin and Scene:IsPresentationHidden(),
+            "the creation pose remains active and the globe stays hidden while saving")
+        menu.Waiting, menu.Page = nil, "appearance"
+        check(calcView(nil, nil, nil, 90).origin == creation.origin,
+            "legacy appearance uses the same creation pose")
+        menu.Page = "load"
+        check(calcView(nil, nil, nil, 90).origin == main.origin and not Scene:IsPresentationHidden(),
+            "returning to survivor selection restores the normal launcher view")
+        menu.Page, menu.CreationCamera = "create", nil
+        check(calcView(nil, nil, nil, 90).origin == main.origin,
+            "an older launcher without the marker retains the normal camera")
+        menu.CreationCamera, menu.Credits = creation, true
+        local credits = { origin = Vector(21, 22, 23) }
+        Scene.CreditsView = function() return credits end
+        check(calcView(nil, nil, nil, 90) == credits, "credits retain camera priority")
+        menu.Active = false
+        check(calcView(nil, nil, nil, 90) == nil, "inactive launchers do not override the view")
+    end)
+    menu.Active, menu.Page, menu.Step, menu.Waiting =
+        original.active, original.page, original.step, original.waiting
+    menu.Credits, menu.Camera, menu.CreationCamera =
+        original.credits, original.camera, original.creationCamera
+    menu.PreviewPanel, menu.Globe, inspection.State = original.preview, original.globe, original.inspection
+    Scene.CreditsView = original.creditsView
+    if not ok then error(failure, 0) end
+end)
+
+Suite:Add("profession selection preserves the create wizard and draft", function(check)
+    local menu = ZM_LauncherMenu
+    local original = {
+        page = menu.Page, step = menu.Step, draft = menu.Draft, waiting = menu.Waiting,
+        error = menu.Error, request = menu.Request, presentation = Scene.PresentationState,
+        transition = Scene.PresentationTransition, manual = Scene.ManualEarthView
+    }
+    local ok, failure = pcall(function()
+        menu.Waiting = nil
+        menu.Request = function() error("The profession fixture must not send a server request") end
+        menu.Draft = { slot = 1, name = "Fixture", attributes = { Strength = 3 },
+            appearance = { model = ZM_CharacterRules.Models[1], skin = 0,
+                bodygroups = {}, playerColour = { 1, 1, 1 } } }
+        menu:SetPage("create")
+        menu.Step = 4
+        menu:Render()
+        local view = menu.ProfessionPickerView
+        check(view ~= nil and not view.nextButton:IsEnabled(),
+            "the real profession step opens without an implicit job")
+        view.cards.Doctor:DoClick()
+        check(menu.Step == 4 and menu.Draft.job == "Doctor" and menu.Draft.attributes.Strength == 3,
+            "choosing a card keeps the user on the job step and preserves points")
+        view.nextButton:DoClick()
+        check(menu.Step == 5 and menu.Draft.job == "Doctor" and menu.Draft.attributes.Strength == 3,
+            "Next reaches the existing point-allocation step")
+        menu:Back()
+        check(menu.Step == 4 and menu.ProfessionPickerView.title:GetText() == "DOCTOR"
+            and menu.Draft.attributes.Strength == 3, "Back restores the selected profession and points")
+        menu:Back()
+        check(menu.Step == 3 and menu.Page == "create", "Back still returns to appearance")
+    end)
+    menu.Request, menu.Draft, menu.Step = original.request, original.draft, original.step
+    menu.Waiting, menu.Error = original.waiting, original.error
+    menu:SetPage(original.page or "menu")
+    Scene.PresentationState, Scene.PresentationTransition = original.presentation, original.transition
+    Scene.ManualEarthView = original.manual
+    menu:Render()
+    if not ok then error(failure, 0) end
+end)
+
 Suite:Add("request failures preserve their initiating page", function(check)
     local menu = ZM_LauncherMenu
     local distribution = ZM_Distribution
@@ -450,4 +544,9 @@ concommand.Add("zombiesim_dev_test_launcher_presentation_client", function()
     local summary = Suite:Run()
     file.CreateDir("zombiesim")
     file.Write("zombiesim/launcher-presentation-client-tests.json", util.TableToJSON(summary, true))
+    for _, result in ipairs(summary.cases) do
+        print("[ZombieSim] Launcher presentation " .. (result.passed and "PASS " or "FAIL ") .. result.name)
+        for _, failure in ipairs(result.failures) do print("[ZombieSim]     " .. failure) end
+    end
+    print(string.format("[ZombieSim] Launcher presentation tests: %d passed, %d failed.", summary.passed, summary.failed))
 end)

@@ -8,7 +8,13 @@
       "date": "2026-10-28",
       "summary": "Alpha 3.3 is in development.",
       "highlights": [
-        "+ Added a prefab editor and explorer for preview admins."
+        "+ Added a prefab editor and explorer for preview admins.",
+        "+ Added tabbed editing, contextual controls and preview height offsets.",
+        "+ Added Cell Health to the preview launcher Tools.",
+        "+ Added weapon-family skill effects and stat-based armour.",
+        "+ Added AFK protection while using the world map.",
+        "? The profession selector redesign is ready for in-game review.",
+        "? Calling cards and deferred prefab validation remain in development."
       ]
     },
     {

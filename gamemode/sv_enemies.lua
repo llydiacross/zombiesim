@@ -163,10 +163,29 @@ function Enemies:ApplyRadiatedVariant(entity, context, enemy, rng)
 end
 
 // The same ticket always selects the same enemy type.
-function Enemies.GetTicketSeed(ticket)
-    local low = math.floor(tonumber(ticket.TicketIdLow) or 0)
-    local high = math.floor(tonumber(ticket.TicketIdHigh) or 0)
-    return (low * 31 + high) % 2147483646 + 1
+// Ticket ids are near-sequential, and the first Park-Miller draw is linear in the seed, so neighbouring
+// tickets would roll almost identically. A murmur3 finaliser spreads them; split multiplies keep doubles exact.
+local function multiply32(left, right)
+    local leftLow, leftHigh = left % 65536, math.floor(left / 65536)
+    local rightLow, rightHigh = right % 65536, math.floor(right / 65536)
+    return ((leftHigh * rightLow + leftLow * rightHigh) % 65536 * 65536 + leftLow * rightLow) % 4294967296
+end
+
+local function mix32(value)
+    value = bit.bxor(value, bit.rshift(value, 16)) % 4294967296
+    value = multiply32(value, 0x85EBCA6B)
+    value = bit.bxor(value, bit.rshift(value, 13)) % 4294967296
+    value = multiply32(value, 0xC2B2AE35)
+    return bit.bxor(value, bit.rshift(value, 16)) % 4294967296
+end
+
+// salt selects an independent deterministic stream for the same ticket.
+function Enemies.GetTicketSeed(ticket, salt)
+    local low = math.floor(tonumber(ticket.TicketIdLow) or 0) % 4294967296
+    local high = math.floor(tonumber(ticket.TicketIdHigh) or 0) % 4294967296
+    local value = mix32((mix32(low) + high) % 4294967296)
+    value = mix32((value + math.floor(tonumber(salt) or 0) * 0x9E3779B9) % 4294967296)
+    return value % 2147483646 + 1
 end
 
 function Enemies.ResolveKiller(attacker)
@@ -181,6 +200,10 @@ function Enemies.ResolveKiller(attacker)
         return owner
     end
     return nil
+end
+
+function Enemies.IsPrefabGuard(attacker)
+    return IsValid(attacker) and attacker:GetClass() == "zn_prefab_guard"
 end
 
 function Enemies.AwardXP(killer, amount)
@@ -224,18 +247,21 @@ function Enemies:OnEnemyKilled(victim, attacker, options)
         return false, "victim has no enemy definition"
     end
     local killer = self.ResolveKiller(attacker)
-    if not killer then
+    local guard = not killer and self.IsPrefabGuard(attacker)
+    if not killer and not guard then
         return false, "not killed by a player"
     end
 
-    local reward = { enemy = enemy.id, xp = enemy.xp or 0, killer = killer.SteamID and killer:SteamID() or nil }
+    local reward = { enemy = enemy.id, xp = guard and 0 or enemy.xp or 0,
+        killer = killer and killer.SteamID and killer:SteamID() or nil }
     if reward.xp > 0 then
         self.AwardXP(killer, reward.xp)
     end
     local instance = ZM_Loot:RollEnemyDrop(enemy, {
         danger = victim.EnemyDanger,
-        playerLevel = killer.GetLevel and killer:GetLevel() or 1,
-        lootBonuses = ZM_ImplantService:GetLootBonuses(killer),
+        playerLevel = killer and killer.GetLevel and killer:GetLevel() or nil,
+        lootBonuses = killer and ZM_ImplantService:GetLootBonuses(killer) or nil,
+        levelFromDanger = guard == true,
         rng = options and options.rng
     })
     if instance then

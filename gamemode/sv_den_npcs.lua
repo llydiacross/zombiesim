@@ -81,7 +81,7 @@ Npcs.ProviderMethods = {
     GetJobRole = function(self) return Npcs:Resolve(self).job end,
     GetStat = function(self, name)
         local job = Npcs:Resolve(self).job
-        return job and ZM_Professions:GetStatBonus(job, name) or 0
+        return job and ZM_Professions:GetStatBonus(job, name, ZM_Professions.LegacyBonusVersion) or 0
     end,
     GetServiceFee = function(self, kind) return Npcs:Resolve(self).fees[kind] end,
     GetTraderId = function(self) return Npcs:Resolve(self).trader end

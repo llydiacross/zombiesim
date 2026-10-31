@@ -1,13 +1,14 @@
-return function(contract, createStorage, createEngine, contractTests, storageTests, gizmo, gizmoTests)
+return function(contract, createStorage, createEngine, contractTests, storageTests, gizmo, gizmoTests, createCatalog, catalogTests)
     ZM_TestHarness.Register({
         command = "zn_test_prefabs",
         label = "Prefab contracts",
         file = "prefab-contract-tests.json",
         report = "prefab_contract_tests",
-        help = "Tests prefab document, storage and gizmo contracts.",
+        help = "Tests prefab document, storage, catalog and gizmo contracts.",
         run = function()
             local suite = ZM_TestHarness.NewSuite()
-            for _, group in ipairs({ contractTests(contract), storageTests(createEngine, contract, createStorage), gizmoTests(gizmo) }) do
+            for _, group in ipairs({ contractTests(contract), storageTests(createEngine, contract, createStorage),
+                gizmoTests(gizmo), catalogTests(contract, createCatalog, util.CRC) }) do
                 for _, case in ipairs(group.cases) do suite:Add(case.name, case.body) end
             end
             suite:Add("storage JSON preserves editor precision and cardinal local rotations", function(check)

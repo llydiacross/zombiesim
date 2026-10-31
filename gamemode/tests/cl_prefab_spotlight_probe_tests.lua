@@ -1,7 +1,7 @@
 return function(createProbe)
     local suite = ZM_TestHarness.NewSuite()
     suite:Add("isolated spotlight checks assets, renders once and cleans up", function(check)
-        local state = { active = false, hooks = {}, created = {}, missing = false }
+        local state = { active = false, hooks = {}, created = {}, models = {}, missing = false }
         local vectorMeta = { __add = function(a, b) return setmetatable({ x = a.x + b.x, y = a.y + b.y, z = a.z + b.z }, getmetatable(a)) end }
         local function vector(x, y, z) return setmetatable({ x = x, y = y, z = z }, vectorMeta) end
         local editor = { Origin = vector(100, 200, 300), IsActive = function() return state.active end }
@@ -9,6 +9,7 @@ return function(createProbe)
             Editor = editor, IsValid = function(value) return value and value.valid end,
             Vector = vector, Angle = function(p, y, r) return { p = p, y = y, r = r } end,
             Color = function(r, g, b) return { r = r, g = g, b = b } end,
+            Matrix = function() return { Scale = function(self, value) self.scale = value end } end,
             Material = function()
                 return { IsError = function() return state.missing end,
                     GetTexture = function() return { Width = function() return 64 end, Height = function() return 64 end } end }
@@ -21,6 +22,13 @@ return function(createProbe)
                 end
                 function light:Update() self.updates = self.updates + 1 end
                 function light:Remove() self.valid = false end
+                function light:GetPos() return self.SetPos[1] end
+                function light:GetAngles() return self.SetAngles[1] end
+                function light:GetColor() return self.SetColor[1] end
+                function light:GetBrightness() return self.SetBrightness[1] end
+                function light:GetHorizontalFOV() return self.SetFOV[1] end
+                function light:GetFarZ() return self.SetFarZ[1] end
+                function light:GetEnableShadows() return self.SetEnableShadows[1] end
                 state.created[#state.created + 1] = light
                 return light
             end,
@@ -29,8 +37,14 @@ return function(createProbe)
                 function model:SetPos(value) self.position = value end
                 function model:SetAngles(value) self.angles = value end
                 function model:SetNoDraw(value) self.noDraw = value end
+                function model:SetSkin(value) self.skin = value end
+                function model:GetModelBounds() return vector(-2, -2, 0), vector(2, 2, 4) end
+                function model:SetRenderBounds(minimum, maximum) self.minimum, self.maximum = minimum, maximum end
+                function model:EnableMatrix(name, value) self.matrixName, self.matrix = name, value end
+                function model:DisableMatrix(name) self.disabledMatrix, self.matrix = name, nil end
                 function model:DrawModel() self.drawn = true end
                 function model:Remove() self.valid = false end
+                state.models[#state.models + 1] = model
                 if group == 7 then state.comparison = model else state.manual = model end
                 return model
             end,
@@ -56,7 +70,10 @@ return function(createProbe)
         check(light.updates == 0, "depth and skybox passes do not update the light")
         state.hooks.PreDrawOpaqueRenderables(false, false)
         state.hooks.PreDrawOpaqueRenderables(false, false)
-        check(light.updates == 1 and probe:Status().textureWidth == 64, "normal render updates once and reports texture status")
+        local lightStatus = probe:Status()
+        check(light.updates == 1 and lightStatus.textureWidth == 64 and lightStatus.projector.shadows
+            and lightStatus.projector.position.x == 20 and lightStatus.projector.fov == 60,
+            "normal render updates once and reports engine projector settings")
         state.active = false
         state.hooks.Think()
         check(not light.valid and not probe:Status().active, "closing the editor removes the projector")
@@ -80,10 +97,31 @@ return function(createProbe)
             "comparison includes the editor's original manually drawn model")
         state.hooks.PostDrawTranslucentRenderables(false, false)
         check(state.manual.drawn, "manual comparison is drawn in the editor render phase")
+        check(probe:SetManualMatrix(true) and probe:Status().manualMatrix
+            and state.manual.matrix.scale.x == 1, "an identity matrix can be applied to the same manual model")
+        state.hooks.PreDrawOpaqueRenderables(false, false)
+        check(probe:Status().updates == 1, "changing the model matrix refreshes the projector")
+        check(probe:SetManualMatrix(false) and not probe:Status().manualMatrix
+            and state.manual.disabledMatrix == "RenderMultiply", "the identity matrix can be removed again")
+        check(probe:RemoveComparison() and not state.comparison.valid and not probe:Status().comparisonModel,
+            "the other model can be removed without stopping the light or manual model")
+        check(probe:MatchEditorModel() and probe:Status().manualEditorSetup
+            and state.manual.skin == 0 and state.manual.matrix.scale.x == 1
+            and state.manual.minimum.x == -2 and state.manual.maximum.z == 4,
+            "the same manual model can receive the editor's exact skin, matrix and bounds setup")
         probe:Stop()
         check(not state.comparison.valid and not state.manual.valid
             and not probe:Status().comparisonModel and not probe:Status().manualModel,
             "both comparison models are removed with the projector")
+        check(probe:Start("matrix"), "matrix comparison starts")
+        local matrixModel, plainModel = state.models[#state.models - 1], state.models[#state.models]
+        check(matrixModel.noDraw and plainModel.noDraw and matrixModel.group == 13 and plainModel.group == 13
+            and matrixModel.matrixName == "RenderMultiply" and matrixModel.matrix.scale.x == 1
+            and plainModel.matrix == nil, "two manually drawn drums differ only by an identity render matrix")
+        state.hooks.PostDrawTranslucentRenderables(false, false)
+        check(matrixModel.drawn and plainModel.drawn, "both matrix comparison models use the same render hook")
+        probe:Stop()
+        check(not matrixModel.valid and not plainModel.valid, "matrix comparison cleanup removes both models")
     end)
     return suite
 end

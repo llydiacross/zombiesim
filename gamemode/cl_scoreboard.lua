@@ -45,9 +45,7 @@ local scoreboardIcons = {
     map = Material("icon16/map.png", "smooth"),
     pencil = Material("icon16/pencil.png", "smooth"),
     skills = Material("icon16/gun.png", "smooth"),
-    world = Material("icon16/world.png", "smooth"),
-    headerBackground = Material("scoreboard/backgrounds/default.png", "smooth"),
-    headerDetail = Material("scoreboard/details/default.png", "smooth")
+    world = Material("icon16/world.png", "smooth")
 }
 
 local function drawScoreboardIcon(icon, x, y, size, color)
@@ -296,12 +294,8 @@ function Scoreboard:Open()
 
         surface.SetDrawColor(palette.raised)
         surface.DrawRect(headerX, headerY, headerWidth, headerHeight)
-        surface.SetMaterial(scoreboardIcons.headerBackground)
-        surface.SetDrawColor(255, 255, 255, 70)
-        surface.DrawTexturedRect(headerX, headerY, headerWidth, headerHeight)
-        surface.SetMaterial(scoreboardIcons.headerDetail)
-        surface.SetDrawColor(255, 255, 255, 225)
-        surface.DrawTexturedRect(headerX, headerY, headerWidth, headerHeight)
+        ZM_CallingCardUI:DrawPair(playerEntity:GetNWString("ZM_CallingCardBackground", "background_default"),
+            playerEntity:GetNWString("ZM_CallingCardDetail", "detail_default"), headerX, headerY, headerWidth, headerHeight)
         surface.SetDrawColor(statusColor)
         surface.DrawRect(headerX, headerY, 5, headerHeight)
         surface.SetDrawColor(palette.border)
@@ -342,27 +336,29 @@ function Scoreboard:Open()
 
         drawScoreboardIcon(scoreboardIcons.skills, 28, 325, 12, palette.muted)
         draw.SimpleText("SPECIALIST SKILLS", "ZM_ScoreboardLabel", 44, 325, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-        local skillWidth = math.floor((width - 76) / 5)
-        local skillX = { 28, 40 + skillWidth, 52 + skillWidth * 2, 64 + skillWidth * 3, 76 + skillWidth * 4 }
+        local skillWidth = math.floor((width - 76) / 4)
+        local skillX = { 28, 40 + skillWidth, 52 + skillWidth * 2, 64 + skillWidth * 3 }
         drawAttributeCell(skillX[1], 341, skillWidth, "MACHINE GUNS", playerEntity:GetNWInt("MachineGuns", 0))
-        drawAttributeCell(skillX[2], 341, skillWidth, "SHOTGUNS", playerEntity:GetNWInt("Shotguns", 0))
-        drawAttributeCell(skillX[3], 341, skillWidth, "SNIPERS", playerEntity:GetNWInt("Snipers", 0))
-        drawAttributeCell(skillX[4], 341, skillWidth, "WEAPON CRAFT", playerEntity:GetNWInt("WeaponCrafting", 0))
-        drawAttributeCell(skillX[5], 341, skillWidth, "ARMOR CRAFT", playerEntity:GetNWInt("ArmorCrafting", 0))
-        drawAttributeCell(skillX[1], 385, skillWidth, "MEDICINE", playerEntity:GetNWInt("Medicine", 0))
-        drawAttributeCell(skillX[2], 385, skillWidth, "FARMING", playerEntity:GetNWInt("Farming", 0))
-        drawAttributeCell(skillX[3], 385, skillWidth, "WEAPON REPAIR", playerEntity:GetNWInt("WeaponRepairing", 0))
-        drawAttributeCell(skillX[4], 385, skillWidth, "ARMOR REPAIR", playerEntity:GetNWInt("ArmorRepairing", 0))
-        drawAttributeCell(skillX[5], 385, skillWidth, "MECHANICS", playerEntity:GetNWInt("Mechanics", 0))
+        drawAttributeCell(skillX[2], 341, skillWidth, "PISTOLS", playerEntity:GetNWInt("Pistols", 0))
+        drawAttributeCell(skillX[3], 341, skillWidth, "SHOTGUNS", playerEntity:GetNWInt("Shotguns", 0))
+        drawAttributeCell(skillX[4], 341, skillWidth, "RIFLES", playerEntity:GetNWInt("Rifles", 0))
+        drawAttributeCell(skillX[1], 385, skillWidth, "EXPLOSIVES", playerEntity:GetNWInt("Explosives", 0))
+        drawAttributeCell(skillX[2], 385, skillWidth, "WEAPON CRAFT", playerEntity:GetNWInt("WeaponCrafting", 0))
+        drawAttributeCell(skillX[3], 385, skillWidth, "ARMOR CRAFT", playerEntity:GetNWInt("ArmorCrafting", 0))
+        drawAttributeCell(skillX[4], 385, skillWidth, "MEDICINE", playerEntity:GetNWInt("Medicine", 0))
+        drawAttributeCell(skillX[1], 429, skillWidth, "FARMING", playerEntity:GetNWInt("Farming", 0))
+        drawAttributeCell(skillX[2], 429, skillWidth, "WEAPON REPAIR", playerEntity:GetNWInt("WeaponRepairing", 0))
+        drawAttributeCell(skillX[3], 429, skillWidth, "ARMOR REPAIR", playerEntity:GetNWInt("ArmorRepairing", 0))
+        drawAttributeCell(skillX[4], 429, skillWidth, "MECHANICS", playerEntity:GetNWInt("Mechanics", 0))
 
         if playerEntity == LocalPlayer() then
-            drawScoreboardIcon(scoreboardIcons.pencil, 28, 429, 12, palette.muted)
-            draw.SimpleText("SURVIVOR BIO", "ZM_ScoreboardLabel", 44, 429, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
-            draw.SimpleText(getBioPreview(playerEntity:GetNWString("PlayerBio", "")), "ZM_ScoreboardValue", 28, 451, palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+            drawScoreboardIcon(scoreboardIcons.pencil, 28, 473, 12, palette.muted)
+            draw.SimpleText("SURVIVOR BIO", "ZM_ScoreboardLabel", 44, 473, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+            draw.SimpleText(getBioPreview(playerEntity:GetNWString("PlayerBio", "")), "ZM_ScoreboardValue", 28, 495, palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
         else
             surface.SetDrawColor(scoreboardColors.slate)
-            surface.DrawRect(28, 435, width - 56, 1)
-            draw.SimpleText("RELATIONSHIP", "ZM_ScoreboardLabel", 28, 447, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+            surface.DrawRect(28, 479, width - 56, 1)
+            draw.SimpleText("RELATIONSHIP", "ZM_ScoreboardLabel", 28, 491, palette.muted, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
             draw.SimpleText("Local marker only", "ZM_ScoreboardValue", 28, 463, palette.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
         end
     end
@@ -428,6 +424,10 @@ function Scoreboard:Open()
     end
 
     bioButton.DoClick = function()
+        if IsValid(frame.CardEditor) then
+            frame.CardEditor:MakePopup()
+            return
+        end
         if frame.SelectedPlayer ~= LocalPlayer() or IsValid(frame.BioEditor) then
             return
         end
@@ -482,6 +482,24 @@ function Scoreboard:Open()
         end
     end
 
+    local cardButton = vgui.Create("DButton", dossier)
+    cardButton:SetText("")
+    cardButton:SetTooltip("Edit calling-card background and detail")
+    cardButton:SetVisible(false)
+    cardButton.Paint = function(currentButton, width, height)
+        local palette = ZM_DermaSkin.Palette
+        surface.SetDrawColor(currentButton.Hovered and palette.raised or palette.black)
+        surface.DrawRect(0, 0, width, height)
+        surface.SetDrawColor(scoreboardColors.slate)
+        surface.DrawOutlinedRect(0, 0, width, height, 1)
+        drawScoreboardIcon(scoreboardIcons.pencil, 6, 6, 16, palette.muted)
+    end
+    cardButton.DoClick = function()
+        if frame.SelectedPlayer ~= LocalPlayer() then return end
+        if IsValid(frame.BioEditor) then frame.BioEditor:MakePopup() return end
+        frame.CardEditor = ZM_CallingCardUI:OpenSelector(frame)
+    end
+
     dossier.PerformLayout = function(_, width)
         local buttonWidth = math.min(170, math.max(112, math.floor((width - 92) * 0.25)))
         modelPreview:SetPos(width - 124, 17)
@@ -491,6 +509,8 @@ function Scoreboard:Open()
         blockButton:SetPos(width - buttonWidth - 28, 441)
         bioButton:SetSize(42, 42)
         bioButton:SetPos(width - 70, 441)
+        cardButton:SetSize(28, 28)
+        cardButton:SetPos(width - 162, 105)
     end
 
     local function selectPlayer(playerEntity)
@@ -505,7 +525,9 @@ function Scoreboard:Open()
                 end
             end
             local isLocalPlayer = playerEntity == LocalPlayer()
+            if not isLocalPlayer and IsValid(frame.CardEditor) then frame.CardEditor:Close() end
             bioButton:SetVisible(isLocalPlayer)
+            cardButton:SetVisible(isLocalPlayer)
             allyButton:SetVisible(not isLocalPlayer)
             blockButton:SetVisible(not isLocalPlayer)
         end

@@ -531,7 +531,7 @@ net.Receive("ZM.RequestPreviewCheat", function(_, playerEntity)
 end)
 
 local attributeFields = {
-    "Strength", "Agility", "Intelligence", "Endurance", "MachineGuns", "Shotguns", "Snipers",
+    "Strength", "Agility", "Intelligence", "Endurance", "MachineGuns", "Pistols", "Shotguns", "Rifles", "Explosives",
     "WeaponCrafting", "ArmorCrafting", "Medicine", "Farming", "WeaponRepairing", "ArmorRepairing", "Mechanics"
 }
 local playerDataFields = {

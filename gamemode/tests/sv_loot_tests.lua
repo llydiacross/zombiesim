@@ -97,6 +97,18 @@ test("mastercraft_forced_and_chance", function(check)
     check(bandage and not bandage.mastercraft, "items without a weapon type are never mastercrafted")
 end)
 
+test("guard_loot_levels_follow_danger_across_item_range", function(check)
+    local definition = ZM_Items:GetDefinition("weaponMeleeCrowbar")
+    local entries = { entry("weaponMeleeCrowbar", 1) }
+    for _, danger in ipairs({ 0, 0.5, 1 }) do
+        local item = Loot:RollItem(entries, { seed = 1, danger = danger, levelFromDanger = true })
+        local expected = math.Round(Lerp(danger, definition.minLevel, definition.maxLevel))
+        check(item and item.level == expected, "danger " .. danger .. " selects level " .. expected)
+    end
+    local explicit = Loot:RollItem(entries, { seed = 1, danger = 1, level = definition.minLevel, levelFromDanger = true })
+    check(explicit and explicit.level == definition.minLevel, "an explicit item level remains authoritative")
+end)
+
 test("same_seed_repeats_the_same_rolls", function(check)
     local group = ZM_StaticData:GetLootGroup("lootGenericZombie")
     local function sequence()

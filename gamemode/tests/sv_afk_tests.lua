@@ -39,15 +39,54 @@ end)
 
 suite:Add("only_named_menus_are_accepted", function(check)
     local ply = fakePlayer()
-    check(not AFK:Begin(ply, "map", 0), "the world map is not an AFK menu")
+    check(not AFK:Begin(ply, "unknown", 0), "unknown menus are rejected")
     check(not AFK:Begin(ply, "cheats", 0), "cheats never use a countdown")
     check(not AFK:EnterImmediately(ply, "inventory", 0), "inventory cannot skip the countdown")
-    for _, menu in ipairs({ "inventory", "scoreboard", "options" }) do
+    check(not AFK:EnterImmediately(ply, "map", 0), "the map cannot skip the countdown")
+    for _, menu in ipairs({ "inventory", "scoreboard", "options", "map" }) do
         local other = fakePlayer()
         check(AFK:Begin(other, menu, 0), menu .. " starts a countdown")
     end
     ply.alive = false
     check(not AFK:Begin(ply, "inventory", 0), "a dead player cannot start a countdown")
+end)
+
+suite:Add("world_map_countdown_and_grace", function(check)
+    local ply = fakePlayer()
+    check(AFK:Begin(ply, "map", 100), "the map starts a countdown")
+    check(AFK:GetState(ply).countdownMenu == "map", "the map is the pending menu")
+    AFK:Tick(ply, 102.99)
+    check(not AFK:IsProtected(ply, 102.99), "the map countdown does not protect early")
+    AFK:Tick(ply, 103)
+    check(AFK:IsAFK(ply), "the map enters AFK after three seconds")
+    AFK:Leave(ply, 104)
+    check(AFK:IsInGrace(ply, 106.99), "closing the map grants the normal grace")
+    check(not AFK:IsInGrace(ply, 107), "the map grace ends after three seconds")
+
+    AFK:Clear(ply)
+    check(AFK:Begin(ply, "map", 110), "a second map countdown starts")
+    check(not AFK:FilterDamage(ply, damageFrom(game.GetWorld(), 5)), "damage interrupts without protection")
+    AFK:Tick(ply, 114)
+    check(not AFK:IsAFK(ply), "an interrupted map countdown cannot open")
+end)
+
+suite:Add("rapid_map_cancel_is_not_throttled", function(check)
+    local ply = fakePlayer()
+    AFK:GetState(ply).lastRequestAt = CurTime() - 1
+    check(AFK:HandleRequest(ply, AFK.Actions.begin, "map"), "a map request starts")
+    check(AFK:HandleRequest(ply, AFK.Actions.cancel, ""), "an immediate second press cancels it")
+    check(AFK:GetState(ply).countdownUntil == nil, "the cancelled request stays cancelled")
+end)
+
+suite:Add("map_reopen_after_leave_is_not_throttled", function(check)
+    local ply = fakePlayer()
+    local at = CurTime()
+    AFK:GetState(ply).lastRequestAt = at - 1
+    check(AFK:Begin(ply, "map", at - 4), "a map countdown starts")
+    AFK:Tick(ply, at)
+    check(AFK:HandleRequest(ply, AFK.Actions.leave, ""), "closing the map leaves AFK")
+    check(AFK:HandleRequest(ply, AFK.Actions.begin, "map"), "a quick reopen starts another countdown")
+    check(AFK:GetState(ply).countdownMenu == "map", "the reopened map waits for its countdown")
 end)
 
 suite:Add("cheats_enter_afk_immediately", function(check)

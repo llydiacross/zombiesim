@@ -545,6 +545,28 @@ local cameraHullMaxs = Vector(4, 4, 4)
 local cameraTraceResult = {}
 local cameraTrace = { mins = cameraHullMins, maxs = cameraHullMaxs, output = cameraTraceResult }
 
+// Reports the camera to the server so it can extend the PVS and avoid despawning walkers in view.
+local cameraReportInterval = 0.2
+local nextCameraReportAt = 0
+local lastReportedOrigin
+local lastReportedForward
+local function reportCameraView(origin, angles)
+    local now = RealTime()
+    if now < nextCameraReportAt then return end
+    local forward = angles:Forward()
+    if lastReportedOrigin and lastReportedOrigin:DistToSqr(origin) < 256 and lastReportedForward:Dot(forward) > 0.995 and
+        now < nextCameraReportAt + 1 then
+        return
+    end
+    nextCameraReportAt = now + cameraReportInterval
+    lastReportedOrigin = Vector(origin.x, origin.y, origin.z)
+    lastReportedForward = forward
+    net.Start("ZM.WalkerCameraView")
+        net.WriteVector(origin)
+        net.WriteNormal(forward)
+    net.SendToServer()
+end
+
 hook.Add("CalcView", "ZM.CustomThirdPersonView", function(ply, pos, angles, fov)
     lockedCameraObstructed = false
     if ZM_LauncherMenu and ZM_LauncherMenu.Active then return end
@@ -593,6 +615,7 @@ hook.Add("CalcView", "ZM.CustomThirdPersonView", function(ply, pos, angles, fov)
     view.fov = fov
     view.drawplayer = not inDen and denCameraBlend < 0.5 and arrivalCameraRise >= 0.25
     lastViewOrigin = view.origin
+    reportCameraView(view.origin, view.angles)
     if ZM_RadiationFeedback then ZM_RadiationFeedback.ApplyCamera(view) end
 
     return view

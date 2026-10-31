@@ -9,8 +9,10 @@ function ply:SetPlayerAttributes()
     self.Attributes.Intelligence = self:GetNWInt("Intelligence")
     self.Attributes.Endurance = self:GetNWInt("Endurance")
     self.Attributes.MachineGuns = self:GetNWInt("MachineGuns")
+    self.Attributes.Pistols = self:GetNWInt("Pistols")
     self.Attributes.Shotguns = self:GetNWInt("Shotguns")
-    self.Attributes.Snipers = self:GetNWInt("Snipers")
+    self.Attributes.Rifles = self:GetNWInt("Rifles")
+    self.Attributes.Explosives = self:GetNWInt("Explosives")
     self.Attributes.WeaponCrafting = self:GetNWInt("WeaponCrafting")
     self.Attributes.ArmorCrafting = self:GetNWInt("ArmorCrafting")
     self.Attributes.Medicine = self:GetNWInt("Medicine")
@@ -30,6 +32,12 @@ function ply:SetPlayerData(snapshot)
         return tonumber(snapshot[key]) or fallback
     end
 
+    local bonusVersion = tonumber(snapshot.ProfessionBonusVersion)
+    if not ZM_Professions:IsValidBonusVersion(bonusVersion) then
+        ErrorNoHalt("[ZombieSim] Invalid replicated profession bonus version: " .. tostring(bonusVersion) .. "\n")
+        return false
+    end
+    self.ZM_ProfessionBonusVersion = bonusVersion
     self.XP = integer("XP", self:GetNWInt("XP"))
     self.ExperiencePerLevel = integer("ExperiencePerLevel", self:GetNWInt("ExperiencePerLevel", 1000))
     self.Level = integer("Level", self:GetNWInt("Level", 1))

@@ -32,6 +32,11 @@ local function findLauncherSkyCamera()
     if IsValid(camera) and camera:GetClass() == "point_camera" then return camera end
 end
 
+local function findCharacterCreationCamera()
+    local camera = findMarker("create_character")
+    if IsValid(camera) and camera:GetClass() == "point_camera" then return camera end
+end
+
 local function findLauncherPresentationSkybox()
     if not IsValid(findMarker("launcher_presentation_skybox")) then return nil end
     local camera = ents.FindByClass("sky_camera")[1]
@@ -99,6 +104,16 @@ function Launcher:SendStatus(target, action, success, message)
     if not IsValid(camera) then
         ErrorNoHalt("[ZombieSim] Launcher is missing menu_camera\n")
     end
+    local creationCamera = findCharacterCreationCamera()
+    if not IsValid(creationCamera) then
+        if self.MissingCreationCameraMap ~= game.GetMap() then
+            self.MissingCreationCameraMap = game.GetMap()
+            ErrorNoHalt("[ZombieSim] Launcher is missing a valid create_character point_camera; "
+                .. "using menu_camera for character creation. Check the launcher source and compiled BSP.\n")
+        end
+    else
+        self.MissingCreationCameraMap = nil
+    end
     net.Start("ZM.LauncherStatus")
         net.WriteString(action or "list")
         net.WriteBool(success ~= false and rows ~= nil)
@@ -106,6 +121,7 @@ function Launcher:SendStatus(target, action, success, message)
         net.WriteString(util.TableToJSON(rows or {}, false) or "[]")
         net.WriteBool(target.ZM_LauncherState == "deploying")
         sendPose(camera)
+        sendPose(creationCamera)
         sendPose(findLauncherSkyCamera())
         local creditsCamera = findMarker("credits_camera")
         sendPose(creditsCamera)
@@ -126,6 +142,8 @@ end
 hook.Add("SetupPlayerVisibility", "ZombieSim.Launcher.MenuPVS", function(target)
     if not target.ZM_LauncherState then return end
     local camera = findMarker("menu_camera")
+    if IsValid(camera) then AddOriginToPVS(camera:GetPos()) end
+    camera = findCharacterCreationCamera()
     if IsValid(camera) then AddOriginToPVS(camera:GetPos()) end
     camera = findLauncherSkyCamera()
     if IsValid(camera) then

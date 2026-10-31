@@ -16,15 +16,35 @@ function Assert-Rejected([string]$Name, [scriptblock]$Action) {
     Assert-Package $Name $rejected
 }
 $scoreboardSource = [IO.File]::ReadAllText((Join-Path $testsRepoRoot 'gamemode\cl_scoreboard.lua'))
+$cardSource = [IO.File]::ReadAllText((Join-Path $testsRepoRoot 'gamemode\cl_calling_cards.lua'))
+$actualCards = Get-Content -LiteralPath (Join-Path $testsRepoRoot 'content\data_static\calling_cards.json') -Raw | ConvertFrom-Json
 foreach ($default in @(
-    @{ name = 'headerBackground'; material = 'scoreboard/backgrounds/default.png' },
-    @{ name = 'headerDetail'; material = 'scoreboard/details/default.png' }
+    @{ name = 'background'; network = 'ZM_CallingCardBackground'; material = 'scoreboard/backgrounds/default.png' },
+    @{ name = 'detail'; network = 'ZM_CallingCardDetail'; material = 'scoreboard/details/default.png' }
 )) {
-    $expression = '{0} = Material("{1}", "smooth")' -f $default.name, $default.material
+    $id = $default.name + '_default'
+    $expression = '{0} = "{1}"' -f $default.name, $default.material
+    $network = 'GetNWString("{0}", "{1}")' -f $default.network, $id
     $assetPath = Join-Path (Join-Path $testsRepoRoot 'content\materials') $default.material.Replace('/', '\')
-    Assert-Package "scoreboard $($default.name) references an existing default image" (
-        $scoreboardSource.Contains($expression) -and (Test-Path -LiteralPath $assetPath -PathType Leaf))
+    $entry = @($actualCards.cards | Where-Object { $_.id -ceq $id })
+    Assert-Package "scoreboard $($default.name) uses its verified default image" (
+        $scoreboardSource.Contains('ZM_CallingCardUI:DrawPair(') -and $scoreboardSource.Contains($network) -and
+        $cardSource.Contains($expression) -and (Test-Path -LiteralPath $assetPath -PathType Leaf) -and
+        $entry.Count -eq 1 -and $entry[0].source -ceq 'builtin' -and
+        $entry[0].category -ceq $default.name -and $entry[0].material -ceq $default.material -and
+        $entry[0].bytes -eq (Get-Item -LiteralPath $assetPath).Length -and
+        $entry[0].sha256 -ceq (Get-FileHash -LiteralPath $assetPath -Algorithm SHA256).Hash.ToLowerInvariant())
 }
+$actualSettings = Get-Content -LiteralPath (Join-Path $testsRepoRoot 'workshop-settings.json') -Raw | ConvertFrom-Json
+Assert-Package 'prefab particle catalog is owned by core packaging' (
+    @($actualSettings.coreStaticFiles) -ccontains 'prefab_particles.json' -and
+    (Test-Path -LiteralPath (Join-Path $testsRepoRoot 'content\data_static\prefab_particles.json') -PathType Leaf))
+Assert-Package 'prefab guard weapon catalog is owned by core packaging' (
+    @($actualSettings.coreStaticFiles) -ccontains 'prefab_guard_weapons.json' -and
+    (Test-Path -LiteralPath (Join-Path $testsRepoRoot 'content\data_static\prefab_guard_weapons.json') -PathType Leaf))
+Assert-Package 'calling-card catalogue is owned by core packaging' (
+    @($actualSettings.coreStaticFiles) -ccontains 'calling_cards.json' -and
+    (Test-Path -LiteralPath (Join-Path $testsRepoRoot 'content\data_static\calling_cards.json') -PathType Leaf))
 foreach ($path in '..\secret.txt', 'materials\..\secret.txt', 'C:\secret.txt', '\root.txt',
     'materials\\bad.vtf', 'materials\.\bad.vtf', 'materials\bad:stream.vtf') {
     Assert-Rejected "reject unsafe path: $path" { ConvertTo-WorkshopPath $path }
@@ -140,7 +160,7 @@ try {
         schemaVersion = 1; sources = @(@{ package = 'cs16'; workshopId = '2657591603'; revision = '1637211535' }); files = @($cs16Entries) + @($importedEntries)
     }
     Write-Fixture 'content\data_static\version.json' '{"schemaVersion":1,"product":"Z-Nation","stage":"Alpha","version":"9.8.7","status":"in development"}'
-    Write-Fixture 'content\data_static\prefabs\roadblock.json' '{"schemaVersion":1,"id":"roadblock","name":"Roadblock","description":"","tags":[],"props":[]}'
+    Write-Fixture 'content\data_static\prefabs\roadblock.json' '{"schemaVersion":1,"id":"roadblock","name":"Roadblock","description":"","tags":[],"props":[],"worldPlacement":{"enabled":true,"profile":"preview","cellX":14,"cellY":0,"tileX":0,"tileY":0,"offset":{"x":0,"y":0,"z":0},"angles":{"p":0,"y":90,"r":0}}}'
     Write-Fixture 'content\data_static\sky_catalogue.json' '{"schemaVersion":1,"ownedFiles":["materials\\zombiesim\\skies\\imported_fixtureft.vmt"],"ownedLicenceFiles":["data_static\\sky_licences\\imported_fixture\\README.txt"]}'
     Write-Fixture 'content\materials\zombiesim\skies\imported_fixtureft.vmt' 'owned sky material'
     Write-Fixture 'content\materials\zombiesim\skies\imported_tropo_night_1ft.vmt' 'retired sky material'
@@ -151,11 +171,39 @@ try {
     Write-Fixture 'content\materials\zombiesim\launcher\earth_lights.vmt' 'owned blended night-light material'
     Write-Fixture 'content\materials\scoreboard\backgrounds\default.png' 'scoreboard background fixture'
     Write-Fixture 'content\materials\scoreboard\details\default.png' 'scoreboard detail fixture'
+    Write-Fixture 'content\materials\scoreboard\backgrounds\custom_background.png' 'finished background fixture'
+    Write-Fixture 'content\materials\scoreboard\details\generated_detail_stars.png' 'generated details fixture'
+    $cardEntries = foreach ($card in @(
+        @{ id = 'background_default'; category = 'background'; source = 'builtin'; material = 'scoreboard/backgrounds/default.png' },
+        @{ id = 'detail_default'; category = 'detail'; source = 'builtin'; material = 'scoreboard/details/default.png' },
+        @{ id = 'background_custom'; category = 'background'; source = 'finished'; material = 'scoreboard/backgrounds/custom_background.png' },
+        @{ id = 'detail_stars'; category = 'detail'; source = 'generated'; material = 'scoreboard/details/generated_detail_stars.png' }
+    )) {
+        $cardPath = Join-Path $fixtureRoot ('content\materials\' + $card.material.Replace('/', '\'))
+        $entry = [pscustomobject]@{
+            id = $card.id; name = $card.id; category = $card.category; source = $card.source; material = $card.material
+            bytes = (Get-Item -LiteralPath $cardPath).Length; sha256 = (Get-FileHash -LiteralPath $cardPath).Hash.ToLowerInvariant()
+        }
+        if ($card.source -eq 'finished') {
+            $entry | Add-Member -NotePropertyName shopCredits -NotePropertyValue 125
+            $entry | Add-Member -NotePropertyName questReward -NotePropertyValue $false
+        } elseif ($card.source -eq 'generated') {
+            $entry | Add-Member -NotePropertyName questReward -NotePropertyValue $true
+        }
+        $entry
+    }
+    $ownedCards = @($cardEntries | Where-Object { $_.source -ne 'builtin' } | ForEach-Object {
+        [pscustomobject]@{ material = $_.material; bytes = $_.bytes; sha256 = $_.sha256 }
+    })
+    Write-WorkshopJson (Join-Path $fixtureRoot 'content\data_static\calling_cards.json') @{
+        schemaVersion = 1; cards = @($cardEntries); aliases = @{ background_old = 'background_custom' }; ownedFiles = $ownedCards
+    }
     Write-Fixture 'content\data_static\clothing_citizen_calibration.json' '{"schemaVersion":1,"previewOnly":false,"models":{}}'
     Write-Fixture 'content\sounds\music\a.mp3' 'audio'
     Write-Fixture 'content\sounds\music\preview skybox 1.mp3' 'launcher preview audio'
     Write-Fixture 'content\sounds\music\menu.mp3' 'launcher menu audio'
     Write-Fixture 'content\sounds\music\menu 2.mp3' 'launcher menu loop audio'
+    Write-Fixture 'content\sounds\music\credits.mp3' 'launcher credits audio'
     Write-Fixture 'content\data_static\consolecommands.txt' 'development command'
     Write-Fixture 'content\maps\zz_dev_zoo.bsp' 'unreferenced development fixture'
     Write-Fixture 'content\materials\models\zombiesim\clothing\catalog_0000000000000000_shirt_male.vtf' 'vtf'
@@ -186,7 +234,7 @@ try {
     Write-WorkshopJson $fixtureSettings @{
         schemaVersion = 1; worldProfiles = @('city', 'preview'); maximumShardBytes = 1MB; metadataReserveBytes = 65536
         releaseCleared = $false; coreWorkshopId = 'pending:core'; workshopIds = @{ 'clothing-01' = 'pending:clothing-01' }
-        coreStaticFiles = @('clothing_catalogue.json', 'clothing_citizen_calibration.json', 'launcher_earth.json', 'music_definitions.json', 'sky_catalogue.json', 'version.json', 'zombiesim_signs_preview.json')
+        coreStaticFiles = @('calling_cards.json', 'clothing_catalogue.json', 'clothing_citizen_calibration.json', 'launcher_earth.json', 'music_definitions.json', 'sky_catalogue.json', 'version.json', 'zombiesim_signs_preview.json')
         commonMaterialDirectories = @('materials\zombiesim\skies', 'materials\zombiesim\launcher', 'materials\scoreboard'); commonMaterialExtensions = @('.vmt', '.vtf', '.png'); externalDependencies = @('Mounted native fixtures') }
     $builder = Join-Path $testsBinDirectory 'build_workshop_packages.ps1'
     & $builder -ProjectRoot $fixtureRoot -SettingsPath $fixtureSettings -Pack
@@ -200,6 +248,15 @@ try {
     Assert-Package 'nested scoreboard default images are included in common packaging' (
         @($commonFiles | Where-Object { $_ -eq 'materials/scoreboard/backgrounds/default.png' }).Count -eq 1 -and
         @($commonFiles | Where-Object { $_ -eq 'materials/scoreboard/details/default.png' }).Count -eq 1)
+    Assert-Package 'calling-card catalogue ships in core and both artist types ship in common' (
+        @($fixtureReport.packages | Where-Object id -eq 'core').files.path -contains 'data_static/calling_cards.json' -and
+        $commonFiles -contains 'materials/scoreboard/backgrounds/custom_background.png' -and
+        $commonFiles -contains 'materials/scoreboard/details/generated_detail_stars.png')
+    Write-Fixture 'content\materials\scoreboard\backgrounds\custom_background.png' 'tampered finished artwork'
+    Assert-Rejected 'calling-card material hash mismatches block packaging' {
+        & $builder -ProjectRoot $fixtureRoot -SettingsPath $fixtureSettings
+    }
+    Write-Fixture 'content\materials\scoreboard\backgrounds\custom_background.png' 'finished background fixture'
     Assert-Package 'CS 1.6 manifest ships in core and hash-owned assets with original credits ship in common' (
         @($fixtureReport.packages | Where-Object id -eq 'core').files.path -contains 'data_static/imported_assets.json' -and
         @($fixtureReport.packages | Where-Object id -like 'common-*').files.path -contains 'data_static/asset_credits/cs16_original.txt' -and
@@ -268,6 +325,11 @@ try {
     $menuLoopAudio = @($fixtureReport.packages | ForEach-Object { $_.files } |
         Where-Object path -eq 'sound/music/menu 2.mp3')
     Assert-Package 'launcher menu loop soundtrack ships at canonical sound root' ($menuLoopAudio.Count -eq 1)
+    $creditsPacks = @($fixtureReport.packages | Where-Object { $_.files.path -contains 'sound/music/credits.mp3' })
+    $creditsAudio = @($fixtureReport.packages | ForEach-Object { $_.files } | Where-Object path -eq 'sound/music/credits.mp3')
+    Assert-Package 'launcher credits soundtrack ships once in common at the canonical sound root' (
+        $creditsAudio.Count -eq 1 -and $creditsPacks.Count -eq 1 -and $creditsPacks[0].id -like 'common-*' -and
+        (Get-Content -LiteralPath (Join-Path $fixtureReport.stageRoot "$($creditsPacks[0].id)\sound\music\credits.mp3") -Raw) -eq 'launcher credits audio')
     Assert-Package 'unowned files and bridge input excluded but untouched' (
         @($fixtureReport.excluded | Where-Object path -like '*orphan*').Count -eq 1 -and
         @($fixtureReport.excluded | Where-Object path -like '*consolecommands*').Count -eq 1 -and

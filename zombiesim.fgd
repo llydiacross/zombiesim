@@ -81,6 +81,25 @@
         0 : "No (placed directly in the map)"
         1 : "Yes (tile template)"
     ]
+    input TriggerParticle(string) : "Trigger the one-shot particle with the specified prefab particle ID."
+]
+
+@PointClass base(Targetname, Angles) studio("models/player/group01/male_03.mdl") = zn_prefab_guard : "ZombieSim Guard"
+[
+    guard_name(string) : "Display name" : "Guard"
+    model(studio) : "Clothing-compatible citizen model" : "models/player/group01/male_03.mdl"
+    idle(string) : "Idle animation sequence" : "idle_all_01"
+    weapon(choices) : "Weapon" : "pistol" =
+    [
+        "pistol" : "9mm handgun"
+        "smg" : "HL2 SMG"
+    ]
+    range(float) : "Engagement range" : "1000" : "Must be positive and no greater than the selected weapon's range."
+    shirt(string) : "Shirt finish ID" : "" : "Clothing catalogue shirt finish ID; blank uses the model's native appearance."
+    pants(string) : "Pants finish ID" : "" : "Clothing catalogue pants finish ID; blank uses the model's native appearance."
+    damage(string) : "Damage per shot override" : "" : "Positive number; blank uses the weapon's normal damage."
+    fire_interval(string) : "Fire interval override (seconds per shot)" : "" : "At least 0.05 seconds; blank uses the weapon's normal cadence."
+    spread(string) : "Accuracy override (shot spread)" : "" : "Non-negative engine spread; 0 is perfectly accurate. Blank uses the weapon's normal spread."
 ]
 
 @SolidClass base(Targetname) = trigger_multiple : "ZombieSim Transition Gate"

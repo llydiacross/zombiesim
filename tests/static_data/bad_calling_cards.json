@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "cards": [
+    { "id": "background_default", "name": "Default", "category": "background", "source": "builtin",
+      "material": "scoreboard/backgrounds/default.png", "bytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000" },
+    { "id": "detail_default", "name": "Default", "category": "detail", "source": "builtin",
+      "material": "scoreboard/details/default.png", "bytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000" },
+    { "id": "background_missing", "name": "Missing", "category": "background", "source": "finished",
+      "material": "scoreboard/backgrounds/missing_background.png", "bytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000" },
+    { "id": "background_missing", "name": "Duplicate", "category": "background", "source": "finished",
+      "material": "scoreboard/backgrounds/another_background.png", "bytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000" }
+  ],
+  "aliases": {
+    "background_first": "background_second",
+    "background_second": "background_first"
+  },
+  "ownedFiles": []
+}

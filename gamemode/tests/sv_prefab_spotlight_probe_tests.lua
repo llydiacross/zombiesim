@@ -65,9 +65,22 @@ return function(loadChunk)
         check(not ok and #state.entities == 1, "duplicate starts do not allocate more props")
         state.command(nil, "zombiesim_prefab_spotlight_probe", { "status" })
         check(state.report and state.report.value.active and state.report.value.owner, "server status reports the owned prop")
+        local commandCount = #state.commands
+        ok = state.command(nil, "zombiesim_prefab_spotlight_probe", { "prop_off" })
+        check(ok and not state.entities[1].valid and #state.commands == commandCount,
+            "the owned test prop can be removed without stopping the projector")
+        ok = state.command(nil, "zombiesim_prefab_spotlight_probe", { "start" })
+        check(not ok and #state.entities == 1, "removing the prop does not allow a second active probe")
+        ok = state.command(nil, "zombiesim_prefab_spotlight_probe", { "pause_editor" })
+        check(ok and state.commands[#state.commands] == "zombiesim_prefab_light_preview_control_client pause",
+            "the probe owner can temporarily suspend the editor projector")
+        ok = state.command(nil, "zombiesim_prefab_spotlight_probe", { "matrix_on" })
+        check(ok and state.commands[#state.commands] == "zombiesim_dev_prefab_spotlight_client matrix_on",
+            "the probe owner can toggle the manual comparison model's matrix")
         state.hooks.PreCleanupMap()
-        check(not state.entities[1].valid and state.commands[#state.commands] == "zombiesim_dev_prefab_spotlight_client off",
-            "map cleanup removes the prop and requests client cleanup")
+        check(not state.entities[1].valid and state.commands[#state.commands - 1] == "zombiesim_dev_prefab_spotlight_client off"
+            and state.commands[#state.commands] == "zombiesim_prefab_light_preview_control_client resume",
+            "map cleanup stops the probe and restores the editor preview")
     end)
     suite:Add("invalid spotlight physics fails without leaving a prop", function(check)
         local state = fixture()

@@ -23,10 +23,11 @@ Characters.StorageTables = {
     "credit_ledger",
     "mastercraft_attempts",
     "trade_ledger",
-    "bank_ledger"
+    "bank_ledger",
+    "calling_card_selections"
 }
 
-local characterSchema = "CREATE TABLE IF NOT EXISTS characters (steamid TEXT NOT NULL, profile TEXT NOT NULL, slot INTEGER NOT NULL, characterId TEXT NOT NULL UNIQUE, name TEXT NOT NULL, model TEXT, skin INTEGER, bodygroups TEXT, playerColour TEXT, job TEXT NOT NULL DEFAULT 'Civilian', originCellX INTEGER, originCellY INTEGER, originLatitude REAL, originLongitude REAL, createdAt INTEGER NOT NULL, lastPlayedAt INTEGER NOT NULL DEFAULT 0, appearanceRequired INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (steamid, profile, slot))"
+local characterSchema = "CREATE TABLE IF NOT EXISTS characters (steamid TEXT NOT NULL, profile TEXT NOT NULL, slot INTEGER NOT NULL, characterId TEXT NOT NULL UNIQUE, name TEXT NOT NULL, model TEXT, skin INTEGER, bodygroups TEXT, playerColour TEXT, job TEXT NOT NULL DEFAULT 'Civilian', originCellX INTEGER, originCellY INTEGER, originLatitude REAL, originLongitude REAL, createdAt INTEGER NOT NULL, lastPlayedAt INTEGER NOT NULL DEFAULT 0, appearanceRequired INTEGER NOT NULL DEFAULT 1, professionBonusVersion INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (steamid, profile, slot))"
 local activeSchema = "CREATE TABLE IF NOT EXISTS active_characters (steamid TEXT NOT NULL, profile TEXT NOT NULL, slot INTEGER NOT NULL, selectedAt INTEGER NOT NULL, PRIMARY KEY (steamid, profile))"
 local bioSchema = "CREATE TABLE IF NOT EXISTS character_bios (characterId TEXT PRIMARY KEY, bio TEXT NOT NULL, updatedAt INTEGER NOT NULL)"
 
@@ -73,7 +74,12 @@ local function createSchemas()
         local created, createError = runQuery(schema)
         if not created then return false, createError end
     end
-    return true
+    local inspected, columns = runQuery("PRAGMA table_info(characters)")
+    if not inspected then return false, columns end
+    for _, column in ipairs(columns or {}) do
+        if column.name == "professionBonusVersion" then return true end
+    end
+    return runQuery("ALTER TABLE characters ADD COLUMN professionBonusVersion INTEGER NOT NULL DEFAULT 1")
 end
 
 // Garry's Mod blocks Lua file access to sv.db, so the pre-migration backup is a logical
@@ -386,14 +392,15 @@ function Characters:CreateOwned(steamId, profile, slot, details)
     local bodygroups = util.TableToJSON(appearance.bodygroups, false)
     local colour = util.TableToJSON(appearance.playerColour, false)
     if not bodygroups or not colour then return rollback("Could not encode appearance") end
-    local created, createError = runQuery("INSERT INTO characters (steamid, profile, slot, characterId, name, model, skin, bodygroups, playerColour, job, originCellX, originCellY, originLatitude, originLongitude, createdAt, lastPlayedAt, appearanceRequired) VALUES ("
+    local created, createError = runQuery("INSERT INTO characters (steamid, profile, slot, characterId, name, model, skin, bodygroups, playerColour, job, originCellX, originCellY, originLatitude, originLongitude, createdAt, lastPlayedAt, appearanceRequired, professionBonusVersion) VALUES ("
         .. sql.SQLStr(steamId) .. ", " .. sql.SQLStr(profile) .. ", " .. slot .. ", " .. sql.SQLStr(characterId) .. ", "
         .. sql.SQLStr(name) .. ", " .. sql.SQLStr(appearance.model) .. ", " .. appearance.skin .. ", "
         .. sql.SQLStr(bodygroups) .. ", " .. sql.SQLStr(colour) .. ", " .. sql.SQLStr(job) .. ", "
         .. (originX and tostring(math.floor(originX)) or "NULL") .. ", "
         .. (originY and tostring(math.floor(originY)) or "NULL") .. ", "
         .. (latitude and tostring(latitude) or "NULL") .. ", "
-        .. (longitude and tostring(longitude) or "NULL") .. ", " .. now .. ", 0, 0)")
+        .. (longitude and tostring(longitude) or "NULL") .. ", " .. now .. ", 0, 0, "
+        .. ZM_Professions.CurrentBonusVersion .. ")")
     if not created then return rollback(createError) end
     local saved, saveError = ZM_SetPlayerAttributes(characterId, profile, attributes)
     if not saved then return rollback(saveError) end
@@ -444,6 +451,7 @@ function Characters:Select(target, slot)
     target.ZM_CharacterKeyCache = nil
     target.ZM_CharacterId = character.characterId
     target.ZM_CharacterSlot = slot
+    target.ZM_ProfessionBonusVersion = nil
     return true, character.characterId
 end
 
@@ -606,6 +614,7 @@ function Characters:Delete(target, slot, confirmationName)
     local deleted, deleteError = self:DeleteOwnedRows(character)
     if not deleted then return false, deleteError end
     target.ZM_CharacterKeyCache = nil
+    target.ZM_ProfessionBonusVersion = nil
     print(string.format("[ZombieSim] Deleted character %s (slot %d, profile %s) for %s", character.characterId, slot, profile, steamId))
     return true
 end
@@ -636,6 +645,7 @@ function Characters:ClearActive(target)
         target.ZM_CharacterKeyCache = nil
         target.ZM_CharacterId = nil
         target.ZM_CharacterSlot = nil
+        target.ZM_ProfessionBonusVersion = nil
     end
     return cleared, clearError
 end
@@ -790,12 +800,17 @@ function ply:GetCharacterKey()
     local character, characterError = Characters:GetActiveCharacter(self)
     if characterError then return nil, characterError end
     if not character then return nil, "No active character is selected" end
+    local bonusVersion = tonumber(character.professionBonusVersion)
+    if not ZM_Professions:IsValidBonusVersion(bonusVersion) then
+        return nil, "Invalid stored profession bonus version for character " .. tostring(character.characterId)
+    end
     local nameUpdated, nameError = Characters:EnsureLegacyDisplayName(self, character)
     if not nameUpdated then return nil, "Could not assign the migrated character name: " .. tostring(nameError) end
     self.ZM_CharacterKeyCache = character.characterId
     self.ZM_CharacterKeyProfile = profile
     self.ZM_CharacterId = character.characterId
     self.ZM_CharacterSlot = tonumber(character.slot)
+    self.ZM_ProfessionBonusVersion = bonusVersion
     return character.characterId
 end
 

@@ -336,8 +336,12 @@ local function attributeLabel(attribute)
     return (string.gsub(attribute, "(%l)(%u)", "%1 %2"))
 end
 
-local bonusColour = Color(92, 214, 112)
 local previewPages = { create = true, appearance = true }
+
+function Menu:GetCharacterCreationCamera()
+    if not self.Active or self.Credits or not previewPages[self.Page] then return nil end
+    return self.CreationCamera
+end
 
 function Menu:IsCharacterPreviewVisible()
     return IsValid(self.PreviewPanel) and self.PreviewPanel:IsVisible()
@@ -588,6 +592,7 @@ function Menu:Render()
     self:SyncEarthControls()
     if ZM_CharacterCards then ZM_CharacterCards:Reset() end
     if IsValid(self.Content) then self.Content:Remove() end
+    self.ProfessionPickerView = nil
     local content = vgui.Create("DScrollPanel", self.Frame)
     content:Dock(FILL)
     content:DockMargin(24, 48, 24, 20)
@@ -829,23 +834,7 @@ function Menu:Render()
                     function(value) draft.appearance.playerColour[index] = math.Round(value, 2) end)
             end
         elseif step == "profession" then
-            for _, id in ipairs(ZM_Professions:GetIds()) do
-                local profession = ZM_Professions:Get(id)
-                button(id, function() draft.job = id self.Step = 5 self:Render() end)
-                addLabel(content, profession.description or "", 46)
-                local bonuses = {}
-                for stat, bonus in pairs(profession.statBonuses or {}) do
-                    table.insert(bonuses, stat .. " +" .. bonus)
-                end
-                table.sort(bonuses)
-                addLabel(content, table.concat(bonuses, ", "), 42)
-                local services = {}
-                for service, enabled in pairs(profession.services or {}) do
-                    if enabled then table.insert(services, service) end
-                end
-                addLabel(content, "Services: " .. table.concat(services, ", ") ..
-                    " / Deliveries: " .. #(profession.deliveries or {}), 36)
-            end
+            self.ProfessionPickerView = ZM_LauncherProfessionPicker:Build(self, content, draft, button, attributeLabel)
         elseif step == "points" then
             local function remaining()
                 local spent = 0
@@ -870,7 +859,7 @@ function Menu:Render()
             end
             for index, name in ipairs(ZM_CharacterRules.Attributes) do
                 local attribute = name
-                local bonus = ZM_Professions:GetStatBonus(draft.job, attribute)
+                local bonus = ZM_Professions:GetStatBonus(draft.job, attribute, ZM_Professions.CurrentBonusVersion)
                 local line = vgui.Create("DPanel", content)
                 line:Dock(TOP)
                 line:DockMargin(4, 0, 4, 0)
@@ -890,7 +879,7 @@ function Menu:Render()
                     draw.SimpleText(tostring(bonus + spent), "DermaDefaultBold", valueX, height * 0.5,
                         spent > 0 and palette.redBright or palette.text, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
                     if bonus > 0 then
-                        draw.SimpleText("(+" .. bonus .. ")", "DermaDefaultBold", valueX + 14, height * 0.5, bonusColour,
+                        draw.SimpleText("(+" .. bonus .. ")", "DermaDefaultBold", valueX + 14, height * 0.5, palette.bonus,
                             TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
                     end
                 end
@@ -925,7 +914,7 @@ function Menu:Render()
             addLabel(content, "SLOT " .. draft.slot .. "  /  " .. draft.name .. "  /  " .. draft.job, 38)
             addLabel(content, "MODEL " .. modelLabel(draft.appearance.model), 38)
             for _, name in ipairs(ZM_CharacterRules.Attributes) do
-                local bonus = ZM_Professions:GetStatBonus(draft.job, name)
+                local bonus = ZM_Professions:GetStatBonus(draft.job, name, ZM_Professions.CurrentBonusVersion)
                 local spent = draft.attributes[name] or 0
                 if spent + bonus > 0 then
                     addLabel(content, attributeLabel(name) .. ": " .. (spent + bonus)
@@ -957,6 +946,7 @@ function Menu:StartCredits()
     if not self.CreditsCamera or not ZM_LauncherSceneClient then return end
     if IsValid(self.CreditsOverlay) then self.CreditsOverlay:Remove() end
     ZM_LauncherSceneClient:BeginCredits()
+    if ZM_Music then ZM_Music:StartCredits() end
     if IsValid(self.Frame) then self.Frame:SetVisible(false) end
     self:SyncCharacterPreview()
     local overlay = vgui.Create("DFrame")
@@ -970,6 +960,9 @@ function Menu:StartCredits()
         if key == KEY_ESCAPE or key == KEY_ENTER or key == KEY_SPACE then self:EndCredits(true) end
     end
     overlay.OnMousePressed = function() self:EndCredits(true) end
+    overlay.OnRemove = function()
+        if self.CreditsOverlay == overlay and self.Credits then self:EndCredits() end
+    end
     overlay.Paint = function(_, width, height)
         local age = RealTime() - ZM_LauncherSceneClient.Started
         local entries = ZM_LauncherScene:GetData()
@@ -1007,6 +1000,7 @@ function Menu:EndCredits(withSound)
     if not self.Credits or self.CreditsEnding then return end
     if withSound then self:PlayCue("back") end
     self.CreditsEnding = RealTime()
+    if ZM_Music then ZM_Music:EndCredits() end
     local generation = self.CreditsGeneration
     timer.Simple(0.4, function()
         if self.Credits and self.CreditsEnding and self.CreditsGeneration == generation then
@@ -1019,6 +1013,11 @@ function Menu:FinishCredits(generation)
     if generation ~= self.CreditsGeneration then return end
     self.Credits = false
     self.CreditsEnding = nil
+    if ZM_Music then ZM_Music:StopCredits(true) end
+    if ZM_LauncherSceneClient then
+        ZM_LauncherSceneClient.LastCreditsView = nil
+        ZM_LauncherSceneClient.LastCreditsViewAt = nil
+    end
     if IsValid(self.CreditsOverlay) then self.CreditsOverlay:Remove() end
     self.CreditsOverlay = nil
     if IsValid(self.Frame) then
@@ -1056,6 +1055,9 @@ net.Receive("ZM.LauncherStatus", function()
     else
         Menu.Camera = nil
     end
+    local hasCreationCamera = net.ReadBool()
+    Menu.CreationCamera = hasCreationCamera and
+        { origin = net.ReadVector(), angles = net.ReadAngle(), fov = net.ReadFloat() } or nil
     local hasPreviewSkyCamera = net.ReadBool()
     Menu.PreviewSkyCamera = hasPreviewSkyCamera and
         { origin = net.ReadVector(), angles = net.ReadAngle(), fov = net.ReadFloat() } or nil
@@ -1095,8 +1097,9 @@ hook.Add("CalcView", "ZombieSim.Launcher.MenuCamera", function(_, _, _, fov)
     if Menu.Credits and ZM_LauncherSceneClient then
         return ZM_LauncherSceneClient:CreditsView()
     end
-    if not Menu.Camera then return { origin = vector_origin, angles = angle_zero, fov = fov, drawviewer = false } end
-    return { origin = Menu.Camera.origin, angles = Menu.Camera.angles, fov = Menu.Camera.fov,
+    local camera = Menu:GetCharacterCreationCamera() or Menu.Camera
+    if not camera then return { origin = vector_origin, angles = angle_zero, fov = fov, drawviewer = false } end
+    return { origin = camera.origin, angles = camera.angles, fov = camera.fov,
         drawviewer = false, drawviewmodel = false }
 end)
 

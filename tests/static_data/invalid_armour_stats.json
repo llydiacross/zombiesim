@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "items": {
+    "itemBadArmour": {
+      "name": "Fixture Armour",
+      "entityClass": "armour",
+      "type": "armour",
+      "maxStack": 1,
+      "iconModel": "models/items/hevsuit.mdl",
+      "armourStats": {
+        "damageReduction": 1,
+        "speedPenalty": 0,
+        "staminaRegenPenalty": 0
+      }
+    }
+  }
+}

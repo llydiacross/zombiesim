@@ -10,6 +10,7 @@ include("utils/safezone.lua")
 include("sh_preview.lua")
 include("sh_music.lua")
 include("sh_clothing.lua")
+include("sh_calling_cards.lua")
 include("sh_static_data.lua")
 include("sh_items.lua")
 include("sh_weapon_effects.lua")
@@ -39,7 +40,12 @@ function GM:InitPostEntity()
 		self.PlayerWorldMapTransitionQueued = false
 	end
 
-	local loaded, loadError = ZM_World:LoadMapProfile()
+	local loaded, loadError
+	if SERVER and ZM_PrefabEditor and ZM_PrefabEditor:IsEditorMap() then
+		loaded, loadError = ZM_World:LoadProfile("preview")
+	else
+		loaded, loadError = ZM_World:LoadMapProfile()
+	end
 	if not loaded then
 		ErrorNoHalt("[ZombieSim] " .. loadError .. "\n")
 	end
