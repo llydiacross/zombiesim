@@ -159,7 +159,9 @@ if ([string]::IsNullOrWhiteSpace($CellDestinationDirectory)) {
 }
 
 $plan = Get-Content -Raw -LiteralPath $PlanData | ConvertFrom-Json
-$cells = @($plan.cells)
+$mapCells = @($plan.cells)
+$emptyCells = if ($null -ne $plan.PSObject.Properties['emptyCells']) { @($plan.emptyCells) } else { @() }
+$cells = @($mapCells + $emptyCells)
 if ($plan.schemaVersion -lt 4 -or $cells.Count -lt 1) {
     throw 'The template plan must use schema version 4 or later and contain city cells.'
 }
@@ -192,7 +194,7 @@ if ($WhatIf) {
 
 $navmeshesByMap = @{}
 $invalidNavmeshes = @{}
-foreach ($mapName in @($cells | ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension([string]$_.cellTemplateFilename) } | Sort-Object -Unique)) {
+foreach ($mapName in @($mapCells | ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension([string]$_.cellTemplateFilename) } | Sort-Object -Unique)) {
     $navmeshPath = Join-Path $NavmeshDirectory "$mapName.nav"
     if (-not (Test-Path -LiteralPath $navmeshPath -PathType Leaf) -and $mapName -like 'zz_preview_*') {
         $cityMapName = 'zz_city_' + $mapName.Substring('zz_preview_'.Length)
@@ -224,6 +226,10 @@ try {
     $missingBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(255, 39, 32, 35))
     try {
         foreach ($cell in $cells) {
+            if ($null -ne $cell.PSObject.Properties['emptyCell'] -and $cell.emptyCell) {
+                # Roadless empty cells have no map or navmesh; leave the background showing.
+                continue
+            }
             $mapName = [System.IO.Path]::GetFileNameWithoutExtension([string]$cell.cellTemplateFilename)
             $destinationX = [int]$cell.x * $tileSize
             $destinationY = [int]$cell.y * $tileSize

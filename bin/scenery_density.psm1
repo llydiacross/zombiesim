@@ -11,6 +11,8 @@ function Get-ZMTemplateDensityTag {
     if ($name -match '_\d+x(?:\d+)?$') {
         $name = $name.Substring(0, $name.LastIndexOf('_'))
     }
+    # Terrain brush variants use s/t shape suffixes (tile_brush_1s), not density letters.
+    if ($name -match '_\d+[st]$') { return 0 }
     if ($name -match '_\d+([a-z]+)$') {
         $length = $Matches[1].Length
         if ($length -gt 3) { throw "Unsupported scenery density tag in '$Template': '$($Matches[1])'." }
@@ -130,16 +132,27 @@ function Get-ZMLandmarkTemplatePool {
         $matches = @($AvailableTemplates | Where-Object { $_ -like $pattern -or $_ -like $pattern.TrimStart('*/') } | Sort-Object)
         if ($matches.Count -eq 0) { continue }
 
-        $footprint = Get-ZMTemplateFootprint $matches[0]
+        $footprints = @{}
+        foreach ($match in $matches) { $footprints[$match] = Get-ZMTemplateFootprint $match }
+        # Prefer the largest authored footprint; equal areas keep the first-sorted shape.
+        $primary = [string]$matches[0]
+        foreach ($match in $matches) {
+            if (($footprints[$match].width * $footprints[$match].height) -gt ($footprints[$primary].width * $footprints[$primary].height)) { $primary = [string]$match }
+        }
+        $footprint = $footprints[$primary]
         $compatible = @($matches | Where-Object {
-            $candidateFootprint = Get-ZMTemplateFootprint $_
-            $candidateFootprint.width -eq $footprint.width -and $candidateFootprint.height -eq $footprint.height
+            $footprints[$_].width -eq $footprint.width -and $footprints[$_].height -eq $footprint.height
         })
+        # Single-tile variants of a multi-tile landmark remain usable when its footprint cannot be placed.
+        $singleTileFallbacks = if ($footprint.width -gt 1 -or $footprint.height -gt 1) {
+            @($matches | Where-Object { $footprints[$_].width -eq 1 -and $footprints[$_].height -eq 1 })
+        } else { @() }
         return [pscustomobject]@{
             landmark = [string]$landmark
-            template = [string]$matches[0]
+            template = [string]$compatible[0]
             footprint = $footprint
             templates = @($compatible)
+            singleTileFallbackTemplates = @($singleTileFallbacks)
         }
     }
     return $null
@@ -182,22 +195,120 @@ function Get-ZMSceneryEnvironmentProfile {
     return [string]$Cell.environment.terrain
 }
 
+function Get-ZMIndustrialZoneTierCap {
+    # Low density at a zone origin, rising to the surrounding density at its edge.
+    param(
+        [Parameter(Mandatory = $true)][double]$Distance,
+        [Parameter(Mandatory = $true)][double]$Radius
+    )
+
+    if ($Radius -le 0) { throw 'Industrial zone radius must be positive.' }
+    return [int][Math]::Min(3, 1 + [Math]::Floor(($Distance * 2.0) / $Radius))
+}
+
+function Get-ZMIndustrialZoneHash {
+    param([int]$Seed, [int]$X, [int]$Y)
+
+    $key = "industrial-zone-v1|$Seed|$X|$Y"
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try { $bytes = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($key)) }
+    finally { $sha.Dispose() }
+    return ([int64]$bytes[0] * 16777216 + [int64]$bytes[1] * 65536 + [int64]$bytes[2] * 256 + [int64]$bytes[3])
+}
+
+function Get-ZMIndustrialZoneOrigins {
+    # Deterministic seeded origins: inland, away from safe zones, landmarks and the dense
+    # commercial/financial districts, and spaced apart. The count scales with world size.
+    param(
+        [Parameter(Mandatory = $true)][object[]]$Cells,
+        [Parameter(Mandatory = $true)][hashtable]$InlandDistances,
+        [Parameter(Mandatory = $true)][int]$Seed,
+        [Parameter(Mandatory = $true)][System.Collections.IDictionary]$Settings
+    )
+
+    $cellsPerZone = [int]$Settings['cellsPerZone']
+    if ($cellsPerZone -lt 1) { throw 'industrialZones.cellsPerZone must be at least 1.' }
+    $minimumInland = [int]$Settings['minInlandDistance']
+    $minimumSpacing = [double]$Settings['minSpacing']
+    $excludedTags = @($Settings['excludedOriginTags'] | ForEach-Object { [string]$_ })
+    $count = [int][Math]::Max(1, [Math]::Round($Cells.Count / [double]$cellsPerZone))
+    $candidates = @($Cells | Where-Object {
+        $cell = $_
+        $safeZone = $cell.PSObject.Properties['safeZone']
+        $landmarks = $cell.PSObject.Properties['landmarks']
+        $InlandDistances["$($cell.x),$($cell.y)"] -ge $minimumInland -and
+            ($null -eq $safeZone -or $null -eq $safeZone.Value) -and
+            ($null -eq $landmarks -or @($landmarks.Value).Count -eq 0) -and
+            @(@($cell.environment.tags) | Where-Object { $_ -in $excludedTags }).Count -eq 0
+    } | Sort-Object @{ Expression = { Get-ZMIndustrialZoneHash $Seed ([int]$_.x) ([int]$_.y) } }, x, y)
+    $origins = [System.Collections.Generic.List[object]]::new()
+    foreach ($candidate in $candidates) {
+        if ($origins.Count -ge $count) { break }
+        $tooClose = $false
+        foreach ($origin in $origins) {
+            $dx = [double]$candidate.x - $origin.x
+            $dy = [double]$candidate.y - $origin.y
+            if ([Math]::Sqrt($dx * $dx + $dy * $dy) -lt $minimumSpacing) { $tooClose = $true; break }
+        }
+        if (-not $tooClose) { $origins.Add([pscustomobject]@{ id = $origins.Count; x = [int]$candidate.x; y = [int]$candidate.y }) }
+    }
+    if ($origins.Count -lt $count) {
+        Write-Warning "Industrial zones: placed $($origins.Count) of $count requested origins."
+    }
+    return @($origins)
+}
+
+function Test-ZMIndustrialZoneCell {
+    param([Parameter(Mandatory = $true)][object]$Cell)
+
+    $property = $Cell.PSObject.Properties['industrialZone']
+    return $null -ne $property -and $null -ne $property.Value
+}
+
 function Set-ZMSceneryDensityFields {
     param(
         [Parameter(Mandatory = $true)][object[]]$Cells,
         [Parameter(Mandatory = $true)][object[]]$OceanBoundaryCells,
-        [Parameter(Mandatory = $true)][string[]]$ProfilePriority
+        [Parameter(Mandatory = $true)][string[]]$ProfilePriority,
+        [int]$Seed = 0,
+        [System.Collections.IDictionary]$IndustrialZoneSettings = $null
     )
 
     $distances = Get-ZMSceneryInlandDistances $Cells $OceanBoundaryCells
+    $industrialOrigins = @()
+    $industrialRadius = 0.0
+    if ($null -ne $IndustrialZoneSettings -and [bool]$IndustrialZoneSettings['enabled']) {
+        $industrialRadius = [double]$IndustrialZoneSettings['radius']
+        if ($industrialRadius -le 0) { throw 'industrialZones.radius must be positive.' }
+        $industrialOrigins = @(Get-ZMIndustrialZoneOrigins $Cells $distances $Seed $IndustrialZoneSettings)
+    }
     foreach ($cell in $Cells) {
         $profile = Get-ZMSceneryEnvironmentProfile $cell $ProfilePriority
         $zone = Get-ZMSceneryDensityZone $distances["$($cell.x),$($cell.y)"] $profile
+        $tier = $zone.tier
+        $industrialZone = $null
+        foreach ($origin in $industrialOrigins) {
+            $dx = [double]$cell.x - $origin.x
+            $dy = [double]$cell.y - $origin.y
+            $distance = [Math]::Round([Math]::Sqrt($dx * $dx + $dy * $dy), 3)
+            if ($distance -le $industrialRadius -and ($null -eq $industrialZone -or $distance -lt $industrialZone.distance)) {
+                $industrialZone = [ordered]@{ id = $origin.id; originX = $origin.x; originY = $origin.y; distance = $distance; radius = $industrialRadius }
+            }
+        }
+        if ($null -ne $industrialZone) {
+            $tier = [Math]::Min($tier, (Get-ZMIndustrialZoneTierCap $industrialZone.distance $industrialRadius))
+            if (@($cell.environment.tags) -notcontains 'industrial_zone') {
+                $cell.environment.tags = @(@($cell.environment.tags) + 'industrial_zone' | Sort-Object -Unique)
+            }
+        }
+        if ($null -ne $industrialZone -or $industrialOrigins.Count -gt 0) {
+            Add-Member -InputObject $cell -NotePropertyName industrialZone -NotePropertyValue $industrialZone -Force
+        }
         Add-Member -InputObject $cell -NotePropertyName sceneryDensityPolicyVersion -NotePropertyValue 1 -Force
-        Add-Member -InputObject $cell -NotePropertyName sceneryDensityTier -NotePropertyValue $zone.tier -Force
+        Add-Member -InputObject $cell -NotePropertyName sceneryDensityTier -NotePropertyValue $tier -Force
         Add-Member -InputObject $cell -NotePropertyName sceneryDensitySource -NotePropertyValue $zone.source -Force
         Add-Member -InputObject $cell -NotePropertyName sceneryInlandDistance -NotePropertyValue $zone.inlandDistance -Force
-        Add-Member -InputObject $cell -NotePropertyName buildingDensityTier -NotePropertyValue $zone.tier -Force
+        Add-Member -InputObject $cell -NotePropertyName buildingDensityTier -NotePropertyValue $tier -Force
     }
 }
 
@@ -223,7 +334,20 @@ function Get-ZMStoredSceneryDensity {
     }
     $sourceProfile = if ($Cell.sceneryDensitySource.StartsWith('district:')) { $Cell.sceneryDensitySource.Substring(9) } else { 'grassland' }
     $expected = Get-ZMSceneryDensityZone $Cell.sceneryInlandDistance $sourceProfile
-    if ($expected.tier -ne $Cell.sceneryDensityTier -or $expected.source -cne $Cell.sceneryDensitySource) {
+    $expectedTier = $expected.tier
+    $tierMatches = $expectedTier -eq $Cell.sceneryDensityTier
+    if (Test-ZMIndustrialZoneCell $Cell) {
+        $industrialZone = $Cell.industrialZone
+        $hasDistance = if ($industrialZone -is [System.Collections.IDictionary]) { $industrialZone.Contains('distance') } else { $null -ne $industrialZone.PSObject.Properties['distance'] }
+        if ($hasDistance) {
+            $expectedTier = [Math]::Min($expectedTier, (Get-ZMIndustrialZoneTierCap ([double]$industrialZone.distance) ([double]$industrialZone.radius)))
+            $tierMatches = $expectedTier -eq $Cell.sceneryDensityTier
+        } else {
+            # Plan recipes keep only the zone flag (per-cell distance would split shared recipes); a zone can only cap the tier.
+            $tierMatches = $Cell.sceneryDensityTier -le $expectedTier
+        }
+    }
+    if (-not $tierMatches -or $expected.source -cne $Cell.sceneryDensitySource) {
         throw "Inconsistent stored scenery density policy for $context."
     }
     $alias = $Cell.PSObject.Properties['buildingDensityTier']
@@ -288,7 +412,11 @@ function Select-ZMSceneryTemplate {
         [Parameter(Mandatory = $true)][ValidateRange(0, 4294967295)][long]$ChoiceHash,
         [Parameter(Mandatory = $true)][string]$Context,
         [switch]$RouteAdjacentWall,
-        [switch]$Required
+        [switch]$Required,
+        [string]$PreferredPattern = '',
+        [hashtable]$UsageCounts = $null,
+        # Explicit opt-in for pools whose density tags are presentation only (radioactive towers).
+        [switch]$AnyTier
     )
 
     # The caller supplies one compatible functional/footprint pool, never a global neutral pool.
@@ -297,7 +425,7 @@ function Select-ZMSceneryTemplate {
     $excluded = [System.Collections.Generic.List[object]]::new()
     foreach ($template in $Templates) {
         $tag = Get-ZMTemplateDensityTag $template
-        if ($tag -eq 0 -or $tag -eq $target) {
+        if ($AnyTier -or $tag -eq 0 -or $tag -eq $target) {
             $eligible.Add($template.Replace('\', '/').ToLowerInvariant())
         } else {
             $excluded.Add([pscustomobject]@{ template = $template; tag = $tag; reason = "target_tier_$target" })
@@ -305,10 +433,30 @@ function Select-ZMSceneryTemplate {
     }
     $pool = [string[]]@($eligible | Select-Object -Unique)
     [Array]::Sort($pool, [StringComparer]::Ordinal)
+    # Themed assets (for example _ra_ buildings in radioactive cells) win whenever one fits the
+    # target tier; the rest of the pool remains the fallback for tiers without themed art.
+    $preferred = $false
+    if (-not [string]::IsNullOrWhiteSpace($PreferredPattern)) {
+        $themed = [string[]]@($pool | Where-Object { $_ -match $PreferredPattern })
+        if ($themed.Count -gt 0) { $pool = $themed; $preferred = $true }
+    }
     if ($pool.Count -eq 0 -and $Required) {
         throw "Required scenery pool unavailable at ${Context}: zone=$ZoneTier target=$target routeAdjacentWall=$([bool]$RouteAdjacentWall)."
     }
+    # Optional usage balancing: only the least-used eligible templates remain candidates, so every
+    # pool member is reached before any repeats; the hash still breaks ties deterministically.
+    if ($null -ne $UsageCounts -and $pool.Count -gt 1) {
+        $minimumUsage = [int]::MaxValue
+        foreach ($template in $pool) {
+            $usage = if ($UsageCounts.ContainsKey($template)) { [int]$UsageCounts[$template] } else { 0 }
+            if ($usage -lt $minimumUsage) { $minimumUsage = $usage }
+        }
+        $pool = [string[]]@($pool | Where-Object { $usage = if ($UsageCounts.ContainsKey($_)) { [int]$UsageCounts[$_] } else { 0 }; $usage -eq $minimumUsage })
+    }
     $chosen = if ($pool.Count -gt 0) { $pool[[int]($ChoiceHash % $pool.Count)] } else { $null }
+    if ($null -ne $UsageCounts -and $null -ne $chosen) {
+        $UsageCounts[$chosen] = 1 + $(if ($UsageCounts.ContainsKey($chosen)) { [int]$UsageCounts[$chosen] } else { 0 })
+    }
     return [pscustomobject]@{
         status = if ($null -eq $chosen) { 'shortage_keep_terrain' } else { 'selected' }
         context = $Context
@@ -317,8 +465,10 @@ function Select-ZMSceneryTemplate {
         template = $chosen
         actualTag = if ($null -eq $chosen) { $null } else { Get-ZMTemplateDensityTag $chosen }
         routeAdjacentWall = [bool]$RouteAdjacentWall
+        anyTier = [bool]$AnyTier
+        preferredPool = $preferred
         excluded = @($excluded)
     }
 }
 
-Export-ModuleMember -Function Get-ZMTemplateDensityTag, Get-ZMTemplateFootprint, Get-ZMLandmarkTemplatePool, Get-ZMSceneryDensityZone, Get-ZMSceneryInlandDistances, Get-ZMSceneryTargetTier, Get-ZMSceneryPossibleTargetTiers, Get-ZMSceneryLandmarkTags, Get-ZMSceneryEnvironmentProfile, Set-ZMSceneryDensityFields, Get-ZMStoredSceneryDensity, Test-ZMSceneryDensityManifest, Get-ZMScenerySelectionHash, Select-ZMSceneryTemplate
+Export-ModuleMember -Function Get-ZMTemplateDensityTag, Get-ZMTemplateFootprint, Get-ZMLandmarkTemplatePool, Get-ZMSceneryDensityZone, Get-ZMSceneryInlandDistances, Get-ZMSceneryTargetTier, Get-ZMSceneryPossibleTargetTiers, Get-ZMSceneryLandmarkTags, Get-ZMSceneryEnvironmentProfile, Set-ZMSceneryDensityFields, Get-ZMIndustrialZoneTierCap, Get-ZMIndustrialZoneOrigins, Test-ZMIndustrialZoneCell, Get-ZMStoredSceneryDensity, Test-ZMSceneryDensityManifest, Get-ZMScenerySelectionHash, Select-ZMSceneryTemplate

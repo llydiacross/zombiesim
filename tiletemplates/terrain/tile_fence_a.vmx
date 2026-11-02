@@ -1,8 +1,8 @@
 versioninfo
 {
 	"editorversion" "400"
-	"editorbuild" "8871"
-	"mapversion" "2"
+	"editorbuild" "8873"
+	"mapversion" "4"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "2"
+	"mapversion" "4"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -109,9 +109,9 @@ world
 				"v" "320 -320 32"
 				"v" "-320 -320 32"
 			}
-			"material" "GM_CONSTRUCT/FLATGRASS_2"
-			"uaxis" "[1 0 0 1280] 0.25"
-			"vaxis" "[0 -1 0 -1280] 0.25"
+			"material" "DE_CBBLE/GRASSFLOOR01"
+			"uaxis" "[1 0 0 256] 0.25"
+			"vaxis" "[0 -1 0 -256] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -208,7 +208,18 @@ world
 		}
 		editor
 		{
-			"color" "0 135 196"
+			"color" "222 167 0"
+			"groupid" "22"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	group
+	{
+		"id" "22"
+		editor
+		{
+			"color" "222 167 0"
 			"visgroupshown" "1"
 			"visgroupautoshown" "1"
 		}
@@ -229,7 +240,8 @@ entity
 	"origin" "-288 -64 32"
 	editor
 	{
-		"color" "255 255 0"
+		"color" "222 167 0"
+		"groupid" "22"
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 0]"
@@ -250,7 +262,8 @@ entity
 	"origin" "-288 248 32"
 	editor
 	{
-		"color" "255 255 0"
+		"color" "222 167 0"
+		"groupid" "22"
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 500]"

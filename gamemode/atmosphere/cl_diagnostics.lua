@@ -142,6 +142,7 @@ return function(Atmosphere, Modules)
             lastApplySource = self.LastApplySource,
             stormIntensity = self.StormIntensity,
             fog = self:GetFogSettings(),
+            worldHaze = Modules.WorldHaze.GetDiagnostics(),
             lastProfileReceive = self.LastProfileReceive,
             weather = self.Weather,
             sheltered = Environment.IsSheltered,

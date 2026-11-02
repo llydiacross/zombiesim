@@ -221,10 +221,7 @@ local function finishProfile()
         },
         resources = {
             clientEntities = #ents.GetAll(),
-            launcherCityModels = ZM_LauncherSceneClient and #(ZM_LauncherSceneClient.CityModels or {}) or 0,
             launcherSpheres = ZM_LauncherSceneClient and table.Count(ZM_LauncherSceneClient.Spheres or {}) or 0,
-            launcherDioramaMeshes = ZM_LauncherSceneClient and ZM_LauncherSceneClient.DioramaMeshes
-                and tonumber(ZM_LauncherSceneClient.DioramaMeshes.meshes) or 0,
             skyPaletteMeshes = ZM_SkyPalettes and #(ZM_SkyPalettes.Meshes or {}) or 0,
             characterCardEntries = ZM_CharacterCards and table.Count(ZM_CharacterCards.Entries or {}) or 0
         },

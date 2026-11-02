@@ -242,7 +242,13 @@ function Cards:Create(parent, profile, row)
             surface.SetDrawColor(255, 255, 255, 3)
             surface.DrawRect(12, 16 + index * 32, width - 24, 1)
         end
-        local painted = modelPaint(preview, width, height)
+        // DModelPanel blends only by its own alpha, so apply the launcher UI fade explicitly.
+        local scene = ZM_LauncherSceneClient
+        local uiAlpha = scene and scene.GetPresentationUIAlpha and scene:GetPresentationUIAlpha() or 1
+        preview.FadeColour = preview.FadeColour or Color(255, 255, 255, 255)
+        preview.FadeColour.a = math.Round(uiAlpha * 255)
+        preview.colColor = preview.FadeColour
+        local painted = uiAlpha > 0 and modelPaint(preview, width, height) or nil
         local cardEntry = preview.CardEntry
         if cardEntry then cardEntry.loadoutDrawn = drawLoadout(cardEntry, width, height) end
         return painted

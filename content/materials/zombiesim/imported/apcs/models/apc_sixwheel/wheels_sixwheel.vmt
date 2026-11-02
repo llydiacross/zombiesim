@@ -1,0 +1,19 @@
+SDK_VertexLitGeneric
+{
+	"$basetexture" "zombiesim/imported/apcs/models/apc_sixwheel/wheels_sixwheel"
+	"$surfaceprop" "metal"
+	$detail "zombiesim/imported/apcs/models/apcnew/detail_metal"
+	$bumpmap "zombiesim/imported/apcs/models/apc_sixwheel/wheels_sixwheel_n"
+	$color2 "[0.75 0.75 0.75]"
+
+	"$phong"  				"1"
+	"$phongexponent" 		"100"
+	"$phongboost" 			"0.1"
+	"$phongfresnelranges"	"[1 2 3]"
+	"$phongtint" 			"[0.6 0.8 1]"
+	"$phongalbedotint" 		"1"
+$detailscale 6
+$detailblendfactor .65
+$detailblendmode 0
+
+}

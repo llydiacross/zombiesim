@@ -2184,7 +2184,7 @@ Pools reuse the puddles' flat-ground checking, lifted world-space mesh and depth
 
 ## Movement balance
 
-`gamemode/sv_movement.lua` owns walk/sprint scaling (0.675/0.765 of the unmodified speeds) and stamina rates. Implant movement bonuses apply afterward through the existing modifier service without compounding on refresh or spawn. Sprint drain is `60 / (1 + Agility * 0.05 + Strength * 0.03)` per second; recovery is `5.5 * (1 + Agility * 0.05)` per second. Maximum stamina and the held-sprint input rule are unchanged. Exhaustion limits speed to walking and preserves other inputs.
+`gamemode/sv_movement.lua` owns walk/sprint scaling (0.57375/0.65025 of the unmodified speeds) and stamina rates. Implant movement bonuses apply afterward through the existing modifier service without compounding on refresh or spawn. Sprint drain is `30 / (1 + Agility * 0.05 + Strength * 0.03)` per second; recovery is `5.5 * (1 + Agility * 0.05)` per second. Maximum stamina and the held-sprint input rule are unchanged. Exhaustion limits speed to walking and preserves other inputs.
 
 Run `zn_test_movement` for exact old/new percentages, refresh/spawn/implant behavior, sustained/interrupted sprint, clamping and exhaustion input tests. The suite also checks any deployed players' actual speeds/rates without changing their state. `zombiesim_dev_persistence_report` includes `runtime.movement` with captured baseline/current speeds, implant bonus, stat-derived rates, stamina and horizontal velocity for live pace checks.
 
@@ -2268,7 +2268,7 @@ For future multi-tile prefab support, see [docs/two_by_two_tile_templates_plan.m
 
 # Walker Simulator
 
-The authoritative native population system and its Alpha 2 ticket contract are documented in [docs/walker_simulation.md](../docs/walker_simulation.md). Run these commands from [bin/walker-simulator](../bin/walker-simulator):
+The authoritative native population system and its Alpha 2 ticket contract are documented in [docs/walker_simulation.md](../docs/walker_simulation.md). Run these commands from [walker-simulator](../walker-simulator):
 
 ```powershell
 cmake --preset mingw-debug
@@ -2276,7 +2276,9 @@ cmake --build --preset build-mingw-debug
 ctest --preset test-mingw-debug --output-on-failure
 ```
 
-Build and install the optional Win64 server module:
+The build writes `zombiesim-walker-observer.exe` to the repository `bin/` folder; the test executable stays in the build tree for `ctest`.
+
+Build and install the optional Win64 server module (built as `bin/gmsv_zombiesimwalker_win64.dll`):
 
 ```powershell
 cmake --preset mingw-gmod-module-debug
@@ -2287,3 +2289,21 @@ cmake --build --preset build-mingw-gmod-module-debug
 In game, run `zombiesim_walker_smoke`, load `zn_preview_start`, then use `zombiesim_walker_status` and `zombiesim_walker_noise <strength> <radius> [durationTicks]`. Record live evidence in [docs/alpha_2_test_log.md](../docs/alpha_2_test_log.md).
 
 Compatible Walker checkpoints persist horde movement, attractors, terminal ticket outcomes, and the server ticket-request counter across level changes and restarts. Checkpoints are profile-scoped in the server SQLite `walker_checkpoints` table; periodic serialization runs on the native worker thread. Map-local NextBots are reconciled as despawned after restore, then the materializer resumes normally. Use `zombiesim_walker_checkpoint_status`, `zombiesim_walker_checkpoint_save`, and `zombiesim_walker_checkpoint_clear <profile>` for server-side checkpoint diagnostics and administration. Workshop uploads cannot distribute the DLL; install releases manually under `garrysmod/lua/bin` using the script above.
+
+# World Viewer
+
+`world-viewer/` is a native C++ (raylib) tool that renders a generated world plan without compiling it in Source. It reads the exact plan and the recipe VMFs it references, then expands every `func_instance` recursively. It draws brushes and displacements, using material colours from the mounted VMT/VTF reflectivity. Use it to look over a whole generated city for placement and generation mistakes before any VBSP/VVIS/VRAD work. See [world-viewer/README.md](../world-viewer/README.md) for controls and limitations.
+
+Build from [world-viewer](../world-viewer); the executable is written to `bin/zombiesim-world-viewer.exe`:
+
+```powershell
+cmake --preset mingw-debug
+cmake --build --preset build-mingw-debug
+```
+
+Run from the repository root:
+
+```powershell
+.\bin\zombiesim-world-viewer.exe --plan generated\preview_alpha34_20261101\plan.json
+.\bin\zombiesim-world-viewer.exe --plan <plan.json> --stats
+```

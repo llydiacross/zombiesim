@@ -1,0 +1,36 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "mingw-debug",
+      "displayName": "MinGW x64 Debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/mingw-debug",
+      "environment": {
+        "PATH": "$env{USERPROFILE}/scoop/apps/mingw/current/bin;$penv{PATH}"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "mingw-release",
+      "displayName": "MinGW x64 Release",
+      "inherits": "mingw-debug",
+      "binaryDir": "${sourceDir}/build/mingw-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "build-mingw-debug",
+      "configurePreset": "mingw-debug"
+    },
+    {
+      "name": "build-mingw-release",
+      "configurePreset": "mingw-release"
+    }
+  ]
+}

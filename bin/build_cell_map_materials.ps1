@@ -196,11 +196,28 @@ function Test-PlacementEmitsInstance {
     return $null -eq $property -or [bool]$property.Value
 }
 
+function Get-PlacementTemplatePath {
+    param([object]$Placement)
+
+    $templateProperty = $Placement.PSObject.Properties['template']
+    if ($null -eq $templateProperty) { return '' }
+    return ([string]$templateProperty.Value).Replace('\', '/').ToLowerInvariant()
+}
+
+# Context roles such as carpark_road_junction or landmark_road_junction still place road pieces.
+function Test-OrdinaryRoadTemplate {
+    param([object]$Placement)
+
+    $template = Get-PlacementTemplatePath $Placement
+    return $template -like 'roads/*' -and $template -notlike '*motorway*'
+}
+
 function Test-LandmarkAnchor {
     param([object]$Placement)
 
     $role = [string]$Placement.role
     return (Test-PlacementEmitsInstance $Placement) -and
+        (Get-PlacementTemplatePath $Placement) -notlike 'roads/*' -and
         ($role -eq 'landmark' -or ($role -like 'landmark_*' -and $role -notlike 'landmark_carpark*'))
 }
 
@@ -362,7 +379,7 @@ try {
                     $motorwayBrush
                 } elseif ($role -eq 'motorway') {
                     $motorwayBrush
-                } elseif ($role -in $roadRoles -or $role -like 'bridge-*' -or $role -like 'onramp-*') {
+                } elseif ($role -in $roadRoles -or $role -like 'bridge-*' -or $role -like 'onramp-*' -or (Test-OrdinaryRoadTemplate $placement)) {
                     if ($isMotorway -and $role -in @('road', 'road_center')) { $motorwayBrush } else { $roadBrush }
                 } elseif ($role -eq 'building' -or $role -eq 'building_occupied') { $buildingBrush
                 } elseif ($role -eq 'decoration') { $decorationBrush

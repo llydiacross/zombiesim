@@ -1,8 +1,8 @@
 versioninfo
 {
 	"editorversion" "400"
-	"editorbuild" "8871"
-	"mapversion" "11"
+	"editorbuild" "8873"
+	"mapversion" "12"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,12 +89,131 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "11"
+	"mapversion" "12"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
 	"maxpropscreenwidth" "-1"
 	"skyname" "sky_day01_01"
+	solid
+	{
+		"id" "96"
+		side
+		{
+			"id" "18"
+			"plane" "(-320 320 16) (320 320 16) (320 -320 16)"
+			vertices_plus
+			{
+				"v" "-320 320 16"
+				"v" "320 320 16"
+				"v" "320 -320 16"
+				"v" "-320 -320 16"
+			}
+			"material" "HALFLIFE/BLACK"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 -1 0 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "17"
+			"plane" "(-320 -320 0) (320 -320 0) (320 320 0)"
+			vertices_plus
+			{
+				"v" "-320 -320 0"
+				"v" "320 -320 0"
+				"v" "320 320 0"
+				"v" "-320 320 0"
+			}
+			"material" "HALFLIFE/BLACK"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 -1 0 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "16"
+			"plane" "(-320 320 16) (-320 -320 16) (-320 -320 0)"
+			vertices_plus
+			{
+				"v" "-320 320 16"
+				"v" "-320 -320 16"
+				"v" "-320 -320 0"
+				"v" "-320 320 0"
+			}
+			"material" "HALFLIFE/BLACK"
+			"uaxis" "[0 1 0 -0] 0.25"
+			"vaxis" "[0 0 -1 -0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "15"
+			"plane" "(320 320 0) (320 -320 0) (320 -320 16)"
+			vertices_plus
+			{
+				"v" "320 320 0"
+				"v" "320 -320 0"
+				"v" "320 -320 16"
+				"v" "320 320 16"
+			}
+			"material" "HALFLIFE/BLACK"
+			"uaxis" "[0 1 0 -0] 0.25"
+			"vaxis" "[0 0 -1 -0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "14"
+			"plane" "(320 320 16) (-320 320 16) (-320 320 0)"
+			vertices_plus
+			{
+				"v" "320 320 16"
+				"v" "-320 320 16"
+				"v" "-320 320 0"
+				"v" "320 320 0"
+			}
+			"material" "HALFLIFE/BLACK"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 0 -1 -0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "13"
+			"plane" "(320 -320 0) (-320 -320 0) (-320 -320 16)"
+			vertices_plus
+			{
+				"v" "320 -320 0"
+				"v" "-320 -320 0"
+				"v" "-320 -320 16"
+				"v" "320 -320 16"
+			}
+			"material" "HALFLIFE/BLACK"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 0 -1 -0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "244 117 0"
+			"groupid" "106"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
 	solid
 	{
 		"id" "2"
@@ -124,27 +243,27 @@ world
 				"subdiv" "0"
 				normals
 				{
-					"row0" "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
-					"row1" "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
-					"row2" "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
-					"row3" "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
-					"row4" "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
-					"row5" "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
-					"row6" "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
-					"row7" "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
-					"row8" "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
+					"row0" "0 0 -1 0 0 -1 0 0 -1 0 0 -1 0 0 -1 0 0 -1 0 0 -1 0 0 -1 0 0 -1"
+					"row1" "0 0 -1 0 0 -1 0 0 -1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 -1 0 0 -1"
+					"row2" "0 0 -1 0 0 -1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 -1 0 0 -1"
+					"row3" "0 0 -1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 -1 0 0 -1 0 0 -1"
+					"row4" "0 0 -1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 -1 0 0 -1 0 0 -1 0 0 -1"
+					"row5" "0 0 -1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 -1 0 0 -1 0 0 -1"
+					"row6" "0 0 -1 0 0 -1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 -1 0 0 -1"
+					"row7" "0 0 -1 0 0 -1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 -1 0 0 -1"
+					"row8" "0 0 -1 0 0 -1 0 0 -1 0 0 -1 0 0 -1 0 0 -1 0 0 -1 0 0 -1 0 0 -1"
 				}
 				distances
 				{
-					"row0" "0 0 0 0 0 0 0 0 0"
-					"row1" "0 0 0 0 0 0 0 0 0"
-					"row2" "0 0 0 0 0 0 0 0 0"
-					"row3" "0 0 0 0 0 0 0 0 0"
-					"row4" "0 0 0 0 0 0 0 0 0"
-					"row5" "0 0 0 0 0 0 0 0 0"
-					"row6" "0 0 0 0 0 0 0 0 0"
-					"row7" "0 0 0 0 0 0 0 0 0"
-					"row8" "0 0 0 0 0 0 0 0 0"
+					"row0" "2.86161 3.9308 2.86161 0.720631 1.06901 1.0692 1.06901 3.57711 3.9308"
+					"row1" "4.6523 5 3.9308 2.12214 1.06919 1.06939 0.345985 3.21017 5"
+					"row2" "6.79165 6.79069 7.14957 11.7781 11.4119 3.20759 2.86161 3.58345 3.9308"
+					"row3" "5.72321 3.21694 18.9755 20.7224 11.7781 2.84811 2.86161 3.9308 3.58473"
+					"row4" "6.44965 2.12689 18.5841 19.6536 11.4363 0.723211 3.9308 5 3.9308"
+					"row5" "5.72016 1.76659 7.12887 13.5781 8.58463 5.72245 2.86161 3.9308 2.86161"
+					"row6" "4.65393 2.86161 2.87445 10.723 12.5235 10.723 1.44337 0.723211 0.723211"
+					"row7" "4.65143 2.86161 0.712887 3.93924 5.02147 3.93924 0.712887 2.86161 3.9308"
+					"row8" "5 3.9308 2.16289 5.00892 4.63271 5.00892 2.16289 3.9308 5"
 				}
 				offsets
 				{
@@ -299,19 +418,19 @@ world
 	}
 	solid
 	{
-		"id" "96"
+		"id" "116"
 		side
 		{
-			"id" "18"
-			"plane" "(-320 320 16) (320 320 16) (320 -320 16)"
+			"id" "19"
+			"plane" "(-320 320 32) (320 320 32) (320 -320 32)"
 			vertices_plus
 			{
-				"v" "-320 320 16"
-				"v" "320 320 16"
-				"v" "320 -320 16"
-				"v" "-320 -320 16"
+				"v" "-320 320 32"
+				"v" "320 320 32"
+				"v" "320 -320 32"
+				"v" "-320 -320 32"
 			}
-			"material" "HALFLIFE/BLACK"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -320,7 +439,7 @@ world
 		}
 		side
 		{
-			"id" "17"
+			"id" "20"
 			"plane" "(-320 -320 0) (320 -320 0) (320 320 0)"
 			vertices_plus
 			{
@@ -329,7 +448,7 @@ world
 				"v" "320 320 0"
 				"v" "-320 320 0"
 			}
-			"material" "HALFLIFE/BLACK"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -338,80 +457,79 @@ world
 		}
 		side
 		{
-			"id" "16"
-			"plane" "(-320 320 16) (-320 -320 16) (-320 -320 0)"
+			"id" "21"
+			"plane" "(-320 320 32) (-320 -320 32) (-320 -320 0)"
 			vertices_plus
 			{
-				"v" "-320 320 16"
-				"v" "-320 -320 16"
+				"v" "-320 320 32"
+				"v" "-320 -320 32"
 				"v" "-320 -320 0"
 				"v" "-320 320 0"
 			}
-			"material" "HALFLIFE/BLACK"
-			"uaxis" "[0 1 0 -0] 0.25"
-			"vaxis" "[0 0 -1 -0] 0.25"
+			"material" "DE_CBBLE/GRASSFLOOR01"
+			"uaxis" "[0 1 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
 		side
 		{
-			"id" "15"
-			"plane" "(320 320 0) (320 -320 0) (320 -320 16)"
+			"id" "22"
+			"plane" "(320 320 0) (320 -320 0) (320 -320 32)"
 			vertices_plus
 			{
 				"v" "320 320 0"
 				"v" "320 -320 0"
-				"v" "320 -320 16"
-				"v" "320 320 16"
+				"v" "320 -320 32"
+				"v" "320 320 32"
 			}
-			"material" "HALFLIFE/BLACK"
-			"uaxis" "[0 1 0 -0] 0.25"
-			"vaxis" "[0 0 -1 -0] 0.25"
+			"material" "DE_CBBLE/GRASSFLOOR01"
+			"uaxis" "[0 1 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
 		side
 		{
-			"id" "14"
-			"plane" "(320 320 16) (-320 320 16) (-320 320 0)"
+			"id" "23"
+			"plane" "(320 320 32) (-320 320 32) (-320 320 0)"
 			vertices_plus
 			{
-				"v" "320 320 16"
-				"v" "-320 320 16"
+				"v" "320 320 32"
+				"v" "-320 320 32"
 				"v" "-320 320 0"
 				"v" "320 320 0"
 			}
-			"material" "HALFLIFE/BLACK"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 0 -1 -0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
 		side
 		{
-			"id" "13"
-			"plane" "(320 -320 0) (-320 -320 0) (-320 -320 16)"
+			"id" "24"
+			"plane" "(320 -320 0) (-320 -320 0) (-320 -320 32)"
 			vertices_plus
 			{
 				"v" "320 -320 0"
 				"v" "-320 -320 0"
-				"v" "-320 -320 16"
-				"v" "320 -320 16"
+				"v" "-320 -320 32"
+				"v" "320 -320 32"
 			}
-			"material" "HALFLIFE/BLACK"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 0 -1 -0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
 		editor
 		{
-			"color" "244 117 0"
-			"groupid" "106"
+			"color" "0 182 115"
 			"visgroupshown" "1"
 			"visgroupautoshown" "1"
 		}

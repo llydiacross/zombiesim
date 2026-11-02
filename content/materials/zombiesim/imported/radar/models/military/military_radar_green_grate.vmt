@@ -1,0 +1,6 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "zombiesim/imported/radar/models/military/military_radar_green_grate"
+	"$nocull"	1
+	"$alphatest" 1
+}

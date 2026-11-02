@@ -15,13 +15,17 @@ ZM_Quality.ConVars = {
     screenEffects = CreateClientConVar("zombiesim_screen_effects", "1", true, false,
         "Enables atmosphere colour correction and film grain."),
     skyDetail = CreateClientConVar("zombiesim_sky_detail", "2", true, false,
-        "3D skybox neighbour rings drawn around the current cell (0 disables the city skyline)."),
+        "3D skybox neighbour rings drawn around the current cell (0 disables the city skyline; up to the manifest radius, 6)."),
     skyClouds = CreateClientConVar("zombiesim_sky_clouds", "1", true, false,
         "Draws the drifting 3D skybox cloud deck."),
     skyProps = CreateClientConVar("zombiesim_sky_props", "1", true, false,
         "Draws scaled tile props and road wrecks in the 3D skybox (0 off; 0.1 to 1 scales the per-frame prop budget)."),
     skyFires = CreateClientConVar("zombiesim_sky_fires", "1", true, false,
-        "Draws skybox fires and nearby outer-edge building fires with their smoke plumes.")
+        "Draws skybox fires and nearby outer-edge building fires with their smoke plumes."),
+    skyHaze = CreateClientConVar("zombiesim_sky_haze", "1", true, false,
+        "Skybox ground haze layer (0 off, below 0.75 the cheap low-quality layer, otherwise full quality).", 0, 1),
+    worldHaze = CreateClientConVar("zombiesim_world_haze", "1", true, false,
+        "In-world edge haze and ground mist (0 off, below 0.75 the cheap low-quality layer, otherwise full quality).", 0, 1)
 }
 
 ZM_Quality.PresetOrder = { "low", "medium", "high" }
@@ -40,6 +44,8 @@ ZM_Quality.Presets = {
         zombiesim_sky_clouds = 0,
         zombiesim_sky_props = 0.4,
         zombiesim_sky_fires = 0,
+        zombiesim_sky_haze = 0.5,
+        zombiesim_world_haze = 0.5,
         zombiesim_globe_quality = 0
     },
     medium = {
@@ -54,6 +60,8 @@ ZM_Quality.Presets = {
         zombiesim_sky_clouds = 1,
         zombiesim_sky_props = 0.7,
         zombiesim_sky_fires = 1,
+        zombiesim_sky_haze = 1,
+        zombiesim_world_haze = 1,
         zombiesim_globe_quality = 1
     },
     high = {
@@ -68,6 +76,8 @@ ZM_Quality.Presets = {
         zombiesim_sky_clouds = 1,
         zombiesim_sky_props = 1,
         zombiesim_sky_fires = 1,
+        zombiesim_sky_haze = 1,
+        zombiesim_world_haze = 1,
         zombiesim_globe_quality = 1
     }
 }

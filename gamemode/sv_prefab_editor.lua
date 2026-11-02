@@ -389,6 +389,7 @@ local function listEditorCells(query, page)
     local matches = {}
     for _, cell in ipairs(data.cells) do
         if type(cell) ~= "table" then return nil, "Preview world contains invalid cell metadata." end
+        if cell.empty == true then continue end
         local mapName = ZM_World:GetMapPath(cell)
         local x, y = ZM_World:GetWorldCoordinates(cell)
         if not EditorMap.IsValidCellId(cell.id) or not EditorMap.IsValidName(mapName)

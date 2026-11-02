@@ -43,17 +43,6 @@ Suite:Add("Earth materials and bounded static spheres", function(check)
     dayAmount, nightAmount = Scene:GetEarthNightBlend(-light)
     check(dayAmount == 0 and nightAmount == 1,
         "the night surface reaches full weight on the dark hemisphere")
-    local horizon = Scene:GetHorizonMaterialStatus()
-    check(horizon.sun.valid and horizon.terrain.valid and horizon.roads.valid,
-        "sun, terrain and road materials resolve for the grounded city diorama")
-    local diorama = Scene:GetDioramaMeshes()
-    check(diorama.meshes == 2 and diorama.terrainTriangles == 1344
-        and diorama.roadTriangles == 96,
-        "terrain and crossing roads have fixed bounded static-mesh budgets")
-    check(diorama.halfWidth == 620 and diorama.halfDepth == 520,
-        "the ground plate is wide enough to carry its boundary out of frame")
-    check(Scene:GetDioramaMeshes() == diorama,
-        "repeated city draws reuse the same terrain and road meshes")
 end)
 
 Suite:Add("city marker follows the rotated Earth surface", function(check)
@@ -88,6 +77,7 @@ Suite:Add("manual Earth view is bounded and Home-owned", function(check)
         dragging = Scene.EarthDragging, spinYaw = Scene.EarthSpinYawVelocity,
         spinPitch = Scene.EarthSpinPitchVelocity,
         manual = Scene.ManualEarthView, presentation = Scene.PresentationState or "earth",
+        shown = Scene.PresentationShown,
         transition = Scene.PresentationTransition, page = menu.Page, active = menu.Active,
         waiting = menu.Waiting, credits = menu.Credits, inspection = inspection.State,
         frameVisible = IsValid(menu.Frame) and menu.Frame:IsVisible()
@@ -107,7 +97,7 @@ Suite:Add("manual Earth view is bounded and Home-owned", function(check)
     if IsValid(menu.Frame) then menu.Frame:SetVisible(true) end
     inspection.State = nil
     Scene.PresentationTransition = nil
-    Scene.PresentationState = "earth"
+    Scene.PresentationState, Scene.PresentationShown = "earth", nil
     check(menu:IsEarthControlsActive(), "manual input is owned by the exposed Home Earth viewport")
     menu.Page = "options"
     check(not menu:IsEarthControlsActive(), "Settings cannot retain Earth input ownership")
@@ -124,6 +114,7 @@ Suite:Add("manual Earth view is bounded and Home-owned", function(check)
     Scene.Yaw, Scene.Pitch, Scene.EarthViewZoom = original.yaw, original.pitch, original.zoom
     Scene.EarthViewReturn = original.returnTransition
     Scene.ManualEarthView, Scene.PresentationState = original.manual, original.presentation
+    Scene.PresentationShown = original.shown
     Scene.EarthDragging = original.dragging
     Scene.EarthSpinYawVelocity, Scene.EarthSpinPitchVelocity = original.spinYaw, original.spinPitch
     Scene.PresentationTransition = original.transition
@@ -272,65 +263,70 @@ Suite:Add("launcher space sky does not replace sky inspection", function(check)
     palettes:Update()
 end)
 
-Suite:Add("presentation transitions are timed and interruptible", function(check)
+Suite:Add("presentation transitions fade through black and are interruptible", function(check)
     local original = Scene.PresentationState or "earth"
+    local fadeOut, hold, fadeIn = Scene:GetFadeTimings()
+    check(fadeOut == 0.22 and hold == 0.1 and fadeIn == 0.4,
+        "the approved fade timing is 0.22 s out, 0.1 s black and 0.4 s in")
+    local revealDelay, revealSeconds = Scene:GetUIRevealTimings()
     Scene:SetPresentationState("earth")
-    check(Scene:TransitionPresentationState("city", 4.5)
-        and Scene:GetPresentationTransitionState() == "entering_play"
-        and Scene.PresentationTransition.duration == 4.5,
-        "Home to Play owns the approved four-and-a-half-second transition")
-    Scene.PresentationTransition.startedAt = RealTime() - 2.25
-    local earthBefore, cityBefore, _, zoomBefore, atmosphereBefore, descentBefore =
-        Scene:GetPresentationWeights()
-    check(earthBefore > 0.6 and earthBefore < 0.72 and cityBefore == 0,
-        "the destination stays hidden while the Earth begins fading behind the veil")
-    check(zoomBefore > 6.2 and zoomBefore < 7 and atmosphereBefore > 0.85
-        and descentBefore > 0.49 and descentBefore < 0.51,
-        "the midpoint is a close atmospheric descent rather than a small model zoom")
-    check(Scene:GetDescentVisuals(0).stage == "orbit"
-        and Scene:GetDescentVisuals(0.55).stage == "atmosphere"
-        and Scene:GetDescentVisuals(1).stage == "destination",
-        "descent timing exposes orbit, atmosphere and grounded destination stages")
-    check(not Scene:GetDescentVisuals(0.4).skyDay and Scene:GetDescentVisuals(0.58).skyDay
-        and Scene:GetDescentVisuals(0.58).atmosphere > 0.99,
-        "the sky only turns to day while the veil fully covers the handoff")
-    check(Scene:TransitionPresentationState("earth", 3)
-        and Scene:GetPresentationTransitionState() == "returning_home"
-        and Scene.PresentationTransition.duration == 3,
-        "Back retargets into the approved three-second return")
-    local earthAfter, cityAfter, _, zoomAfter, atmosphereAfter, descentAfter =
-        Scene:GetPresentationWeights()
-    check(math.abs(earthAfter - earthBefore) < 0.02 and math.abs(cityAfter - cityBefore) < 0.02,
-        "interruption resumes from the current blend without snapping")
-    check(math.abs(zoomAfter - zoomBefore) < 0.05
-        and math.abs(atmosphereAfter - atmosphereBefore) < 0.02
-        and math.abs(descentAfter - descentBefore) < 0.02,
-        "interrupted return preserves the globe pose and atmospheric handoff")
-    Scene.PresentationTransition.startedAt = RealTime() - 3
-    local finishedEarth, finishedCity, _, finishedZoom, finishedAtmosphere, finishedDescent =
-        Scene:GetPresentationWeights()
-    check(finishedEarth == 1 and finishedCity == 0 and finishedZoom == 1
-        and finishedAtmosphere == 0 and finishedDescent == 0 and Scene.PresentationTransition == nil,
-        "completed return has one Earth owner and no stale timer")
+    check(Scene:TransitionPresentationState("city")
+        and Scene:GetPresentationTransitionState() == "entering_play",
+        "Home to Play starts a black fade")
+    Scene.PresentationTransition.startedAt = RealTime() - fadeOut * 0.5
+    local halfOut = Scene:AdvancePresentationFade()
+    check(math.abs(halfOut - 0.5) < 0.05 and Scene:GetPresentationState() == "earth",
+        "the Earth stays shown while the screen darkens")
+    check(Scene:IsPresentationSwapPending() and math.abs(Scene:GetPresentationUIAlpha() - (1 - halfOut)) < 0.05,
+        "page content waits for black and panels fade with the darkness")
+    local earthSky = Scene:GetPresentationSky()
+    check(Scene.PresentationSkyId == earthSky,
+        "the night sky stays applied while the screen darkens")
+    Scene.PresentationTransition.startedAt = RealTime() - fadeOut * 0.25
+    local quarterOut = Scene:AdvancePresentationFade()
+    check(quarterOut > 0 and quarterOut < 0.2,
+        "the darkening eases in gently rather than starting abruptly")
+    Scene.PresentationTransition.startedAt = RealTime() - (fadeOut + hold * 0.5)
+    check(Scene:AdvancePresentationFade() == 1 and Scene:GetPresentationState() == "city"
+        and not Scene:IsPresentationSwapPending(),
+        "the deploy scene swaps in only while the screen is fully black")
+    check(Scene.PresentationSkyId == Scene:GetPresentationSky() and Scene.PresentationSkyId ~= earthSky,
+        "the day sky swaps with the scene while the screen is fully black")
+    Scene.PresentationTransition.startedAt = RealTime() - (fadeOut + hold + fadeIn * 0.5)
+    local halfIn = Scene:AdvancePresentationFade()
+    check(math.abs(halfIn - 0.5) < 0.05 and Scene:GetPresentationState() == "city",
+        "the deploy scene fades in from black")
+    check(Scene:GetPresentationUIAlpha() == 0,
+        "launcher panels stay hidden while the new scene fades in")
+    check(Scene:TransitionPresentationState("earth")
+        and Scene:GetPresentationTransitionState() == "returning_home",
+        "Back mid-fade retargets to Home")
+    local resumed = Scene:AdvancePresentationFade()
+    check(math.abs(resumed - halfIn) < 0.05 and Scene:GetPresentationState() == "city",
+        "interruption resumes from the current darkness without snapping")
+    Scene.PresentationTransition.startedAt = RealTime() - (fadeOut + hold * 0.5)
+    check(Scene:AdvancePresentationFade() == 1 and Scene:GetPresentationState() == "earth",
+        "the return swaps back to the Earth behind black")
+    Scene.PresentationTransition.startedAt = RealTime() - (fadeOut + hold + fadeIn + 0.1)
+    check(Scene:AdvancePresentationFade() == 0 and Scene.PresentationTransition == nil
+        and Scene:GetPresentationState() == "earth",
+        "a completed return leaves one Earth owner and no stale fade")
+    local revealAt = Scene.PresentationUIRevealAt or RealTime()
+    check(Scene:GetPresentationUIAlpha(revealAt + revealDelay * 0.5) == 0,
+        "launcher panels wait after the scene has fully appeared")
+    local midReveal = Scene:GetPresentationUIAlpha(revealAt + revealDelay + revealSeconds * 0.5)
+    check(midReveal > 0.4 and midReveal < 0.6, "launcher panels then fade in smoothly")
+    check(Scene:GetPresentationUIAlpha(revealAt + revealDelay + revealSeconds + 0.1) == 1
+        and Scene.PresentationUIRevealAt == nil,
+        "the panel reveal completes and clears its timer")
+    Scene:SetPresentationState("earth")
+    Scene:TransitionPresentationState("city")
+    Scene.PresentationTransition.startedAt = RealTime() - fadeOut * 0.5
+    Scene:TransitionPresentationState("earth")
+    Scene.PresentationTransition.startedAt = Scene.PresentationTransition.startedAt - (fadeIn + 0.1)
+    check(Scene:AdvancePresentationFade() == 0 and Scene:GetPresentationState() == "earth",
+        "cancelling before the swap fades back into the unchanged Earth")
     Scene:SetPresentationState(original)
-end)
-
-Suite:Add("city presentation data is not parsed per frame", function(check)
-    local before = Scene.PresentationAssetLoads or 0
-    local firstWorld, firstSkyline = Scene:GetPresentationData(ZM_World.ActiveProfile)
-    local afterFirst = Scene.PresentationAssetLoads or 0
-    local secondWorld, secondSkyline = Scene:GetPresentationData(ZM_World.ActiveProfile)
-    check(firstWorld == secondWorld and firstSkyline == secondSkyline,
-        "repeated city draws reuse the same parsed world and skyline tables")
-    check(afterFirst - before <= 1 and (Scene.PresentationAssetLoads or 0) == afterFirst,
-        "presentation assets load at most once for the active profile")
-    local firstModels = Scene:PrepareCity()
-    local loadsAfterModel = Scene.PresentationAssetLoads or 0
-    local secondModels = Scene:PrepareCity()
-    check(istable(firstModels) and firstModels == secondModels and #firstModels >= 4 and #firstModels <= 18,
-        "repeated city draws reuse one bounded detailed skyline cluster")
-    check((Scene.PresentationAssetLoads or 0) == loadsAfterModel,
-        "repeated city draws perform no additional presentation asset loads")
 end)
 
 Suite:Add("Home has four actions and Play never deploys", function(check)
@@ -405,6 +401,7 @@ Suite:Add("creation camera owns every creation and appearance step", function(ch
     local original = {
         active = menu.Active, page = menu.Page, step = menu.Step, waiting = menu.Waiting,
         credits = menu.Credits, camera = menu.Camera, creationCamera = menu.CreationCamera,
+        deployCamera = menu.DeployCamera, presentation = Scene.PresentationState or "earth",
         preview = menu.PreviewPanel, globe = menu.Globe, inspection = inspection.State,
         creditsView = Scene.CreditsView
     }
@@ -427,8 +424,22 @@ Suite:Add("creation camera owns every creation and appearance step", function(ch
         check(calcView(nil, nil, nil, 90).origin == creation.origin,
             "legacy appearance uses the same creation pose")
         menu.Page = "load"
+        Scene:SetPresentationState("earth")
+        menu.DeployCamera = nil
         check(calcView(nil, nil, nil, 90).origin == main.origin and not Scene:IsPresentationHidden(),
             "returning to survivor selection restores the normal launcher view")
+        local deploy = { origin = Vector(31, 32, 33), angles = Angle(0, 27.5, 0), fov = 90 }
+        menu.DeployCamera = deploy
+        check(calcView(nil, nil, nil, 90).origin == main.origin,
+            "the deploy pose waits until the fade has swapped scenes")
+        Scene:SetPresentationState("city")
+        local deployView = calcView(nil, nil, nil, 90)
+        check(deployView.origin == deploy.origin and deployView.angles == deploy.angles,
+            "Play views the authored deploy_camera once the scene has swapped")
+        menu.DeployCamera = nil
+        check(calcView(nil, nil, nil, 90).origin == main.origin,
+            "an older launcher without deploy_camera retains the normal camera")
+        Scene:SetPresentationState("earth")
         menu.Page, menu.CreationCamera = "create", nil
         check(calcView(nil, nil, nil, 90).origin == main.origin,
             "an older launcher without the marker retains the normal camera")
@@ -445,6 +456,8 @@ Suite:Add("creation camera owns every creation and appearance step", function(ch
         original.credits, original.camera, original.creationCamera
     menu.PreviewPanel, menu.Globe, inspection.State = original.preview, original.globe, original.inspection
     Scene.CreditsView = original.creditsView
+    menu.DeployCamera = original.deployCamera
+    Scene:SetPresentationState(original.presentation)
     if not ok then error(failure, 0) end
 end)
 
@@ -525,7 +538,7 @@ Suite:Add("empty survivor grid never exposes deployment", function(check)
     local originalPage, originalSlots, originalSelected = menu.Page, menu.Slots, menu.SelectedSlot
     menu.Slots, menu.SelectedSlot = {}, nil
     menu:SetPage("load")
-    menu:Render()
+    menu:Render(true)
     local creates, deploys = 0, 0
     for _, button in ipairs(menu.Buttons or {}) do
         local text = button:GetText()

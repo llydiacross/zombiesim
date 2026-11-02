@@ -693,8 +693,8 @@ test("stat_armour_equips_persists_and_restores_effects", function(check)
         checkDamage(target.ZM_Inventory, DMG_RADIATION, 100, tier.item.itemId .. " does not reduce radiation damage")
         ZM_Movement.Apply(target, 0.2)
         ZM_Movement.Apply(target, 0.2)
-        check(near(target.walk, 200 * 0.675 * 1.2 * (1 - tier.speed)) and
-            near(target.run, 400 * 0.765 * 1.2 * (1 - tier.speed)),
+        check(near(target.walk, 200 * 0.57375 * 1.2 * (1 - tier.speed)) and
+            near(target.run, 400 * 0.65025 * 1.2 * (1 - tier.speed)),
             tier.item.itemId .. " applies its speed penalty without compounding")
         local effects = Items:GetArmourEffects(target.ZM_Inventory, endurance)
         local _, recovery = ZM_Movement.Rates(0, 0, 1 - effects.staminaRegenPenalty)
@@ -703,14 +703,14 @@ test("stat_armour_equips_persists_and_restores_effects", function(check)
 
     endurance = 10
     ZM_Movement.Apply(target, 0.2)
-    check(near(target.walk, 200 * 0.675 * 1.2 * 0.94) and
-        near(target.run, 400 * 0.765 * 1.2 * 0.94), "Endurance halves the heavy armour speed penalty")
+    check(near(target.walk, 200 * 0.57375 * 1.2 * 0.94) and
+        near(target.run, 400 * 0.65025 * 1.2 * 0.94), "Endurance halves the heavy armour speed penalty")
     local trained = Items:GetArmourEffects(target.ZM_Inventory, endurance)
     check(near(trained.staminaRegenPenalty, 0.15), "Endurance halves the heavy armour recovery penalty")
     checkDamage(target.ZM_Inventory, DMG_SLASH, 65, "Endurance does not alter heavy armour damage reduction")
     check(Service:MoveItem(target, tiers[3].item.instanceId, "backpack"), "unequip heavy armour")
     ZM_Movement.Apply(target, 0.2)
-    check(near(target.walk, 200 * 0.675 * 1.2) and near(target.run, 400 * 0.765 * 1.2),
+    check(near(target.walk, 200 * 0.57375 * 1.2) and near(target.run, 400 * 0.65025 * 1.2),
         "unequipping restores movement")
     checkDamage(target.ZM_Inventory, DMG_SLASH, 100, "unequipping restores ordinary damage")
     check(Service:EquipItem(target, suit.instanceId), "re-equip the radiation suit")

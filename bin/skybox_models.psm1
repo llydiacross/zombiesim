@@ -331,7 +331,14 @@ namespace ZombieSim.Skybox {
         public TileMesh GetTile(string path) {
             TileMesh mesh;
             if (!cache.TryGetValue(path, out mesh)) {
-                mesh = TileMeshBuilder.Build(File.ReadAllText(path), minBrushExtent);
+                // Tiles whose detail was compiled to a model keep their full brush source in tiletemplates_modelsrc.
+                string source = path;
+                int marker = path.IndexOf("\\tiletemplates\\", StringComparison.OrdinalIgnoreCase);
+                if (marker >= 0) {
+                    string candidate = path.Substring(0, marker) + "\\tiletemplates_modelsrc\\" + path.Substring(marker + "\\tiletemplates\\".Length);
+                    if (File.Exists(candidate)) source = candidate;
+                }
+                mesh = TileMeshBuilder.Build(File.ReadAllText(source), minBrushExtent);
                 cache[path] = mesh;
             }
             return mesh;
@@ -377,7 +384,7 @@ namespace ZombieSim.Skybox {
             var parts = new List<CellModelPart>();
             StringBuilder sb = null; HashSet<string> vertexKeys = null; HashSet<string> partMaterials = null; CellModelPart part = null;
             foreach (var placement in ReadInstances(recipePath)) {
-                if (towersOnly && !Regex.IsMatch(Path.GetFileName(placement.File), @"^tile_skyscraper_[0-9]+[a-z]+_2x\.vmf$", RegexOptions.IgnoreCase)) continue;
+                if (towersOnly && !Regex.IsMatch(Path.GetFileName(placement.File), @"^tile_skyscraper_(?:ra_)?[0-9]+[a-z]+_2x\.vmf$", RegexOptions.IgnoreCase)) continue;
                 if (!File.Exists(placement.File)) continue;
                 var mesh = GetTile(placement.File);
                 var lines = new List<string>();

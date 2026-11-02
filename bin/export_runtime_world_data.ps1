@@ -155,7 +155,7 @@ function Get-AtmosphereProfileId {
     param([object]$MapCell, [object]$PlanCell)
 
     if ($null -ne (Get-OptionalProperty $MapCell 'safeZone')) { return 'safe_zone' }
-    if ([bool](Get-OptionalProperty $MapCell 'deadZone')) { return 'dead_zone' }
+    if ($PlanCell.environmentProfile -in @('radioactive', 'destroyed')) { return 'dead_zone' }
     if ($PlanCell.environmentProfile -in @('commercial', 'financial')) { return 'inner_city' }
     if ((Get-OptionalProperty $MapCell 'environment').terrain -in @('grassland', 'sandy')) { return 'outskirts' }
     return 'suburbs'
@@ -232,7 +232,8 @@ $width = [int]$map.map.gridCells
 $height = $width
 $mapCells = @($map.cells)
 $planCells = @($plan.cells)
-if ($width -lt 1 -or $mapCells.Count -ne ($width * $height) -or $planCells.Count -ne $mapCells.Count) {
+$emptyPlanCells = @(if ($null -ne $plan.PSObject.Properties['emptyCells']) { $plan.emptyCells })
+if ($width -lt 1 -or $mapCells.Count -ne ($width * $height) -or ($planCells.Count + $emptyPlanCells.Count) -ne $mapCells.Count) {
     throw "Map and template-plan cell counts must match a complete $width by $height grid."
 }
 
@@ -252,7 +253,7 @@ foreach ($mapCell in $mapCells) {
 }
 
 $planCellByCoordinate = @{}
-foreach ($planCell in $planCells) {
+foreach ($planCell in @($planCells) + @($emptyPlanCells)) {
     $key = Get-CoordinateKey ([int]$planCell.x) ([int]$planCell.y)
     if ($planCellByCoordinate.ContainsKey($key)) {
         throw "Template plan contains duplicate cell coordinate: $key"
@@ -403,9 +404,17 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
     $cellId = Get-CellId $x $y $width
     $key = Get-CoordinateKey $x $y
     $planCell = $planCellByCoordinate[$key]
-    $mapName = [System.IO.Path]::GetFileNameWithoutExtension([string]$planCell.cellTemplateFilename)
-    if ([string]::IsNullOrWhiteSpace($mapName)) { throw "Template plan cell $key has no recipe filename." }
-    $requiredMapNames[$mapName.ToLowerInvariant()] = $mapName
+    $isEmptyCell = $null -ne $planCell.PSObject.Properties['emptyCell'] -and [bool]$planCell.emptyCell
+    if ($isEmptyCell) {
+        if ($null -ne (Get-OptionalProperty $mapCell 'safeZone') -or [bool]$mapCell.road.present -or [bool]$mapCell.highway.present) {
+            throw "Template plan marks cell $key empty, but the manifest gives it a road or safe zone."
+        }
+        $mapName = $null
+    } else {
+        $mapName = [System.IO.Path]::GetFileNameWithoutExtension([string]$planCell.cellTemplateFilename)
+        if ([string]::IsNullOrWhiteSpace($mapName)) { throw "Template plan cell $key has no recipe filename." }
+        $requiredMapNames[$mapName.ToLowerInvariant()] = $mapName
+    }
 
     $tags = @($mapCell.environment.tags | ForEach-Object { [string]$_ } | Sort-Object -Unique)
     $environmentKey = "{0}|{1}" -f $mapCell.environment.terrain, ($tags -join '|')
@@ -470,21 +479,34 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
         profile = [string]$planCell.environmentProfile
         atmosphereProfile = $atmosphereProfileIndexById[(Get-AtmosphereProfileId $mapCell $planCell)]
         district = $districtIndexByName[$districtName]
-        deadZone = [bool](Get-OptionalProperty $mapCell 'deadZone')
         building = [bool](Get-OptionalProperty $cellBuilding 'present')
         landmarks = $landmarkIds
         safeZone = $safeZoneId
         radiation = $radiationIntensity
         danger = $dangerIntensity
-        topology = [string]$planCell.topology
-        entrances = @($planCell.activeEntrances)
-        waterSides = @(if ($null -ne $cellBounds -and $cellBounds.revision -eq 2) {
+        topology = if ($isEmptyCell) { 'empty' } else { [string]$planCell.topology }
+        entrances = @(if (-not $isEmptyCell) { $planCell.activeEntrances })
+        waterSides = @(if ($isEmptyCell) {
+            if ($x -eq 0 -and $null -ne $cellBounds -and $cellBounds.revision -eq 2) { 'W' }
+        } elseif ($null -ne $cellBounds -and $cellBounds.revision -eq 2) {
             if ($null -eq $planCell.PSObject.Properties['skyboxOceanSides']) { throw 'Expanded runtime export requires a fresh skybox-ocean template plan.' }
             $planCell.skyboxOceanSides
         } else { (Get-OptionalProperty $planCell 'waterBorderSides') | ForEach-Object { if ($null -ne $_) { [string]$_.side } } })
         transport = [ordered]@{ bridge = [bool]$mapCell.highway.bridge; rampExits = if ([bool]$mapCell.highway.bridge) { @() } else { @($mapCell.highway.rampExits) }; diagonal = [bool]$mapCell.highway.diagonal }
         exits = @($exits)
         metro = [ordered]@{ lines = $metroLineIds; stop = $metroStopId }
+    }
+    if ($isEmptyCell) {
+        if ($exits.Count -gt 0) { throw "Empty cell $key cannot have travel exits." }
+        $runtimeCell.topology = 'empty'
+        $runtimeCell.empty = $true
+        $runtimeCell.emptyTerrain = [string]$planCell.emptyTerrain
+        $terrainColor = $mapCell.terrain
+        if ($null -ne $terrainColor -and $null -ne $terrainColor.PSObject.Properties['red']) {
+            $runtimeCell.emptyColor = @([int]$terrainColor.red, [int]$terrainColor.green, [int]$terrainColor.blue)
+        }
+        $runtimeCells.Add($runtimeCell)
+        continue
     }
     $densityFields = Get-RuntimeSceneryDensityFields $mapCell $planCell
     foreach ($field in $densityFields.Keys) { $runtimeCell[$field] = $densityFields[$field] }

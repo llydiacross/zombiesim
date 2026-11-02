@@ -420,7 +420,7 @@ function Scoreboard:Open()
         surface.DrawRect(0, 0, width, height)
         surface.SetDrawColor(scoreboardColors.slate)
         surface.DrawOutlinedRect(0, 0, width, height, 1)
-        drawScoreboardIcon(scoreboardIcons.pencil, 13, 13, 16, palette.muted)
+        drawScoreboardIcon(scoreboardIcons.pencil, math.floor((width - 16) / 2), math.floor((height - 16) / 2), 16, palette.muted)
     end
 
     bioButton.DoClick = function()
@@ -507,8 +507,9 @@ function Scoreboard:Open()
         allyButton:SetPos(width - buttonWidth * 2 - 40, 441)
         blockButton:SetSize(buttonWidth, 40)
         blockButton:SetPos(width - buttonWidth - 28, 441)
-        bioButton:SetSize(42, 42)
-        bioButton:SetPos(width - 70, 441)
+        // Skill cells end at width - 12 and y 467; keep the button on the bio header row.
+        bioButton:SetSize(28, 28)
+        bioButton:SetPos(width - 40, 473)
         cardButton:SetSize(28, 28)
         cardButton:SetPos(width - 162, 105)
     end

@@ -158,6 +158,13 @@ matches the reviewed examples: Cell(22,18) uses core slot(2,4), while Cell(17,4)
 uses east core slot(4,2) and west border slot(-1,2). Do not derive these
 placements from current source-face IDs or measured mouths.
 
+For motorway road bridges, the authored motorway bridge owns its leased
+crossing slots. Suppress ordinary road/bridge instances inside that footprint;
+keep ordinary bridge approaches and border/outer continuations outside it.
+`tests/powershell/test_motorway_bridge_ownership.ps1 -PlanData <plan.json>`
+checks both crossing orientations against the current preview contracts;
+add `-VmfDirectory <src>` to verify the generated instances and layout hashes.
+
 Runtime export copies the trusted gate records from that same approved plan
 instead of rederiving them from current tile sources. `ZM_Transitions` resolves
 those records through `ZM_World:GetCellsForMap`; shared-map cells must agree.
@@ -520,7 +527,7 @@ The generated border ring sits one tile outside the playable cell. Its corner in
 
 Every building template has one `zn_tile_direction` point entity. Its `direction` identifies the local tile edge containing the entrance, and the point must sit at that edge's midpoint: `south` is `0 -320 32` (1x), `0 -640 32` (2x), `0 -960 32` (3x); `north` is `0 320 32` (1x), `0 640 32` (2x), `0 960 32` (3x); `east` is `320 0 32` (1x), `640 0 32` (2x), `960 0 32` (3x); `west` is `-320 0 32` (1x), `-640 0 32` (2x), `-960 0 32` (3x). The building is rotated so this tile edge aligns with an adjacent compatible ordinary road, motorway, or concrete path, if one is present, without changing which tile it occupies.
 
-Add zero or more `zn_road_connection` points only where a generated road must physically connect. Each point must be centered on a single exterior footprint segment, and `connection_type` defaults to `none`. A `t_junction` point converts its exact adjacent compatible ordinary straight-road tile into a T-junction; a `bus` point converts it into `roads/tile_road_bus.vmf`, and a `driveway` point converts it into `roads/tile_road_driveway.vmf`. Multiple distinct points create multiple connections, each keeping its own requested type. The 2x commercial and hospital carpark-frontage templates each use one south-edge T-junction point. A motorway or concrete path is valid frontage but denies any of these connection requests and remains unchanged. A marked template is not placed when every requested connection cannot be satisfied. These markers are planning metadata and have no gameplay behavior.
+Add zero or more `zn_road_connection` points only where a generated road must physically connect. Each point must be centered on a single exterior footprint segment, and `connection_type` defaults to `none`. A `t_junction` point converts its exact adjacent compatible ordinary straight-road tile into a T-junction; a `bus` point converts it into `roads/tile_road_bus.vmf`, and a `driveway` point converts it into `roads/tile_road_driveway.vmf`. A `parking` point requests `roads/tile_road_parking.vmf`; when driveway requests reach the same road tile from two different sides, it becomes `roads/tile_road_driveway_double.vmf` (`dual_driveway`). Requests are resolved per road tile: a T-junction wins, then two-sided driveways become a dual driveway, then driveway > parking > bus; the losing request is not emitted rather than blocking the building. Connections apply to 1x1 and multi-tile buildings alike and are placed on the adjacent ordinary road tile. Multiple distinct points create multiple connections. The 2x commercial and hospital carpark-frontage templates each use one south-edge T-junction point. A motorway or concrete path is valid frontage but denies any of these connection requests and remains unchanged. A marked template is not placed when every requested connection cannot be satisfied. These markers are planning metadata and have no gameplay behavior.
 
 Buildings and landmarks rotate their tile edge entrance toward a directly adjacent road, motorway, concrete path, or transport tile. A building next to a road corner's closed edge still faces the corner visually, although that edge is not a road connection.
 
@@ -674,6 +681,35 @@ Use the visibility-budget check after changing structural tile geometry. With `-
 ```
 
 The configured diagnostic budgets are `1,500` portal clusters and `2,700` portals. These thresholds are not engine limits. They are configured under `compilation.visibilityBudget` in [generator-settings.json](generator-settings.json), can be overridden for one run with `-MaxPortalClusters` and `-MaxPortals`, and write `vis-budget-report.json` beside the preview BSPs. For every over-budget recipe, the report also ranks its instanced tiles by their aggregate non-`func_detail` brush-solid count and shows each tile's detail-solid, entity, and prop counts. This is a diagnostic lead rather than a portal attribution: open sightlines between tiles can also create high VVIS cost. The command exits nonzero for over-budget, missing, or invalid portal files.
+
+## Tile Plane Budgets And Detail Models
+
+Every VBSP map shares a `MAX_MAP_PLANES` limit of 65,536 planes. Brush-side counts do not predict plane use, because bevels and splits dominate it. A very detailed authored tile can therefore break every recipe that instances it, as `tile_skyscraper_ra_1aaa_2x` did at 41,684 standalone planes.
+
+`check_tile_detail_budgets.ps1` compiles each tile once inside a minimal sealed wrapper and records its plane count:
+
+- Cache: the result is stored in `generated/tile_detail_budget/cache.json`, keyed by the tile path and a recursive source hash. Only new or edited tiles (including edited nested instances) recompile, so run the check after adding or changing tiles rather than for every build.
+- Scope: pass `-Tile <relative path>` for specific tiles, or `-CellDirectory`/`-MapFilename` to check only the tiles a batch instances.
+- Budget: the default per-tile budget is 8,192 planes. The largest ordinary tile measured 2,002, and whole cells measure about 450–5,500.
+- Report: tiles over budget are listed in `report.json` with a recommendation to convert them. VBSP failures are reported with their reason and log path. With `-FailOnRecommendation`, the command exits `2` when any recommendation exists.
+
+```powershell
+.\bin\check_tile_detail_budgets.ps1
+```
+
+`build_tile_detail_models.ps1` converts an over-budget tile's `func_detail` brushes into one static model.
+
+- Editable source: the full-detail VMF lives under `tiletemplates_modelsrc/` and is listed in `tiletemplates_modelsrc/detail_models.json`.
+- Generated tile: the matching file under `tiletemplates/` is regenerated output. It keeps the structural shell brushes and adds a `prop_static` for `models/zombiesim/tiles/<name>_<sourcehash>.mdl`, plus an `info_lighting` origin for that model. Edit only the source, then rerun the builder.
+- Model appearance: the model uses `VertexLitGeneric` copies of the brush materials.
+- Collision: stacked boxes at the configured slab height, one convex part per box.
+- Staged outputs: the builder writes the model and its materials under `content/models/zombiesim/tiles` and `content/materials/models/zombiesim/tiles`, removing only that tile's older generations.
+- Packaging: Workshop packaging follows each configured tile to its current model and materials.
+- Skyline models: the skyline builder reads the `tiletemplates_modelsrc` source in place of the generated tile, so distant skyline models still include the complete brush detail.
+
+```powershell
+.\bin\build_tile_detail_models.ps1
+```
 
 ## Selecting City Data In Hammer
 
@@ -901,6 +937,10 @@ Road settings determine how far the road network grows and how tangled it become
 | `deadEndRepairRadius` | Furthest search distance, in map cells, used to connect repairable dead ends. | Keeps more dead ends. | Repairs more dead ends into connected roads. |
 | `centralSpineChance` | Chance from `0` to `1` for each regular position on the central arterial to grow a north/south branch. | A cleaner main road. | More districts linked to the main road. |
 | `maximumJunctionDegree` | Most connections allowed at one ordinary-road cell, from `2` to `4`. | `3` prevents four-way cross junctions. | `4` allows full intersections. |
+| `antiGrid.enabled` | Breaks long straight ordinary-road avenues so the city does not form a regular grid. | `false` keeps raw growth. | `true` (default) adds T-sections and jogs. |
+| `antiGrid.minimumRunCells`, `antiGrid.maximumRunCells` | Range for each avenue's deterministic, seed-based length limit. The minimum must be at least `3`. | Shorter avenues, more breaks. | Longer straight runs allowed. City uses `9`-`16`; preview overrides `5`-`8`. |
+
+The anti-grid pass runs after district connection. For each straight ordinary-road run longer than its limit, it first removes one avenue link between two junction cells (a T-break). If that is impossible, it detours one link through a parallel cell (a jog). A change is kept only if every road cell reachable from the origin stays reachable; otherwise the run is counted as `unresolved` in the `[WorldGen][Roads] Anti-grid` log line. Highways, diagonal highways, bridges and the origin avenue are never altered. `tests/powershell/test_road_anti_grid.ps1` compares seed-1337 preview worlds with the pass disabled and enabled. This replaces the retired `deadZones` setting.
 
 After generating local roads, the generator checks every district center for a route to the origin road network. An isolated district receives a direct ordinary-road connection that respects `maximumJunctionDegree` and avoids highway cells. This guarantee also applies when highways and metro are disabled.
 
@@ -1031,9 +1071,11 @@ Each item creates a named district. District locations are authored for the norm
 
 Avoid placing two district centers at exactly the same coordinates. Their names still work, but labels and district-based systems become harder to understand.
 
-### `deadZones`
+### Empty Cells
 
-Each dead-zone item has `x`, `y`, and `radius`, using the same 64-by-64 reference grid as districts. Dead zones are scaled with city size. They prevent normal district activity in their area and help shape the hostile parts of the city. Keep radii positive.
+A cell with no ordinary road, highway, safe zone or landmark is an *empty cell*. The planner places it under the plan's `emptyCells` instead of `cells`, so it has no recipe, VMF or BSP. Each record keeps its coordinates, environment and an `emptyTerrain` with a flat `emptyColor` taken from the terrain palette. The runtime export writes it with `empty = true`, `topology = "empty"`, `map = null`, and no exits or entrances. No neighbour receives an exit into it.
+
+At runtime `ZM_World:IsEmptyCell`/`GetEmptyCellTerrain` identify these cells. `CanTravel`, `GetTransitionMap` and `FindPath` refuse to enter them, and `Load` rejects an empty cell that has a map, exits or no terrain. The world map, map catalogue, Cell Health, capture queue, capture importer and wireframe/satellite stitchers draw or skip them as a single flat terrain tile. `tests/glua/test_world_empty_cells.py` covers the runtime contract.
 
 ### `rendering`
 
@@ -1156,8 +1198,10 @@ Use only `0`, `90`, `180`, or `270` for the current square tiles. Test any chang
 | `baseWeight` | Starting preference for a building whose height matches the cell density tier. |
 | `heightDistanceWeight` | How quickly preference drops when building height differs from the cell density tier. Higher numbers make districts specialize more strongly by height. |
 | `commercialProfiles` | Profiles allowed to use commercial building assets, in addition to Market landmark cells. |
-| `industryTerrains` | Terrain types allowed to use industry assets. |
-| `industryProfiles` | Special profiles allowed to use industry assets. |
+| `industryTerrains` | Optional extra terrain types allowed to use industry assets outside an industrial zone (default empty). |
+| `industryProfiles` | Optional extra profiles allowed to use industry assets outside an industrial zone (default empty). |
+
+Industrial buildings normally appear only inside seeded industrial zones, configured by `mapGeneration.industrialZones` (`enabled`, `cellsPerZone`, `radius`, `minInlandDistance`, `minSpacing`, `excludedOriginTags`). The manifest generator picks `round(cells / cellsPerZone)` (at least one) origins by a seeded hash, rejecting coastal cells, safe zones, landmark cells, excluded tags and origins closer than `minSpacing`. Every cell within `radius` of an origin stores `industrialZone` (`id`, origin, `distance`, `radius`), gains the `industrial_zone` tag and has its density capped to `min(base, 1 + floor(2 * distance / radius))`, so a zone is low density at its origin and blends into the surrounding density at its edge. Radioactive cells only mix industrial buildings with `_ra_` buildings inside a zone. Zone membership is part of the recipe filename density code (`d1z`), and the manifest records origins under `generation.industrialZones`.
 
 Army Base landmark cells use only VMFs under `tiletemplates/army` for fallback building slots, in addition to the Army-only landmark template. Military-profile cells use the same exclusive pool. If the Army folder has no VMFs, planning fails explicitly rather than falling back to generic buildings.
 
@@ -1393,6 +1437,18 @@ continues selecting the previously authored border/water-corner tiles, unchanged
 Only reserved centre road/bridge corridors may continue on omitted sides.
 Safe-zone suppression takes precedence.
 
+When `vmfBuild.outerEdges.oceanTemplates` lists pieces (currently
+`edges/tile_edge_ocean_1a`..`9a`, one deterministic random pool), those ocean
+sides are no longer omitted: every ocean-adjacent outer slot, including the
+NW/SW corners, receives an ocean piece. The sea lies on each piece's canonical
++Y side, so its yaw is the land wall yaw plus 180 (N0/E270/S180/W90; corners
+use the horizontal water side). The bounds stay revision 2 with
+`coastContactHalfExtent` 2880 (equal to the visual extent), the shell expands
+on every side and the clip perimeter remains at 2240. The skybox beach then
+starts at the visual edge, uses `nature/sandfloor009a` (the sand layer of the
+pieces' `nature/blendrocksand004a` blend) and omits the rock embankment.
+Removing `oceanTemplates` restores the legacy omission behaviour.
+
 Both border and outer straight-wall pools exclude terminal `_1aaa`/`_2aaa`
 (and other numeric `aaa`) pieces in slots immediately cardinal-adjacent to a
 road, motorway or bridge corridor. `a`/`aa`, diagonals, distant wall slots,
@@ -1491,7 +1547,7 @@ Run `.\tests\powershell\test_skyscraper_height.ps1 -Compile` to generate isolate
 
 The skybox model builder also exports optional `towers` entries: `<recipe>_t<N>` models containing only authored `tile_skyscraper_*_2x` instances, with the same scaled placement, material mapping and UVs as the full recipe. These have independent build stamps and exclude ordinary terrain/roads and set dressing. `towerParts` and `towerTriangles` in the model report describe their geometry cost. Run `.\tests\powershell\test_skybox_towers.ps1` to verify tower-only extraction, exact transform/UV preservation, and empty-recipe handling.
 
-`skybox3d.skylineRadius` (24 cells) controls tower-only coverage independently of the detailed `neighbourRadius` (2). The room expands on the same 1024-unit block grid to contain this coverage, with a hard Source-coordinate check. Coverage is bounded, not automatically expanded to every cell in a larger production world. `maxTowerModels` (128 parts) bounds both distant model creation and draws: nearest cells win, with deterministic coordinate/path tie-breaks. Towers in the current/detailed cells are excluded from this pass. Distant models use a separate long-range fog pass before the translucent nearby horizon, so its graduated haze blends over the towers rather than cutting off geometry drawn afterward; visual occlusion and weather matching still require live acceptance. `zombiesim_skybox_status` reports candidates, budget, omissions, missing assets, placements and frame draws. Weather and lighting sampling clamp both X/Y bounds to the manifest's playable cell span, not the enlarged sky room. Run `.\tests\powershell\test_skyscraper_height.ps1 -Compile` for the room-coverage and coordinate-limit regression in addition to tower clearance; these checks do not establish live visibility.
+`skybox3d.skylineRadius` (24 cells) controls tower-only coverage independently of the detailed `neighbourRadius` (6). The client `zombiesim_sky_detail` slider (default 2; presets Low 1, Medium/High 2) chooses how many fully modelled rings to draw, clamped to the manifest's `neighbourRadius`; the fog edge, clouds and horizon move outward with it, so larger values show more of the city at extra frame cost. The tower-only pass covers cells beyond those rings and matches both ordinary and radioactive (`tile_skyscraper_ra_*`) towers. The room expands on the same 1024-unit block grid to contain this coverage, with a hard Source-coordinate check. Coverage is bounded, not automatically expanded to every cell in a larger production world. `maxTowerModels` (256 parts) bounds both distant model creation and draws: nearest cells win, with deterministic coordinate/path tie-breaks. Towers in the current/detailed cells are excluded from this pass. Distant models use a separate long-range fog pass before the translucent nearby horizon, so its graduated haze blends over the towers rather than cutting off geometry drawn afterward; visual occlusion and weather matching still require live acceptance. `zombiesim_skybox_status` reports candidates, budget, omissions, missing assets, placements and frame draws. Weather and lighting sampling clamp both X/Y bounds to the manifest's playable cell span, not the enlarged sky room. Run `.\tests\powershell\test_skyscraper_height.ps1 -Compile` for the room-coverage and coordinate-limit regression in addition to tower clearance; these checks do not establish live visibility.
 
 To prepare models without replacing a mounted manifest, pass `-OutputContentDirectory .\generated\skybox_preview\release_content` to `build_skybox_models.ps1`. Source material lookup still uses the installed content/mounted game assets; output models, wrappers and manifest go to the isolated directory. Validate that output with `.\tests\powershell\test_skybox_manifest.ps1 -WorldProfile preview -PlanData <matching-plan> -ContentDirectory .\generated\skybox_preview\release_content`. The check verifies exact recipe coverage, settings, nonempty model companions, tower presence and every preview viewpoint's distant-part budget. Once matching BSP compilation succeeds, copy the prepared models/materials to content and rerun the exporter with its default output to reuse the stamps, prune stale profile models and publish the manifest; never load a new camera manifest with old BSPs.
 

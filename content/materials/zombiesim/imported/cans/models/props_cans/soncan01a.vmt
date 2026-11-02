@@ -1,0 +1,13 @@
+
+"VertexLitGeneric"
+{
+	// Original shader: VertexLitTexture
+	"$basetexture" "zombiesim/imported/cans/models/props_cans/sonic"
+	"$envmap" "env_cubemap"
+	"$basealphaenvmapmask" 1
+	"$surfaceprop" "metal"
+//	"$envmap" "models/props_junk/envmap"
+//	"$envmapsphere" 1
+	
+}
+

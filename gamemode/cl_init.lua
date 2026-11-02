@@ -76,6 +76,7 @@ local atmosphereTestFactories = {
     ["atmosphere/cl_footsteps.lua"] = include( "atmosphere/cl_footsteps.lua" ),
     ["atmosphere/cl_screen_effects.lua"] = include( "atmosphere/cl_screen_effects.lua" ),
     ["atmosphere/cl_fog.lua"] = include( "atmosphere/cl_fog.lua" ),
+    ["atmosphere/cl_world_haze.lua"] = include( "atmosphere/cl_world_haze.lua" ),
     ["atmosphere/cl_diagnostics.lua"] = include( "atmosphere/cl_diagnostics.lua" )
 }
 include( "tests/cl_atmosphere_tests.lua" )(

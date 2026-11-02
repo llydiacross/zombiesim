@@ -1,0 +1,22 @@
+"VertexLitGeneric"
+{
+	// Original shader: VertexLitTexture
+	"$basetexture" "zombiesim/imported/paz672/models/derby/paz3201"
+	"$surfaceprop" "solidmetal"
+	"$bumpmap" "zombiesim/imported/paz672/models/derby/paz3201_n"
+ 	"$envmap" "env_cubemap"
+	"$envmapcontrast" "1"
+	"$envmapmask" "zombiesim/imported/paz672/models/derby/paz3201_s"
+	"$basealphaenvmapmask" 1
+
+ 	"vertexlitgeneric_HDR_dx9"
+ 	{
+  		"$envmaptint" "[.25 .25 .25]"
+ 	}
+
+
+	"vertexlitgeneric_DX9"
+ 	{
+  		"$envmaptint" "[.25 .25 .25]"
+ 	}
+}

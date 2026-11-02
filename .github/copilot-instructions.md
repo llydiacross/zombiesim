@@ -18,7 +18,7 @@ ZombieSim is an installed Garry's Mod gamemode with realm-specific GLua gameplay
 - Gameplay services are server-authoritative. Shared static registries load definitions from `content/data_static/`; persistence is server-only through the SQL helpers. Keep related writes atomic and retain profile scoping.
 - `ZM_World` owns runtime world-data and map resolution; `ZM_SafeZones` owns safe-zone lookup. Use these APIs rather than reconstructing coordinates, profiles, or map paths locally.
 - `ZM_Util` (`gamemode/utils/server.lua`) provides shared server command helpers. New gameplay test suites should use `ZM_TestHarness` (`gamemode/utils/test_harness.lua`) rather than duplicating test-runner and reporting logic.
-- The Walker simulator in `bin/walker-simulator` is an independent C++ population system. Its worker owns simulation state; GLua consumes published snapshots and queues commands. Keep this project isolated from Lua gameplay and generated world assets.
+- The Walker simulator in `walker-simulator/` is an independent C++ population system. Its worker owns simulation state; GLua consumes published snapshots and queues commands. Keep this project isolated from Lua gameplay and generated world assets.
 - Authored VMFs and templates are source assets. `generated/` contains build products and diagnostics; `content/` contains distributable addon files. Never hand-edit generated manifests, plans, VMFs, BSPs, navmeshes, runtime exports, or map materials.
 - For approved preview deliverables, staging is part of completion: stage the required BSPs, materials, thumbnails, and runtime data to their `content/` and engine destinations, then verify coverage and hashes. Do this only after compile/visibility and human-approval gates pass; honor explicit staging deferrals and never change production `city` outputs without approval.
 - A targeted runtime `cells[].map` rename is not complete by itself. Update or deliberately alias every map-keyed consumer in the same change—skyline geometry/models, captured-photo metadata, cell materials/thumbnails, and navmesh lookup—and validate that every runtime cell resolves before staging. Keep temporary aliases explicit when a full rebuild is deferred.
@@ -59,7 +59,7 @@ For planner or VMF-generation changes, follow the preview workflow and validatio
 
 ### Walker simulator
 
-From `bin/walker-simulator`:
+From `walker-simulator` (executables and the GMod module build into the repository `bin/` folder; `world-viewer` uses the same presets and writes `bin/zombiesim-world-viewer.exe`):
 
 ```powershell
 cmake --preset mingw-debug

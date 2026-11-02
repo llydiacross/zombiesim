@@ -1,6 +1,8 @@
 param(
     [string]$OutputRoot = '',
-    [string]$SettingsPath = ''
+    [string]$SettingsPath = '',
+    [string]$TrustedMotorwayPlan = '',
+    [string]$CitySettingsPath = ''
 )
 
 Set-StrictMode -Version Latest
@@ -21,6 +23,10 @@ $listPath = Join-Path $OutputRoot 'multi_tile_zoo_fixture_required_cell_vmfs.txt
 $cellDirectory = Join-Path $OutputRoot 'src'
 $mapDirectory = Join-Path $OutputRoot 'map_materials'
 $plannerScript = Join-Path $testsBinDirectory 'plan_cell_templates.ps1'
+# Full-world motorway planning needs outer rings; the fixture build keeps the plain border.
+$citySettingsPath = if ([string]::IsNullOrWhiteSpace($CitySettingsPath)) { $SettingsPath } else { $CitySettingsPath }
+$trustedPlanArgs = @{}
+if (-not [string]::IsNullOrWhiteSpace($TrustedMotorwayPlan)) { $trustedPlanArgs.TrustedMotorwayPlan = $TrustedMotorwayPlan }
 $builderScript = Join-Path $testsBinDirectory 'build_cell_vmfs.ps1'
 $mapRendererScript = Join-Path $testsBinDirectory 'build_cell_map_materials.ps1'
 
@@ -50,7 +56,7 @@ function Get-ExpectedRoadJunctionCount {
     $contents = Get-Content -Raw -LiteralPath $templatePath
     return @([regex]::Matches($contents, '(?s)entity\s*\{\s*(?<body>.*?)\r?\n\}') | Where-Object {
         $_.Groups['body'].Value -match '"classname"\s+"zn_road_connection"' -and
-        $_.Groups['body'].Value -match '"connection_type"\s+"t_junction"'
+        $_.Groups['body'].Value -match '"connection_type"\s+"(t_junction|bus|driveway|parking)"'
     }).Count
 }
 
@@ -260,9 +266,16 @@ foreach ($recipe in $recipes) {
 
     $roadPlacements = @($recipe.tilePlacements | Where-Object { $_.role -in @('road', 'road_center', 'onramp_road', 'bridge_road', 'path', 'building_road_junction', 'landmark_carpark_junction', 'landmark_road_junction') })
     $expectedJunctionCount = Get-ExpectedRoadJunctionCount ([string]$anchor.template)
-    $junctionCount = @($recipe.tilePlacements | Where-Object { $_.role -in @('building_road_junction', 'landmark_carpark_junction', 'landmark_road_junction') }).Count
+    # Single-tile buildings may add their own driveways elsewhere; count only junctions touching the macro footprint.
+    $junctionCount = @($recipe.tilePlacements | Where-Object {
+        $_.role -in @('building_road_junction', 'landmark_carpark_junction', 'landmark_road_junction') -and
+        [int]$_.tileX -ge ([int]$anchor.tileX - 1) -and [int]$_.tileX -le ([int]$anchor.tileX + [int]$anchor.footprintWidth) -and
+        [int]$_.tileY -ge ([int]$anchor.tileY - 1) -and [int]$_.tileY -le ([int]$anchor.tileY + [int]$anchor.footprintHeight) -and
+        -not (([int]$_.tileX -lt [int]$anchor.tileX -or [int]$_.tileX -ge [int]$anchor.tileX + [int]$anchor.footprintWidth) -and
+              ([int]$_.tileY -lt [int]$anchor.tileY -or [int]$_.tileY -ge [int]$anchor.tileY + [int]$anchor.footprintHeight))
+    }).Count
     if ($junctionCount -ne $expectedJunctionCount) {
-        Add-ValidationError $errors "$coordinate must create $expectedJunctionCount authored building road T-junction(s); found $junctionCount."
+        Add-ValidationError $errors "$coordinate must create $expectedJunctionCount authored building road connection(s); found $junctionCount."
     }
     Add-PhysicalRoadConnectionValidation $recipe $anchor $footprint $errors $markerStatistics
     $facesRoad = $false
@@ -291,13 +304,13 @@ if (@(Compare-Object $expectedTemplates @($actualTemplates | Sort-Object)).Count
 $cityPlanPath = Join-Path $OutputRoot 'preview_template_plan.json'
 $cityListPath = Join-Path $OutputRoot 'preview_required_cell_vmfs.txt'
 $cityMapDataPath = Join-Path $testsBinDirectory 'preview_grid_24x24_seed_1337.json'
-& $plannerScript -WorldProfile preview -MapData $cityMapDataPath -Output $cityPlanPath -ListOutput $cityListPath -CellDirectory $cellDirectory -SettingsPath $SettingsPath | Out-Null
+& $plannerScript -WorldProfile preview -MapData $cityMapDataPath -Output $cityPlanPath -ListOutput $cityListPath -CellDirectory $cellDirectory -SettingsPath $citySettingsPath @trustedPlanArgs | Out-Null
 if (-not $?) { throw 'Full preview planner regression failed.' }
 $cityPlan = Get-Content -Raw -LiteralPath $cityPlanPath | ConvertFrom-Json
 $cityMarkerStatistics = @{ checked = 0; junctions = 0; motorways = 0; paths = 0 }
 foreach ($recipe in @($cityPlan.cells)) {
     foreach ($anchor in @($recipe.tilePlacements | Where-Object {
-        (Test-PlacementEmitsInstance $_) -and ([int]$_.footprintWidth -gt 1 -or [int]$_.footprintHeight -gt 1) -and
+        (Test-PlacementEmitsInstance $_) -and $_.PSObject.Properties['footprintWidth'] -and ([int]$_.footprintWidth -gt 1 -or [int]$_.footprintHeight -gt 1) -and
         $_.template -like 'buildings/*'
     })) {
         $footprint = [pscustomobject]@{ width = [int]$anchor.footprintWidth; height = [int]$anchor.footprintHeight }

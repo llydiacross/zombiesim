@@ -194,7 +194,11 @@ concommand.Add("zombiesim_dev_test_cell_health_client", function()
         local snapshot, failure = ZM_CellHealth:GetSnapshot()
         check(snapshot ~= nil, "preview snapshot loads" .. (failure and ": " .. failure or ""))
         if not snapshot then return end
-        check(snapshot.summary.total == #ZM_World:GetData().cells, "every logical cell is represented")
+        local mapCells = 0
+        for _, cell in ipairs(ZM_World:GetData().cells) do
+            if cell.empty ~= true then mapCells = mapCells + 1 end
+        end
+        check(snapshot.summary.total == mapCells, "every logical cell with a map is represented")
         check(snapshot.summary.green + snapshot.summary.orange + snapshot.summary.red == snapshot.summary.total,
             "every cell has exactly one status color")
         check(snapshot.summary.cubemapCells <= snapshot.summary.total,

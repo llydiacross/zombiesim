@@ -474,7 +474,7 @@ function New-ZMInfillRectangleVmf {
 }
 
 function Set-ZMMotorwayTerrainInfill {
-    param([object]$Recipe, [string]$TemplateDirectory, [object[]]$BorderPlacements, [object[]]$OuterPlacements, [switch]$SizedPatches, [switch]$CompletePatches, [switch]$MeasureCompletePatches)
+    param([object]$Recipe, [string]$TemplateDirectory, [object[]]$BorderPlacements, [object[]]$OuterPlacements, [switch]$SizedPatches, [switch]$CompletePatches, [switch]$MeasureCompletePatches, [switch]$OceanEdges)
 
     $contract = $Recipe.PSObject.Properties['motorwayAssembly']
     $authority = if ($null -ne $contract) { $contract.Value.PSObject.Properties['assemblyAuthority'] } else { $null }
@@ -484,7 +484,8 @@ function Set-ZMMotorwayTerrainInfill {
     }
     $contract = $contract.Value
     # Omitted skybox-ocean outer bands keep their beach; infill stays inside the retained 2240 boundary there.
-    $ocean = @(if ($null -ne $Recipe.PSObject.Properties['skyboxOceanSides']) { @($Recipe.skyboxOceanSides) })
+    # Authored ocean outer-edge pieces own that band instead, so infill may treat it as ordinary measured ground.
+    $ocean = @(if (-not $OceanEdges -and $null -ne $Recipe.PSObject.Properties['skyboxOceanSides']) { @($Recipe.skyboxOceanSides) })
     $obstacles = [System.Collections.Generic.List[object]]::new()
     $sources = @($contract.assemblies)
     foreach ($placement in @($Recipe.tilePlacements | Where-Object { $_.role -ne 'motorway_external_occupied' }) + $BorderPlacements + $OuterPlacements) {

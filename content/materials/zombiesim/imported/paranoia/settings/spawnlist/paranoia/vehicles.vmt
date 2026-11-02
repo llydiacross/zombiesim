@@ -1,0 +1,96 @@
+"TableToKeyValues"
+{
+	"parentid"		"278"
+	"icon"		"icon16/plugin_disabled.png"
+	"id"		"137"
+	"contents"
+	{
+		"1"
+		{
+			"type"		"header"
+			"text"		"Vehicles"
+		}
+		"2"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_buhanka.mdl"
+		}
+		"3"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_buhankam.mdl"
+		}
+		"4"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_car1.mdl"
+		}
+		"5"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_k1.mdl"
+		}
+		"6"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_k2.mdl"
+		}
+		"7"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_k3.mdl"
+		}
+		"8"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_kamaz.mdl"
+		}
+		"9"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_mil.mdl"
+		}
+		"10"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_ural1.mdl"
+		}
+		"11"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_ural2.mdl"
+		}
+		"12"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_urald.mdl"
+		}
+		"13"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_uralg.mdl"
+		}
+		"14"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_uralk.mdl"
+		}
+		"15"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_vagon.mdl"
+		}
+		"16"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_vagon2.mdl"
+		}
+		"17"
+		{
+			"type"		"model"
+			"model"		"models/props/paranoia_vagon3.mdl"
+		}
+	}
+	"name"		"Vehicles"
+	"version"		"1"
+}

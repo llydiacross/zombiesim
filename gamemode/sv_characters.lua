@@ -675,7 +675,9 @@ local function snapshotLocation(profile, characterId, character)
     if not cellX or not cellY or cellX ~= math.floor(cellX) or cellY ~= math.floor(cellY) then
         return { state = "unavailable", available = false, reason = "Saved location is missing or invalid" }
     end
-    local cell = ZM_World:GetCell(cellX, cellY)
+    // Saved CellX/CellY are logical world coordinates; GetCell expects raw grid coordinates.
+    local gridX, gridY = ZM_World:GetGridCoordinates(cellX, cellY)
+    local cell = gridX and ZM_World:GetCell(gridX, gridY) or nil
     if not cell then
         return { state = "unavailable", available = false, reason = "Saved city cell is unavailable" }
     end

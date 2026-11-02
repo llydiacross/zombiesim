@@ -26,7 +26,7 @@ foreach ($profile in @('preview', 'city')) {
             if ($null -ne $previewSkybox) { throw "$profile has duplicate preview_skybox cameras" }
             $previewSkybox = $entity.Value
         }
-        if ($name -in @('credits_camera', 'menu_camera', 'menu_globe', 'dancing_gman', 'create_character')) {
+        if ($name -in @('credits_camera', 'menu_camera', 'menu_globe', 'dancing_gman', 'create_character', 'deploy_camera')) {
             if ($named.ContainsKey($name)) { throw "$profile has duplicate $name" }
             $named[$name] = $entity.Value
         }
@@ -58,8 +58,14 @@ foreach ($profile in @('preview', 'city')) {
     if ($named.menu_camera -notmatch '"origin" "0 -160 112"' -or
         $named.menu_camera -notmatch '"angles" "0 90 0"' -or
         $named.menu_globe -notmatch '"classname" "info_target"' -or
-        $named.menu_globe -notmatch '"origin" "96 32 112"') {
+        $named.menu_globe -notmatch '"origin" "96 0 112"') {
         throw "$profile menu poses no longer place the globe to the right of the north-facing view"
+    }
+    if (-not $named.ContainsKey('deploy_camera') -or
+        $named.deploy_camera -notmatch '"classname" "point_camera"' -or
+        $named.deploy_camera -notmatch '"spawnflags" "1"' -or
+        $named.deploy_camera -notmatch '"FOV" "[^"]+"') {
+        throw "$profile must have a Start Off deploy_camera point_camera"
     }
     if ($named.dancing_gman -notmatch '"classname" "prop_ragdoll"') { throw "$profile G-Man must remain a ragdoll" }
     if (-not $previewSkybox -or $previewSkybox -notmatch '"classname" "point_camera"' -or

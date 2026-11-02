@@ -1,0 +1,5 @@
+"VertexLitGeneric"
+{
+	"$baseTexture" "zombiesim/imported/seat/models/seat_m/seat_windshield_da"
+	"$translucent" 1
+}

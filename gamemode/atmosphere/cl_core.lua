@@ -13,6 +13,7 @@ return function(Atmosphere)
         Footsteps = {},
         ScreenEffects = {},
         Fog = {},
+        WorldHaze = {},
         Diagnostics = {},
     }
     Atmosphere.Modules = Modules
@@ -237,6 +238,7 @@ return function(Atmosphere)
     include( "atmosphere/cl_footsteps.lua" )(Atmosphere, Modules)
     include( "atmosphere/cl_screen_effects.lua" )(Atmosphere, Modules)
     include( "atmosphere/cl_fog.lua" )(Atmosphere, Modules)
+    include( "atmosphere/cl_world_haze.lua" )(Atmosphere, Modules)
     include( "atmosphere/cl_diagnostics.lua" )(Atmosphere, Modules)
 
     function Core.RegisterHooks()
@@ -270,6 +272,7 @@ return function(Atmosphere)
             Footsteps.Reset()
             Snow.ClearSnowTrail()
             Weather.Reset()
+            Modules.WorldHaze.Reset()
         end)
         hook.Add("ShutDown", "ZM.Atmosphere.WeatherCleanup", Weather.Shutdown)
 
@@ -318,6 +321,7 @@ return function(Atmosphere)
     Modules.Footsteps.RegisterHooks()
     Modules.ScreenEffects.RegisterHooks()
     Modules.Fog.RegisterHooks()
+    Modules.WorldHaze.RegisterHooks()
     Modules.Diagnostics.RegisterHooks()
     Atmosphere.ModulesReady = true
 end

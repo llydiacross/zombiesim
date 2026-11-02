@@ -1,0 +1,39 @@
+--- Readme.txt ---
+Seat marbella source prop pack 
+by Kruk 
+RELEASE 02.03.09
+
+
+The pack contains
+
+18 models, seat parts (OPTIMAL LOD AND COLLISION)
+
+
+seat_01.mdl
+seat_01_phy.mdl
+seat_02.mdl
+seat_02_phy.mdl
+seat_chairl.mdl
+seat_chairr.mdl
+seat_doorb.mdl
+seat_doorl.mdl
+seat_doorr.mdl
+seat_glass.mdl
+seat_glass_phy.mdl
+seat_hood.mdl
+seat_weel.mdl
+seat_weel_phy.mdl
+seat_weels.mdl
+seat_weels_bend.mdl
+seat_wreck.mdl
+seat_wreck_phy.mdl
+
+7 textures 
+
+seat_D_B.vtf             
+seat_D_G.vtf
+seat_D_R.vtf
+seat_NS.vtf
+seat_wheel_D.vtf
+seat_wheel_NS.vtf
+seat_windshield_DA.vtf

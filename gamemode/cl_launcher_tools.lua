@@ -645,7 +645,9 @@ concommand.Add("zombiesim_dev_test_launcher_tools", function()
             check(#row.uses > 0, "map has logical-cell or den provenance: " .. row.id)
             ids[row.id] = true
         end
-        for _, cell in ipairs(ZM_World:GetData().cells) do check(ids[cell.map], "every cell map is included") end
+        for _, cell in ipairs(ZM_World:GetData().cells) do
+            if cell.empty ~= true then check(ids[cell.map], "every cell map is included") end
+        end
     end)
     suite:Add("clothing_items_draw_fabric_swatches_not_box_models", function(check)
         local sampled, styles = 0, {}

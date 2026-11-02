@@ -26,6 +26,31 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Active Task Tracker
 
+**Alpha 3.4 is the primary focus (user, 2026-11-01); the remaining Alpha
+3.3 work is deferred.** Follow [todo-alpha-3.4.md](todo-alpha-3.4.md): wire
+the user's new/renamed tiles into the generator, generate fresh isolated
+preview data, build the world viewer and load that data for review. The
+Satellite image waits for the later preview rebuild; compiling, staging,
+navmesh and Cell Health still need separate approval. Tile-wiring decisions
+(ra buildings radioactive-only, industrial walls on industry-majority cells,
+added border/edge walls and density-selected edge corners) are recorded in
+that tracker. The Alpha 3.3 notes below are history for deferred work.
+
+**Skyline ra_ towers and view distance, 2026-11-01:** the distant-tower
+filter in `bin/skybox_models.psm1` now accepts `tile_skyscraper_ra_*`
+(regression in `test_skybox_towers.ps1`); `skybox-towers-v3` invalidates old
+tower stamps. `skybox3d.neighbourRadius` is 6 and `maxTowerModels` 256; the
+Options slider reaches 6 rings while presets stay Low1/Medium2/High2. The
+rebuilt preview skyline (11 tower parts, all 6 ra_ recipes) is staged with a
+backup/ledger entry; the user confirmed ra_ silhouettes and the 3-6 ring
+slider work with acceptable performance. City skyline is unchanged.
+The illustrated ATLAS/WALKERS image `map_layers/satellite.png` is excluded by
+`stage_world_map_materials.ps1`; after a world refresh, rebuild it with
+`build_world_satellite_material.ps1` (matching settings/plan) and stage it.
+The rebuilt Alpha 3.3 preview atlas is staged with a backup/ledger entry.
+Captured SATELLITE (revision-gated) and WIREFRAME (navmesh-backed) remain
+stale for this world; the user deferred the Cell Health navmesh/photo batch.
+
 **Calling-card D2 decisions, 2026-10-30:** unlocks are shared by a Steam
 account's survivors within each world profile; only the two defaults are free.
 Background/detail unlocks are independent, selections are per survivor and
@@ -54,6 +79,90 @@ fresh client report confirms ready Home. The user deferred live artwork/survivor
 review; ask before another reload or deployment. Real UI, purchases and
 multiplayer remain unverified.
 
+**Calling cards approved (user, 2026-11-01):** the user reports the calling
+card system is perfect with no issues. The scoreboard bio pencil overlapped
+the Mechanics skill cell; source now docks a 28px button on the Survivor Bio
+header row (GLua392/0); after a reload the user confirmed its placement and
+editor.
+**Phase G fog prototype (2026-11-01):** layered fog style and
+`gamemode/skybox/cl_haze.lua` skybox ground haze are described in the
+tracker's Phase G section; atmosphere19/19 and GLua392/0 pass. After a
+reload the user said the haze looks good; weather/radiation/Low/performance
+remain unsampled. `zombiesim_fog_style legacy` restores the
+original fog exactly.
+The next layer, `gamemode/atmosphere/cl_world_haze.lua` (in-world edge
+curtains and pooled ground mist, `zombiesim_world_haze`), was live-loaded;
+the user asked for stronger edges/mist, eased changes and a post-nuclear
+radiated look. That tuning (eased fog, radiated fog/sky colour, horizon glow,
+fallout ash) was reloaded on `zz_preview_49d203952b23-v1`. The top-down fade
+(`ZM_GetTopDownCameraWeight`; layered fog density and world-haze curtains/mist
+only; legacy, ash and skybox unchanged) is live and user-approved, as is the
+free/shoulder fog. The user then rejected the green as too hazy against the red
+sky: radiated fog now matches the sky's burnt orange, is slightly less hazy,
+and rising fire embers join the ash (atmosphere25/25, GLua393/0); reloaded
+live and user-approved. A 10 s foreground operation sample was taken on
+`zz_preview_a39fe92b1e79-v3`, cell (14,-1), radiation 0.667, High, clear
+weather. Results:
+
+- Overall: 38.8FPS average, Lua hooks 5.89ms per frame.
+- World haze: 0.62ms per frame (draw plus think).
+- Skybox draw: 3.07ms per frame, the largest owner.
+
+This is not a matched comparison. The user approved the Low preset's
+appearance. Under Low, world haze cost 0.31ms per frame and the skybox draw
+1.97ms per frame, at 56.9FPS. The moving cloud deck (72 clusters, drifting
+faster, billowing) is user-approved. Storm lightning
+(`gamemode/skybox/cl_lightning.lua`: skybox bolt, sky/world flash, distance-
+delayed thunder) is user-approved live, except that the reduced-flash option
+was not checked. A future first-run photosensitivity prompt will disable
+flashes; it is deferred. Rain at building edges and the `cl_skybox` split come
+next. After that, the queued requests in the tracker's Phase B: player
+walk/sprint 15% slower with sprint lasting twice as long, walkers 25%
+slower, and a walker on-screen capacity study. Ask before `changelevel`.
+The user reported a flickering, striped z-fight at their cell's haze wall.
+Edge curtains now zigzag in slanted pleats so none can be coplanar with a
+wall face (atmosphere25/25, GLua394/0). The user confirmed this solved the
+issue; the coplanar cause was not isolated. Billboard z-fighting is
+noted in the tracker for later investigation.
+The user-selected rain rework is source-wired in `atmosphere/cl_weather.lua`
+and recorded in the tracker: sky-only spawning that keeps falling outside
+while sheltered, a softer sheltered sound, a far forward band and bounded
+roof-edge runoff. Atmosphere27/27 and GLua394/0 pass. A live fix makes
+traces that hit nothing count as open sky. The user approved it live (open,
+sheltered, drips, sound, performance fine), and the weather schedule was
+resumed afterwards.
+`cl_skybox.lua` is now a core plus section modules under `gamemode/skybox/`
+(coast, edge terrain, clouds, activity, diagnostics, haze, lightning). A
+load-time surface comparison matched, the edge report passed with 0 failures
+and the user confirmed it looks unchanged. Put new skybox behavior in its
+owning module.
+
+**Noted for later (user, 2026-11-01):** the epicenter uses the settlement
+cell. The user suspects this blocks the radiated border/edge pieces, so it
+looks residential instead of destroyed. Verified cause: the 21 blast-core
+cells resolve to profile `destroyed`, which had no border or outer-edge pool.
+Settings now reuse the radioactive pools. Radioactive cells now prefer
+`_ra_` buildings that fit the density tier, with industrial as fallback
+(only `building_ra_1a` exists; the user will author aa/aaa). The approved
+regeneration, which affects roughly all radioactive recipes, waits for the
+Cell Health batch.
+The ordinary-road/on-ramp dogleg regression is fixed in
+`bin/motorway_grid_placements.psm1`: trusted `ordinaryRoadApproaches` are
+restored (cells (13,18) S and (6,23) E, the latter extended by one native
+straight). A baseline plan proves no other cell changed; the grid test
+passes 1515. Both maps join that regeneration, uncompiled and unreviewed.
+**Plan change (user, 2026-11-01):** the Cell Health batch was cancelled at
+the user's request (1048/1142, verified restored to the Doctor at (3,-2)).
+Next comes the Alpha 3.4 world visualization tool, then the
+generation changes noted in `todo-alpha-3.4.md` (commercial spread, fewer
+parks/more leisure, police and fire in every district). The regeneration
+above folds into that work and is reviewed in the viewer before compiling.
+Source-only so far: `landmarks.commonWeights` (Park0.35) makes parks rarer
+(seed-1337 Park37->22, Leisure27->42; equal weights byte-identical), and the
+cell-map renderer now draws every ordinary `roads/*` piece as road and never
+anchors landmark markers on them (`test_cell_map_artwork.ps1`). Nothing was
+regenerated; preview cell materials/Satellite need an approved rebuild.
+
 **D3 credits source, 2026-10-31:** the user confirmed the supplied
 `content/sounds/music/credits.mp3` is cleared for inclusion and redistribution;
 this is not independently verified licence evidence. Credits music now uses
@@ -71,6 +180,13 @@ the later client snapshot found credits inactive and did not capture dancers.
 The user deferred a further dancer snapshot; do not retry it without agreement.
 An active snapshot is still required before choosing head-tracking axes.
 Do not claim that any head tracks or that D3 is accepted.
+
+**Launcher Play fade, 2026-11-01:** the city diorama is gone. Play/Back fade
+through black (0.22/0.1/0.4 s, `DrawOverlay`) to the authored `deploy_camera`
+or the Earth. Page content and the day/night sky swap only at full black, and
+panels reveal afterwards. Both launcher BSPs are restaged; the client suite
+passes 24/24 and the user approved the preview transition. The city launcher
+has not been reviewed live, and `buildcubemaps` remains a manual user step.
 
 The user supplied `patterns/dirty_paper.png`, `symbols/creeper.png` and
 `symbols/weed.png` for calling-card generation. The paper is byte-identical
@@ -98,6 +214,28 @@ world recompile is required. Preserve the edited/new road VMF/VMX sources.
 Existing BSPs do not yet include the redesign; inventory dependencies and
 profiles in Phase H and obtain separate approval before the full compile,
 matching output/staging or production changes.
+**World-source requests, 2026-10-31:** user edited both launcher VMFs, many
+roads (prefab anchors/visuals) and building tiles. Road connections gain
+`parking` and `dual_driveway`, apply to the adjacent ordinary road (1x1 too);
+per road: two driveways -> dual, driveway > parking > bus. New
+`edges/tile_edge_ocean_*` pieces fill ocean-adjacent outer slots on every
+west-ocean cell, with shell/shoreline moved out for a seamless
+`blendrocksand004a` join. D3 dancer heads deferred. Recompile still gated.
+Source status: connections wired (fixtures107/107); no authored parking
+markers exist yet. Ocean pieces1a-9a are one pool, sea on canonical +Y,
+yaw = land wall +180, NW/SW corners use W; bounds stay revision2 with coast
+2880 = visual, all-side shell2880/2944, clip2240. Skybox beach now uses the
+blend's `nature/sandfloor009a`; the rock embankment is skipped when coast
+equals visual. Outer-edge units1186, skybox geometry11/11 offline and
+GLua391/0 pass. Native world-bounds suite, compiled seam fixture, Hammer/
+in-game seam review and full regeneration all remain unrun and need approval.
+**Roads/empty cells, 2026-10-31:** `deadZones` retired; `road.antiGrid`
+breaks long straight ordinary avenues (city9-16, preview5-8) into T-sections
+or jogs, preserving origin reachability (`test_road_anti_grid.ps1`103 pass).
+Roadless cells without safe zone/landmark become plan `emptyCells`: no
+recipe/map/BSP, runtime `empty`, no exits, untravellable, drawn as one flat
+terrain tile (`test_world_empty_cells.py`2/2). Isolated preview: 571 map
+cells, 5 empty, 318 recipes vs installed336. Not regenerated or staged.
 
 World-prefab placement is now source-wired: one explicitly enabled profile/
 logical-cell/tile/XYZ-offset/rotation placement per document, independent of
@@ -2474,7 +2612,7 @@ wording is superseded by the final acceptance above, not a current task list.
 - [docs/gdd.md](docs/gdd.md) describes intended gameplay behavior. Consult it before changing player progression or survival systems.
 - [generator-settings.json](generator-settings.json) is the authoritative configuration schema. Do not infer settings or output paths from filenames.
 - [docs/two_by_two_tile_templates_plan.md](docs/two_by_two_tile_templates_plan.md) describes multi-tile template work.
-- `bin/walker-simulator` is the portable C++ walker project; it stays isolated from Lua and generated assets, and its behavior and commands are documented in the developer README.
+- `walker-simulator/` is the portable C++ walker project; it stays isolated from Lua and generated assets, and its behavior and commands are documented in the developer README. `world-viewer/` is the native Alpha 3.4 generated-world viewer. Both CMake projects write their executables (and the walker GMod module) to the repository `bin/` folder.
 
 ## Source-First Engine and API Work
 

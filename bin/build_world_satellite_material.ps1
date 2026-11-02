@@ -31,7 +31,8 @@ if ([string]::IsNullOrWhiteSpace($OutputPath)) {
 }
 
 $plan = Get-Content -Raw -LiteralPath $PlanData | ConvertFrom-Json
-$cells = @($plan.cells)
+$emptyCells = if ($null -ne $plan.PSObject.Properties['emptyCells']) { @($plan.emptyCells) } else { @() }
+$cells = @(@($plan.cells) + $emptyCells)
 if ($plan.schemaVersion -lt 4 -or $cells.Count -lt 1) {
     throw 'The template plan must use schema version 4 or later and contain city cells.'
 }
@@ -76,6 +77,13 @@ try {
     $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
     $graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
     foreach ($cell in $cells) {
+        if ($null -ne $cell.PSObject.Properties['emptyCell'] -and $cell.emptyCell) {
+            # Roadless empty cells have no map; draw one flat terrain tile instead.
+            $rgb = @($cell.emptyColor)
+            $brush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(255, [int]$rgb[0], [int]$rgb[1], [int]$rgb[2]))
+            try { $graphics.FillRectangle($brush, [int]$cell.x * $tileSize, [int]$cell.y * $tileSize, $tileSize, $tileSize) } finally { $brush.Dispose() }
+            continue
+        }
         $filename = [System.IO.Path]::ChangeExtension([string]$cell.cellTemplateFilename, '.png')
         $sourcePath = Join-Path $CellMaterialDirectory $filename
         if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {

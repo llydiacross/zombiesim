@@ -21,12 +21,16 @@ function New-TestInstance {
 
 $towerInstance = New-TestInstance $towerPath '640 -640 0' 1
 $terrainInstance = New-TestInstance $terrainPath '6400 0 0' 2
+$radioactiveTowerPath = Join-Path $projectRoot 'tiletemplates\buildings\tile_skyscraper_ra_1aaa_2x.vmf'
+$radioactivePath = Join-Path $fixtureRoot 'radioactive_tower.vmf'
 [System.IO.File]::WriteAllText($mixedPath, $towerInstance + $terrainInstance)
 [System.IO.File]::WriteAllText($towerOnlyPath, $towerInstance)
 [System.IO.File]::WriteAllText($emptyPath, $terrainInstance)
+[System.IO.File]::WriteAllText($radioactivePath, (New-TestInstance $radioactiveTowerPath '640 -640 0' 3) + $terrainInstance)
 $builder = [ZombieSim.Skybox.CellModelBuilder]::new(24)
 $materials = [System.Collections.Generic.Dictionary[string, ZombieSim.Skybox.MaterialInfo]]::new()
-foreach ($material in $builder.CollectMaterials([string[]]@($mixedPath))) {
+foreach ($material in $builder.CollectMaterials([string[]]@($mixedPath, $radioactivePath))) {
+    if ($materials.ContainsKey($material)) { continue }
     $info = [ZombieSim.Skybox.MaterialInfo]::new()
     $info.ModelMaterial = $material
     $info.Width = 256
@@ -40,6 +44,8 @@ $none = $builder.BuildTowerParts($emptyPath, 1.0 / 16, $materials, 30000, 60)
 if ($towers.Count -eq 0 -or $towers.Count -ne $reference.Count -or $none.Count -ne 0) {
     throw 'Tower-only extraction must include towers and exclude ordinary terrain.'
 }
+$radioactiveTowers = $builder.BuildTowerParts($radioactivePath, 1.0 / 16, $materials, 30000, 60)
+if ($radioactiveTowers.Count -eq 0) { throw 'Tower-only extraction must include radioactive tile_skyscraper_ra_* towers.' }
 for ($index = 0; $index -lt $towers.Count; $index++) {
     if ($towers[$index].Smd -cne $reference[$index].Smd) {
         throw 'Tower-only extraction must preserve exact instance transform, geometry, normals and UVs.'

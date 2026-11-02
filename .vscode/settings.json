@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "C:/Program Files (x86)/Steam/steamapps/common/GarrysMod/garrysmod/gamemodes/zombiesim/bin/walker-simulator"
+    "cmake.sourceDirectory": "C:/Program Files (x86)/Steam/steamapps/common/GarrysMod/garrysmod/gamemodes/zombiesim/walker-simulator",
+    "editor.formatOnSave": true
 }

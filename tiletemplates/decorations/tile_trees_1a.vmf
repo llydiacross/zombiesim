@@ -1,8 +1,8 @@
 versioninfo
 {
 	"editorversion" "400"
-	"editorbuild" "8871"
-	"mapversion" "14"
+	"editorbuild" "8873"
+	"mapversion" "15"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "14"
+	"mapversion" "15"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -822,17 +822,17 @@ world
 }
 entity
 {
-	"id" "672"
+	"id" "712"
 	"classname" "prop_static"
 	"angles" "0 0 0"
 	"fademindist" "-1"
 	"fadescale" "1"
 	"lightmapresolutionx" "32"
 	"lightmapresolutiony" "32"
-	"model" "models/props_foliage/tree_dead01.mdl"
+	"model" "models/props/cs_militia/tree_large_militia.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "-123.61 0 32"
+	"origin" "199.579 142.459 33.1898"
 	editor
 	{
 		"color" "255 255 0"
@@ -843,17 +843,17 @@ entity
 }
 entity
 {
-	"id" "681"
+	"id" "726"
 	"classname" "prop_static"
 	"angles" "0 0 0"
 	"fademindist" "-1"
 	"fadescale" "1"
 	"lightmapresolutionx" "32"
 	"lightmapresolutiony" "32"
-	"model" "models/props_foliage/tree_dead01.mdl"
+	"model" "models/props/de_inferno/tree_small.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "163.765 171.43 33.5645"
+	"origin" "139.931 -163.278 33.0326"
 	editor
 	{
 		"color" "255 255 0"
@@ -864,17 +864,17 @@ entity
 }
 entity
 {
-	"id" "689"
+	"id" "730"
 	"classname" "prop_static"
-	"angles" "0 0 0"
+	"angles" "0 -26 0"
 	"fademindist" "-1"
 	"fadescale" "1"
 	"lightmapresolutionx" "32"
 	"lightmapresolutiony" "32"
-	"model" "models/props_foliage/tree_dead01.mdl"
+	"model" "models/props/de_inferno/tree_small.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "42.2073 -126.2 33.5645"
+	"origin" "-60.4687 -154.08 33.0325"
 	editor
 	{
 		"color" "255 255 0"
@@ -885,38 +885,23 @@ entity
 }
 entity
 {
-	"id" "699"
-	"classname" "prop_physics_override"
-	"angles" "0 135 0"
-	"damagetoenablemotion" "0"
-	"Damagetype" "0"
-	"disableflashlight" "0"
-	"ExplodeDamage" "0"
-	"ExplodeRadius" "0"
+	"id" "739"
+	"classname" "prop_static"
+	"angles" "0 -7.5 0"
 	"fademindist" "-1"
 	"fadescale" "1"
-	"forcetoenablemotion" "0"
-	"gmod_allowphysgun" "1"
-	"health" "0"
-	"inertiaScale" "1.0"
-	"massScale" "0"
-	"minhealthdmg" "0"
-	"model" "models/props_foliage/tree_pine_large.mdl"
-	"modelscale" "1.0"
-	"nodamageforces" "0"
-	"PerformanceMode" "0"
-	"physdamagescale" "0.1"
-	"pressuredelay" "0"
-	"shadowcastdist" "0"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props/de_inferno/tree_small.mdl"
 	"skin" "0"
-	"spawnflags" "265"
-	"origin" "-120.85 195.508 33.6238"
+	"solid" "6"
+	"origin" "-245.61 -131.437 33.0325"
 	editor
 	{
-		"color" "220 30 220"
+		"color" "255 255 0"
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
-		"logicalpos" "[0 0]"
+		"logicalpos" "[0 3000]"
 	}
 }
 cameras

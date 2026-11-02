@@ -68,8 +68,9 @@ function Copy-GeneratorSettingValue {
     }
     if ($Value -is [System.Collections.IEnumerable] -and -not ($Value -is [string])) {
         $copy = @($Value | ForEach-Object { Copy-GeneratorSettingValue $_ })
-        Write-Output -NoEnumerate ([object[]]$copy)
-        return
+        # Unary comma avoids Write-Output's PSObject wrapper, which makes Windows PowerShell 5.1
+        # ConvertTo-Json serialize arrays as {"value": [...], "Count": n}.
+        return , ([object[]]$copy)
     }
 
     Write-Output -NoEnumerate $Value

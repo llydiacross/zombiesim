@@ -1,0 +1,8 @@
+"VertexLitGeneric"
+{
+	"$baseTexture" "zombiesim/imported/posters/models/moviesp/gamer_poster"
+	"$envmap" "env_cubemap"
+	"$envmapcontrast" "0.5"  
+	"$envmapsaturation" "[.2 .1 1]"
+	"$envmaptint" "[.3 .3 .3]"
+}

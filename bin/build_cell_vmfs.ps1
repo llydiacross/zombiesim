@@ -55,6 +55,7 @@ Import-Module (Join-Path $PSScriptRoot 'carpark_endcaps.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'vmf_source_dependencies.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'tile_ground_grid.psm1')
 Import-Module (Join-Path $PSScriptRoot 'cell_bounds.psm1') -Force
+$oceanEdgesEnabled = Test-ZMOceanEdgesEnabled $outerEdgeSettings
 Import-Module (Join-Path $PSScriptRoot 'outer_edges.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'transition_gates.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'motorway_geometry.psm1') -Force
@@ -73,7 +74,7 @@ function Write-SkyboxRoomVmf {
     $roomHeight = if ($Settings.ContainsKey('roomHeight')) { [int]$Settings.roomHeight } else { 512 }
     $groundMaterial = if ($Settings.ContainsKey('groundMaterial')) { [string]$Settings.groundMaterial } else { 'CS_HAVANA/SWAMPDIRT01' }
     if ($scale -lt 1 -or $radius -lt 1) { throw 'vmfBuild.skybox3d scale and neighbourRadius must be positive.' }
-    $cellSpan = (Get-ZMCellBounds $TileGridSize $TileWidth $outerEdgesEnabled).neighbourPitch
+    $cellSpan = (Get-ZMCellBounds $TileGridSize $TileWidth $outerEdgesEnabled $oceanEdgesEnabled).neighbourPitch
     # Neighbour models sit inside the room so their lighting origins resolve to a lit sky leaf. Every vertical room
     # plane lies on VBSP's 1024-unit block grid: off-grid planes become splitters that cut the playable cell's leaves
     # and add portals (measured +36 portals on zz_preview_594c1fb8277a with walls at +/-768 and +/-784).
@@ -854,7 +855,7 @@ function Get-BorderTemplateSet {
     $cornerVariationTemplates = if ($borderSettings.ContainsKey('cornerVariationTemplates')) { @($borderSettings.cornerVariationTemplates) } else { @() }
     $cornerDensityFallbacks = if ($borderSettings.ContainsKey('cornerDensityFallbacks')) { $borderSettings.cornerDensityFallbacks } else { @{} }
     $useCornerDensitySelection = $cornerVariationTemplates.Count -gt 0
-    $profile = ([string]$Recipe.environmentProfile).ToLowerInvariant()
+    $profile = if ($borderSettings.ContainsKey('profileTemplates')) { Get-ZMWallProfileKey $Recipe $borderSettings.profileTemplates } else { ([string]$Recipe.environmentProfile).ToLowerInvariant() }
     if ($borderSettings.ContainsKey('profileTemplates') -and $borderSettings.profileTemplates.ContainsKey($profile)) {
         $profileTemplates = $borderSettings.profileTemplates[$profile]
         if ($profileTemplates.ContainsKey('wallVariationTemplates') -and @($profileTemplates.wallVariationTemplates).Count -gt 0) {
@@ -1207,7 +1208,7 @@ function Get-TransitionGatePlacements {
     } else {
         @((Get-RecipeEdgeConnections $Recipe) + @($Recipe.rampExits))
     }
-    $bounds = Get-ZMCellBounds $plan.cellTileGridSize $TileSize $outerEdgesEnabled
+    $bounds = Get-ZMCellBounds $plan.cellTileGridSize $TileSize $outerEdgesEnabled $oceanEdgesEnabled
     $transportFeature = [string]$Recipe.transportFeature
     $bridgeSides = if ($transportFeature -eq 'bridge-vertical') { @('N', 'S') } elseif ($transportFeature -eq 'bridge-horizontal') { @('E', 'W') } elseif ($transportFeature -like 'bridge-ramp-*') { @($transportFeature.Substring('bridge-ramp-'.Length, 1).ToUpperInvariant()) } else { @() }
     $elevationOffset = if (@($bridgeSides).Count -gt 0) {
@@ -1279,9 +1280,7 @@ function Set-CellPlayerStart {
     $originMatch = [regex]::Match($Vmf.Substring($originPropertyIndex), '^"origin"\s+"(?<origin>-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?)"')
     if (-not $originMatch.Success) { throw 'Base cell info_player_start must define a numeric origin.' }
     $sourceCoordinates = @($originMatch.Groups['origin'].Value -split '\s+')
-    $spawnZ = if ($null -ne $candidate) {
-        ([double]$sourceCoordinates[2] + $point.z).ToString([Globalization.CultureInfo]::InvariantCulture)
-    } else { $sourceCoordinates[2] }
+    $spawnZ = $sourceCoordinates[2]
     $spawnOrigin = '{0} {1} {2}' -f $spawnX.ToString([Globalization.CultureInfo]::InvariantCulture), $spawnY.ToString([Globalization.CultureInfo]::InvariantCulture), $spawnZ
     $updatedOrigin = '"origin" "{0}"' -f $spawnOrigin
     $absoluteLength = $originMatch.Length
@@ -1307,7 +1306,7 @@ function New-CellVmf {
 
     $baseVmf = Get-Content -Raw $BaseTemplatePath
     if ($outerEdgesEnabled) {
-        $baseVmf = Expand-ZMOuterEdgeShell $baseVmf (Get-ZMCellBounds $TileGridSize $TileWidth $true) (Get-SkyboxOceanPlan $Recipe)
+        $baseVmf = Expand-ZMOuterEdgeShell $baseVmf (Get-ZMCellBounds $TileGridSize $TileWidth $true $oceanEdgesEnabled) $(if ($oceanEdgesEnabled) { @{} } else { Get-SkyboxOceanPlan $Recipe })
     }
     $baseVmf = Set-ZMTransitionArrivalLandmarks $baseVmf @(Get-TransitionGatePlacements $Recipe)
     $baseVmf = Remove-TemplateCubemaps $baseVmf
@@ -1650,7 +1649,7 @@ foreach ($recipe in $recipes) {
     }
     if ($null -ne $complexContract) {
         Import-Module (Join-Path $PSScriptRoot 'terrain_infill.psm1')
-        $infill = Set-ZMMotorwayTerrainInfill $recipe $TileDirectory $borderPlacements $outerPlacements -SizedPatches:$SizedTerrainInfill -CompletePatches:$CompleteTerrainInfill -MeasureCompletePatches:$MeasureCompleteTerrainInfill
+        $infill = Set-ZMMotorwayTerrainInfill $recipe $TileDirectory $borderPlacements $outerPlacements -SizedPatches:$SizedTerrainInfill -CompletePatches:$CompleteTerrainInfill -MeasureCompletePatches:$MeasureCompleteTerrainInfill -OceanEdges:$oceanEdgesEnabled
         $recipe | Add-Member -NotePropertyName terrainInfill -NotePropertyValue $infill
     }
     $expectedInteriorInstanceCount = (Get-RecipeInteriorInstanceCount $recipe) +
@@ -1660,7 +1659,7 @@ foreach ($recipe in $recipes) {
         schemaVersion = 1
         recipe = $recipe.cellTemplateFilename
         corePlacements = @($recipe.tilePlacements)
-        bounds = Get-ZMCellBounds $plan.cellTileGridSize $TileSize $outerEdgesEnabled
+        bounds = Get-ZMCellBounds $plan.cellTileGridSize $TileSize $outerEdgesEnabled $oceanEdgesEnabled
         waterSides = @(if ($outerEdgesEnabled) { (Get-SkyboxOceanPlan $recipe).Keys | Sort-Object } else { (Get-WaterBorderPlan $recipe).Keys | Sort-Object })
         authoredWaterBorderSides = @((Get-WaterBorderPlan $recipe).Keys | Sort-Object)
         borderPlacements = @($borderPlacements)
@@ -1696,7 +1695,9 @@ foreach ($recipe in $recipes) {
                 if ($null -ne $recipe.PSObject.Properties['terrainInfill'] -and
                     $null -ne (Get-ZMComplexMotorwayContract $previousLayout)) {
                     $previousInfillCount = if ($null -ne $previousLayout.PSObject.Properties['terrainInfill']) { $previousLayout.terrainInfill.placements.Count } else { 0 }
-                    $priorCount = $expectedInteriorInstanceCount - $recipe.terrainInfill.placements.Count + $previousInfillCount
+                    $previousCoreCount = @($previousLayout.corePlacements | Where-Object { Test-PlacementEmitsInstance $_ }).Count
+                    $currentCoreCount = @($recipe.tilePlacements | Where-Object { Test-PlacementEmitsInstance $_ }).Count
+                    $priorCount = $expectedInteriorInstanceCount - $currentCoreCount + $previousCoreCount - $recipe.terrainInfill.placements.Count + $previousInfillCount
                     $matchesPreviousLayout = $matchesPreviousLayout -or (Test-GeneratedCellVmf $outputPath $priorCount $previousBorderCount $transitionGates.Count)
                 }
             }

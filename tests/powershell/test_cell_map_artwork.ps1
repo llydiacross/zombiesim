@@ -24,6 +24,19 @@ for ($y = 0; $y -lt 5; $y++) {
         $core += [ordered]@{ tileX = $x; tileY = $y; template = 'terrain/tile_dirt.vmf'; role = 'terrain'; emitsInstance = $true }
     }
 }
+# Road pieces carrying context roles must render as road, and must not anchor landmark markers.
+$contextPlacements = @(
+    @{ tileX = 0; tileY = 1; template = 'roads/tile_road_tjunction.vmf'; role = 'landmark_road_junction' }
+    @{ tileX = 1; tileY = 1; template = 'roads/tile_road_tjunction.vmf'; role = 'carpark_road_junction' }
+    @{ tileX = 3; tileY = 1; template = 'roads/tile_road_driveway.vmf'; role = 'building_road_junction' }
+    @{ tileX = 4; tileY = 3; template = 'roads/tile_road_ramp.vmf'; role = 'bridge_ramp' }
+    @{ tileX = 3; tileY = 3; template = 'buildings/tile_laboratory_1a_2x.vmf'; role = 'landmark' }
+)
+foreach ($context in $contextPlacements) {
+    $target = $core | Where-Object { $_.tileX -eq $context.tileX -and $_.tileY -eq $context.tileY }
+    $target.template = $context.template
+    $target.role = $context.role
+}
 $plan = [ordered]@{
     schemaVersion = 4
     cellDirectory = $layoutDirectory
@@ -31,7 +44,8 @@ $plan = [ordered]@{
     cellBounds = [ordered]@{ revision = 2; tileSize = 640; neighbourPitch = 5760 }
     cells = @([ordered]@{
         x = 0; y = 0; topology = 'road-straight'; orientation = 'vertical'; transportFeature = 'none'
-        activeEntrances = @('N', 'S'); environmentProfile = 'dirt'; landmarks = @()
+        activeEntrances = @('N', 'S'); environmentProfile = 'dirt'; landmarks = @('Laboratory')
+        landmarkMarkers = @([ordered]@{ name = 'Laboratory'; color = [ordered]@{ red = 10; green = 200; blue = 30; alpha = 255 } })
         cellTemplateFilename = $recipe; tileGridSize = 5; tilePlacements = $core
     })
 }
@@ -73,8 +87,22 @@ try {
     if ($northRoute.R -ne 52 -or $northRoute.G -ne 59 -or $northRoute.B -ne 64) { throw 'Border route placement is not rendered.' }
     if ($eastEdge.R -ne 78 -or $eastEdge.G -ne 76 -or $eastEdge.B -ne 72) { throw 'Outer edge placement is not rendered.' }
     if ($coreTerrain.R -ne 110 -or $coreTerrain.G -ne 83 -or $coreTerrain.B -ne 61) { throw 'Core environment placement is not inset correctly.' }
+    $contextRoadPixels = [ordered]@{
+        'landmark_road_junction' = @(102, 150)
+        'carpark_road_junction' = @(168, 168)
+        'building_road_junction' = @(264, 168)
+        'bridge_ramp' = @(312, 264)
+    }
+    foreach ($entry in $contextRoadPixels.GetEnumerator()) {
+        $pixel = $image.GetPixel($entry.Value[0], $entry.Value[1])
+        if ($pixel.R -ne 52 -or $pixel.G -ne 59 -or $pixel.B -ne 64) {
+            throw "Road piece with role '$($entry.Key)' is not rendered as road (got $($pixel.R),$($pixel.G),$($pixel.B))."
+        }
+    }
+    $labMarker = $image.GetPixel(252, 278)
+    if ($labMarker.R -ne 10 -or $labMarker.G -ne 200 -or $labMarker.B -ne 30) { throw 'Landmark marker is not drawn on its building placement.' }
 } finally {
     $image.Dispose()
 }
 
-Write-Output "Cell-map artwork fixture passed: 9x9 frame, inset core, border route, outer edge and west-ocean omission."
+Write-Output "Cell-map artwork fixture passed: 9x9 frame, inset core, border route, outer edge, west-ocean omission, context-role road pieces and landmark anchor."

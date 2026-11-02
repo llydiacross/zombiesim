@@ -28,7 +28,7 @@ foreach ($field in 'schemaVersion', 'profile', 'scale', 'neighbourRadius', 'skyl
     if (-not $manifest.PSObject.Properties[$field]) { throw "Skybox manifest is stale or invalid: missing $field." }
 }
 $expanded = $profile.Settings.vmfBuild.ContainsKey('outerEdges') -and [bool]$profile.Settings.vmfBuild.outerEdges.enabled
-$bounds = Get-ZMCellBounds $plan.cellTileGridSize $profile.Settings.vmfBuild.tileSize $expanded
+$bounds = Get-ZMCellBounds $plan.cellTileGridSize $profile.Settings.vmfBuild.tileSize $expanded ($expanded -and (Test-ZMOceanEdgesEnabled $profile.Settings.vmfBuild.outerEdges))
 $expectedSchema = if ($expanded) { 2 } else { 1 }
 if ($manifest.schemaVersion -ne $expectedSchema -or $manifest.profile -ne $prefix -or
     $manifest.scale -ne $sky.scale -or $manifest.neighbourRadius -ne $sky.neighbourRadius -or

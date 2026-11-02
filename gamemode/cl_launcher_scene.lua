@@ -11,37 +11,15 @@ local shotLock = CreateClientConVar("zombiesim_credits_shot", "", false, false,
 local debugShots = CreateClientConVar("zombiesim_credits_debug", "0", false, false,
     "Show the credits camera trace and shot state.")
 local tilt = math.rad(12)
-local presentationResourceVersion = 6
-local transitionEarthZoom = 7
+local presentationResourceVersion = 7
+local fadeOutSeconds, fadeHoldSeconds, fadeInSeconds = 0.22, 0.1, 0.4
+local uiRevealDelay, uiRevealSeconds = 0.1, 0.35
 local earthSpinDamping = 2.4
-local horizonCityScale = 0.19
-local horizonCityHeightScale = 0.23
-local dioramaHalfWidth, dioramaHalfDepth = 620, 520
-local dioramaRoadExtent = 300
 local presentationNightSky = { id = "imported_space_9", horizon = { 24, 6, 6 } }
 local presentationDaySky = { id = "imported_tropo_day_2", horizon = { 150, 178, 204 } }
 local presentationLightingDirection = Vector(-0.4, -0.8, 0.45):GetNormalized()
-local presentationAssets = {}
 local sunMaterial = Material("sprites/light_glow02_add")
-local dioramaTerrainMaterial = CreateMaterial("zombiesim_launcher_diorama_terrain_v1", "UnlitGeneric", {
-    ["$basetexture"] = "nature/grassfloor002a",
-    ["$vertexcolor"] = 1,
-    ["$nocull"] = 1
-})
-local dioramaRoadMaterial = CreateMaterial("zombiesim_launcher_diorama_roads_v1", "UnlitGeneric", {
-    ["$basetexture"] = "nature/rockfloor005a",
-    ["$vertexcolor"] = 1,
-    ["$nocull"] = 1
-})
-local horizonSunColor = Color(255, 243, 214, 215)
-local horizonHazeColor = Color(178, 204, 228, 74)
-local atmosphereColor = Color(196, 219, 238, 255)
-local terrainColor = Color(134, 139, 103)
-local roadColor = Color(97, 98, 100)
 local earthMarkerColor = Color(255, 176, 82)
-local cityMarkerColor = Color(255, 154, 62)
-local cityLabelColor = Color(248, 242, 232)
-local cityLabelOutline = Color(16, 20, 26, 235)
 local earthLightMaterial = CreateMaterial("zombiesim_launcher_earth_lights_v2", "UnlitGeneric", {
     ["$basetexture"] = "zombiesim/launcher/earth_lights",
     ["$vertexcolor"] = 1,
@@ -313,112 +291,12 @@ local function buildSphere(detail)
     }
 end
 
-// A flat city basin, rolling ground beyond it, and a far ridge that keeps the plate boundary out of frame.
-local function terrainHeight(x, y)
-    local distance = math.sqrt(x * x + y * y)
-    local relief = math.Clamp((distance - 150) / 190, 0, 1)
-    relief = relief * relief * (3 - 2 * relief)
-    local rolling = math.sin(x * 0.0134) * 12.5 + math.cos(y * 0.0171) * 9.5
-        + math.sin((x + y) * 0.0086) * 7
-    local ridge = math.Clamp((distance - 330) / 250, 0, 1)
-    ridge = ridge * ridge * (3 - 2 * ridge)
-    return rolling * relief + ridge * 30 - 3
-end
-
-local function dioramaVertex(x, y, z, colour, uvScale)
-    uvScale = uvScale or 48
-    return {
-        pos = Vector(x, y, z),
-        normal = Vector(0, 0, 1),
-        u = x / uvScale,
-        v = y / uvScale,
-        color = colour
-    }
-end
-
-local function addDioramaQuad(vertices, a, b, c, d)
-    vertices[#vertices + 1] = a
-    vertices[#vertices + 1] = b
-    vertices[#vertices + 1] = c
-    vertices[#vertices + 1] = a
-    vertices[#vertices + 1] = c
-    vertices[#vertices + 1] = d
-end
-
-local function buildDioramaMeshes()
-    local terrainVertices = {}
-    local xSteps, ySteps = 28, 24
-    local halfWidth, halfDepth = dioramaHalfWidth, dioramaHalfDepth
-    for yIndex = 0, ySteps - 1 do
-        local y0 = Lerp(yIndex / ySteps, -halfDepth, halfDepth)
-        local y1 = Lerp((yIndex + 1) / ySteps, -halfDepth, halfDepth)
-        for xIndex = 0, xSteps - 1 do
-            local x0 = Lerp(xIndex / xSteps, -halfWidth, halfWidth)
-            local x1 = Lerp((xIndex + 1) / xSteps, -halfWidth, halfWidth)
-            addDioramaQuad(terrainVertices,
-                dioramaVertex(x0, y0, terrainHeight(x0, y0), terrainColor),
-                dioramaVertex(x1, y0, terrainHeight(x1, y0), terrainColor),
-                dioramaVertex(x1, y1, terrainHeight(x1, y1), terrainColor),
-                dioramaVertex(x0, y1, terrainHeight(x0, y1), terrainColor))
-        end
-    end
-    local roadVertices = {}
-    local function addRoad(horizontal)
-        local steps = 24
-        local extent = dioramaRoadExtent
-        local halfRoad = 8
-        for index = 0, steps - 1 do
-            local start = Lerp(index / steps, -extent, extent)
-            local finish = Lerp((index + 1) / steps, -extent, extent)
-            local x0, y0 = horizontal and start or -halfRoad, horizontal and -halfRoad or start
-            local x1, y1 = horizontal and finish or halfRoad, horizontal and halfRoad or finish
-            local aX, aY = x0, y0
-            local bX, bY = horizontal and x1 or -halfRoad, horizontal and y0 or y1
-            local cX, cY = x1, y1
-            local dX, dY = horizontal and x0 or halfRoad, horizontal and y1 or y0
-            addDioramaQuad(roadVertices,
-                dioramaVertex(aX, aY, terrainHeight(aX, aY) + 0.35, roadColor, 30),
-                dioramaVertex(bX, bY, terrainHeight(bX, bY) + 0.35, roadColor, 30),
-                dioramaVertex(cX, cY, terrainHeight(cX, cY) + 0.35, roadColor, 30),
-                dioramaVertex(dX, dY, terrainHeight(dX, dY) + 0.35, roadColor, 30))
-        end
-    end
-    addRoad(true)
-    addRoad(false)
-    local terrain, roads = Mesh(), Mesh()
-    terrain:BuildFromTriangles(terrainVertices)
-    roads:BuildFromTriangles(roadVertices)
-    return {
-        terrain = terrain,
-        roads = roads,
-        terrainTriangles = #terrainVertices / 3,
-        roadTriangles = #roadVertices / 3,
-        halfWidth = halfWidth,
-        halfDepth = halfDepth,
-        meshes = 2
-    }
-end
-
-function Scene:ReleaseCity()
-    for _, record in ipairs(self.CityModels or {}) do
-        if IsValid(record.entity) then record.entity:Remove() end
-    end
-    self.CityModels = {}
-    self.CityKey, self.CityData = nil, nil
-end
-
 function Scene:ReleasePresentationResources()
     for _, sphere in pairs(self.Spheres or {}) do
         if sphere.day then sphere.day:Destroy() end
         if sphere.night then sphere.night:Destroy() end
     end
     self.Spheres = {}
-    if self.DioramaMeshes then
-        if self.DioramaMeshes.terrain then self.DioramaMeshes.terrain:Destroy() end
-        if self.DioramaMeshes.roads then self.DioramaMeshes.roads:Destroy() end
-    end
-    self.DioramaMeshes = nil
-    self:ReleaseCity()
 end
 
 if Scene.PresentationResourceVersion ~= presentationResourceVersion then
@@ -437,99 +315,113 @@ function Scene:GetSphere()
     return self:GetSphereForDetail(detail), detail
 end
 
-function Scene:GetDioramaMeshes()
-    if not self.DioramaMeshes then self.DioramaMeshes = buildDioramaMeshes() end
-    return self.DioramaMeshes
+local function smoothStep(value)
+    value = math.Clamp(value, 0, 1)
+    return value * value * (3 - 2 * value)
+end
+
+function Scene:GetFadeTimings()
+    return fadeOutSeconds, fadeHoldSeconds, fadeInSeconds
 end
 
 function Scene:SetPresentationState(state)
     if state ~= "earth" and state ~= "city" then return false end
     self.PresentationTransition = nil
     self.PresentationState = state
-    self.PresentationDescent = state == "city" and 1 or 0
-    if state ~= "city" then self:ReleaseCity() end
+    self.PresentationShown = state
+    self.PresentationFade = 0
+    self.PresentationUIRevealAt = nil
+    self:UpdatePresentationSky()
     return true
 end
 
-local function smoothStep(value)
-    value = math.Clamp(value, 0, 1)
-    return value * value * (3 - 2 * value)
-end
-
-local function smootherStep(value)
-    value = math.Clamp(value, 0, 1)
-    return value * value * value * (value * (value * 6 - 15) + 10)
-end
-
-function Scene:GetDescentVisuals(descent)
-    descent = math.Clamp(tonumber(descent) or 0, 0, 1)
-    local approach = smootherStep(math.Clamp((descent - 0.06) / 0.56, 0, 1))
-    local atmosphereIn = smootherStep(math.Clamp((descent - 0.3) / 0.26, 0, 1))
-    local atmosphereOut = 1 - smootherStep(math.Clamp((descent - 0.64) / 0.3, 0, 1))
-    local stage = descent < 0.16 and "orbit" or descent < 0.44 and "approach"
-        or descent < 0.78 and "atmosphere" or "destination"
-    return {
-        descent = descent,
-        earth = 1 - smootherStep(math.Clamp((descent - 0.4) / 0.24, 0, 1)),
-        city = smootherStep(math.Clamp((descent - 0.5) / 0.3, 0, 1)),
-        zoom = Lerp(approach, 1, transitionEarthZoom),
-        earthDrop = smootherStep(math.Clamp((descent - 0.12) / 0.5, 0, 1)) * 84,
-        marker = 1 - smootherStep(math.Clamp((descent - 0.3) / 0.22, 0, 1)),
-        // The veil holds at full cover across the handoff, so the Earth, city and sky swap are never seen crossing.
-        atmosphere = math.min(atmosphereIn, atmosphereOut),
-        skyDay = descent >= 0.58,
-        stage = stage
-    }
-end
-
-// The launcher sky belongs to the descent: orbital night above the Earth, daylight once the city is the destination.
-function Scene:GetPresentationSky()
-    local descent = self.PresentationDescent
-    if not descent then descent = self:GetPresentationState() == "city" and 1 or 0 end
-    local day = self:GetDescentVisuals(descent).skyDay
-    local sky = day and presentationDaySky or presentationNightSky
-    return sky.id, { sky.horizon[1], sky.horizon[2], sky.horizon[3] }, day
-end
-
-function Scene:GetPresentationWeights(now)
+// Timer-free black fade: the shown scene swaps to the target only once the screen is fully black.
+function Scene:AdvancePresentationFade(now)
     local transition = self.PresentationTransition
-    local state = self.PresentationState or "earth"
     if not transition then
-        local visuals = self:GetDescentVisuals(state == "city" and 1 or 0)
-        self.PresentationDescent = visuals.descent
-        return visuals.earth, visuals.city, 1, visuals.zoom, visuals.atmosphere, visuals.descent
+        self.PresentationShown = self.PresentationState or "earth"
+        self:UpdatePresentationSky()
+        self.PresentationFade = 0
+        self.PresentationFadeLinear = 0
+        return 0
     end
-    local progress = math.Clamp(((now or RealTime()) - transition.startedAt) / transition.duration, 0, 1)
-    local blend = smootherStep(progress)
-    local descent = Lerp(blend, transition.fromDescent, transition.targetDescent)
-    local visuals = self:GetDescentVisuals(descent)
-    self.PresentationDescent = descent
-    if progress >= 1 then
+    local elapsed = math.max((now or RealTime()) - transition.startedAt, 0)
+    local alpha
+    if elapsed < fadeOutSeconds then
+        alpha = elapsed / fadeOutSeconds
+    else
+        // Swap the sky with the scene while black; the presentation draw pass may not run every frame.
+        if self.PresentationShown ~= transition.target then
+            self.PresentationShown = transition.target
+            self:UpdatePresentationSky()
+        end
+        if elapsed < fadeOutSeconds + fadeHoldSeconds then
+            alpha = 1
+        else
+            alpha = 1 - (elapsed - fadeOutSeconds - fadeHoldSeconds) / fadeInSeconds
+        end
+    end
+    if alpha <= 0 and elapsed >= fadeOutSeconds then
         self.PresentationTransition = nil
-        if state ~= "city" then self:ReleaseCity() end
+        self.PresentationUIRevealAt = now or RealTime()
+        alpha = 0
     end
-    return visuals.earth, visuals.city, progress, visuals.zoom, visuals.atmosphere, descent
+    alpha = math.Clamp(alpha, 0, 1)
+    // Linear progress drives interruption; the visible darkness eases in and out.
+    self.PresentationFadeLinear = alpha
+    local eased = alpha * alpha * (3 - 2 * alpha)
+    self.PresentationFade = eased
+    return eased
 end
 
-function Scene:TransitionPresentationState(state, duration)
+// Retargeting mid-fade resumes from the current darkness instead of snapping.
+// Launcher panels fade out with the darkness, stay hidden while the new scene fades in,
+// then reveal shortly after the scene is fully visible.
+function Scene:GetPresentationUIAlpha(now)
+    now = now or RealTime()
+    self:AdvancePresentationFade(now)
+    if self.PresentationTransition then
+        if self.PresentationShown ~= self.PresentationTransition.target then
+            return 1 - (self.PresentationFade or 0)
+        end
+        return 0
+    end
+    if not self.PresentationUIRevealAt then return 1 end
+    local reveal = math.Clamp((now - self.PresentationUIRevealAt - uiRevealDelay) / uiRevealSeconds, 0, 1)
+    if reveal >= 1 then self.PresentationUIRevealAt = nil end
+    return reveal * reveal * (3 - 2 * reveal)
+end
+
+// True while the screen is still darkening toward a different scene; page content waits for black.
+function Scene:IsPresentationSwapPending(now)
+    self:AdvancePresentationFade(now)
+    local transition = self.PresentationTransition
+    return transition ~= nil and self.PresentationShown ~= transition.target
+end
+
+function Scene:GetUIRevealTimings()
+    return uiRevealDelay, uiRevealSeconds
+end
+
+function Scene:TransitionPresentationState(state)
     if state ~= "earth" and state ~= "city" then return false end
     local now = RealTime()
-    local earth, city, _, earthZoom, _, descent = self:GetPresentationWeights(now)
-    local targetDescent = state == "city" and 1 or 0
+    self:AdvancePresentationFade(now)
+    local alpha = self.PresentationFadeLinear or 0
+    local shown = self.PresentationShown or self.PresentationState or "earth"
     self.PresentationState = state
-    duration = math.max(tonumber(duration) or 0, 0)
-    if duration == 0 or math.abs(descent - targetDescent) < 0.001 then
-        return self:SetPresentationState(state)
+    if state == shown then
+        if alpha <= 0 then
+            self.PresentationTransition = nil
+            return true
+        end
+        self.PresentationTransition = {
+            startedAt = now - (fadeOutSeconds + fadeHoldSeconds + (1 - alpha) * fadeInSeconds),
+            target = state
+        }
+        return true
     end
-    self.PresentationTransition = {
-        startedAt = now,
-        duration = duration,
-        fromDescent = descent,
-        targetDescent = targetDescent,
-        fromEarth = earth,
-        fromCity = city,
-        fromEarthZoom = earthZoom
-    }
+    self.PresentationTransition = { startedAt = now - alpha * fadeOutSeconds, target = state }
     return true
 end
 
@@ -540,91 +432,14 @@ end
 
 function Scene:GetPresentationState()
     if self:IsPresentationHidden() then return "hidden" end
-    return self.PresentationState or "earth"
+    return self.PresentationShown or self.PresentationState or "earth"
 end
 
-function Scene:GetPresentationData(profile)
-    local cached = presentationAssets[profile]
-    if cached then return cached.world, cached.skyline end
-    local worldRaw = file.Read("data_static/zombiesim_world_" .. tostring(profile) .. ".json", "GAME")
-    local skylineRaw = file.Read("data_static/zombiesim_skybox_" .. tostring(profile) .. ".json", "GAME")
-    cached = {
-        world = worldRaw and util.JSONToTable(worldRaw),
-        skyline = skylineRaw and util.JSONToTable(skylineRaw)
-    }
-    presentationAssets[profile] = cached
-    self.PresentationAssetLoads = (self.PresentationAssetLoads or 0) + 1
-    return cached.world, cached.skyline
-end
-
-function Scene:ResolveSelectedCity()
-    local selected = Menu.SelectedSlot and Menu.Slots and Menu.Slots[Menu.SelectedSlot]
-    if not selected then return nil, "select an occupied survivor slot" end
-    local world, skyline = self:GetPresentationData(Menu.Profile)
-    return ZM_LauncherPresentation.ResolveCity(world, skyline, Menu.Profile, selected.location)
-end
-
-function Scene:GetCitySelectionKey()
-    local selected = Menu.SelectedSlot and Menu.Slots and Menu.Slots[Menu.SelectedSlot]
-    if not selected then return tostring(Menu.Profile) .. "|none" end
-    local location = selected.location or {}
-    return table.concat({
-        tostring(Menu.Profile), tostring(Menu.SelectedSlot), tostring(selected.presentationRevision),
-        tostring(location.state), tostring(location.cellX), tostring(location.cellY),
-        tostring(location.safeZoneId), tostring(location.map)
-    }, "|")
-end
-
-function Scene:PrepareCity()
-    local selectionKey = self:GetCitySelectionKey()
-    if self.CitySelectionKey == selectionKey then
-        local valid = #(self.CityModels or {}) > 0
-        for _, record in ipairs(self.CityModels or {}) do
-            if not IsValid(record.entity) then valid = false break end
-        end
-        if valid then return self.CityModels end
-        if self.CitySelectionFailure then return nil end
-    end
-    self.CitySelectionKey = selectionKey
-    self.CitySelectionFailure = nil
-    local data, failure = self:ResolveSelectedCity()
-    self.CityError = failure
-    if not data then
-        self.CitySelectionFailure = failure or true
-        self:ReleaseCity()
-        return nil
-    end
-    local paths = {}
-    for _, record in ipairs(data.models or {}) do paths[#paths + 1] = record.model end
-    local key = data.profile .. "|" .. data.map .. "|" .. util.CRC(table.concat(paths, "\31"))
-    if self.CityKey == key and #(self.CityModels or {}) > 0 then
-        self.CityData = data
-        return self.CityModels
-    end
-    self:ReleaseCity()
-    local models = {}
-    for _, source in ipairs(data.models or {}) do
-        local entity = ClientsideModel(source.model, RENDERGROUP_OPAQUE)
-        if not IsValid(entity) then
-            for _, record in ipairs(models) do
-                if IsValid(record.entity) then record.entity:Remove() end
-            end
-            self.CityError = "city-cluster skyline model could not be created: " .. tostring(source.model)
-            self.CitySelectionFailure = self.CityError
-            return nil
-        end
-        entity:SetNoDraw(true)
-        entity:SetLOD(0)
-        models[#models + 1] = {
-            entity = entity,
-            offsetX = source.offsetX,
-            offsetY = source.offsetY,
-            selected = source.selected,
-            model = source.model
-        }
-    end
-    self.CityModels, self.CityKey, self.CityData = models, key, data
-    return models
+// Orbital night above the Earth; the authored deploy scene keeps the approved daylight cube.
+function Scene:GetPresentationSky()
+    local day = (self.PresentationShown or self.PresentationState) == "city"
+    local sky = day and presentationDaySky or presentationNightSky
+    return sky.id, { sky.horizon[1], sky.horizon[2], sky.horizon[3] }, day
 end
 
 function Scene:GetEarthMarkerPosition(centre, zoom, presentationScale, latitude, longitude)
@@ -863,10 +678,9 @@ function Scene:DrawNuclearStrikes(centre, rotation, radius, alpha, now)
     return draws
 end
 
-function Scene:DrawEarth(alpha, transitionZoom, descent)
+function Scene:DrawEarth(alpha)
     if not Menu.Camera then return end
     alpha = math.Clamp(tonumber(alpha) or 1, 0, 1)
-    local visuals = self:GetDescentVisuals(descent)
     local sphere, detail = self:GetSphere()
     local now = RealTime()
     local lat, lon = self:GetEarthTarget()
@@ -892,8 +706,8 @@ function Scene:DrawEarth(alpha, transitionZoom, descent)
         self.EarthViewZoom = Lerp(zoomBlend, self.EarthViewZoom, 1)
     end
     local centre, presentationScale = self:ToPresentationSpace(
-        Menu.Globe + Vector(0, 0, math.sin(now * 0.9) * 2 - visuals.earthDrop))
-    local zoom = (self.PrototypeEarthZoom or 1) * self.EarthViewZoom * (transitionZoom or 1)
+        Menu.Globe + Vector(0, 0, math.sin(now * 0.9) * 2))
+    local zoom = (self.PrototypeEarthZoom or 1) * self.EarthViewZoom
     local fogMode = render.GetFogMode()
     render.FogMode(MATERIAL_FOG_NONE)
     local fogDraws = self:DrawSpaceFog(centre, presentationScale, alpha, false)
@@ -936,7 +750,7 @@ function Scene:DrawEarth(alpha, transitionZoom, descent)
     cam.PopModelMatrix()
     local markerPosition, markerNormal = self:GetEarthMarkerPosition(
         centre, zoom, presentationScale, lat, lon)
-    local markerAlpha = alpha * visuals.marker
+    local markerAlpha = alpha
     if markerPosition and markerAlpha > 0.001 then
         local cameraDirection = (self:GetPresentationCameraOrigin() - centre):GetNormalized()
         local facing = math.Clamp(markerNormal:Dot(cameraDirection), 0, 1)
@@ -953,7 +767,7 @@ function Scene:DrawEarth(alpha, transitionZoom, descent)
     end
     render.SetBlend(1)
     local strikeDraws = self:DrawNuclearStrikes(centre, self:GetEarthRotation(),
-        42 * zoom * presentationScale, alpha * visuals.marker, now)
+        42 * zoom * presentationScale, alpha, now)
     fogDraws = fogDraws + self:DrawSpaceFog(centre, presentationScale, alpha, true, 1 / math.max(zoom, 1))
     render.FogMode(fogMode)
     local minimumZoom, maximumZoom, cameraDistance = self:GetEarthZoomBounds()
@@ -970,114 +784,11 @@ function Scene:DrawEarth(alpha, transitionZoom, descent)
         cameraDistance = cameraDistance,
         fogDraws = fogDraws, strikeDraws = strikeDraws,
         nuclearStrikes = #(self.NuclearStrikes or {}),
-        descent = visuals.descent, descentStage = visuals.stage, earthDrop = visuals.earthDrop,
         coordinateSpace = self:Uses3DSkybox() and "skybox" or "world"
     }
     return self.Stats
 end
 
-function Scene:DrawCity(alpha)
-    alpha = math.Clamp(tonumber(alpha) or 1, 0, 1)
-    local models = self:PrepareCity()
-    if not models then
-        self.Stats = { state = "city", meshes = 0, draws = 0, models = 0, error = self.CityError }
-        return
-    end
-    local now = RealTime()
-    local centreWorld = Menu.Globe + Vector(0, 0, -19)
-    local centre, presentationScale = self:ToPresentationSpace(centreWorld)
-    local finalAngle = Angle(0, 24, 0)
-    local pitch = self.CityData.cellSpan / 16 * horizonCityScale * presentationScale
-    local diorama = self:GetDioramaMeshes()
-    local scale = Matrix()
-    scale:Scale(Vector(horizonCityScale, horizonCityScale, horizonCityHeightScale) * presentationScale)
-    render.SetBlend(alpha)
-    render.SetMaterial(sunMaterial)
-    local sunPosition = self:ToPresentationSpace(
-        centreWorld + Menu.Camera.angles:Forward() * 54 + Vector(0, 0, 45))
-    local hazePosition = self:ToPresentationSpace(
-        centreWorld + Menu.Camera.angles:Forward() * 48 + Vector(0, 0, 20))
-    render.DrawSprite(sunPosition, 104 * presentationScale, 104 * presentationScale, horizonSunColor)
-    render.DrawSprite(hazePosition, 460 * presentationScale, 118 * presentationScale, horizonHazeColor)
-    local terrainMatrix = Matrix()
-    terrainMatrix:Rotate(finalAngle)
-    terrainMatrix:Scale(Vector(presentationScale, presentationScale, presentationScale))
-    terrainMatrix:SetTranslation(centre)
-    cam.PushModelMatrix(terrainMatrix)
-    render.SetMaterial(dioramaTerrainMaterial)
-    diorama.terrain:Draw()
-    render.SetMaterial(dioramaRoadMaterial)
-    diorama.roads:Draw()
-    cam.PopModelMatrix()
-    render.SuppressEngineLighting(true)
-    render.SetModelLighting(BOX_FRONT, 0.68, 0.7, 0.72)
-    render.SetModelLighting(BOX_BACK, 0.3, 0.33, 0.38)
-    render.SetModelLighting(BOX_RIGHT, 0.56, 0.58, 0.62)
-    render.SetModelLighting(BOX_LEFT, 0.38, 0.41, 0.47)
-    render.SetModelLighting(BOX_TOP, 0.95, 0.94, 0.88)
-    render.SetModelLighting(BOX_BOTTOM, 0.18, 0.19, 0.22)
-    render.SetColorModulation(0.96, 0.96, 0.95)
-    for _, record in ipairs(models) do
-        local localX, localY = record.offsetX * pitch / presentationScale,
-            record.offsetY * pitch / presentationScale
-        local offset = Vector(localX, localY, terrainHeight(localX, localY) + 0.7)
-        offset:Rotate(finalAngle)
-        record.entity:SetPos(centre + offset * presentationScale)
-        record.entity:SetAngles(finalAngle)
-        record.entity:EnableMatrix("RenderMultiply", scale)
-        record.entity:DrawModel()
-    end
-    render.SetColorModulation(1, 1, 1)
-    render.SuppressEngineLighting(false)
-    local markerPosition = centre + Vector(0, 0, terrainHeight(0, 0) + 62) * presentationScale
-    render.SetColorMaterial()
-    render.DrawSphere(markerPosition, (2.7 + math.sin(now * 4) * 0.45) * presentationScale, 8, 6,
-        cityMarkerColor)
-    local labelPosition = centre + Vector(0, 0, 70) * presentationScale
-    local labelAngle = (labelPosition - self:GetPresentationCameraOrigin()):Angle()
-    labelAngle:RotateAroundAxis(labelAngle:Up(), -90)
-    labelAngle:RotateAroundAxis(labelAngle:Forward(), 90)
-    cam.Start3D2D(labelPosition, labelAngle, 0.36 * presentationScale)
-        draw.SimpleTextOutlined(string.upper(self.CityData.label), "DermaDefaultBold", 0, 0,
-            cityLabelColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, cityLabelOutline)
-    cam.End3D2D()
-    render.SetBlend(1)
-    local selected = Menu.SelectedSlot and Menu.Slots and Menu.Slots[Menu.SelectedSlot] or {}
-    local cameraDistance = (centre - self:GetPresentationCameraOrigin()):Length() / presentationScale
-    local skyId, _, skyDay = self:GetPresentationSky()
-    self.Stats = {
-        state = "city", meshes = diorama.meshes, draws = #models + 6, models = #models,
-        terrainTriangles = diorama.terrainTriangles, roadTriangles = diorama.roadTriangles,
-        label = self.CityData.label, alpha = alpha, horizon = true, groundedDiorama = true,
-        sun = true, coordinateSpace = self:Uses3DSkybox() and "skybox" or "world",
-        cityScale = horizonCityScale, cityPitch = pitch / presentationScale,
-        terrainHalfWidth = diorama.halfWidth, terrainHalfDepth = diorama.halfDepth,
-        cameraDistance = cameraDistance,
-        terrainCoverage = diorama.halfWidth / math.max(cameraDistance, 1),
-        sky = skyId, skyDay = skyDay == true,
-        selectedLatitude = tonumber(selected.originLatitude),
-        selectedLongitude = tonumber(selected.originLongitude)
-    }
-    return self.Stats
-end
-
-function Scene:DrawAtmosphereVeil(alpha)
-    alpha = math.Clamp(tonumber(alpha) or 0, 0, 1)
-    if alpha <= 0.001 or not Menu.Camera then return 0 end
-    local camera = self:GetPresentationCameraOrigin()
-    local _, presentationScale = self:ToPresentationSpace(Menu.Globe)
-    local forward = Menu.Camera.angles:Forward()
-    render.OverrideDepthEnable(true, false)
-    render.SetBlend(alpha)
-    render.SetColorMaterial()
-    render.DrawQuadEasy(camera + forward * 38 * presentationScale, -forward,
-        340 * presentationScale, 260 * presentationScale, atmosphereColor, 0)
-    render.SetBlend(1)
-    render.OverrideDepthEnable(false, false)
-    return 1
-end
-
-// Rebuilding the palette mid-descent is hidden by the veil, so the sky only changes while the handoff is covered.
 function Scene:UpdatePresentationSky()
     local skyId = self:GetPresentationSky()
     if skyId == self.PresentationSkyId then return false end
@@ -1089,44 +800,30 @@ end
 function Scene:DrawPresentation()
     local state = self:GetPresentationState()
     if state == "hidden" then
-        self:ReleaseCity()
         self.Stats = { state = "hidden", meshes = 0, draws = 0, models = 0 }
         return
     end
-    local earthWeight, cityWeight, progress, earthZoom, atmosphere, descent = self:GetPresentationWeights()
-    local visuals = self:GetDescentVisuals(descent)
+    local fade = self:AdvancePresentationFade()
     self:UpdatePresentationSky()
-    local transition = self.PresentationTransition
-    if not transition then
-        if state == "city" then
-            self:DrawCity(1)
-        else
-            self:DrawEarth()
-        end
-        return
+    // The deploy scene is the real map seen through the authored deploy camera; nothing is drawn here.
+    if (self.PresentationShown or state) == "city" then
+        self.Stats = { state = "city", meshes = 0, draws = 0, models = 0 }
+    else
+        self:DrawEarth()
     end
-    local earthStats = earthWeight > 0.001 and self:DrawEarth(earthWeight, earthZoom, descent) or nil
-    local cityStats = cityWeight > 0.001 and self:DrawCity(cityWeight) or nil
-    local atmosphereDraws = self:DrawAtmosphereVeil(atmosphere)
-    self.Stats = {
-        state = "transition",
-        transition = self:GetPresentationTransitionState(),
-        progress = progress,
-        earthAlpha = earthWeight,
-        cityAlpha = cityWeight,
-        earthZoom = earthZoom,
-        descent = descent,
-        descentStage = visuals.stage,
-        atmosphere = atmosphere,
-        sky = self.PresentationSkyId,
-        skyDay = visuals.skyDay == true,
-        cityHorizon = true,
-        groundedDiorama = cityStats and cityStats.groundedDiorama or false,
-        meshes = (earthStats and earthStats.meshes or 0) + (cityStats and cityStats.meshes or 0),
-        models = cityStats and cityStats.models or 0,
-        draws = (earthStats and earthStats.draws or 0) + (cityStats and cityStats.draws or 0)
-            + atmosphereDraws
-    }
+    self.Stats = self.Stats or { state = state, meshes = 0, draws = 0, models = 0 }
+    self.Stats.fade = fade
+    self.Stats.transition = self:GetPresentationTransitionState()
+    self.Stats.sky = self.PresentationSkyId
+end
+
+function Scene:DrawPresentationFade()
+    if not Menu.Active or not self.PresentationTransition then return false end
+    local alpha = self:AdvancePresentationFade()
+    if alpha <= 0 then return false end
+    surface.SetDrawColor(0, 0, 0, math.Round(alpha * 255))
+    surface.DrawRect(0, 0, ScrW(), ScrH())
+    return true
 end
 
 function Scene:GetMaterialStatus()
@@ -1141,13 +838,6 @@ function Scene:GetMaterialStatus()
         }
     end
 
-    function Scene:GetHorizonMaterialStatus()
-        return {
-            sun = { valid = not sunMaterial:IsError(), shader = sunMaterial:GetShader() },
-            terrain = { valid = not dioramaTerrainMaterial:IsError(), shader = dioramaTerrainMaterial:GetShader() },
-            roads = { valid = not dioramaRoadMaterial:IsError(), shader = dioramaRoadMaterial:GetShader() }
-        }
-    end
     return result
 end
 
@@ -1173,6 +863,11 @@ hook.Add("PostDrawTranslucentRenderables", "ZombieSim.Launcher.Globe", function(
 end)
 
 hook.Remove("HUDPaint", "ZombieSim.Launcher.CityLabel")
+hook.Remove("HUDPaint", "ZombieSim.Launcher.PresentationFade")
+// DrawOverlay runs above VGUI, so the black also covers the launcher panels.
+hook.Add("DrawOverlay", "ZombieSim.Launcher.PresentationFade", function()
+    Scene:DrawPresentationFade()
+end)
 
 concommand.Remove("zombiesim_dev_launcher_presentation")
 concommand.Add("zombiesim_dev_launcher_presentation", function(_, _, arguments)
@@ -1213,9 +908,8 @@ concommand.Add("zombiesim_dev_launcher_presentation_status", function()
         },
         stats = Scene.Stats or { state = Scene:GetPresentationState() },
         materials = Scene:GetMaterialStatus(),
-        horizonMaterials = Scene:GetHorizonMaterialStatus(),
-        cityError = Scene.CityError,
-        presentationAssetLoads = Scene.PresentationAssetLoads or 0
+        fade = Scene.PresentationFade or 0,
+        deployCamera = Menu.DeployCamera and true or false
     }
     file.CreateDir("zombiesim")
     file.Write("zombiesim/launcher-presentation-status.json", util.TableToJSON(status, true))

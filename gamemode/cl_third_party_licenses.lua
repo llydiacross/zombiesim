@@ -60,8 +60,9 @@ function Licenses:Load()
                 end
                 records[#records + 1] = {
                     title = tostring(source.title or source.package), source = source.archive,
+                    credit = isstring(source.author) and source.author or nil,
                     permission = source.permission and tostring(source.permission), text = #texts > 0 and table.concat(texts, "\n\n") or
-                        "No license document was supplied. The creator-permission record above is not original license text."
+                        "No license document was supplied. The permission record above is not original license text."
                 }
             end
         end

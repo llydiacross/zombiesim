@@ -1,0 +1,5 @@
+"Vertexlitgeneric"
+{
+	"$baseTexture" "zombiesim/imported/zombieports/models/zombie_soldier/zombie_head"
+	"$bumpmap" "zombiesim/imported/zombieports/models/zombie_soldier/zombie_head_normal"
+}

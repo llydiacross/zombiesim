@@ -178,6 +178,21 @@ foreach ($variant in $signs.variants.PSObject.Properties) {
         Add-Content $path 'common' ([IO.Path]::GetFileNameWithoutExtension($variant.Value.model))
     }
 }
+# Tiles converted by build_tile_detail_models.ps1 reference their detail model only from compiled BSP static props.
+$detailModelConfig = Join-Path $root 'tiletemplates_modelsrc\detail_models.json'
+if (Test-Path -LiteralPath $detailModelConfig) {
+    foreach ($entry in @((Read-PackageJson $detailModelConfig).tiles)) {
+        if ([string]$entry.name -notmatch '^[\w-]+$') { throw "Invalid tile detail model name: $($entry.name)" }
+        $tilePath = Join-Path $root ('tiletemplates\' + ([string]$entry.tile).Replace('/', '\'))
+        $models = @([regex]::Matches((Get-Content -LiteralPath $tilePath -Raw), '"model" "(models/zombiesim/tiles/[^"]+\.mdl)"') |
+            ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+        if ($models.Count -ne 1) { throw "Generated tile $($entry.tile) must reference exactly one detail model; rerun build_tile_detail_models.ps1." }
+        foreach ($path in Get-WorkshopModelCompanions $content $models[0]) { Add-Content $path 'world' "tile-detail:$($entry.name)" }
+        $materials = @(Get-ChildItem -LiteralPath (Join-Path $content 'materials\models\zombiesim\tiles') -File -Filter "zm_tile_$($entry.name)_*.vmt")
+        if ($materials.Count -eq 0) { throw "Missing tile detail materials: $($entry.name)" }
+        foreach ($file in $materials) { Add-Content "materials/models/zombiesim/tiles/$($file.Name)" 'world' "tile-detail:$($entry.name)" }
+    }
+}
 
 $externalModels = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 foreach ($profile in @($WorldProfiles | Sort-Object)) {

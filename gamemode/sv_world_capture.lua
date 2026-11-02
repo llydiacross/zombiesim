@@ -456,10 +456,22 @@ net.Receive("ZM.WorldCapture.Result", function(_, target)
     end
 end)
 
+local function countMapCells()
+    local count = 0
+    for _, cell in ipairs(ZM_World:GetData().cells) do
+        if cell.empty ~= true then count = count + 1 end
+    end
+    return count
+end
+
 local function buildQueue(target, arguments, fullWorld)
     local queue, seen = {}, {}
     local function add(cell)
         if not cell or seen[cell.id] then return end
+        if cell.empty == true then
+            if fullWorld then return end
+            error("empty cells have no map to capture")
+        end
         local path = ZM_World:GetMapPath(cell)
         if not path or not path:match("^[%w_/%-]+$") or not file.Exists("maps/" .. path .. ".bsp", "GAME") then
             error("ordinary cell BSP is not staged")
@@ -470,7 +482,7 @@ local function buildQueue(target, arguments, fullWorld)
     end
     local current = target:GetWorldCell()
     if fullWorld then
-        if arguments[1] ~= "preview" or tonumber(arguments[2]) ~= #ZM_World:GetData().cells or arguments[3] then
+        if arguments[1] ~= "preview" or tonumber(arguments[2]) ~= countMapCells() or arguments[3] then
             error("full rollout requires explicit preview scope and authoritative cell count")
         end
         for _, cell in ipairs(ZM_World:GetData().cells) do add(cell) end
@@ -622,7 +634,7 @@ function Capture:Start(target, arguments, withNav, fullWorld, selection, deferTi
         withCubemaps = selection ~= nil and selection.cubemaps == true, cellHealthBatch = selection ~= nil,
         selectedArtifacts = selection, fullWorld = fullWorld == true, navmeshes = {}, cubemapResults = {},
         results = {clear = {}, atmospheric = {}}, completedResults = 0, startedAt = os.time(),
-        requiredCellCount = #ZM_World:GetData().cells, expectedCaptureResults = expectedCaptureResults,
+        requiredCellCount = countMapCells(), expectedCaptureResults = expectedCaptureResults,
         original = {
             steamId64 = target:SteamID64(), characterKey = key, core = core, runtimeCore = runtime,
             mapPath = originalMap, position = {position.x, position.y, position.z},

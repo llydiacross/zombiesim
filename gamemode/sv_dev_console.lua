@@ -137,6 +137,20 @@ DevConsole.DirectCommands.zombiesim_dev_profile_client = function(argumentString
     return true
 end
 
+// Bridge-only: forces one cosmetic lightning strike on the first admin's client for visual review.
+DevConsole.DirectCommands.zombiesim_dev_lightning_strike = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() then
+        return false, "lightning preview requires a connected admin"
+    end
+    if ZM_World.ActiveProfile ~= "preview" then
+        return false, "lightning preview is restricted to the preview profile"
+    end
+    target:ConCommand("zombiesim_lightning_strike")
+    print("[ZombieSim] Requested a client lightning strike.")
+    return true
+end
+
 local walkerProfile
 
 local function finishWalkerProfile()

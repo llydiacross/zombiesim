@@ -242,6 +242,12 @@ function ZM_IsInDenCamera()
     return isInDenCamera(LocalPlayer())
 end
 
+// Returns 0..1: how fully the locked top-down camera is in use, eased with the camera glide; 0 in the den camera.
+function ZM_GetTopDownCameraWeight()
+    local weight = lockBlend * lockBlend * (3 - 2 * lockBlend)
+    return weight * (1 - denCameraBlend)
+end
+
 // Returns the aim cursor's screen position while the camera is locked (never in the first-person den camera).
 function ZM_GetAimCursor()
     if not (cameraLocked or shoulderCursorActive) or not cursorX or isInDenCamera(LocalPlayer())

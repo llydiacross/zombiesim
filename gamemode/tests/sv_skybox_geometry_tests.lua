@@ -91,6 +91,18 @@ suite:Add("all_cardinal_and_mixed_coast_masks", function(check)
     end
 end)
 
+suite:Add("ocean_edge_coast_fills_the_cell", function(check)
+    local manifest, world = fixture({"W"})
+    for _, bounds in ipairs({manifest.cellBounds, world.cellBounds}) do bounds.coastContactHalfExtent = 2880 end
+    manifest.geometry.fixture.coastHalfExtent = 2880
+    check(Geometry.ValidateManifest(manifest, world, {{map = "fixture", waterSides = {"W"}}}),
+        "an ocean-edge skyline matches an ocean-edge world")
+    local rectangle = Geometry.GetLandRectangle(manifest, "fixture", 0, 0)
+    check(rectangle.x0 == -180 and rectangle.x1 == 180 and rectangle.y0 == -180 and rectangle.y1 == 180,
+        "authored ocean pieces occupy the whole outer ring, so the beach starts at the visual edge")
+    check(#Geometry.GetWaterBands(rectangle, 0, 0, 180) == 0, "no water band remains inside the cell")
+end)
+
 suite:Add("cardinal_land_joins_and_north_sign", function(check)
     local manifest = fixture()
     local current = Geometry.GetLandRectangle(manifest, "fixture", 0, 0)

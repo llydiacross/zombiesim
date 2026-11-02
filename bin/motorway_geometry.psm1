@@ -379,4 +379,4 @@ function Get-ZMComplexMotorwayContract {
 
 
 
-Export-ModuleMember -Function Get-ZMComplexMotorwayContract, Get-ZMMotorwayFootprint, Get-ZMMotorwayReservation, New-ZMStraightMotorwayStripe, Get-ZMNormalStraightMotorwayContract, Resolve-ZMNormalStraightMotorwayRings, Set-ZMStraightMotorwayCellInspection, Assert-ZMStraightMotorwayCellContract, Get-ZMComplexMotorwayGates
+Export-ModuleMember -Function Convert-ZMMotorwayPoint, Get-ZMComplexMotorwayContract, Get-ZMMotorwayFootprint, Get-ZMMotorwayReservation, New-ZMStraightMotorwayStripe, Get-ZMNormalStraightMotorwayContract, Resolve-ZMNormalStraightMotorwayRings, Set-ZMStraightMotorwayCellInspection, Assert-ZMStraightMotorwayCellContract, Get-ZMComplexMotorwayGates

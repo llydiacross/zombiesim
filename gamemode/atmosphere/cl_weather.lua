@@ -43,6 +43,8 @@ return function(Atmosphere, Modules)
             self.RainSoundPatch:FadeOut(0.6)
             self.RainSoundPatch = nil
         end
+        self.RainSoundSheltered = nil
+        if Weather.RunoffEdges then table.Empty(Weather.RunoffEdges) end
         if self.WindSoundPatch then
             self.WindSoundPatch:FadeOut(1.2)
             self.WindSoundPatch = nil
@@ -59,22 +61,68 @@ return function(Atmosphere, Modules)
         self.BoundaryMistActive = false
     end
 
-    local function emitPrecipitationParticle(weather, eyePosition, eyeAngles)
+    // Rain and snow spawn only in columns with open sky above, so precipitation falls up to walls and
+    // roof edges and remains visible outside while the player is under cover.
+    local columnTraceStart, columnTraceEnd = Vector(), Vector()
+    local columnTrace = { start = columnTraceStart, endpos = columnTraceEnd, mask = MASK_SOLID_BRUSHONLY }
+    local edgeTraceStart, edgeTraceEnd = Vector(), Vector()
+    local edgeTrace = { start = edgeTraceStart, endpos = edgeTraceEnd, mask = MASK_SOLID_BRUSHONLY }
+    local farRainMinimum, farRainMaximum, farRainHalfAngle = 720, 1700, math.rad(62)
+    local runoffMaximumEdges, runoffProbeInterval, runoffRange = 10, 0.12, 520
+    local runoffEdges = {}
+    local nextRunoffProbeAt = 0
+    Weather.RunoffEdges = runoffEdges
+
+    local function traceColumn(x, y, z)
+        columnTraceStart:SetUnpacked(x, y, z)
+        columnTraceEnd:SetUnpacked(x, y, z + 4096)
+        return util.TraceLine(columnTrace)
+    end
+
+    // Returns the spawn height for an open-sky column, or nil when the column is covered or inside solid.
+    // Matches the shelter check: a trace that reaches nothing within range is open sky.
+    local function openSkySpawnHeight(x, y, eyeZ, low, high)
+        local trace = traceColumn(x, y, eyeZ)
+        if trace.StartSolid or (trace.Hit and not trace.HitSky) then return nil end
+        local preferred = eyeZ + math.Rand(low, high)
+        local ceiling = trace.Hit and trace.HitPos and trace.HitPos.z - 8 or preferred
+        return math.min(preferred, ceiling)
+    end
+
+    local function countDiagnostic(key)
+        Weather.Diagnostics[key] = (Weather.Diagnostics[key] or 0) + 1
+    end
+
+    local function emitPrecipitationParticle(weather, eyePosition, eyeAngles, far)
         local emitter = Weather.GetEmitter(eyePosition)
         if not emitter then return end
 
-        local side = eyeAngles:Right() * math.Rand(-620, 620)
-        local forward = eyeAngles:Forward() * math.Rand(-180, 420)
-        local position = eyePosition + side + forward + Vector(0, 0, math.Rand(260, 640))
+        local x, y
+        if far then
+            local forward = eyeAngles:Forward()
+            local heading = math.atan2(forward.y, forward.x) + math.Rand(-farRainHalfAngle, farRainHalfAngle)
+            local distance = math.Rand(farRainMinimum, farRainMaximum)
+            x, y = eyePosition.x + math.cos(heading) * distance, eyePosition.y + math.sin(heading) * distance
+        else
+            local side = eyeAngles:Right() * math.Rand(-680, 680)
+            local forward = eyeAngles:Forward() * math.Rand(-200, 700)
+            x, y = eyePosition.x + side.x + forward.x, eyePosition.y + side.y + forward.y
+        end
+        local z = openSkySpawnHeight(x, y, eyePosition.z, far and 180 or 260, far and 520 or 640)
+        if not z then
+            countDiagnostic("precipitationCoveredRejected")
+            return
+        end
+        countDiagnostic(far and "precipitationFarSpawned" or "precipitationNearSpawned")
         local material = weather == "rain" and "effects/laser_tracer" or "particle/snow"
-        local particle = emitter:Add(material, position)
+        local particle = emitter:Add(material, Vector(x, y, z))
         if not particle then return end
 
         particle:SetDieTime(weather == "rain" and 0.65 or 4.2)
-        particle:SetStartAlpha(weather == "rain" and 115 or 210)
+        particle:SetStartAlpha(weather == "rain" and (far and 60 or 115) or (far and 150 or 210))
         particle:SetEndAlpha(0)
-        particle:SetStartSize(weather == "rain" and 1 or 2)
-        particle:SetEndSize(weather == "rain" and 0.8 or 3)
+        particle:SetStartSize(weather == "rain" and (far and 3.2 or 1) or 2)
+        particle:SetEndSize(weather == "rain" and (far and 2.6 or 0.8) or 3)
         particle:SetColor(weather == "rain" and 177 or 218, weather == "rain" and 194 or 226, weather == "rain" and 204 or 232)
         particle:SetCollide(true)
         particle:SetBounce(0)
@@ -83,8 +131,8 @@ return function(Atmosphere, Modules)
         end)
 
         if weather == "rain" then
-            particle:SetStartLength(34)
-            particle:SetEndLength(34)
+            particle:SetStartLength(far and 64 or 34)
+            particle:SetEndLength(far and 64 or 34)
             particle:SetVelocity(Vector(math.Rand(-45, 45), math.Rand(-45, 45), -1250))
         else
             particle:SetStartSize(math.Rand(1.6, 2.8))
@@ -94,6 +142,104 @@ return function(Atmosphere, Modules)
             particle:SetAirResistance(18)
             particle:SetGravity(Vector(math.Rand(-10, 10), math.Rand(-10, 10), -22))
             particle:SetVelocity(Vector(math.Rand(-38, 38), math.Rand(-38, 38), math.Rand(-80, -40)))
+        end
+    end
+
+    // Finds a drip edge: an overhang 24-520 units above eye height whose outward side opens to sky,
+    // reached without crossing a wall. Returns the point just outside the edge, below the roof.
+    local function probeRunoffEdge(eyePosition)
+        countDiagnostic("runoffProbes")
+        local angle = math.Rand(0, math.pi * 2)
+        local distance = math.Rand(48, runoffRange)
+        local px, py, pz = eyePosition.x + math.cos(angle) * distance, eyePosition.y + math.sin(angle) * distance, eyePosition.z
+        local trace = traceColumn(px, py, pz)
+        if trace.StartSolid or trace.HitSky or not trace.Hit or not trace.HitPos then return nil end
+        local height = trace.HitPos.z - pz
+        if height < 24 or height > 520 then return nil end
+
+        local heading = math.Rand(0, math.pi * 2)
+        local dx, dy = math.cos(heading), math.sin(heading)
+        local covered, coveredZ, open = 0, trace.HitPos.z, nil
+        for step = 1, 12 do
+            local offset = step * 24
+            local column = traceColumn(px + dx * offset, py + dy * offset, pz)
+            if column.StartSolid then return nil end
+            if column.HitSky or not column.Hit then
+                open = offset
+                break
+            end
+            covered = offset
+            if column.HitPos then coveredZ = column.HitPos.z end
+        end
+        if not open then return nil end
+        for _ = 1, 3 do
+            local middle = (covered + open) * 0.5
+            local column = traceColumn(px + dx * middle, py + dy * middle, pz)
+            if column.StartSolid then return nil end
+            if column.HitSky or not column.Hit then
+                open = middle
+            else
+                covered = middle
+                if column.HitPos then coveredZ = column.HitPos.z end
+            end
+        end
+
+        // A wall between the probe and the edge means the opening belongs to a different space.
+        edgeTraceStart:SetUnpacked(px, py, pz)
+        edgeTraceEnd:SetUnpacked(px + dx * open, py + dy * open, pz)
+        if util.TraceLine(edgeTrace).Hit then
+            countDiagnostic("runoffWallRejected")
+            return nil
+        end
+        return Vector(px + dx * (open + 3), py + dy * (open + 3), coveredZ - 2), -dy, dx
+    end
+
+    local function updateRunoffEdges(eyePosition, now)
+        for index = #runoffEdges, 1, -1 do
+            local edge = runoffEdges[index]
+            if now >= edge.expiresAt or edge.position:DistToSqr(eyePosition) > (runoffRange + 400) ^ 2 then
+                table.remove(runoffEdges, index)
+            end
+        end
+        if #runoffEdges >= runoffMaximumEdges or now < nextRunoffProbeAt then return end
+        nextRunoffProbeAt = now + runoffProbeInterval
+        local position, tangentX, tangentY = probeRunoffEdge(eyePosition)
+        if position then
+            runoffEdges[#runoffEdges + 1] = {
+                position = position, tangentX = tangentX, tangentY = tangentY, expiresAt = now + math.Rand(6, 10)
+            }
+            countDiagnostic("runoffEdgesFound")
+        end
+    end
+
+    local function emitRunoff(eyePosition)
+        if #runoffEdges == 0 then return end
+        local emitter = Weather.GetEmitter(eyePosition)
+        if not emitter then return end
+        for _, edge in ipairs(runoffEdges) do
+            if math.Rand(0, 1) < 0.7 then
+                local origin, along = edge.position, math.Rand(-14, 14)
+                local particle = emitter:Add("effects/laser_tracer",
+                    Vector(origin.x + edge.tangentX * along, origin.y + edge.tangentY * along, origin.z))
+                if particle then
+                    particle:SetDieTime(1.1)
+                    particle:SetStartAlpha(150)
+                    particle:SetEndAlpha(0)
+                    particle:SetStartSize(1.5)
+                    particle:SetEndSize(1.2)
+                    particle:SetColor(186, 202, 212)
+                    particle:SetCollide(true)
+                    particle:SetBounce(0)
+                    particle:SetCollideCallback(function(collidedParticle)
+                        collidedParticle:SetDieTime(0)
+                    end)
+                    particle:SetStartLength(10)
+                    particle:SetEndLength(22)
+                    particle:SetGravity(Vector(0, 0, -900))
+                    particle:SetVelocity(Vector(math.Rand(-6, 6), math.Rand(-6, 6), math.Rand(-260, -140)))
+                    countDiagnostic("runoffDrips")
+                end
+            end
         end
     end
 
@@ -266,12 +412,15 @@ return function(Atmosphere, Modules)
         end
 
         local now = CurTime()
-        if Environment.CheckShelter(player, now) then
-            Atmosphere:StopWeatherEffects()
-            return
-        end
+        local sheltered = Environment.CheckShelter(player, now) == true
+        Weather.Diagnostics.sheltered = sheltered
         if weather == "rain" then
             startRainAmbience(player)
+            local patch = Atmosphere.RainSoundPatch
+            if patch and Atmosphere.RainSoundSheltered ~= sheltered then
+                Atmosphere.RainSoundSheltered = sheltered
+                patch:ChangeVolume(sheltered and 0.13 or 0.24, 0.8)
+            end
         else
             startWindAmbience(player, now)
         end
@@ -279,16 +428,28 @@ return function(Atmosphere, Modules)
         local interval = weather == "rain" and 0.05 or 0.1
         local density = math.Clamp(Weather.RainDensityConVar:GetFloat(), 0.5, 2)
         local particlesPerBurst = weather == "rain" and math.Clamp(math.Round(4 * density), 2, 8) or math.Clamp(math.Round(3 * density), 2, 6)
+        local farParticlesPerBurst = weather == "rain" and math.Clamp(math.Round(2 * density), 1, 4) or 0
         Weather.Diagnostics.particleInterval = interval
         Weather.Diagnostics.particlesPerBurst = particlesPerBurst
+        Weather.Diagnostics.farParticlesPerBurst = farParticlesPerBurst
         Weather.Diagnostics.rainDensity = density
+        local eyePosition = player:EyePos()
+        if weather == "rain" then
+            updateRunoffEdges(eyePosition, now)
+        elseif #runoffEdges > 0 then
+            table.Empty(runoffEdges)
+        end
+        Weather.Diagnostics.runoffEdges = #runoffEdges
         if now < nextWeatherParticleAt then return end
         nextWeatherParticleAt = now + interval
-        local eyePosition = player:EyePos()
         local eyeAngles = EyeAngles()
         for _ = 1, particlesPerBurst do
-            emitPrecipitationParticle(weather, eyePosition, eyeAngles)
+            emitPrecipitationParticle(weather, eyePosition, eyeAngles, false)
         end
+        for _ = 1, farParticlesPerBurst do
+            emitPrecipitationParticle(weather, eyePosition, eyeAngles, true)
+        end
+        if weather == "rain" then emitRunoff(eyePosition) end
     end
 
     function Weather.UpdateBoundaryMist()

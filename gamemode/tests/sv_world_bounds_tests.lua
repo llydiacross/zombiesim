@@ -60,6 +60,14 @@ suite:Add("coast_contact_does_not_move_with_visual_pitch", function(check)
     check(value == nil and reason ~= nil, "invalid sides report an explicit error")
 end)
 
+suite:Add("ocean_edge_coast_meets_the_visual_edge", function(check)
+    local world = fixture(2)
+    world.Data.world.cellBounds.coastContactHalfExtent = 2880
+    world.ResolveCell = function() return { waterSides = {"W"} } end
+    check(world:GetCellSideExtent(0, "W") == 2880 and world:GetCellSideExtent(0, "E") == 2880,
+        "authored ocean edge pieces extend the coast contact to the outer ring")
+end)
+
 Harness.Register({
     command = "zn_test_world_bounds",
     label = "World bounds",

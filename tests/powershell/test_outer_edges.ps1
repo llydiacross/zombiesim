@@ -21,7 +21,7 @@ $script:passed = 0
 function Get-TestMotorwayGates {
     param($Layout)
 
-    if ($null -eq $Layout.PSObject.Properties['motorwayAssembly'] -or $null -eq $Layout.motorwayAssembly) { return $null }
+    if ($null -eq $Layout.PSObject.Properties['motorwayAssembly'] -or $null -eq $Layout.motorwayAssembly) { return }
     $authority = $Layout.motorwayAssembly.PSObject.Properties['assemblyAuthority']
     $gates = @($Layout.motorwayAssembly.gates)
     if ($null -eq $authority -or $authority.Value -ne 'trusted_prior_approved_grid_layout' -or $gates.Count -eq 0) {
@@ -47,8 +47,12 @@ function Get-TestGateTarget {
 function Get-TestExpectedGateCount {
     param([object]$Layout, [string[]]$Directions)
 
-    $gates = @(Get-TestMotorwayGates $Layout)
-    if ($gates.Count -eq 0) { return $Directions.Count }
+    $gates = @(Get-TestMotorwayGates $Layout | Where-Object { $null -ne $_ })
+    if ($gates.Count -eq 0) {
+        $count = 0
+        foreach ($direction in $Directions) { $count++ }
+        return $count
+    }
     $count = 0
     foreach ($gate in $gates) {
         $route = if ($null -ne $gate.PSObject.Properties['route']) { [string]$gate.route } else { 'motorway' }
@@ -65,6 +69,26 @@ function Assert {
     param([bool]$Condition, [string]$Message)
     if (-not $Condition) { throw "Outer edges: $Message" }
     $script:passed++
+}
+
+function Disable-TestFixtureMotorways {
+    param([object]$Map)
+
+    foreach ($cell in $Map.cells) {
+        $cell.highway.present = $false
+        $cell.highway.connections = @()
+        $cell.highway.degree = 0
+        $cell.highway.bridge = $false
+        $cell.highway.bridgeCrossingDirection = $null
+        $cell.highway.rampExits = @()
+        $cell.highway.diagonal = $false
+        $neighbors = $cell.PSObject.Properties['neighbors']
+        if ($null -ne $neighbors) {
+            foreach ($neighbor in @($neighbors.Value)) {
+                $neighbor | Add-Member -NotePropertyName highwayConnected -NotePropertyValue $false -Force
+            }
+        }
+    }
 }
 
 $resolved = & (Join-Path $testsBinDirectory 'resolve_world_generation_profile.ps1') -WorldProfile preview
@@ -102,7 +126,7 @@ foreach ($expanded in @($false, $true)) {
 $fixedProps = @{
     'tile_edge_army_none.vmf' = 5
     'tile_edge_ra_none.vmf' = 7
-    'tile_edge_ra_wall_1a.vmf' = 1
+    'tile_edge_ra_wall_1a.vmf' = 3
     'tile_edge_ra_wall_1aa.vmf' = 4
 }
 foreach ($filename in $fixedProps.Keys) {
@@ -133,20 +157,73 @@ foreach ($case in $yawCases) {
 }
 $second = @(Get-ZMOuterEdgePlacements $recipe 5 $edgeSettings $border @{} @{})
 Assert (($land | ConvertTo-Json -Depth 5) -ceq ($second | ConvertTo-Json -Depth 5)) 'Placement must be deterministic.'
-foreach ($profile in @('radioactive', 'military', 'fortified')) {
+$entranceBorder = @($border | Where-Object { -not ($_.tileX -eq 5 -and $_.tileY -in @(1, 2, 3)) })
+$entranceRecipe = [pscustomobject]@{
+    environmentProfile = 'grassland'
+    placementSeed = 1337
+    safeZoneEntrance = [pscustomobject]@{ slot = 'E' }
+    suppressedBorderTiles = @(1..3 | ForEach-Object { [pscustomobject]@{ tileX = 5; tileY = $_ } })
+}
+$entranceOuter = @(Get-ZMOuterEdgePlacements $entranceRecipe 5 $edgeSettings $entranceBorder @{} @{})
+$entranceBackfill = @($entranceOuter | Where-Object { $_.tileX -eq 6 -and $_.tileY -in @(1, 2, 3) })
+Assert ($entranceBackfill.Count -eq 3 -and @($entranceBackfill | Where-Object { $_.targetname -notlike 'zm_outer_wall_*' }).Count -eq 0) 'Land outer-edge slots behind a suppressed east safe-zone entrance must be filled.'
+$missingBorderRecipe = [pscustomobject]@{ environmentProfile = 'grassland'; placementSeed = 1337 }
+$missingBorderOuter = @(Get-ZMOuterEdgePlacements $missingBorderRecipe 5 $edgeSettings $entranceBorder @{} @{})
+Assert (@($missingBorderOuter | Where-Object { $_.tileX -eq 6 -and $_.tileY -in @(1, 2, 3) }).Count -eq 0) 'Missing border slots without a safe-zone entrance remain omitted.'
+# The blast-core 'destroyed' profile outranks 'radioactive', so it must carry the same radiated pool.
+Assert ((@($edgeSettings.profileTemplates['destroyed'].wallVariationTemplates) -join '|') -ceq (@($edgeSettings.profileTemplates['radioactive'].wallVariationTemplates) -join '|')) 'Destroyed outer edges reuse the radioactive pool.'
+foreach ($profile in @('radioactive', 'destroyed', 'military', 'fortified')) {
     $recipe.environmentProfile = $profile
     $pieces = @(Get-ZMOuterEdgePlacements $recipe 5 $edgeSettings $border @{} @{})
     $pool = @($edgeSettings.profileTemplates[$profile].wallVariationTemplates)
+    $profileSettings = $edgeSettings.profileTemplates[$profile]
+    $expectedCorners = @($edgeSettings.cornerVariationTemplates)
+    if ($profileSettings.ContainsKey('cornerTemplate') -and -not [string]::IsNullOrWhiteSpace($profileSettings.cornerTemplate)) {
+        $expectedCorners = @([string]$profileSettings.cornerTemplate)
+    }
+    if ($profileSettings.ContainsKey('cornerVariationTemplates') -and @($profileSettings.cornerVariationTemplates).Count -gt 0) {
+        $expectedCorners = @($profileSettings.cornerVariationTemplates | ForEach-Object { [string]$_ })
+    }
     foreach ($piece in $pieces) {
-        Assert ($(if ($piece.targetname -like 'zm_outer_corner_*') { $piece.template -eq $edgeSettings.cornerTemplate } else { $piece.template -in $pool })) "$profile replaces the straight pool, with independent default corner fallback."
+        Assert ($(if ($piece.targetname -like 'zm_outer_corner_*') { $piece.template -in $expectedCorners } else { $piece.template -in $pool })) "$profile uses its wall pool and the correct profile/default corner pool."
     }
 }
+# Corners come from the density-aware default variation pool; a profile cornerTemplate overrides it.
 $recipe.environmentProfile = 'grassland'
+$cornerPieces = @(Get-ZMOuterEdgePlacements $recipe 5 $edgeSettings $border @{} @{} | Where-Object { $_.targetname -like 'zm_outer_corner_*' })
+Assert ($cornerPieces.Count -eq 4) 'Four outer corners.'
+foreach ($piece in $cornerPieces) { Assert ($piece.template -in @($edgeSettings.cornerVariationTemplates)) 'Default corner comes from cornerVariationTemplates.' }
+$overrideSettings = $edgeSettings.Clone()
+$overrideSettings.profileTemplates = @{ grassland = @{ wallVariationTemplates = @($edgeSettings.wallVariationTemplates); cornerTemplate = 'edges/tile_edge_wall_corner_1aa.vmf' } }
+foreach ($piece in @(Get-ZMOuterEdgePlacements $recipe 5 $overrideSettings $border @{} @{} | Where-Object { $_.targetname -like 'zm_outer_corner_*' })) {
+    Assert ($piece.template -eq 'edges/tile_edge_wall_corner_1aa.vmf') 'Profile cornerTemplate overrides the default corner variations.'
+}
+# Industrial-majority cells use the industrial wall pool unless their own profile has one.
+$industrialProfiles = @{ industrial = @{}; radioactive = @{} }
+$mostlyIndustrial = [pscustomobject]@{ environmentProfile = 'grassland'; tilePlacements = @(
+    [pscustomobject]@{ template = 'buildings/tile_industrial_1a.vmf' },
+    [pscustomobject]@{ template = 'buildings/tile_warehouse_1aa.vmf' },
+    [pscustomobject]@{ template = 'buildings/tile_building_1a.vmf' },
+    [pscustomobject]@{ template = 'roads/tile_road.vmf' }) }
+Assert ((Get-ZMWallProfileKey $mostlyIndustrial $industrialProfiles) -eq 'industrial') 'Industry-majority cell selects the industrial wall profile.'
+$mostlyResidential = [pscustomobject]@{ environmentProfile = 'grassland'; tilePlacements = @(
+    [pscustomobject]@{ template = 'buildings/tile_industrial_1a.vmf' },
+    [pscustomobject]@{ template = 'buildings/tile_building_1a.vmf' }) }
+Assert ((Get-ZMWallProfileKey $mostlyResidential $industrialProfiles) -eq 'grassland') 'An industry half (not majority) keeps the cell profile.'
+$mostlyIndustrial.environmentProfile = 'radioactive'
+Assert ((Get-ZMWallProfileKey $mostlyIndustrial $industrialProfiles) -eq 'radioactive') 'A profile with its own pool outranks the industrial majority.'
+Assert ((Get-ZMWallProfileKey ([pscustomobject]@{ environmentProfile = 'grassland' }) $industrialProfiles) -eq 'grassland') 'Recipes without placements keep their profile.'
+$industrialSetting = $edgeSettings.profileTemplates['industrial']
+Assert ($null -ne $industrialSetting -and @($industrialSetting.wallVariationTemplates).Count -gt 0) 'Settings define an industrial outer-edge pool.'
+$recipe.environmentProfile = 'grassland'
+# Legacy omission behaviour remains the contract whenever no authored ocean pieces are configured.
+$legacyEdgeSettings = $edgeSettings.Clone()
+$legacyEdgeSettings.Remove('oceanTemplates')
 foreach ($mask in 0..15) {
     $water = @{}
     $sides = @('N', 'E', 'S', 'W')
     for ($i = 0; $i -lt 4; $i++) { if ($mask -band (1 -shl $i)) { $water[$sides[$i]] = $true } }
-    $pieces = @(Get-ZMOuterEdgePlacements $recipe 5 $edgeSettings $border $water @{})
+    $pieces = @(Get-ZMOuterEdgePlacements $recipe 5 $legacyEdgeSettings $border $water @{})
     foreach ($piece in $pieces) {
         Assert (-not (($piece.tileY -eq -2 -and $water.ContainsKey('N')) -or ($piece.tileX -eq 6 -and $water.ContainsKey('E')) -or ($piece.tileY -eq 6 -and $water.ContainsKey('S')) -or ($piece.tileX -eq -2 -and $water.ContainsKey('W')))) "Water mask $mask must omit side fill and mixed corners."
     }
@@ -155,8 +232,55 @@ foreach ($mask in 0..15) {
     }).Count
     Assert ($pieces.Count -eq $expected) "Water mask $mask exact count."
 }
-$corridor = @(Get-ZMOuterEdgePlacements $recipe 5 $edgeSettings $border @{ N = $true; W = $true } @{ N = 'roads\tile_road_straight.vmf' })
+$corridor = @(Get-ZMOuterEdgePlacements $recipe 5 $legacyEdgeSettings $border @{ N = $true; W = $true } @{ N = 'roads\tile_road_straight.vmf' })
 Assert (@($corridor | Where-Object { $_.tileY -eq -2 }).Count -eq 1 -and @($corridor | Where-Object { $_.tileY -eq -2 })[0].tileX -eq 2) 'Only a reserved centre corridor may continue across a waterfront side.'
+
+$oceanPool = @(Get-ZMOuterEdgeOceanTemplates $edgeSettings)
+Assert ($oceanPool.Count -eq 15 -and @($oceanPool | Where-Object { $_ -notmatch '^edges/tile_edge_ocean_([1-9]|1[0-5])a\.vmf$' }).Count -eq 0 -and @($oceanPool | Where-Object { -not (Test-Path -LiteralPath (Join-Path $TemplateDirectory $_)) }).Count -eq 0) 'Preview settings provide the single 1a-15a ocean pool, flat pieces included, all authored.'
+foreach ($template in $oceanPool) { Assert (Test-Path -LiteralPath (Join-Path $TemplateDirectory $template) -PathType Leaf) "$template exists." }
+Assert (@(Get-ZMOuterEdgeOceanTemplates $legacyEdgeSettings).Count -eq 0) 'Absent oceanTemplates keeps the legacy omission path.'
+$oceanYaws = @{ N = 0; E = 270; S = 180; W = 90 }
+foreach ($oceanSide in @('N', 'E', 'S', 'W')) {
+    $pieces = @(Get-ZMOuterEdgePlacements $recipe 5 $edgeSettings $border @{ $oceanSide = $true } @{})
+    Assert ($pieces.Count -eq 32) "$oceanSide ocean side fills every outer slot, including both adjoining corners."
+    $sideSlot = { param($p) switch ($oceanSide) { N { $p.tileY -eq -2 }; S { $p.tileY -eq 6 }; E { $p.tileX -eq 6 }; W { $p.tileX -eq -2 } } }
+    $oceanPieces = @($pieces | Where-Object { & $sideSlot $_ })
+    Assert ($oceanPieces.Count -eq 9) "$oceanSide ocean side spans seven edge slots plus two corners."
+    foreach ($piece in $oceanPieces) {
+        Assert ($piece.template -in $oceanPool -and $piece.targetname -like 'zm_outer_ocean_*') "$oceanSide ocean slot $($piece.tileX),$($piece.tileY) uses an ocean piece."
+        Assert ($piece.rotationYaw -eq $oceanYaws[$oceanSide]) "$oceanSide ocean slot $($piece.tileX),$($piece.tileY) turns canonical +Y sea outward."
+    }
+    $landPieces = @($pieces | Where-Object { -not (& $sideSlot $_) })
+    $landBaseline = @($land | Where-Object { -not (& $sideSlot $_) })
+    Assert (($landPieces | ConvertTo-Json -Depth 5) -ceq ($landBaseline | ConvertTo-Json -Depth 5)) "$oceanSide ocean pieces leave land-facing walls and corners unchanged."
+}
+$westOcean = @(Get-ZMOuterEdgePlacements $recipe 5 $edgeSettings $border @{ W = $true } @{})
+Assert (($westOcean | ConvertTo-Json -Depth 5) -ceq (@(Get-ZMOuterEdgePlacements $recipe 5 $edgeSettings $border @{ W = $true } @{}) | ConvertTo-Json -Depth 5)) 'Ocean selection is deterministic.'
+Assert (@($westOcean | Where-Object { $_.tileX -eq -2 } | ForEach-Object { $_.template } | Sort-Object -Unique).Count -gt 1) 'Ocean selection varies along the coast.'
+$oceanRoute = @(Get-ZMOuterEdgePlacements $recipe 5 $edgeSettings $border @{ W = $true } @{ W = 'roads\tile_road.vmf' })
+$routeSlot = @($oceanRoute | Where-Object { $_.tileX -eq -2 -and $_.tileY -eq 2 })
+Assert ($routeSlot.Count -eq 1 -and $routeSlot[0].template -eq 'roads\tile_road.vmf') 'A reserved route still continues through an ocean side.'
+$oceanSuppressed = @(Get-ZMOuterEdgePlacements $recipe 5 $edgeSettings @($border | Where-Object { -not ($_.tileX -eq -1 -and $_.tileY -eq 1) }) @{ W = $true } @{})
+$suppressedOcean = @($oceanSuppressed | Where-Object { $_.tileX -eq -2 -and $_.tileY -eq 1 })
+Assert ($suppressedOcean.Count -eq 1 -and $suppressedOcean[0].template -in $oceanPool -and $suppressedOcean[0].rotationYaw -eq 90) 'An authored entrance ending at the traversable edge still receives its ocean coast piece.'
+$landEntranceRecipe = [pscustomobject]@{
+    environmentProfile = 'grassland'
+    placementSeed = 1337
+    safeZoneEntrance = [pscustomobject]@{ slot = 'E' }
+    suppressedBorderTiles = @([pscustomobject]@{ tileX = 5; tileY = 1 })
+}
+$landSuppressed = @(Get-ZMOuterEdgePlacements $landEntranceRecipe 5 $edgeSettings @($border | Where-Object { -not ($_.tileX -eq 5 -and $_.tileY -eq 1) }) @{ W = $true } @{})
+$landBackfill = @($landSuppressed | Where-Object { $_.tileX -eq 6 -and $_.tileY -eq 1 })
+Assert ($landBackfill.Count -eq 1 -and $landBackfill[0].targetname -like 'zm_outer_wall_*') 'A land-facing slot behind an entrance on an ocean-border cell remains filled.'
+$oceanBounds = Get-ZMCellBounds 5 640 $true $true
+Assert ($oceanBounds.coastContactHalfExtent -eq 2880 -and $oceanBounds.revision -eq 2 -and $oceanBounds.neighbourPitch -eq 5760) 'Ocean pieces move the skybox coast contact to the visual edge without changing pitch.'
+Assert ($bounds.coastContactHalfExtent -eq 2240) 'Without ocean pieces the beach still meets the original border.'
+$threw = $false
+try { Get-ZMCellBounds 5 640 $false $true | Out-Null } catch { $threw = $true }
+Assert $threw 'Ocean pieces require the outer ring.'
+Assert (Test-ZMOceanEdgesEnabled @{ enabled = $true; oceanTemplates = @('edges/tile_edge_ocean_1a.vmf') }) 'Enabled outer edges with ocean templates enable ocean edges.'
+Assert (-not (Test-ZMOceanEdgesEnabled @{ enabled = $false; oceanTemplates = @('edges/tile_edge_ocean_1a.vmf') })) 'Disabled outer edges disable ocean edges.'
+Assert (-not (Test-ZMOceanEdgesEnabled $legacyEdgeSettings)) 'Missing ocean templates disable ocean edges.'
 $suppressed = @($border | Where-Object { -not ($_.tileY -eq -1 -and $_.tileX -eq 2) })
 $pieces = @(Get-ZMOuterEdgePlacements $recipe 5 $edgeSettings $suppressed @{} @{ N = 'road.vmf' })
 Assert (@($pieces | Where-Object { $_.tileY -eq -2 -and $_.tileX -eq 2 }).Count -eq 0) 'Entrance suppression precedes route reservation.'
@@ -209,14 +333,22 @@ foreach ($mask in 0..15) {
 $planPath = Join-Path $OutputRoot 'plan.json'
 $listPath = Join-Path $OutputRoot 'required.txt'
 $cellDirectory = Join-Path $OutputRoot 'src'
-& (Join-Path $testsBinDirectory 'plan_cell_templates.ps1') -WorldProfile preview -SettingsPath $settingsPath -MapData (Join-Path $PSScriptRoot 'border_showcase_fixture_map.json') -CellDirectory $cellDirectory -Output $planPath -ListOutput $listPath | Out-Null
+$fixtureMap = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'border_showcase_fixture_map.json') | ConvertFrom-Json
+# Normal motorways are covered later with the current trusted plan; this synthetic fixture has no matching trust plan.
+Disable-TestFixtureMotorways $fixtureMap
+$fixtureMapPath = Join-Path $OutputRoot 'border-showcase-map.json'
+[IO.File]::WriteAllText($fixtureMapPath, ($fixtureMap | ConvertTo-Json -Depth 40), [Text.UTF8Encoding]::new($false))
+& (Join-Path $testsBinDirectory 'plan_cell_templates.ps1') -WorldProfile preview -SettingsPath $settingsPath -MapData $fixtureMapPath -CellDirectory $cellDirectory -Output $planPath -ListOutput $listPath | Out-Null
 if (-not $?) { throw 'Expanded fixture planner failed.' }
 $plan = Get-Content -Raw -LiteralPath $planPath | ConvertFrom-Json
 Assert (@($plan.cells | Where-Object { $_.x -eq 0 -and (@($_.skyboxOceanSides) -join ',') -ne 'W' }).Count -eq 0) 'West boundary cells omit only the skybox ocean side.'
 Assert (@($plan.cells | Where-Object { $_.x -gt 0 -and @($_.skyboxOceanSides).Count -gt 0 }).Count -eq 0) 'Authored water corners do not change outer-edge omission policy.'
 $expandedRecipeNames = @($plan.cells | ForEach-Object { [string]$_.cellTemplateFilename })
 Assert (@($expandedRecipeNames | Where-Object { $_ -match '-edge2\.vmf$' }).Count -eq 0) 'Expanded maps must not retain the retired test-only edge2 suffix.'
-Assert ($expandedRecipeNames.Count -eq @($expandedRecipeNames | Sort-Object -Unique).Count) 'Expanded recipe names remain unique without the retired suffix.'
+$sharedRecipeConflicts = @($plan.cells | Group-Object cellTemplateFilename | Where-Object {
+    @($_.Group | ForEach-Object { ConvertTo-Json -InputObject $_.tilePlacements -Depth 40 -Compress } | Sort-Object -Unique).Count -gt 1
+})
+Assert ($sharedRecipeConflicts.Count -eq 0) 'Cells sharing a recipe filename must have identical core placements.'
 Assert (@($expandedRecipeNames | Where-Object { $_ -match '-oceanw\.vmf$' }).Count -gt 0) 'West-ocean recipe identity remains in the active filename.'
 & (Join-Path $testsBinDirectory 'build_cell_vmfs.ps1') -WorldProfile preview -SettingsPath $settingsPath -PlanData $planPath -CellDirectory $cellDirectory -SkyboxOutputDirectory (Join-Path $OutputRoot 'skybox') -RefreshGenerated | Out-Null
 if (-not $?) { throw 'Expanded fixture builder failed.' }
@@ -394,14 +526,16 @@ Assert ($storm.Count -eq 1) 'Exact Storm Drain 0,12 exists.'
 $newLayout = Get-Content -Raw (Join-Path $coverageDirectory ([IO.Path]::ChangeExtension($storm[0].cellTemplateFilename, '.layout.json'))) | ConvertFrom-Json
 Assert (@($newLayout.borderPlacements).Count -eq 24 - @($storm[0].suppressedBorderTiles).Count -and @($newLayout.borderPlacements | Group-Object { "$($_.tileX),$($_.tileY)" } | Where-Object Count -gt 1).Count -eq 0) 'Storm Drain retains every distinct border slot.'
 Assert ((@($newLayout.waterSides) -join ',') -ceq 'W') 'Storm Drain coast attaches west at the original border.'
-Assert (@($newLayout.outerPlacements | Where-Object tileX -eq -2).Count -eq 0) 'Storm Drain has no outer layer on the west ocean side, including NW/SW corners.'
+$stormWestOuter = @($newLayout.outerPlacements | Where-Object { $_.tileX -eq -2 })
+Assert ($stormWestOuter.Count -eq 9 -and @($stormWestOuter | Where-Object { $_.template -notin $edgeSettings.oceanTemplates }).Count -eq 0) 'Storm Drain fills every west ocean outer slot with an authored ocean tile, including NW/SW corners.'
 $stormShell = [ZombieSim.Skybox.KeyValuesParser]::Parse((Get-Content -Raw (Join-Path $coverageDirectory $storm[0].cellTemplateFilename)))
 $stormFloor = @($stormShell.Child('world').Children | Where-Object { $_.Name -eq 'solid' -and ($_.Children | Where-Object Name -eq 'side' | Select-Object -First 1).Get('material') -eq 'HALFLIFE/BLACK' })
 Assert ($stormFloor.Count -eq 1) 'Storm Drain retains one sealing floor.'
 $floorX = @($stormFloor[0].Children | Where-Object Name -eq 'side' | ForEach-Object { $_.Child('vertices_plus').GetAll('v') } | ForEach-Object { [double]($_ -split '\s+')[0] } | Sort-Object -Unique)
-Assert (($floorX -join ',') -eq '-2240,2880') 'Actual Storm Drain floor ends at the west shoreline, not underneath the skybox beach/ocean; east clearance is preserved.'
+Assert (($floorX -join ',') -eq '-2880,2880') 'Actual Storm Drain floor spans the revised west shoreline and preserves east clearance.'
 $militaryMap = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'border_showcase_fixture_map.json') | ConvertFrom-Json
-$militaryCell = @($militaryMap.cells | Where-Object { $_.x -eq 5 -and $_.y -eq 5 })[0]
+Disable-TestFixtureMotorways $militaryMap
+$militaryCell = @($militaryMap.cells | Where-Object { $_.x -eq 5 -and $_.y -eq 2 })[0]
 $militaryCell.environment.tags = @('military')
 $militaryMapPath = Join-Path $OutputRoot 'military-map.json'
 $militaryPlanPath = Join-Path $OutputRoot 'military-plan.json'

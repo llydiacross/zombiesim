@@ -189,6 +189,43 @@ $shortage = Select-ZMSceneryTemplate @('buildings/tile_building_6a.vmf') 3 0 0 '
 Assert ($shortage.status -eq 'shortage_keep_terrain' -and $shortage.targetTier -eq 3) 'No forbidden low fallback or reroll.'
 Assert-Rejected { Select-ZMSceneryTemplate @('edges/tile_edge_wall_1aaa.vmf') 3 0 0 'fixture/route' -RouteAdjacentWall -Required } 'Required scenery pool unavailable*target=2*'
 Assert-Rejected { Select-ZMSceneryTemplate @('tile_wall_1aaaa.vmf') 1 0 0 'fixture/bad-tag' } 'Unsupported scenery density tag*'
+$raPattern = '^buildings/tile_(?:(?:building|skyscraper)_ra|ra_building)_[0-9]+[a-z]+(?:_(?:2x|2x2|3x|3x3))?\.vmf$'
+$raPool = @('buildings/tile_industrial_1a.vmf', 'buildings/tile_industrial_2a.vmf', 'buildings/tile_ra_building_1a.vmf', 'buildings/tile_industrial_2aa.vmf', 'buildings/tile_industrial_3aaa.vmf')
+foreach ($choice in 0..7) {
+    $plain = Select-ZMSceneryTemplate $raPool 1 0 $choice 'fixture/ra'
+    $themed = Select-ZMSceneryTemplate $raPool 1 0 $choice 'fixture/ra' -PreferredPattern $raPattern
+    if ($themed.targetTier -eq 1) {
+        Assert ($themed.template -ceq 'buildings/tile_ra_building_1a.vmf' -and $themed.preferredPool) 'Radioactive preference picks the tier-matching _ra_ building.'
+    } else {
+        Assert ($themed.template -ceq $plain.template -and -not $themed.preferredPool) 'Tiers without _ra_ art fall back to the ordinary pool unchanged.'
+    }
+}
+foreach ($zone in 1..3) { foreach ($roll in @(0, 50, 99)) { foreach ($choice in 0..5) {
+    $plain = Select-ZMSceneryTemplate @('buildings/tile_industrial_2aa.vmf', 'buildings/tile_industrial_3aaa.vmf', 'buildings/tile_industrial_1a.vmf') $zone $roll $choice 'fixture/ra-none'
+    $themed = Select-ZMSceneryTemplate @('buildings/tile_industrial_2aa.vmf', 'buildings/tile_industrial_3aaa.vmf', 'buildings/tile_industrial_1a.vmf') $zone $roll $choice 'fixture/ra-none' -PreferredPattern $raPattern
+    Assert ($plain.template -ceq $themed.template -and -not $themed.preferredPool) 'Preference is a no-op without matching themed art.'
+} } }
+$radioactiveTowerPool = @(
+    'buildings/tile_skyscraper_ra_1a_2x.vmf',
+    'buildings/tile_skyscraper_ra_1aa_2x.vmf',
+    'buildings/tile_skyscraper_ra_1aaa_2x.vmf',
+    'buildings/tile_skyscraper_ra_2aa_2x.vmf',
+    'buildings/tile_skyscraper_ra_2aaa_2x.vmf',
+    'buildings/tile_skyscraper_ra_3aaa_2x.vmf',
+    'buildings/tile_skyscraper_ra_4aaa_2x.vmf',
+    'buildings/tile_skyscraper_ra_5aaa_2x.vmf',
+    'buildings/tile_skyscraper_ra_6aaa_2x.vmf'
+)
+$reachableRadioactiveTowers = @(
+    foreach ($choice in 0..($radioactiveTowerPool.Count - 1)) {
+        $selection = Select-ZMSceneryTemplate $radioactiveTowerPool 1 0 $choice 'fixture/radioactive-tower' -PreferredPattern $raPattern -AnyTier
+        Assert ($selection.anyTier -and $selection.preferredPool -and $selection.template -in $radioactiveTowerPool) 'Cross-tier radioactive tower selection retains themed pool metadata.'
+        $selection.template
+    }
+)
+Assert (@($reachableRadioactiveTowers | Sort-Object -Unique).Count -eq $radioactiveTowerPool.Count) 'Cross-tier selection makes all nine radioactive towers reachable.'
+$tierRestrictedRadioactive = Select-ZMSceneryTemplate $radioactiveTowerPool 1 0 0 'fixture/radioactive-tier-default' -PreferredPattern $raPattern
+Assert (-not $tierRestrictedRadioactive.anyTier -and $tierRestrictedRadioactive.actualTag -eq 1) 'Without the explicit cross-tier flag, radioactive tower tier filtering remains unchanged.'
 
 $context = @{ Seed = 1337; CellPolicy = 'recipe=grass/open'; Ring = 'outer'; Slot = '1,2'; Role = 'wall'; Variant = 2 }
 $hash = Get-ZMScenerySelectionHash @context
@@ -233,8 +270,11 @@ $root = $testsRepoRoot
 $profileSettings = & (Join-Path $testsBinDirectory 'resolve_world_generation_profile.ps1') -WorldProfile preview
 $plannerSettings = $profileSettings.Settings.cellPlanning
 $sceneryDensityPolicyEnabled = $true
+$script:RoadConnectionState = [System.Runtime.CompilerServices.ConditionalWeakTable[object, hashtable]]::new()
+$script:sceneryUsageCounts = @{}
+$script:scenerySelectionCache = @{}
 foreach ($source in @(
-    @{ file = 'plan_cell_templates.ps1'; functions = @('Get-EnvironmentProfile', 'Get-BuildingDensityTier', 'Get-RecipePlacementSeed', 'Get-SceneryTemplateSelection', 'Set-ScenerySelectionMetadata', 'Get-BuildingDensity', 'Get-TemplateFootprint', 'Get-RotatedFootprint', 'Get-LandmarkTemplate', 'Get-LandmarkTemplateSelection', 'Get-CellTilePlacements', 'Get-CellLayoutSignature', 'Get-CellRecipeLayoutIdentity', 'Get-CellRecipeContentSignature', 'Get-RecipeSignatureDifferencePaths', 'Assert-RecipeFilenameContentUnique') },
+    @{ file = 'plan_cell_templates.ps1'; functions = @('Get-EnvironmentProfile', 'Get-BuildingDensityTier', 'Get-RecipePlacementSeed', 'Get-SceneryTemplateSelection', 'Set-ScenerySelectionMetadata', 'Get-BuildingDensity', 'Get-TemplateFootprint', 'Get-RotatedFootprint', 'Get-LandmarkTemplate', 'Get-LandmarkTemplateSelection', 'Get-RoadConnectionBase', 'Get-OppositeDirection', 'Test-CoreCornerTile', 'Get-InwardBuildingFrontageDirection', 'Get-CellTilePlacements', 'Set-PlayerStartTerrain', 'Get-CellLayoutSignature', 'Get-CellRecipeLayoutIdentity', 'Get-CellRecipeContentSignature', 'Get-RecipeSignatureDifferencePaths', 'Assert-RecipeFilenameContentUnique') },
     @{ file = 'build_cell_vmfs.ps1'; functions = @('Get-BorderCornerTemplate', 'Assert-BorderCornerVariationSettings') },
     @{ file = 'generate_world_cells.ps1'; functions = @('Move-RadiationSourcesToReachableRoadCells', 'Get-EnvironmentTags', 'Get-GeneratorSceneryDensityZone', 'Test-LandmarkTemplateSupportsDensityZone', 'Get-LandmarkDensityShortages', 'Export-MapData') },
     @{ file = 'export_runtime_world_data.ps1'; functions = @('Get-RuntimeSceneryDensityFields') }
@@ -426,7 +466,10 @@ Assert ($profileCorner.template -ceq 'border/tile_border_army_wall_corner.vmf' -
 
 # Execute the real manifest serializer without drawing or generating a transport world.
 & {
-    $generatorSettings = $profileSettings.Settings
+    # Legacy fixture: industrial zones are covered separately below.
+    $generatorSettings = $profileSettings.Settings.Clone()
+    $generatorSettings.mapGeneration = $profileSettings.Settings.mapGeneration.Clone()
+    $generatorSettings.mapGeneration.Remove('industrialZones')
     $GridCells = 12
     $Seed = 1337
     $CellSize = 64
@@ -595,6 +638,57 @@ $emptyBuildingCell = [pscustomobject]@{
     building = [pscustomobject]@{ present = $false }
 }
 Set-ZMSceneryDensityFields @($emptyBuildingCell) @($emptyBuildingCell) @($plannerSettings.environment.profilePriority)
+
+# Industrial zones: seeded origins, low-density core rising to the surrounding tier at the radius.
+Assert ((Get-ZMIndustrialZoneTierCap 0 3) -eq 1 -and (Get-ZMIndustrialZoneTierCap 1 3) -eq 1 -and (Get-ZMIndustrialZoneTierCap 2 3) -eq 2 -and (Get-ZMIndustrialZoneTierCap 3 3) -eq 3) 'Industrial zone cap is low at the origin and rises to high at the radius.'
+$zoneSettings = @{ enabled = $true; cellsPerZone = 144; radius = 3; minInlandDistance = 3; minSpacing = 8; excludedOriginTags = @('commercial') }
+$newZoneGrid = {
+    @(foreach ($zy in 0..11) { foreach ($zx in 0..11) {
+        [pscustomobject]@{ x = $zx; y = $zy; environment = [ordered]@{ terrain = 'grassland'; tags = @(if ($zy -lt 2) { 'commercial' } else { 'grassland' }) }; building = [pscustomobject]@{ present = $true } }
+    } })
+}
+$zoneCells = & $newZoneGrid
+Set-ZMSceneryDensityFields $zoneCells @($zoneCells | Where-Object x -eq 0) @($plannerSettings.environment.profilePriority) -Seed 1337 -IndustrialZoneSettings $zoneSettings
+$zoneOrigins = @($zoneCells | Where-Object { (Test-ZMIndustrialZoneCell $_) -and $_.industrialZone.distance -eq 0 })
+Assert ($zoneOrigins.Count -eq 1) 'A 144-cell world receives exactly one seeded industrial zone origin.'
+$zoneOrigin = $zoneOrigins[0]
+Assert ($zoneOrigin.x -ge 3 -and $zoneOrigin.y -ge 2 -and $zoneOrigin.sceneryDensityTier -eq 1 -and $zoneOrigin.buildingDensityTier -eq 1) 'The zone origin is inland, outside excluded districts and low density.'
+foreach ($zoneCell in $zoneCells) {
+    $dx = $zoneCell.x - $zoneOrigin.x; $dy = $zoneCell.y - $zoneOrigin.y
+    $inside = [Math]::Sqrt($dx * $dx + $dy * $dy) -le 3
+    Assert ((Test-ZMIndustrialZoneCell $zoneCell) -eq $inside) 'Exactly the cells within the radius join the zone.'
+    Assert ((@($zoneCell.environment.tags) -contains 'industrial_zone') -eq $inside) 'Zone cells, and only zone cells, carry the industrial_zone tag.'
+    if ($inside) {
+        $baseTier = (Get-ZMSceneryDensityZone $zoneCell.sceneryInlandDistance (Get-ZMSceneryEnvironmentProfile $zoneCell @($plannerSettings.environment.profilePriority))).tier
+        Assert ($zoneCell.sceneryDensityTier -eq [Math]::Min($baseTier, (Get-ZMIndustrialZoneTierCap $zoneCell.industrialZone.distance 3))) 'Zone cells use the capped tier.'
+        Assert ($null -ne (Get-ZMStoredSceneryDensity $zoneCell)) 'Stored zone density passes validation.'
+    }
+}
+$zoneRepeat = & $newZoneGrid
+Set-ZMSceneryDensityFields $zoneRepeat @($zoneRepeat | Where-Object x -eq 0) @($plannerSettings.environment.profilePriority) -Seed 1337 -IndustrialZoneSettings $zoneSettings
+Assert ((($zoneCells | ConvertTo-Json -Depth 6 -Compress)) -ceq (($zoneRepeat | ConvertTo-Json -Depth 6 -Compress))) 'Industrial zones are deterministic for a seed.'
+$zoneTampered = $zoneCells | Where-Object { (Test-ZMIndustrialZoneCell $_) -and $_.industrialZone.distance -eq 0 } | Select-Object -First 1
+$zoneTampered.sceneryDensityTier = 3; $zoneTampered.buildingDensityTier = 3
+$zoneRejected = $false
+try { Get-ZMStoredSceneryDensity $zoneTampered | Out-Null } catch { $zoneRejected = $true }
+Assert $zoneRejected 'Stored validation rejects a zone cell whose tier ignores the zone cap.'
+
+# Core-corner and border-facing building rules.
+foreach ($corner in @(@(0, 0), @(4, 0), @(0, 4), @(4, 4))) { Assert (Test-CoreCornerTile $corner[0] $corner[1] 5) 'Each 5x5 core corner is a corner tile.' }
+foreach ($edge in @(@(2, 0), @(0, 2), @(4, 3), @(2, 2))) { Assert (-not (Test-CoreCornerTile $edge[0] $edge[1] 5)) 'Edge and interior tiles are not corners.' }
+$savedGeneratorSettings = $generatorSettings
+$generatorSettings = $profileSettings.Settings
+$savedRoadConnections = $templateRoadConnections
+$templateRoadConnections = @{ 'buildings/tile_south_marker.vmf' = @{ direction = 'south' }; 'buildings/tile_west_marker.vmf' = @{ direction = 'west' } }
+Assert ((Get-InwardBuildingFrontageDirection 'buildings/tile_south_marker.vmf' '' 2 4 1 1 5) -eq 'N') 'A roadless south-facing building on the south row turns to face north.'
+Assert ([string]::IsNullOrEmpty((Get-InwardBuildingFrontageDirection 'buildings/tile_south_marker.vmf' '' 2 2 1 1 5))) 'An interior roadless building keeps its canonical facing.'
+Assert ((Get-InwardBuildingFrontageDirection 'buildings/tile_west_marker.vmf' '' 0 1 1 1 5) -eq 'E') 'A roadless west-facing building on the west column turns east.'
+Assert ((Get-InwardBuildingFrontageDirection 'buildings/tile_south_marker.vmf' '' 1 3 2 2 5) -eq 'N') 'A 2x2 footprint reaching the south row turns north.'
+Assert ((Get-InwardBuildingFrontageDirection 'buildings/tile_south_marker.vmf' 'S' 1 4 1 1 5) -eq 'N') 'An explicit border-facing direction is reversed.'
+Assert ((Get-InwardBuildingFrontageDirection 'buildings/tile_south_marker.vmf' 'W' 2 4 1 1 5) -eq 'W') 'A road-facing inward direction is preserved.'
+Assert ([string]::IsNullOrEmpty((Get-InwardBuildingFrontageDirection 'buildings/tile_unmarked.vmf' '' 2 4 1 1 5))) 'Templates without a marker are left unchanged.'
+$templateRoadConnections = $savedRoadConnections
+$generatorSettings = $savedGeneratorSettings
 $plannerSettings.decorations.preferredChancePercent = 100
 $plannerSettings.decorations.standardChancePercent = 100
 $decorationFixture = 'decorations/tile_fixture_1a.vmf'
@@ -749,8 +843,9 @@ $seedFromStored = Get-RecipePlacementSeed 'commercial' 'open' 'none' (Get-Buildi
 $seedFromAlias = Get-RecipePlacementSeed 'commercial' 'open' 'none' $fresh.buildingDensityTier @()
 Assert ($seedFromStored -eq $seedFromAlias) 'Recipe/variant seeds see the same density as the legacy alias.'
 
+$knownPendingRenames = @('tile_border_industrial_wall_4aaaa.vmf') # user-deferred typo; excluded until renamed
 $authored = @(foreach ($family in @('buildings', 'decorations', 'border', 'edges')) {
-    Get-ChildItem -LiteralPath (Join-Path $root "tiletemplates\$family") -Filter '*.vmf' -File
+    Get-ChildItem -LiteralPath (Join-Path $root "tiletemplates\$family") -Filter '*.vmf' -File | Where-Object Name -notin $knownPendingRenames
 })
 foreach ($file in $authored) {
     $tag = Get-ZMTemplateDensityTag $file.FullName

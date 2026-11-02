@@ -37,6 +37,11 @@ local function findCharacterCreationCamera()
     if IsValid(camera) and camera:GetClass() == "point_camera" then return camera end
 end
 
+local function findDeployCamera()
+    local camera = findMarker("deploy_camera")
+    if IsValid(camera) and camera:GetClass() == "point_camera" then return camera end
+end
+
 local function findLauncherPresentationSkybox()
     if not IsValid(findMarker("launcher_presentation_skybox")) then return nil end
     local camera = ents.FindByClass("sky_camera")[1]
@@ -114,6 +119,16 @@ function Launcher:SendStatus(target, action, success, message)
     else
         self.MissingCreationCameraMap = nil
     end
+    local deployCamera = findDeployCamera()
+    if not IsValid(deployCamera) then
+        if self.MissingDeployCameraMap ~= game.GetMap() then
+            self.MissingDeployCameraMap = game.GetMap()
+            ErrorNoHalt("[ZombieSim] Launcher is missing a valid deploy_camera point_camera; "
+                .. "the Play fade keeps menu_camera. Check the launcher source and compiled BSP.\n")
+        end
+    else
+        self.MissingDeployCameraMap = nil
+    end
     net.Start("ZM.LauncherStatus")
         net.WriteString(action or "list")
         net.WriteBool(success ~= false and rows ~= nil)
@@ -122,6 +137,7 @@ function Launcher:SendStatus(target, action, success, message)
         net.WriteBool(target.ZM_LauncherState == "deploying")
         sendPose(camera)
         sendPose(creationCamera)
+        sendPose(deployCamera)
         sendPose(findLauncherSkyCamera())
         local creditsCamera = findMarker("credits_camera")
         sendPose(creditsCamera)
@@ -144,6 +160,8 @@ hook.Add("SetupPlayerVisibility", "ZombieSim.Launcher.MenuPVS", function(target)
     local camera = findMarker("menu_camera")
     if IsValid(camera) then AddOriginToPVS(camera:GetPos()) end
     camera = findCharacterCreationCamera()
+    if IsValid(camera) then AddOriginToPVS(camera:GetPos()) end
+    camera = findDeployCamera()
     if IsValid(camera) then AddOriginToPVS(camera:GetPos()) end
     camera = findLauncherSkyCamera()
     if IsValid(camera) then

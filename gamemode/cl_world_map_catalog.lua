@@ -47,7 +47,7 @@ return function()
                     return nil, "Invalid captured-world image paths."
                 end
                 for _, cell in ipairs(worldData.cells) do
-                    if not validPath(variant.cells[tostring(cell.id)], profile) then
+                    if cell.empty ~= true and not validPath(variant.cells[tostring(cell.id)], profile) then
                         return nil, "Captured-world variant is missing cell " .. tostring(cell.id) .. "."
                     end
                 end

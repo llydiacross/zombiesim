@@ -864,7 +864,7 @@ entity
 	"SetBodyGroup" "0"
 	"skin" "0"
 	"solid" "6"
-	"origin" "0 476 380"
+	"origin" "0 300 380"
 	editor
 	{
 		"color" "220 30 220"

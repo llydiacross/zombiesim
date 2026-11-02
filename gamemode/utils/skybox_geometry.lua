@@ -42,6 +42,7 @@ function Geometry.ValidateManifest(data, world, cells)
 		end
 	end
 	for _, cell in ipairs(cells or {}) do
+		if cell.empty == true then continue end
 		local record = data.geometry[cell.map]
 		if not record then return false, "missing skyline footprint: " .. tostring(cell.map) end
 		local expected, actual = {}, {}

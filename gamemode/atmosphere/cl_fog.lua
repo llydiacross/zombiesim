@@ -10,8 +10,34 @@ return function(Atmosphere, Modules)
     // Fog settings are read by several hooks per frame, so they are computed once per frame into reused tables.
     local fogSettingsCache = { color = {} }
     local fogWinterColor = {}
+    local fogRadiationColor = {}
+    local fogSkyTarget = {}
     local fogSettingsFrame = -1
     local fogSettingsResult
+    // Radiated cells: the same burnt orange as the sky near the ground, darker in the sky itself.
+    local radiationFogColor = { 170, 92, 40 }
+    local radiationSkyColor = { 170, 92, 40 }
+    local radiationColorWeight = 0.7
+    local radiationSkyWeight = 0.8
+    local radiationSkyDarken = 0.35
+    local radiationStartScale = 0.25
+    local radiationFinishScale = 0.35
+    local radiationDensity = 0.7
+    // Layered fog eases toward its target with this time constant (seconds) so weather and radiation never pop.
+    local fogEaseSeconds = 3
+    local eased = { color = {}, skyColor = {} }
+    local easedKey
+    local easedTime
+    // Layered keeps Source fog extremely gentle; the skybox haze layers supply depth and scale.
+    local fogStyleConVar = CreateClientConVar("zombiesim_fog_style", "layered", true, false,
+        "Fog style: layered (gentle Source fog plus custom haze layers) or legacy (original dense Source fog).")
+    local layeredDensityScale = 0.45
+    local layeredStartScale = 1.4
+    local layeredFinishScale = 1.6
+
+    function Atmosphere:GetFogStyle()
+        return fogStyleConVar:GetString() == "legacy" and "legacy" or "layered"
+    end
 
     // Scoped to the secondary capture view; never changes fog convars, weather or profile caches.
     function Atmosphere:BeginWorldCaptureFog(variant)
@@ -65,9 +91,67 @@ return function(Atmosphere, Modules)
             color = litColor
         end
         local settings = fogSettingsCache
+        local start = math.max(0, Core.GetNumber(fog.start, 0) * visibilityMultiplier)
+        local finish = math.max(1, Core.GetNumber(fog["end"], 1) * visibilityMultiplier)
+        local layered = self:GetFogStyle() == "layered"
+        if layered then
+            start = start * layeredStartScale
+            finish = finish * layeredFinishScale
+            density = density * layeredDensityScale
+            // Radiated cells close the fog in, thicken it and pull it toward a sickly yellow-green; the sky goes a
+            // darker burnt orange, as if something enormous has burned on the horizon.
+            local player = LocalPlayer()
+            local radiation = IsValid(player) and player.GetRadiationIntensity and player:GetRadiationIntensity() or 0
+            radiation = math.Clamp(tonumber(radiation) or 0, 0, 1)
+            start = start * (1 - radiationStartScale * radiation)
+            finish = math.max(start + 1, finish * (1 - radiationFinishScale * radiation))
+            density = Lerp(radiation, density, math.max(density, radiationDensity))
+            local weight = radiation * radiationColorWeight
+            local skyWeight = radiation * radiationSkyWeight
+            local darken = 1 - radiationSkyDarken * radiation
+            local target = fogRadiationColor
+            for index = 1, 3 do
+                local base = Fog.GetColorComponent(color, index)
+                target[index] = Lerp(weight, base, radiationFogColor[index])
+                fogSkyTarget[index] = Lerp(skyWeight, base, radiationSkyColor[index]) * darken
+            end
+            local now = RealTime()
+            local key = tostring(self.ActiveProfileIndex)
+            local blend = 1
+            if key == easedKey and easedTime then
+                blend = 1 - math.exp(-math.max(now - easedTime, 0) / fogEaseSeconds)
+            end
+            easedKey = key
+            easedTime = now
+            eased.start = Lerp(blend, eased.start or start, start)
+            eased.finish = Lerp(blend, eased.finish or finish, finish)
+            eased.maxDensity = Lerp(blend, eased.maxDensity or density, density)
+            eased.radiation = Lerp(blend, eased.radiation or radiation, radiation)
+            for index = 1, 3 do
+                eased.color[index] = Lerp(blend, eased.color[index] or target[index], target[index])
+                local sky = fogSkyTarget[index]
+                eased.skyColor[index] = Lerp(blend, eased.skyColor[index] or sky, sky)
+            end
+            settings.radiation = eased.radiation
+            settings.skyColor = eased.skyColor
+            color = eased.color
+            start = eased.start
+            finish = math.max(eased.finish, start + 1)
+            density = eased.maxDensity
+            // Fog seen from straight above reads as a flat wash, so it fades out with the top-down camera.
+            local topDown = ZM_GetTopDownCameraWeight and math.Clamp(tonumber(ZM_GetTopDownCameraWeight()) or 0, 0, 1) or 0
+            settings.topDown = topDown
+            density = density * (1 - topDown)
+        else
+            easedKey = nil
+            settings.radiation = nil
+            settings.skyColor = nil
+            settings.topDown = nil
+        end
+        settings.style = layered and "layered" or "legacy"
         settings.color = color
-        settings.start = math.max(0, Core.GetNumber(fog.start, 0) * visibilityMultiplier)
-        settings.finish = math.max(1, Core.GetNumber(fog["end"], 1) * visibilityMultiplier)
+        settings.start = start
+        settings.finish = finish
         settings.maxDensity = density
         fogSettingsResult = settings
         return settings

@@ -24,7 +24,7 @@ Import-Module (Join-Path $PSScriptRoot 'vmf_source_dependencies.psm1') -Force
 $builderVersion = 'skybox-cell-v3'
 # Snow overlays carry their own stamps so changing them never recompiles the base cell models.
 $snowBuilderVersion = 'skybox-snow-v2'
-$towerBuilderVersion = 'skybox-towers-v2'
+$towerBuilderVersion = 'skybox-towers-v3'
 $manifestSchemaVersion = 1
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $worldGenerationProfile = & (Join-Path $PSScriptRoot 'resolve_world_generation_profile.ps1') -WorldProfile $WorldProfile -Preview:$Preview -SettingsPath $SettingsPath
@@ -78,7 +78,7 @@ if ($null -ne $plan.PSObject.Properties['cellDirectory'] -and -not [string]::IsN
 }
 $tileGridSize = [int]$plan.cellTileGridSize
 $outerEnabled = $worldGenerationProfile.Settings.vmfBuild.ContainsKey('outerEdges') -and [bool]$worldGenerationProfile.Settings.vmfBuild.outerEdges.enabled
-$bounds = Get-ZMCellBounds $tileGridSize $tileSize $outerEnabled
+$bounds = Get-ZMCellBounds $tileGridSize $tileSize $outerEnabled ($outerEnabled -and (Test-ZMOceanEdgesEnabled $worldGenerationProfile.Settings.vmfBuild.outerEdges))
 $cellSpan = $bounds.neighbourPitch
 $geometry = [ordered]@{}
 if ($null -ne $plan.PSObject.Properties['cellBounds'] -and ($plan.cellBounds.revision -eq 2) -ne $outerEnabled) {

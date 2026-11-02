@@ -1,0 +1,8 @@
+"vertexlitgeneric"
+{
+	"$basetexture" "/{back_mir2"
+$alphatest 1
+	"$detail" "zombiesim/imported/paranoia/detail/detail_noise1"
+	"$detailscale" 2.5
+	"$surfaceprop" "metal"
+}

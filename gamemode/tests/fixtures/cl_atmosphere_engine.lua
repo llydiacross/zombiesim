@@ -84,7 +84,8 @@ return function()
     env.MATERIAL_TRIANGLES, env.MATERIAL_QUADS, env.MOVETYPE_NOCLIP = 1, 2, 8
     local angles = {
         Forward = function() return env.Vector(1, 0, 0) end,
-        Right = function() return env.Vector(0, 1, 0) end
+        Right = function() return env.Vector(0, 1, 0) end,
+        Up = function() return env.Vector(0, 0, 1) end
     }
     local player = { valid = true, CellX = 0, CellY = 0, position = env.Vector(), velocity = env.Vector(100, 0, 0) }
     function player:GetPos() return self.position end
@@ -117,7 +118,14 @@ return function()
         ActiveProfile = "preview", IsLoaded = function() return state.worldReady end,
         GetCellsForMap = function() return state.outdoor and { {} } or {} end,
         GetGridCoordinates = function(_, x, y) return x, y end,
-        GetCell = function() return { atmosphereProfile = 1 } end
+        GetCell = function() return { atmosphereProfile = 1 } end,
+        GetCellBounds = function()
+            return { traversableHalfExtent = 2240, visualHalfExtent = 2880, coastContactHalfExtent = state.coastExtent or 2880 }
+        end,
+        GetCellSideExtent = function(_, _, side)
+            if state.waterSides and state.waterSides[side] then return state.coastExtent or 2880 end
+            return 2880
+        end
     }
     local profile = {
         id = "fixture", fog = { start = 100, ["end"] = 1600, maxDensity = 1, color = { 100, 120, 140 }, stormMultiplier = 0.5 },
@@ -144,6 +152,7 @@ return function()
     }
     env.ZM_GoreClient, env.ZM_Music = { GetDiagnosticSnapshot = emptySnapshot }, { GetDiagnosticSnapshot = emptySnapshot }
     env.ZM_IsShoulderCamera = function() return false end
+    env.ZM_GetTopDownCameraWeight = function() return state.topDown or 0 end
     env.ZM_Loading = {
         Step = function() end,
         Begin = function(_, label) state.loading[#state.loading + 1] = label return #state.loading end,
@@ -159,8 +168,9 @@ return function()
     function env.CreateClientConVar(name, default)
         if not state.convars[name] then
             state.convars[name] = {
-                value = tonumber(default), GetFloat = function(self) return self.value end,
-                GetBool = function(self) return self.value ~= 0 end
+                value = tonumber(default) or default, GetFloat = function(self) return tonumber(self.value) or 0 end,
+                GetBool = function(self) return self.value ~= 0 end,
+                GetString = function(self) return tostring(self.value) end
             }
         end
         return state.convars[name]
@@ -171,8 +181,44 @@ return function()
         SharedRandom = function(_, minimum, maximum) return (minimum + maximum) * 0.5 end,
         TableToJSON = function() return "fixture" end,
         TraceLine = function(request)
-            if request.endpos.z > request.start.z then
-                return { Hit = true, HitSky = not state.sheltered, HitWorld = true }
+            local start, finish = request.start, request.endpos
+            local function inside(box, x, y, z)
+                return x >= box.minX and x <= box.maxX and y >= box.minY and y <= box.maxY
+                    and (z == nil or (z >= box.bottom and z <= box.top))
+            end
+            if finish.z > start.z then
+                local roofHit
+                for _, roof in ipairs(state.roofs or {}) do
+                    if inside(roof, start.x, start.y, start.z) then
+                        return { Hit = true, HitSky = false, HitWorld = true, StartSolid = true, HitPos = env.Vector(start.x, start.y, start.z) }
+                    end
+                    if inside(roof, start.x, start.y) and roof.bottom > start.z and (not roofHit or roof.bottom < roofHit.bottom) then
+                        roofHit = roof
+                    end
+                end
+                if roofHit then
+                    return {
+                        Hit = true, HitSky = false, HitWorld = true, StartSolid = false,
+                        HitPos = env.Vector(start.x, start.y, roofHit.bottom), HitNormal = env.Vector(0, 0, -1)
+                    }
+                end
+                if state.skyOutOfRange and not state.sheltered then
+                    return { Hit = false, HitSky = false, HitWorld = false, StartSolid = false, Fraction = 1 }
+                end
+                return {
+                    Hit = true, HitSky = not state.sheltered, HitWorld = true, StartSolid = false,
+                    HitPos = env.Vector(start.x, start.y, start.z + 2000), HitNormal = env.Vector(0, 0, -1)
+                }
+            end
+            if finish.z == start.z then
+                for step = 0, 32 do
+                    local amount = step / 32
+                    local x, y = start.x + (finish.x - start.x) * amount, start.y + (finish.y - start.y) * amount
+                    for _, wall in ipairs(state.walls or {}) do
+                        if inside(wall, x, y, start.z) then return { Hit = true, HitWorld = true, Fraction = amount } end
+                    end
+                end
+                return { Hit = false, Fraction = 1 }
             end
             return {
                 Hit = true, HitSky = false, HitWorld = true, StartSolid = false,
@@ -188,12 +234,13 @@ return function()
         return {
             IsError = function() return false end, GetTexture = function() return texture end,
             GetShader = function() return "UnlitGeneric" end, SetTexture = function() end,
-            SetFloat = function() end
+            SetFloat = function(self, key, value) self[key] = value end,
+            SetVector = function(self, key, value) self[key] = value end
         }
     end
     env.CreateMaterial = env.Material
     env.render, env.surface, env.cam, env.mesh = {}, {}, {}, {}
-    for _, name in ipairs({ "FogMode", "FogStart", "FogEnd", "FogMaxDensity", "FogColor", "SetMaterial", "DrawQuadEasy", "DrawBeam" }) do
+    for _, name in ipairs({ "FogMode", "FogStart", "FogEnd", "FogMaxDensity", "FogColor", "SetMaterial", "DrawQuadEasy", "DrawBeam", "OverrideDepthEnable" }) do
         env.render[name] = function(...) log(name, ...) end
     end
     env.render.GetLightColor = function() return env.Vector(1, 1, 1) end
@@ -201,11 +248,14 @@ return function()
     for _, name in ipairs({ "SetDrawColor", "DrawRect" }) do env.surface[name] = function(...) log(name, ...) end end
     for _, name in ipairs({ "Start2D", "End2D", "PushModelMatrix", "PopModelMatrix" }) do env.cam[name] = function(...) log(name, ...) end end
     env.DrawColorModify = function(settings) log("DrawColorModify", copy(settings)) end
-    env.mesh.Begin = function(kind, count)
+    env.mesh.Begin = function(target, kind, count)
+        if type(target) ~= "table" then target, kind, count = nil, target, kind end
         assert(count > 0, "zero-count mesh.Begin")
         assert(not state.meshOpen, "nested mesh.Begin")
         state.meshOpen = true
-        log("mesh.Begin", kind, count)
+        state.meshTarget = target
+        if target then target.quads, target.positions = count, {} end
+        log("mesh.Begin", kind, count, target ~= nil)
     end
     env.mesh.End = function() assert(state.meshOpen, "unmatched mesh.End") state.meshOpen = false end
     for _, name in ipairs({ "Position", "Normal", "TexCoord", "Color", "AdvanceVertex" }) do
@@ -215,6 +265,10 @@ return function()
         assert(state.meshOpen, "position outside mesh.Begin")
         state.vertexCount = state.vertexCount + 1
         state.vertexSignature = state.vertexSignature + position.x * 0.37 + position.y * 0.61 + position.z * 0.83
+        if state.meshTarget then
+            local positions = state.meshTarget.positions
+            positions[#positions + 1] = { x = position.x, y = position.y, z = position.z }
+        end
     end
     env.mesh.Color = function(_, _, _, alpha)
         assert(state.meshOpen, "colour outside mesh.Begin")
@@ -224,7 +278,7 @@ return function()
         local mesh = {
             BuildFromTriangles = function(self, triangles) assert(#triangles > 0) self.triangles = #triangles end,
             Destroy = function(self) self.destroyed = true end,
-            Draw = function(self) assert(not self.destroyed) log("IMesh.Draw", self.triangles) end
+            Draw = function(self) assert(not self.destroyed) log("IMesh.Draw", self.triangles or self.quads) end
         }
         state.meshes[#state.meshes + 1] = mesh
         return mesh
@@ -240,7 +294,12 @@ return function()
     }) do particle[name] = function() end end
     env.ParticleEmitter = function()
         local emitter = {
-            active = 1, Add = function(self) self.added = (self.added or 0) + 1 return particle end,
+            active = 1, Add = function(self, material, position)
+                self.added = (self.added or 0) + 1
+                self.spawns = self.spawns or {}
+                self.spawns[#self.spawns + 1] = { material = material, position = position }
+                return particle
+            end,
             SetNoDraw = function(self, hidden) self.hidden = hidden end,
             GetNumActiveParticles = function(self) return self.active end,
             Finish = function(self) self.finished = (self.finished or 0) + 1 end

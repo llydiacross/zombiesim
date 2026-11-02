@@ -26,7 +26,7 @@ function Assert-Rejected {
 }
 
 foreach ($source in @(
-    @{ file = 'plan_cell_templates.ps1'; functions = @('Get-FootprintCoordinates', 'Get-RotatedFootprint', 'Get-FootprintAnchorCandidates', 'Set-FootprintPlacement', 'Set-TilePlacementDefaults', 'Get-TemplateRoadConnection', 'Get-ForcedMultiTileTemplate', 'Get-BuildingHeightTier', 'Get-TemplateRoadConnectionRotation', 'Get-OppositeDirection', 'Get-RotatedCardinalDirection', 'Get-OffsetTileCoordinate', 'Get-DirectionToCoordinate', 'Test-RoadPlacementFacesCoordinate', 'Get-FootprintRoadFacingCandidates', 'Get-MarkedRoadConnectionCandidates') },
+    @{ file = 'plan_cell_templates.ps1'; functions = @('Get-FootprintCoordinates', 'Get-RotatedFootprint', 'Get-FootprintAnchorCandidates', 'Set-FootprintPlacement', 'Set-TilePlacementDefaults', 'Get-TemplateRoadConnection', 'Get-ForcedMultiTileTemplate', 'Get-BuildingHeightTier', 'Get-TemplateRoadConnectionRotation', 'Get-OppositeDirection', 'Get-RotatedCardinalDirection', 'Get-OffsetTileCoordinate', 'Get-DirectionToCoordinate', 'Test-RoadPlacementFacesCoordinate', 'Get-FootprintRoadFacingCandidates', 'Get-MarkedRoadConnectionCandidates', 'Get-RoadConnectionBase', 'Test-RoadConnectionAvailable') },
     @{ file = 'build_tile_zoos.ps1'; functions = @('Get-ZooGridPlacements', 'Get-TemplateFootprint') },
     @{ file = 'build_cell_vmfs.ps1'; functions = @('Get-PlacementFootprint', 'Test-PlacementEmitsInstance', 'Get-PlacementId', 'Get-PlacementOwnerCoordinate', 'Get-PlacementCoordinates', 'Test-RecipeTilePlacements', 'Get-RecipeInteriorInstanceCount') }
 )) {
@@ -127,6 +127,7 @@ $profile = & (Join-Path $testsBinDirectory 'resolve_world_generation_profile.ps1
 $generatorSettings = $profile.Settings
 $plannerSettings = $generatorSettings.cellPlanning
 $templateRoadConnections = @{}
+$script:RoadConnectionState = [System.Runtime.CompilerServices.ConditionalWeakTable[object, hashtable]]::new()
 $fixtureTemplate = 'fixture-frontage.vmf'
 $roadTemplate = [string]$plannerSettings.topologyTemplates['road-straight']
 $multiTileFixtureTemplateProperty = 'fixtureMultiTileTemplate'

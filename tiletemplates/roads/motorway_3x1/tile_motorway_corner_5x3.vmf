@@ -1,8 +1,8 @@
 versioninfo
 {
 	"editorversion" "400"
-	"editorbuild" "8871"
-	"mapversion" "24"
+	"editorbuild" "8873"
+	"mapversion" "25"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "24"
+	"mapversion" "25"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -109,7 +109,7 @@ world
 				"v" "960 320 32"
 				"v" "320 320 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.15"
 			"vaxis" "[0 -1 0 426.667] 0.15"
 			"rotation" "0"
@@ -227,7 +227,7 @@ world
 				"v" "960 -320 32"
 				"v" "320 -320 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.15"
 			"vaxis" "[0 -1 0 256] 0.15"
 			"rotation" "0"
@@ -345,7 +345,7 @@ world
 				"v" "960 -960 32"
 				"v" "320 -960 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.15"
 			"vaxis" "[0 -1 0 85.3334] 0.15"
 			"rotation" "0"
@@ -463,7 +463,7 @@ world
 				"v" "1600 -320 32"
 				"v" "960 -320 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 85.3334] 0.15"
 			"vaxis" "[0 -1 0 256] 0.15"
 			"rotation" "0"
@@ -581,7 +581,7 @@ world
 				"v" "1600 320 32"
 				"v" "960 320 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 85.3334] 0.15"
 			"vaxis" "[0 -1 0 426.667] 0.15"
 			"rotation" "0"
@@ -699,7 +699,7 @@ world
 				"v" "1600 -960 32"
 				"v" "960 -960 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 85.3334] 0.15"
 			"vaxis" "[0 -1 0 85.3334] 0.15"
 			"rotation" "0"
@@ -817,7 +817,7 @@ world
 				"v" "320 -320 32"
 				"v" "-320 -320 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 426.667] 0.15"
 			"vaxis" "[0 -1 0 -256] 0.15"
 			"rotation" "0"
@@ -936,7 +936,7 @@ world
 				"v" "-960 320 32"
 				"v" "-320 320 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 -256] 0.25"
 			"rotation" "0"
@@ -1055,7 +1055,7 @@ world
 				"v" "-960 -320 32"
 				"v" "-1600 -320 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -1174,7 +1174,7 @@ world
 				"v" "320 -960 32"
 				"v" "-320 -960 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 426.667] 0.15"
 			"vaxis" "[0 -1 0 -426.667] 0.15"
 			"rotation" "0"
@@ -1293,7 +1293,7 @@ world
 				"v" "-320 -960 32"
 				"v" "-960 -960 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 -256] 0.25"
 			"rotation" "0"
@@ -1412,7 +1412,7 @@ world
 				"v" "-960 -960 32"
 				"v" "-1600 -960 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 -256] 0.25"
 			"rotation" "0"
@@ -1531,7 +1531,7 @@ world
 				"v" "320 320 32"
 				"v" "-320 320 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 426.667] 0.15"
 			"vaxis" "[0 -1 0 426.666] 0.15"
 			"rotation" "0"
@@ -1650,7 +1650,7 @@ world
 				"v" "-320 320 32"
 				"v" "-960 320 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -1769,7 +1769,7 @@ world
 				"v" "-960 320 32"
 				"v" "-1600 320 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -1900,26 +1900,6 @@ world
 		editor
 		{
 			"color" "174 191 0"
-			"visgroupshown" "1"
-			"visgroupautoshown" "1"
-		}
-	}
-	group
-	{
-		"id" "6876"
-		editor
-		{
-			"color" "132 169 0"
-			"visgroupshown" "1"
-			"visgroupautoshown" "1"
-		}
-	}
-	group
-	{
-		"id" "21298"
-		editor
-		{
-			"color" "132 169 0"
 			"visgroupshown" "1"
 			"visgroupautoshown" "1"
 		}
@@ -2661,7 +2641,7 @@ entity
 				"v" "1360 -192.071 64"
 				"v" "1600 -192.071 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-0 1 0 256] 0.25"
 			"vaxis" "[1 0 0 192] 0.25"
 			"rotation" "0"
@@ -2697,7 +2677,7 @@ entity
 				"v" "1360 -869.928 64"
 				"v" "1600 -869.928 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-1 -0 0 -192] 0.25"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -2715,7 +2695,7 @@ entity
 				"v" "1600 -192.07 64"
 				"v" "1360 -192.07 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-1 -0 0 -320.002] 0.15"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -2751,7 +2731,7 @@ entity
 				"v" "1600 -869.928 64"
 				"v" "1600 -192.071 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 0] 0.25"
 			"rotation" "0"
@@ -3264,7 +3244,7 @@ entity
 				"v" "1350.19 -168.364 64"
 				"v" "1535.65 -218.058 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0.258819 0.965926 0 276.405] 0.25"
 			"vaxis" "[0.965926 -0.258819 0 240.963] 0.25"
 			"rotation" "0"
@@ -3300,7 +3280,7 @@ entity
 				"v" "1174.75 -823.123 64"
 				"v" "1360.21 -872.816 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-0.965926 0.258819 0 -240.963] 0.25"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -3318,7 +3298,7 @@ entity
 				"v" "1535.65 -218.057 64"
 				"v" "1350.18 -168.362 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-0.965926 0.258819 0 -401.609] 0.15"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -3749,7 +3729,7 @@ entity
 				"v" "1353.96 -146.376 64"
 				"v" "1520.24 -242.379 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0.5 0.866026 0 358.864] 0.25"
 			"vaxis" "[0.866025 -0.5 0 136.972] 0.25"
 			"rotation" "0"
@@ -3785,7 +3765,7 @@ entity
 				"v" "1015.03 -733.419 64"
 				"v" "1181.31 -829.421 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-0.866025 0.5 0 -136.972] 0.25"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -3803,7 +3783,7 @@ entity
 				"v" "1520.24 -242.38 64"
 				"v" "1353.96 -146.38 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-0.866025 0.5 0 -57.6187] 0.15"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -4214,7 +4194,7 @@ entity
 				"v" "1445.75 -204.45 65"
 				"v" "1581.52 -340.223 65"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0.70709 0.707124 0 72.7169] 0.25"
 			"vaxis" "[0.70709 -0.707124 0 452.503] 0.25"
 			"rotation" "0"
@@ -4250,7 +4230,7 @@ entity
 				"v" "966.43 -683.792 65"
 				"v" "1102.2 -819.566 65"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-0.70709 0.707124 0 -452.503] 0.25"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -4268,7 +4248,7 @@ entity
 				"v" "1464.19 -186.014 32"
 				"v" "1599.95 -321.786 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-0.70709 0.707124 0 -71.5058] 0.15"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -5407,7 +5387,7 @@ entity
 				"v" "1309.75 -68.444 65"
 				"v" "1445.52 -204.217 65"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0.70709 0.707124 0 72.7169] 0.25"
 			"vaxis" "[0.70709 -0.707124 0 197.835] 0.25"
 			"rotation" "0"
@@ -5443,7 +5423,7 @@ entity
 				"v" "830.43 -547.786 65"
 				"v" "966.2 -683.559 65"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-0.70709 0.707124 0 -197.836] 0.25"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -5461,7 +5441,7 @@ entity
 				"v" "1328.18 -50 32"
 				"v" "1463.95 -185.782 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-0.70709 0.707124 0 -329.725] 0.15"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -6246,7 +6226,7 @@ entity
 				"v" "1173.75 67.5616 65"
 				"v" "1309.52 -68.2102 65"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0.70709 0.707124 0 72.7158] 0.25"
 			"vaxis" "[0.70709 -0.707124 0 455.167] 0.25"
 			"rotation" "0"
@@ -6282,7 +6262,7 @@ entity
 				"v" "694.43 -411.776 65"
 				"v" "830.2 -547.551 65"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-0.70709 0.707124 0 -455.167] 0.25"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -6300,7 +6280,7 @@ entity
 				"v" "1192.19 86 32"
 				"v" "1327.95 -49.7767 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-0.70709 0.707124 0 -75.9448] 0.15"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -7688,7 +7668,7 @@ entity
 				"v" "862.19 225.636 64"
 				"v" "1047.64 175.944 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-0.258819 -0.965926 0 -435.319] 0.25"
 			"vaxis" "[-0.965926 0.258819 0 -230.348] 0.25"
 			"rotation" "0"
@@ -7724,7 +7704,7 @@ entity
 				"v" "1047.65 175.945 64"
 				"v" "862.19 225.637 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0.965926 -0.258819 0 230.348] 0.25"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -7742,7 +7722,7 @@ entity
 				"v" "686.75 -429.125 64"
 				"v" "872.21 -478.818 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0.965926 -0.258819 0 42.5806] 0.15"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -7819,7 +7799,7 @@ entity
 				"v" "1039.96 181.617 64"
 				"v" "1206.24 85.6172 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-0.5 -0.866026 0 -2.63501] 0.25"
 			"vaxis" "[-0.866025 0.5 0 -88.696] 0.25"
 			"rotation" "0"
@@ -7855,7 +7835,7 @@ entity
 				"v" "1206.24 85.6153 64"
 				"v" "1039.96 181.616 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0.866025 -0.5 0 88.696] 0.25"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -7873,7 +7853,7 @@ entity
 				"v" "701.04 -405.422 64"
 				"v" "867.32 -501.426 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0.866025 -0.5 0 318.492] 0.15"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -9012,7 +8992,7 @@ entity
 				"v" "-320 869.929 64"
 				"v" "320 869.929 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 -1 0 -256] 0.25"
 			"vaxis" "[-1 0 0 -256] 0.25"
 			"rotation" "0"
@@ -9048,7 +9028,7 @@ entity
 				"v" "320 896 32"
 				"v" "320 869.929 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -9066,7 +9046,7 @@ entity
 				"v" "320 192.071 64"
 				"v" "320 166 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.15"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -10086,7 +10066,7 @@ entity
 				"v" "320 869.929 66"
 				"v" "960 869.929 66"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 -1 0 -256] 0.25"
 			"vaxis" "[-1 0 0 -256] 0.25"
 			"rotation" "0"
@@ -10122,7 +10102,7 @@ entity
 				"v" "960 896 32"
 				"v" "960 869.929 66"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -10140,7 +10120,7 @@ entity
 				"v" "960 192.071 66"
 				"v" "960 166 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 85.3334] 0.15"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -11160,7 +11140,7 @@ entity
 				"v" "960 869.929 66"
 				"v" "1600 869.929 66"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 -1 0 -256] 0.25"
 			"vaxis" "[-1 0 0 -256] 0.25"
 			"rotation" "0"
@@ -11196,7 +11176,7 @@ entity
 				"v" "1600 896 32"
 				"v" "1600 869.929 66"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -11214,7 +11194,7 @@ entity
 				"v" "1600 192.071 66"
 				"v" "1600 166 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 426.667] 0.15"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -21470,7 +21450,7 @@ entity
 				"v" "-1472 -960 56"
 				"v" "-1472 -320 56"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 -256] 0.25"
 			"rotation" "0"
@@ -21506,7 +21486,7 @@ entity
 				"v" "-1536 -320 32"
 				"v" "-1472 -320 56"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 1 0 256] 0.25"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -21524,7 +21504,7 @@ entity
 				"v" "192 -320 56"
 				"v" "256 -320 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 1 0 426.667] 0.15"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -21587,8 +21567,8 @@ cameras
 	"activecamera" "0"
 	camera
 	{
-		"position" "[-1233.2 803.528 934.627]"
-		"look" "[-734.764 -572.502 -623.854]"
+		"position" "[-126.468 -32.968 490.945]"
+		"look" "[401.539 106.537 -1576.06]"
 	}
 }
 cordons

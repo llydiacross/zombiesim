@@ -1,2 +1,2 @@
-# request: bridge-20261031-013851-536
-zombiesim_dev_credits_status 20261031013701
+# request: bridge-20261101-190905-303
+zombiesim_player_status

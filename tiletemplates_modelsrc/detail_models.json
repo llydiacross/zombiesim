@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "description": "Tiles whose func_detail brushes are compiled into static models by bin/build_tile_detail_models.ps1. Edit the source VMF here; the tile under tiletemplates is generated.",
+  "tiles": [
+    {
+      "name": "skyscraper_ra_1aaa_2x",
+      "source": "buildings/tile_skyscraper_ra_1aaa_2x.vmf",
+      "tile": "buildings/tile_skyscraper_ra_1aaa_2x.vmf",
+      "lightingOrigin": [0, -720, 1024],
+      "collisionSlabHeight": 256,
+      "surfaceProp": "concrete"
+    }
+  ]
+}

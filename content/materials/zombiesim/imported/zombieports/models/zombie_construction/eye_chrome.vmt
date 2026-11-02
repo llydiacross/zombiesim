@@ -1,0 +1,8 @@
+"VertexLitGeneric_DX6"
+{
+	"$envmap" "zombiesim/imported/zombieports/models/zombie_parts/eye_chrome"
+	"$envmapsphere"			1
+	"$envmapmode" 1
+	"$envmapsaturation" 0
+	"$multipass" 1
+}

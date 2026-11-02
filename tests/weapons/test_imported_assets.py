@@ -16,16 +16,22 @@ class ImportedAssetsTests(unittest.TestCase):
     def test_unified_owned_payloads_and_sources(self):
         manifest = json.loads((ROOT / "content" / "data_static" / "imported_assets.json").read_text())
         self.assertEqual({source["package"] for source in manifest["sources"]},
-                         {"cs16", "hammer", "machete", "spanner", "lewis", "hev"})
+                         {"cs16", "hammer", "machete", "spanner", "lewis", "hev", "military", "apcs", "corn",
+                          "zombieports", "posters", "paranoia", "paz672", "radar", "cans", "seat"})
         owned = {entry["path"] for entry in manifest["files"]}
         for source in manifest["sources"]:
             self.assertTrue(source["title"])
             self.assertTrue(source["permission"])
             self.assertIsInstance(source["creditFiles"], list)
-            self.assertEqual(bool(source["creditFiles"]), source["package"] in ("cs16", "machete"))
+            info = importer.SOURCE_INFO.get(source["package"])
+            assumed = info is not None and info[2] is not None
+            self.assertEqual(bool(source["creditFiles"]), source["package"] in ("cs16", "machete") or bool(assumed and info[2]))
+            if assumed:
+                self.assertEqual(source["permission"], importer.ASSUMED_CC)
+                self.assertTrue(source["author"])
             for path in source["creditFiles"]:
                 self.assertIn(path, owned)
-                self.assertTrue((ROOT / "content" / Path(path)).read_text().strip())
+                self.assertTrue((ROOT / "content" / Path(path)).read_text(encoding="utf-8").strip())
         for entry in manifest["files"]:
             body = (ROOT / "content" / Path(entry["path"])).read_bytes()
             self.assertEqual(len(body), entry["bytes"], entry["path"])

@@ -19,7 +19,43 @@ ARCHIVES = {
     "spanner": ("spanner.7z", "Spanner"),
     "lewis": ("m249_lewis.rar", ""),
     "hev": ("hev_gordon_fixed_.rar", "H.E.V Gordon (fixed)"),
+    "military": ("5578_military.zip", "addons/military"),
+    "apcs": ("apcs.rar", "APCs"),
+    "corn": ("corn.7z", "corn"),
+    "zombieports": ("FPSBanana+Zombie+Ports.zip", "zombies"),
+    "posters": ("Movie,+Comic+and+Game+Posters.zip", "Movie, Comic and Game Posters"),
+    "paranoia": ("paranoia_vehicles.rar", "paranoia_vehicles"),
+    "paz672": ("paz_672.7z", "paz_672"),
+    "radar": ("radar.rar", "radar"),
+    "cans": ("realistic_cans.zip", ""),
+    "seat": ("seat_pack.rar", "seat_pack"),
 }
+PERMITTED = "User-confirmed creator permission for non-commercial ZombieSim, 2026-10-10; no supplied licence text."
+ASSUMED_CC = ("User-stated assumption, 2026-11-01: Creative Commons 4.0 licence for this 2006-2009 upload. "
+              "The archive contains no licence text; not independently verified.")
+# package: (title, author, archive-root-relative credit files; cp1251 files are re-encoded as UTF-8)
+SOURCE_INFO = {
+    "hammer": ("Chapstic Hammer", None, None),
+    "machete": ("Boba Fett's FC2 Machete", None, None),
+    "spanner": ("Spanner", None, None),
+    "lewis": ("Lewis Gun", None, None),
+    "hev": ("HEV Gordon (fixed)", None, None),
+    "military": ("Military Models Pack", "illkid & 1/4 Life", ["addons/military/info.txt"]),
+    "apcs": ("APCs", "Unknown", []),
+    "corn": ("Corn Field", "Unknown", ["corn/corn_full_inf.txt"]),
+    "zombieports": ("FPSBanana Zombie Ports", "Ported by CrazyChicken/Shotgunguy49; original model creators unknown",
+                    ["zombies/info.txt", "want more.txt"]),
+    "posters": ("Movies, Comics and Games Posters",
+                "Poster model MagNet; reskins Silver Spirit; poster artwork by its original rights holders",
+                ["Movie, Comic and Game Posters/info.txt"]),
+    "paranoia": ("Paranoia Vehicles", "Unknown", []),
+    "paz672": ("PAZ 672 Bus", "Unknown", []),
+    "radar": ("Military Radar", "Unknown", []),
+    "cans": ("Realistic Cans", "Fixed by [AU]Ownage - madmodder123; skins SmokeDef; models hexed by ReCkLeSs_KiLLa",
+             ["Readme.txt"]),
+    "seat": ("Seat Marbella Prop Pack", "Kruk", ["seat_pack/Readme.txt"]),
+}
+CP1251_CREDITS = {"corn/corn_full_inf.txt"}
 EXTENSIONS = {".mdl", ".vvd", ".vtx", ".phy", ".vmt", ".vtf", ".wav"}
 GMA_MD5 = "4c142c65b506481382e8cd41e5a8620d"
 
@@ -329,16 +365,27 @@ def import_assets(root):
                 else:
                     destination = f"sound/zombiesim/imported/{package}/" + name[6:]
                 selected[destination] = body
-            credits_root = Path(temporary) / "Boba Fett's FC2 Machete" if package == "machete" else folder
-            credits = list(credits_root.glob("*[Rr]ead*[Mm]e*.txt"))
-            if credits and credits[0].stat().st_size:
-                selected[f"data_static/asset_credits/gamebanana_{package}.txt"] = credits[0].read_bytes()
-            sources.append({"package": package, "archive": archive_name,
-                            "title": {"hammer": "Chapstic Hammer", "machete": "Boba Fett's FC2 Machete",
-                                      "spanner": "Spanner", "lewis": "Lewis Gun", "hev": "HEV Gordon (fixed)"}[package],
-                            "creditFiles": [name for name in selected if name == f"data_static/asset_credits/gamebanana_{package}.txt"],
-                            "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
-                            "permission": "User-confirmed creator permission for non-commercial ZombieSim, 2026-10-10; no supplied licence text."})
+            title, author, credit_paths = SOURCE_INFO[package]
+            credit_name = f"data_static/asset_credits/gamebanana_{package}.txt"
+            if credit_paths is None:
+                credits_root = Path(temporary) / "Boba Fett's FC2 Machete" if package == "machete" else folder
+                credits = list(credits_root.glob("*[Rr]ead*[Mm]e*.txt"))
+                if credits and credits[0].stat().st_size:
+                    selected[credit_name] = credits[0].read_bytes()
+            elif credit_paths:
+                texts = []
+                for credit_path in credit_paths:
+                    body = Path(temporary).joinpath(*PurePosixPath(credit_path).parts).read_bytes()
+                    text = body.decode("cp1251") if credit_path in CP1251_CREDITS else body.decode("utf-8-sig", errors="replace")
+                    texts.append(f"--- {PurePosixPath(credit_path).name} ---\n" + text.replace("\r\n", "\n").strip() + "\n")
+                selected[credit_name] = "\n".join(texts).encode("utf-8")
+            source = {"package": package, "archive": archive_name, "title": title,
+                      "creditFiles": [credit_name] if credit_name in selected else [],
+                      "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+                      "permission": PERMITTED if credit_paths is None else ASSUMED_CC}
+            if author:
+                source["author"] = author
+            sources.append(source)
             if package == "hammer":
                 hammer = hammer_smd(files)
     output = root / "generated" / "imported_assets"

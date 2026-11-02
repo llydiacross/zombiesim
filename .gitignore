@@ -34,3 +34,6 @@ bin/*_fixture_required_cell_vmfs.txt
 
 # Non needed model assets
 /assets/models/*
+# Native tool build outputs (walker-simulator and world-viewer write here)
+bin/*.exe
+bin/*.dll

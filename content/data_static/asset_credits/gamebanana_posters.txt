@@ -1,0 +1,12 @@
+--- info.txt ---
+"AddonInfo"
+{
+	"name"		"Movies, Comics and Games Posters"
+	"version"	"1.0"
+	"up_date"	"12 September 2009"
+	"author_name"	"Poster Model - MagNet, Reskins/Hexing - Silver Spirit (I didn't make the pictures I just made them into textures)"
+	"author_email"	"SpiritTechnologies@hotmail.com"
+	"author_url"	"http://silverspirituk.deviantart.com/"
+	"info"		"A bunch of posters based on a Poster model I found." 
+	"override"	"0"
+}

@@ -1,0 +1,10 @@
+--- Readme.txt ---
+Fixed by [AU]Ownage - madmodder123
+
+Can Skins Done by :: SmokeDef
+
+All of the Models Hexed by :: ReCkLeSs_KiLLa
+
+Installation :: 
+
+Extract to the gmod directory. This is NOT a mod, though, the spawn menu will be installed during the extraction

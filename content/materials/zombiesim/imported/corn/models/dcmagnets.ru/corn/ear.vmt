@@ -1,0 +1,8 @@
+"VertexLitGeneric"
+{
+        "$basetexture" "zombiesim/imported/corn/models/dcmagnets.ru/corn/ear"
+	"$bumpmap" "zombiesim/imported/corn/models/dcmagnets.ru/corn/ear_normal"
+        "$surfaceprop" "grass"
+        "$alphatest" 1
+        "$model" 1
+}

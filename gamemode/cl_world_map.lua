@@ -777,6 +777,20 @@ local function drawZoomedCells(worldData, mapX, mapY, mapSize, renderMode, viewW
             local cellX = mapX + gridX * cellWidth
             local cellY = mapY + gridY * cellHeight
             if cellX + cellWidth >= 0 and cellY + cellHeight >= 0 and cellX <= viewWidth and cellY <= viewHeight then
+                if cell.empty == true then
+                    // Roadless empty cells have no map image: draw one flat terrain tile.
+                    local rgb = istable(cell.emptyColor) and cell.emptyColor or nil
+                    if renderMode == "wireframe" then
+                        surface.SetDrawColor(9, 14, 18, 255)
+                    else
+                        surface.SetDrawColor(tonumber(rgb and rgb[1]) or 96, tonumber(rgb and rgb[2]) or 112, tonumber(rgb and rgb[3]) or 72, 255)
+                    end
+                    surface.DrawRect(cellX, cellY, cellWidth + 1, cellHeight + 1)
+                    surface.SetDrawColor(255, 255, 255, 255)
+                    drewAnyCell = true
+                    drawnCells = drawnCells + 1
+                    continue
+                end
                 local material = getCellZoomMaterial(cell, renderMode)
                 if material and not material:IsError() then
                     surface.SetMaterial(material)
@@ -1928,9 +1942,6 @@ local function createCellInspector(parent)
             end
 
             local state = cell.building and "Building present" or "Open terrain"
-            if cell.deadZone then
-                state = state .. " / Dead zone"
-            end
             local metroDetails = getCellMetroSummary(cell)
 
             table.insert(self.Rows, { kind = "radiation", value = ZM_World:GetRadiationIntensity(cell) })

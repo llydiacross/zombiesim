@@ -32,6 +32,7 @@ $variantChancePercent = [int]$plannerSettings.topologyVariants.chancePercent
 $industryPattern = [string]$plannerSettings.templatePatterns.industry
 $industryTerrains = @($plannerSettings.buildingSelection.industryTerrains | ForEach-Object { [string]$_ })
 $industryProfiles = @($plannerSettings.buildingSelection.industryProfiles | ForEach-Object { [string]$_ })
+$radioactiveTags = @($plannerSettings.buildingSelection.radioactiveTags | ForEach-Object { [string]$_ })
 $variantBases = @{}
 foreach ($topology in $plannerSettings.topologyVariants.templates.Keys) {
     foreach ($variant in @($plannerSettings.topologyVariants.templates[$topology])) {
@@ -96,8 +97,9 @@ foreach ($recipe in $recipes) {
             $errors.Add("$($recipe.cellTemplateFilename) uses $($placement.template) as role '$($placement.role)'.")
         }
         $terrain = if ($null -ne $mapCell) { [string]$mapCell.environment.terrain } else { '' }
-        if ($terrain -notin $industryTerrains -and [string]$recipe.environmentProfile -notin $industryProfiles) {
-            $errors.Add("$($recipe.cellTemplateFilename) places industrial template $($placement.template) outside the industry terrains/profiles (terrain=$terrain, profile=$($recipe.environmentProfile)).")
+        $zoneCell = $null -ne $mapCell -and $null -ne $mapCell.PSObject.Properties['industrialZone'] -and $null -ne $mapCell.industrialZone
+        if (-not $zoneCell -and $terrain -notin $industryTerrains -and [string]$recipe.environmentProfile -notin $industryProfiles) {
+            $errors.Add("$($recipe.cellTemplateFilename) places industrial template $($placement.template) outside an industrial zone (terrain=$terrain, profile=$($recipe.environmentProfile)).")
         }
     }
 

@@ -391,8 +391,8 @@ function ZM_Options:BuildPanel(panel, options)
         skyHint:SetText("Fine-tune distant scenery, haze and lighting. These settings are saved separately from graphics presets.")
         skyHint:SetTextColor(ZM_DermaSkin.Palette.text)
         local skySliders = {
-            { label = "Distant scenery detail (0 off, 1-2)", name = "zombiesim_sky_detail", minimum = 0, maximum = 2, decimals = 0,
-                tooltip = "Neighbourhood scenery. 0 hides distant city scenery and towers, not your selected sky backdrop." },
+            { label = "Distant scenery rings (0 off, 1-6)", name = "zombiesim_sky_detail", minimum = 0, maximum = 6, decimals = 0,
+                tooltip = "Rings of fully modelled neighbouring cells; more rings show more of the city but cost frame time. 0 hides distant city scenery and towers, not your selected sky backdrop." },
             { label = "Distant props / wrecks", name = "zombiesim_sky_props", minimum = 0, maximum = 1,
                 tooltip = "Scales the per-frame prop budget; higher values cost more frame time." }
         }
@@ -411,7 +411,8 @@ function ZM_Options:BuildPanel(panel, options)
         for _, setting in ipairs({
             { label = "Distant clouds", name = "zombiesim_sky_clouds" },
             { label = "Distant fires, smoke and combat", name = "zombiesim_sky_fires" },
-            { label = "Match distant scenery lighting", name = "zombiesim_sky_matched_lighting" }
+            { label = "Match distant scenery lighting", name = "zombiesim_sky_matched_lighting" },
+            { label = "Reduce lightning flashes", name = "zombiesim_lightning_reduce_flashes" }
         }) do
             local checkbox = vgui.Create("DCheckBoxLabel", panel)
             checkbox:Dock(TOP)

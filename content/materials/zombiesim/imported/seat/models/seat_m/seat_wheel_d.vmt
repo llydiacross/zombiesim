@@ -1,0 +1,11 @@
+"VertexLitGeneric"
+{
+	"$baseTexture" "zombiesim/imported/seat/models/seat_m/seat_wheel_d"
+	"$bumpmap" "zombiesim/imported/seat/models/seat_m/seat_wheel_ns"
+         $normalmapalphaenvmapmask 1
+         $envmap                            env_cubemap
+
+	$halflambert 1
+
+
+}

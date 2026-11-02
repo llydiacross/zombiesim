@@ -219,7 +219,7 @@ function Gore:MakeCrawler(entity)
     entity.GoreCrawler = true
     entity:ManipulateBonePosition(0, Gore.CrawlerBodyOffset)
     entity:SetCollisionBounds(Gore.CrawlerMins, Gore.CrawlerMaxs)
-    entity.WalkSpeed = (entity.WalkSpeed or entity.DevelopmentWalkSpeed or 55) * Gore.CrawlerSpeedScale
+    entity.WalkSpeed = (entity.WalkSpeed or entity.DevelopmentWalkSpeed or 41.25) * Gore.CrawlerSpeedScale
     if entity.loco then
         entity.loco:SetDesiredSpeed(entity.WalkSpeed)
     end

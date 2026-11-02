@@ -151,10 +151,11 @@ Suite:Add("presentation snapshots are read-only isolated and revisioned", functi
     run("UPDATE characters SET model = " .. sql.SQLStr(ZM_CharacterRules.Models[1])
         .. ", skin = 0, bodygroups = '{}', playerColour = '[0.2,0.4,0.6]', appearanceRequired = 0,"
         .. " originCellX = 0, originCellY = 0 WHERE characterId = " .. sql.SQLStr(characterOne))
-    local cell = ZM_World:GetCell(0, 0)
+    // Negative logical Y has no matching raw grid row, so this catches raw/logical confusion.
+    local cell = ZM_World:GetCell(ZM_World:GetGridCoordinates(3, -2))
     check(cell ~= nil, "snapshot fixture uses a real logical cell")
     ZM_SetPlayerData(characterOne, profile, {
-        XP = 25, Level = 3, CellX = 0, CellY = 0, Cash = 7
+        XP = 25, Level = 3, CellX = 3, CellY = -2, Cash = 7
     }, "character snapshot test")
     local rows = {
         { instanceId = "snapshot-shirt", container = "equipped", slot = ZM_Clothing.Slots.shirt,
@@ -223,7 +224,7 @@ Suite:Add("presentation locations and owner profile remain explicit", function(c
 
     local safeZone = ZM_World:GetOriginSafeZone()
     local safeX, safeY
-    if safeZone then safeX, safeY = ZM_World:GetCoordinates(tonumber(safeZone.cell)) end
+    if safeZone then safeX, safeY = ZM_World:GetWorldCoordinates(tonumber(safeZone.cell)) end
     check(safeZone and safeX ~= nil and safeY ~= nil, "fixture resolves the authoritative origin den")
     ZM_SetPlayerData(characterOne, profile, {
         XP = 0, Level = 1, CellX = safeX, CellY = safeY, Cash = 0,

@@ -42,9 +42,9 @@ function Menu:SetPage(page)
     self:RefreshState()
     if ZM_LauncherSceneClient then
         if page == "load" then
-            ZM_LauncherSceneClient:TransitionPresentationState("city", 4.5)
+            ZM_LauncherSceneClient:TransitionPresentationState("city")
         elseif page ~= "create" and page ~= "appearance" then
-            ZM_LauncherSceneClient:TransitionPresentationState("earth", 3)
+            ZM_LauncherSceneClient:TransitionPresentationState("earth")
         end
     end
     self:RefreshState()
@@ -62,6 +62,13 @@ function Menu:GetLogoStatus()
         width = texture and texture:Width() or 0,
         height = texture and texture:Height() or 0
     }
+end
+
+// The Play page views the authored deploy scene once the black fade has swapped scenes.
+function Menu:GetDeployCamera()
+    if not self.DeployCamera or not ZM_LauncherSceneClient then return nil end
+    if ZM_LauncherSceneClient:GetPresentationState() ~= "city" then return nil end
+    return self.DeployCamera
 end
 
 function Menu:IsEarthControlsActive()
@@ -554,6 +561,10 @@ function Menu:Open()
         end
     end
     frame.Think = function()
+        local uiAlpha = ZM_LauncherSceneClient and ZM_LauncherSceneClient:GetPresentationUIAlpha() or 1
+        frame:SetAlpha(math.Round(uiAlpha * 255))
+        if IsValid(self.PreviewPanel) then self.PreviewPanel:SetAlpha(math.Round(uiAlpha * 255)) end
+        if self.RenderDeferred and not ZM_LauncherSceneClient:IsPresentationSwapPending() then self:Render() end
         if self.Waiting and RealTime() > self.Deadline then
             self.Waiting = nil
             self.Error = "Server did not respond. Try again."
@@ -580,8 +591,16 @@ function Menu:Open()
     self:Render()
 end
 
-function Menu:Render()
+function Menu:Render(immediate)
     if not IsValid(self.Frame) then return end
+    // Keep the outgoing page until the fade is fully black so the next page never flashes.
+    local scene = ZM_LauncherSceneClient
+    if not immediate and scene and scene:IsPresentationSwapPending() then
+        self.RenderDeferred = true
+        if IsValid(self.Content) then self.Content:SetMouseInputEnabled(false) end
+        return
+    end
+    self.RenderDeferred = nil
     self:RefreshState()
     if ZM_LauncherTools then
         ZM_LauncherTools:Attach(self.Frame, self.FrameWidth)
@@ -1058,6 +1077,9 @@ net.Receive("ZM.LauncherStatus", function()
     local hasCreationCamera = net.ReadBool()
     Menu.CreationCamera = hasCreationCamera and
         { origin = net.ReadVector(), angles = net.ReadAngle(), fov = net.ReadFloat() } or nil
+    local hasDeployCamera = net.ReadBool()
+    Menu.DeployCamera = hasDeployCamera and
+        { origin = net.ReadVector(), angles = net.ReadAngle(), fov = net.ReadFloat() } or nil
     local hasPreviewSkyCamera = net.ReadBool()
     Menu.PreviewSkyCamera = hasPreviewSkyCamera and
         { origin = net.ReadVector(), angles = net.ReadAngle(), fov = net.ReadFloat() } or nil
@@ -1097,7 +1119,7 @@ hook.Add("CalcView", "ZombieSim.Launcher.MenuCamera", function(_, _, _, fov)
     if Menu.Credits and ZM_LauncherSceneClient then
         return ZM_LauncherSceneClient:CreditsView()
     end
-    local camera = Menu:GetCharacterCreationCamera() or Menu.Camera
+    local camera = Menu:GetCharacterCreationCamera() or Menu:GetDeployCamera() or Menu.Camera
     if not camera then return { origin = vector_origin, angles = angle_zero, fov = fov, drawviewer = false } end
     return { origin = camera.origin, angles = camera.angles, fov = camera.fov,
         drawviewer = false, drawviewmodel = false }

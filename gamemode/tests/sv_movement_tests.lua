@@ -14,33 +14,33 @@ end
 suite:Add("walk_and_sprint_scale_once_and_preserve_implant_bonuses", function(check)
     local user = target(200, 400)
     Movement.Apply(user, 0)
-    check(near(user.walk, 135) and near(user.run, 306), "walk uses 0.675 and sprint uses 0.765")
+    check(near(user.walk, 114.75) and near(user.run, 260.1), "walk uses 0.57375 and sprint uses 0.65025")
     for _ = 1, 10 do Movement.Apply(user, 0) end
-    check(near(user.walk, 135) and near(user.run, 306), "repeated refresh does not compound reductions")
+    check(near(user.walk, 114.75) and near(user.run, 260.1), "repeated refresh does not compound reductions")
     Movement.Apply(user, 0.2)
-    check(near(user.walk, 162) and near(user.run, 367.2), "implant bonuses apply to the balanced speeds")
+    check(near(user.walk, 137.7) and near(user.run, 312.12), "implant bonuses apply to the balanced speeds")
     Movement.Apply(user, 0)
-    check(near(user.walk, 135) and near(user.run, 306), "implant removal restores balanced speeds")
+    check(near(user.walk, 114.75) and near(user.run, 260.1), "implant removal restores balanced speeds")
     user.walk, user.run = 200, 400
     Movement.Apply(user, 0.2)
-    check(near(user.walk, 162) and near(user.run, 367.2), "engine spawn speed reset is balanced once")
+    check(near(user.walk, 137.7) and near(user.run, 312.12), "engine spawn speed reset is balanced once")
     user.walk, user.run = 150, 300
     Movement.Apply(user, 0)
-    check(near(user.walk, 101.25) and near(user.run, 229.5), "external base speeds retain the same percentage policy")
+    check(near(user.walk, 86.0625) and near(user.run, 195.075), "external base speeds retain the same percentage policy")
     user.walk = 100
     Movement.Apply(user, 0)
-    check(near(user.walk, 67.5) and near(user.run, 229.5), "a walk-only reset cannot compound the unchanged sprint speed")
+    check(near(user.walk, 57.375) and near(user.run, 195.075), "a walk-only reset cannot compound the unchanged sprint speed")
 end)
 
 suite:Add("stamina_rates_match_exact_old_to_new_percentages_at_all_stats", function(check)
     for _, stats in ipairs({ { 0, 0 }, { 5, 5 }, { 25, 40 }, { 100, 100 } }) do
         local agility, strength = stats[1], stats[2]
         local drain, recovery = Movement.Rates(agility, strength)
-        local oldDrain = 80 / (1 + agility * 0.05 + strength * 0.03)
+        local oldDrain = 60 / (1 + agility * 0.05 + strength * 0.03)
         local oldRecovery = 5 * (1 + agility * 0.05)
-        check(near(drain, oldDrain * 0.75), "sprint cost is exactly 25 percent lower")
+        check(near(drain, oldDrain * 0.5), "sprint cost is exactly half the previous rate")
         check(near(recovery, oldRecovery * 1.10), "recovery is exactly 10 percent higher")
-        check(near(100 / drain, (100 / oldDrain) / 0.75), "equal stamina lasts one third longer")
+        check(near(100 / drain, (100 / oldDrain) * 2), "equal stamina lasts twice as long")
         check(near(100 / recovery, (100 / oldRecovery) / 1.10), "recovery duration matches the requested rate")
     end
 end)
@@ -48,9 +48,9 @@ end)
 suite:Add("sustained_interrupted_and_exhausted_sprint_are_bounded", function(check)
     local stamina = 100
     for _ = 1, 100 do stamina = Movement.Step(stamina, 100, true, 0, 0, 0.01) end
-    check(near(stamina, 40), "one second of sustained sprint consumes 60 stamina")
+    check(near(stamina, 70), "one second of sustained sprint consumes 30 stamina")
     stamina = Movement.Step(stamina, 100, false, 0, 0, 1)
-    check(near(stamina, 45.5), "releasing sprint immediately restores 5.5 per second")
+    check(near(stamina, 75.5), "releasing sprint immediately restores 5.5 per second")
     check(Movement.Step(stamina, 100, true, 0, 0, 10) == 0, "exhaustion cannot become negative")
     check(Movement.Step(0, 100, true, 0, 0, 1) == 0, "held sprint stays exhausted")
     check(near(Movement.Step(0, 100, false, 0, 0, 1), 5.5), "released exhausted sprint recovers")
@@ -93,9 +93,9 @@ suite:Add("armour_penalties_are_endurance_mitigated_without_compounding", functi
     local user = target(200, 400)
     user.ZM_Inventory, user.GetStat = inventory, function() return 0 end
     Movement.Apply(user, 0)
-    check(near(user.walk, 118.8) and near(user.run, 269.28), "armour scales balanced base speeds")
+    check(near(user.walk, 100.98) and near(user.run, 228.888), "armour scales balanced base speeds")
     for _ = 1, 10 do Movement.Apply(user, 0) end
-    check(near(user.walk, 118.8) and near(user.run, 269.28), "armour refreshes do not compound")
+    check(near(user.walk, 100.98) and near(user.run, 228.888), "armour refreshes do not compound")
     local _, recovery = Movement.Rates(0, 0, 1 - untrained.staminaRegenPenalty)
     check(near(recovery, 3.85), "heavy armour reduces stamina recovery by 30 percent")
 end)
@@ -105,11 +105,11 @@ suite:Add("deployed_players_use_balanced_runtime_speeds_and_rates", function(che
         if user.ZM_PersistentStateLoaded == true and user.ZM_Modifiers then
             local state = Movement.Snapshot(user)
             local scale = (1 + state.moveSpeedBonus) * (1 - state.armour.speedPenalty)
-            check(state.baseWalkSpeed ~= nil and near(state.walkSpeed, state.baseWalkSpeed * 0.675 * scale),
+            check(state.baseWalkSpeed ~= nil and near(state.walkSpeed, state.baseWalkSpeed * 0.57375 * scale),
                 "actual player walk speed matches the captured base and modifiers")
-            check(state.baseRunSpeed ~= nil and near(state.runSpeed, state.baseRunSpeed * 0.765 * scale),
+            check(state.baseRunSpeed ~= nil and near(state.runSpeed, state.baseRunSpeed * 0.65025 * scale),
                 "actual player run speed matches the captured base and modifiers")
-            check(near(state.sprintDrain, 60 / (1 + state.agility * 0.05 + state.strength * 0.03)),
+            check(near(state.sprintDrain, 30 / (1 + state.agility * 0.05 + state.strength * 0.03)),
                 "actual stat-derived drain matches the authoritative rate")
             check(near(state.recovery,
                 5.5 * (1 + state.agility * 0.05) * (1 - state.armour.staminaRegenPenalty)),

@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "36"
+	"mapversion" "37"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "36"
+	"mapversion" "37"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -227,7 +227,7 @@ world
 				"v" "-320 -640 32"
 				"v" "320 -640 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-1 0 0 256] 0.25"
 			"vaxis" "[0 1 0 0] 0.25"
 			"rotation" "0"
@@ -345,7 +345,7 @@ world
 				"v" "320 -640 32"
 				"v" "960 -640 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-1 0 0 256] 0.25"
 			"vaxis" "[0 1 0 0] 0.25"
 			"rotation" "0"
@@ -699,7 +699,7 @@ world
 				"v" "-960 -640 32"
 				"v" "-320 -640 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-1 0 0 256] 0.25"
 			"vaxis" "[0 1 0 0] 0.25"
 			"rotation" "0"
@@ -817,7 +817,7 @@ world
 				"v" "-960 -640 32"
 				"v" "-960 0 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 -1 0 0] 0.25"
 			"vaxis" "[-1 0 0 85.3333] 0.25"
 			"rotation" "0"
@@ -936,7 +936,7 @@ world
 				"v" "-960 640 32"
 				"v" "-960 1280 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 -1 0 0] 0.25"
 			"vaxis" "[-1 0 0 256] 0.25"
 			"rotation" "0"
@@ -1055,7 +1055,7 @@ world
 				"v" "-320 -640 32"
 				"v" "-320 0 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 -1 0 0] 0.25"
 			"vaxis" "[-1 0 0 256] 0.25"
 			"rotation" "0"
@@ -1174,7 +1174,7 @@ world
 				"v" "-320 640 32"
 				"v" "-320 1280 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 -1 0 0] 0.25"
 			"vaxis" "[-1 0 0 256] 0.25"
 			"rotation" "0"
@@ -1293,7 +1293,7 @@ world
 				"v" "320 -640 32"
 				"v" "320 0 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 -1 0 0] 0.25"
 			"vaxis" "[-1 0 0 -85.3337] 0.25"
 			"rotation" "0"
@@ -1412,7 +1412,7 @@ world
 				"v" "320 640 32"
 				"v" "320 1280 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 -1 0 0] 0.25"
 			"vaxis" "[-1 0 0 256] 0.25"
 			"rotation" "0"
@@ -1599,7 +1599,7 @@ entity
 				"v" "-960 1152 64"
 				"v" "960 1152 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 -1 0 0] 0.25"
 			"vaxis" "[-1 0 0 256] 0.25"
 			"rotation" "0"
@@ -1635,7 +1635,7 @@ entity
 				"v" "960 1216 32"
 				"v" "960 1152 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 -256] 0.25"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -1653,7 +1653,7 @@ entity
 				"v" "960 -512 64"
 				"v" "960 -576 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 -426.667] 0.15"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -4204,7 +4204,7 @@ entity
 			vertices_plus
 			{
 				"v" "14.5729 1280 68"
-				"v" "63.9999 1280 68"
+				"v" "64 1280 68"
 				"v" "-129.143 1040 68"
 				"v" "-193.143 1040 68"
 			}
@@ -4223,7 +4223,7 @@ entity
 			{
 				"v" "-193.143 1040 32"
 				"v" "-129.143 1040 32"
-				"v" "63.9959 1280 32"
+				"v" "64 1280 32"
 				"v" "14.575 1280 32"
 			}
 			"material" "CONCRETE/CONCRETEFLOOR009A"
@@ -4259,8 +4259,8 @@ entity
 			{
 				"v" "-129.143 1040 32"
 				"v" "-129.143 1040 68"
-				"v" "63.9999 1280 68"
-				"v" "63.9959 1280 32"
+				"v" "64 1280 68"
+				"v" "64 1280 32"
 			}
 			"material" "CONCRETE/CONCRETEFLOOR009A"
 			"uaxis" "[0.654931 0.755689 0 237.178] 0.25"
@@ -4293,8 +4293,8 @@ entity
 			"plane" "(63.9959 1280 32) (63.9999 1280 68) (14.5729 1280 68)"
 			vertices_plus
 			{
-				"v" "63.9959 1280 32"
-				"v" "63.9999 1280 68"
+				"v" "64 1280 32"
+				"v" "64 1280 68"
 				"v" "14.5729 1280 68"
 				"v" "14.575 1280 32"
 			}

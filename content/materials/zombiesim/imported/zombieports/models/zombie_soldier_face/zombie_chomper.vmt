@@ -1,0 +1,8 @@
+"vertexlitgeneric"
+{
+	"$basetexture" "zombiesim/imported/zombieports/models/zombie_parts/zombie_chomper"
+	"$halflambert" 1
+	"$nodecal" "1"
+	"$model" "1"
+
+}

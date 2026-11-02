@@ -377,7 +377,9 @@ function World:Load(path)
 				and bounds.traversableHalfExtent == bounds.coreHalfExtent + bounds.tileSize
 				and bounds.visualHalfExtent == bounds.traversableHalfExtent + (bounds.revision == 2 and bounds.tileSize or 0)
 				and bounds.neighbourPitch == bounds.visualHalfExtent * 2
-				and bounds.coastContactHalfExtent == bounds.traversableHalfExtent
+				// Authored ocean edge pieces move the coast contact out to the visual edge.
+				and (bounds.coastContactHalfExtent == bounds.traversableHalfExtent
+					or (bounds.revision == 2 and bounds.coastContactHalfExtent == bounds.visualHalfExtent))
 		end
 		if not valid then
 			self.Data = nil
@@ -467,6 +469,14 @@ function World:Load(path)
 				self.LastError = "Runtime world data at " .. path .. " has invalid coast sides for cell " .. id
 				return false, self.LastError
 			end
+		end
+
+		if cell.empty ~= nil and (cell.empty ~= true or (cell.map ~= nil and cell.map ~= "") or
+			(type(cell.exits) == "table" and #cell.exits > 0) or type(cell.emptyTerrain) ~= "string" or cell.emptyTerrain == "") then
+			self.Data = nil
+			self.Indexes = nil
+			self.LastError = "Runtime world data at " .. path .. " has an invalid empty cell " .. id
+			return false, self.LastError
 		end
 
 		local x = id % width
@@ -907,10 +917,20 @@ function World:GetTransport(reference, y)
 	return cell and cell.transport or nil
 end
 
-// Returns whether a cell belongs to a dead zone.
-function World:IsDeadZone(reference, y)
+// Returns whether a cell is a roadless "empty" cell: it has no map, cannot be entered
+// and is shown on the world map only as flat terrain (see GetEmptyCellTerrain).
+function World:IsEmptyCell(reference, y)
 	local cell = self:ResolveCell(reference, y)
-	return cell and cell.deadZone or false
+	return cell ~= nil and cell.empty == true
+end
+
+// Returns the flat terrain id ("grassland", "radioactive", ...) drawn for an empty cell, or nil.
+function World:GetEmptyCellTerrain(reference, y)
+	local cell = self:ResolveCell(reference, y)
+	if not cell or cell.empty ~= true then
+		return nil
+	end
+	return type(cell.emptyTerrain) == "string" and cell.emptyTerrain ~= "" and cell.emptyTerrain or "grassland"
 end
 
 // Returns whether a cell has an associated safe-zone record.
@@ -976,7 +996,12 @@ function World:CanTravel(reference, yOrDirection, directionOrMode, requestedMode
 		return nil
 	end
 
-	return self:GetCellById(exit.cell), exit, mode
+	local target = self:GetCellById(exit.cell)
+	if not target or target.empty == true then
+		return nil
+	end
+
+	return target, exit, mode
 end
 
 // Validates travel and returns a Source transition name followed by targetCell, exit, and mode.
@@ -990,7 +1015,7 @@ function World:GetTransitionMap(reference, yOrDirection, directionOrMode, reques
 end
 
 // Searches cells using optional map, terrain, profile, topology, atmosphere, district, landmark, metroLine,
-// safeZone, deadZone, building, metroStop, limit, and predicate criteria.
+// safeZone, building, metroStop, limit, and predicate criteria.
 function World:FindCells(criteria)
 	if not self:IsLoaded() then
 		return nil
@@ -1011,7 +1036,6 @@ function World:FindCells(criteria)
 			(criteria.topology == nil or cell.topology == criteria.topology) and
 			(criteria.atmosphere == nil or atmosphere == criteria.atmosphere) and
 			(criteria.district == nil or district.name == criteria.district) and
-			(criteria.deadZone == nil or cell.deadZone == criteria.deadZone) and
 			(criteria.building == nil or cell.building == criteria.building) and
 			(criteria.safeZone == nil or (safeZone ~= nil) == criteria.safeZone) and
 			(criteria.metroStop == nil or (self:GetMetroStop(cell) ~= nil) == criteria.metroStop)
@@ -1125,7 +1149,7 @@ function World:FindPath(startReference, goalReference, options)
 					local isRequestedMode = modeName == "any" or mode.type == modeName
 					local isAvailable = options.allowBlocked or not mode.blocked
 					local canUseMode = canChangeMode or current.mode == mode.type
-					if target and isRequestedMode and isAvailable and canUseMode and (not options.canEnter or options.canEnter(target, cell, exit, mode)) then
+					if target and target.empty ~= true and isRequestedMode and isAvailable and canUseMode and (not options.canEnter or options.canEnter(target, cell, exit, mode)) then
 						local stepCost = options.stepCost and options.stepCost(target, cell, exit, mode) or 1
 						if type(stepCost) == "number" and stepCost > 0 then
 							local nextCost = current.cost + stepCost

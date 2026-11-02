@@ -150,6 +150,12 @@ return function()
             end
             seenCellIds[cellId] = true
 
+            // Roadless empty cells have no map, so no navmesh, photos or cubemaps to maintain.
+            if sourceCell.empty == true then
+                snapshot.summary.total = snapshot.summary.total - 1
+                snapshot.summary.emptyCells = (snapshot.summary.emptyCells or 0) + 1
+            else
+
             local mapName = sourceCell.map
             local mapKey = isValidMapName(mapName) and mapName or ("invalid-map-" .. tostring(cellId))
             local navmesh = navmeshByMap[mapKey]
@@ -208,6 +214,7 @@ return function()
             if photos.complete then snapshot.summary.photoCells = snapshot.summary.photoCells + 1 end
             if cubemaps.complete then snapshot.summary.cubemapCells = snapshot.summary.cubemapCells + 1 end
             snapshot.summary[state] = snapshot.summary[state] + 1
+            end
         end
 
         table.sort(snapshot.cells, function(left, right)

@@ -1,8 +1,8 @@
 versioninfo
 {
 	"editorversion" "400"
-	"editorbuild" "8871"
-	"mapversion" "51"
+	"editorbuild" "8873"
+	"mapversion" "52"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "51"
+	"mapversion" "52"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -227,7 +227,7 @@ world
 				"v" "960 -960 -772"
 				"v" "320 -960 -772"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 -256] 0.15"
 			"vaxis" "[0 -1 0 85.3333] 0.15"
 			"rotation" "0"
@@ -345,7 +345,7 @@ world
 				"v" "-320 -960 -772"
 				"v" "-960 -960 -772"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 -256] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -581,7 +581,7 @@ world
 				"v" "960 -320 -772"
 				"v" "320 -320 -772"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 -256] 0.15"
 			"vaxis" "[0 -1 0 256] 0.15"
 			"rotation" "0"
@@ -699,7 +699,7 @@ world
 				"v" "-320 -320 -772"
 				"v" "-960 -320 -772"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 -256] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -935,7 +935,7 @@ world
 				"v" "960 320 -772"
 				"v" "320 320 -772"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 -256] 0.15"
 			"vaxis" "[0 -1 0 -85.3332] 0.15"
 			"rotation" "0"
@@ -1053,7 +1053,7 @@ world
 				"v" "-320 320 -772"
 				"v" "-960 320 -772"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 -256] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -2014,7 +2014,7 @@ entity
 				"v" "-832 -960 -740"
 				"v" "-832 -320 -740"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 -256] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -2050,7 +2050,7 @@ entity
 				"v" "-896 -320 -772"
 				"v" "-832 -320 -740"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 1 0 -256] 0.25"
 			"vaxis" "[0 0 -1 -368] 0.15"
 			"rotation" "0"
@@ -2068,7 +2068,7 @@ entity
 				"v" "832 -320 -740"
 				"v" "896 -320 -772"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 1 0 -85.3333] 0.15"
 			"vaxis" "[0 0 -1 -368] 0.15"
 			"rotation" "0"
@@ -4056,7 +4056,7 @@ entity
 				"v" "-832 -320 -740"
 				"v" "-832 320 -740"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 -256] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -4092,7 +4092,7 @@ entity
 				"v" "-896 320 -772"
 				"v" "-832 320 -740"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 1 0 -256] 0.25"
 			"vaxis" "[0 0 -1 -368] 0.15"
 			"rotation" "0"
@@ -4110,7 +4110,7 @@ entity
 				"v" "832 320 -740"
 				"v" "896 320 -772"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 1 0 -256] 0.15"
 			"vaxis" "[0 0 -1 -368] 0.15"
 			"rotation" "0"
@@ -6098,7 +6098,7 @@ entity
 				"v" "-832 320 -740"
 				"v" "-832 960 -740"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 -256] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -6134,7 +6134,7 @@ entity
 				"v" "-896 960 -772"
 				"v" "-832 960 -740"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 1 0 -256] 0.25"
 			"vaxis" "[0 0 -1 -368] 0.15"
 			"rotation" "0"
@@ -6152,7 +6152,7 @@ entity
 				"v" "832 960 -740"
 				"v" "896 960 -772"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 1 0 85.3332] 0.15"
 			"vaxis" "[0 0 -1 -368] 0.15"
 			"rotation" "0"
@@ -13673,8 +13673,8 @@ cameras
 	"activecamera" "0"
 	camera
 	{
-		"position" "[-422.08 65.8135 0]"
-		"look" "[1715.76 65.8135 0]"
+		"position" "[-632.882 63.8135 -312]"
+		"look" "[1443.25 252.756 -785.635]"
 	}
 }
 cordons

@@ -170,6 +170,11 @@ def load_existing_captures(output_root, world_data, tile_size, replacement_image
     return images, metadata, reused, skipped
 
 
+def required_cell_count(world_data):
+    """Counts cells that own a map; roadless empty cells are never captured."""
+    return sum(1 for cell in world_data["cells"] if not cell.get("empty"))
+
+
 def import_run(run_path, world_path, data_root, output_root, tile_size=256, overview_size=3072, skyline_path=None):
     if tile_size not in (128, 256, 512) or not 128 <= overview_size <= 4096:
         raise ValueError("display tiles must be 128/256/512; overview must be <=4096")
@@ -204,7 +209,7 @@ def import_run(run_path, world_path, data_root, output_root, tile_size=256, over
         "boundsRevision": revision["boundsRevision"], "pitch": revision["pitch"],
         "cameraZ": revision["cameraZ"], "northUp": True, "sourceSize": revision["size"],
         "tileSize": tile_size, "grid": [width, height], "runId": run["runId"],
-        "complete": all(len(images[v]) == len(world_data["cells"]) for v in VARIANTS),
+        "complete": all(len(images[v]) == required_cell_count(world_data) for v in VARIANTS),
         "reusedImageCount": reused, "skippedExistingImageCount": skipped,
         "estimatedRGBABytes": estimated_rgba, "variants": {},
     }
@@ -214,6 +219,13 @@ def import_run(run_path, world_path, data_root, output_root, tile_size=256, over
         directory = root / "materials" / "worlds" / "preview" / "captured" / variant
         directory.mkdir(parents=True, exist_ok=True)
         atlas = Image.new("RGB", (atlas_width, atlas_height), (0, 0, 0))
+        for empty_cell in world_data["cells"]:
+            if not empty_cell.get("empty"):
+                continue
+            colour = tuple(int(c) for c in (empty_cell.get("emptyColor") or [96, 112, 72])[:3])
+            index = int(empty_cell["id"])
+            atlas.paste(colour, ((index % width) * atlas_tile, (index // width) * atlas_tile,
+                                 (index % width + 1) * atlas_tile, (index // width + 1) * atlas_tile))
         paths, metadata = {}, {}
         for key, image in images[variant].items():
             path = directory / f"cell_{key}.png"
@@ -234,10 +246,10 @@ def import_run(run_path, world_path, data_root, output_root, tile_size=256, over
         encoded_bytes += atlas_path.stat().st_size
         owned.append(f"materials/worlds/preview/captured/{variant}/overview.png")
         manifest["variants"][variant] = {
-            "complete": len(paths) == len(world_data["cells"]),
+            "complete": len(paths) == required_cell_count(world_data),
             "atlas": f"worlds/preview/captured/{variant}/overview.png",
             "atlasSize": [atlas_width, atlas_height], "cells": paths,
-            "capturedCellCount": len(paths), "requiredCellCount": len(world_data["cells"]),
+            "capturedCellCount": len(paths), "requiredCellCount": required_cell_count(world_data),
             "metadata": metadata,
         }
     manifest["encodedBytes"] = encoded_bytes

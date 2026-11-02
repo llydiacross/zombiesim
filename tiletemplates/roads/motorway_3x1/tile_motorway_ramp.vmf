@@ -1,8 +1,8 @@
 versioninfo
 {
 	"editorversion" "400"
-	"editorbuild" "8871"
-	"mapversion" "25"
+	"editorbuild" "8873"
+	"mapversion" "26"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "25"
+	"mapversion" "26"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -1306,7 +1306,7 @@ entity
 				"v" "832 320 64"
 				"v" "832 -320 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[-1 0 0 256] 0.25"
 			"vaxis" "[0 1 0 -256] 0.25"
 			"rotation" "0"

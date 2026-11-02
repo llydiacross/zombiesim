@@ -23,6 +23,7 @@
         "t_junction" : "T-junction"
         "bus" : "Bus layby"
         "driveway" : "Driveway"
+        "parking" : "Parking"
     ]
 ]
 

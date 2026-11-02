@@ -1,8 +1,8 @@
 versioninfo
 {
 	"editorversion" "400"
-	"editorbuild" "8871"
-	"mapversion" "20"
+	"editorbuild" "8873"
+	"mapversion" "21"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "20"
+	"mapversion" "21"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -227,7 +227,7 @@ world
 				"v" "960 -320 32"
 				"v" "320 -320 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 -256] 0.15"
 			"vaxis" "[0 -1 0 -256] 0.15"
 			"rotation" "0"
@@ -345,7 +345,7 @@ world
 				"v" "-320 -320 32"
 				"v" "-960 -320 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 256] 0.25"
 			"rotation" "0"
@@ -1306,7 +1306,7 @@ entity
 				"v" "-832 -320 64"
 				"v" "-832 320 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 -256] 0.25"
 			"rotation" "0"
@@ -1342,7 +1342,7 @@ entity
 				"v" "-896 320 32"
 				"v" "-832 320 64"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 1 0 256] 0.25"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"
@@ -1360,7 +1360,7 @@ entity
 				"v" "832 320 64"
 				"v" "896 320 32"
 			}
-			"material" "CS_HAVANA/GROUND01GRASS"
+			"material" "DE_CBBLE/GRASSFLOOR01"
 			"uaxis" "[0 1 0 256] 0.15"
 			"vaxis" "[0 0 -1 384] 0.15"
 			"rotation" "0"

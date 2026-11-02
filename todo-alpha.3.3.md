@@ -52,6 +52,20 @@ full recompile with its required matching derivatives and visual review; get
 separate approval before generation, compilation, staging or any production
 output. No recompile has been run for this redesign.
 
+**World-source requests, 2026-10-31:** the user updated both launcher VMFs,
+added prefab anchors and visuals to many roads, edited many building tiles
+and added road-connection entities. Preserve every authored VMF/VMX. New
+connection rules: support `parking` and `dual_driveway`; connections must
+modify the adjacent ordinary road tile, including from 1x1 buildings.
+Priority per road tile: two driveways become a dual driveway; driveway beats
+parking and bus; parking beats bus. The user's new `edges/tile_edge_ocean_*`
+pieces (640x640, `nature/blendrocksand004a` top) replace the omitted outer
+ring slots on **every** west-ocean cell, only in edge spaces adjacent to the
+ocean, with the physical shell and skybox shoreline moved out to that outer
+edge so the coast joins seamlessly. The dancer head work (D3) is deferred.
+These edits need the same separately approved full-world recompile; nothing
+has been generated, compiled or staged for them.
+
 **World-prefab addition, 2026-10-30:** the user approved one explicit world
 placement per prefab: profile, logical cell (initially the current editor
 cell), centred core tile X/Y, surface-relative XYZ offsets and world rotation.
@@ -1878,6 +1892,28 @@ Still unverified live: lag measurement
 beyond the user's impression, the sky-launch cause (safety net only),
 hearing/alert/scuffle specifics and multiplayer.
 
+**Speed changes implemented (2026-11-01):** the three speed requests below are in source. `sv_movement.lua` now uses walk 0.57375, run 0.65025 and sprint drain 30 (half of 60; recovery unchanged at 5.5). The Walker `DevelopmentWalkSpeed` is 41.25 (55 x 0.75), and the gore crawler fallback matches, so chase and wander both scale. The movement and inventory expectations, `docs/gdd.md` and `docs/readme.md` are updated. GLua 399/0 passes. After a fresh `-disableluarefresh` launch on the preview launcher, live movement 6/6, inventory 52/52 and enemies 14/14 pass. The user deployed and confirmed that walking, sprinting and stamina feel right. The walker speed feel review is deferred (user, 2026-11-01): the regenerated preview cell 243 has no navmesh, so walkers cannot materialise there. Do not claim walker feel acceptance. The capacity study is still pending.
+
+**Launcher location fix (2026-11-01):** deploying the preview survivor failed with "LOCATION UNAVAILABLE". `snapshotLocation` in `sv_characters.lua` passed the saved logical `CellX/CellY` straight to the raw-grid `ZM_World:GetCell`. Negative-Y cells returned nil, and positive-Y cells silently resolved the wrong cell. It now converts with `GetGridCoordinates` first. The character fixtures use logical coordinates, including a negative-Y city case. GLua 399/0 passes. After an approved launcher reload, live characters 13/13 pass. The user confirmed the card showed the correct CITY location and deployment succeeded.
+
+**Queued user requests (2026-11-01):**
+
+- **Player walking:** 15% slower. The current scale is
+  `Movement.WalkScale = 0.675` in `sv_movement.lua`.
+- **Player sprint:** 15% slower (current `RunScale = 0.765`). Sprint should
+  also last twice as long: the user chose halving the stamina drain while
+  sprinting.
+- **Walkers:** 25% slower than now, both chase and wander. The base is
+  `DevelopmentWalkSpeed 55` × enemy min/max speed, in
+  `entities/entities/zn_walker_zombie`.
+- **Capacity study:** measure how many walkers can be on screen before a
+  noticeable frame-rate drop, using matched workloads. Then investigate
+  raising that number through culling or LOD, simpler behaviour for distant
+  or unseen walkers, cheaper pathing and similar measures.
+- **Order:** these follow the remaining Phase G items unless the user
+  reprioritises. Update the movement, inventory and enemy test expectations in
+  the same change.
+
 - [x] Capture a matched preview baseline: profile, map/logical cell, camera,
       nav availability, population, visibility, zombie lifecycle reason and
       player position. Reproduce object disappearance separately from walker
@@ -2257,6 +2293,9 @@ survivor/artwork review; obtain consent before another reload or deployment.
 
 ### D3 - Credits music and camera-facing dancer heads
 
+**Deferred (user, 2026-10-31):** the dancer head-tracking work is deferred
+until later; do not resume it without a new request.
+
 The user confirmed the supplied credits track is cleared for inclusion and
 redistribution; this is user confirmation, not independently verified licence
 text. Its source is 3,951,932 bytes, approximately 225.245 seconds, and SHA-256
@@ -2308,6 +2347,28 @@ and D3 acceptance remain unverified.
       human review that the supplied song plays and all four heads actually
       follow the moving view without disrupting the approved presentation.
       Keep this addition behind the current prefab priority.
+
+**Launcher Play transition redesign (2026-11-01).** The user removed the
+city diorama. Pressing Play now fades to black and fades in at the authored
+`deploy_camera`; Back fades through black to the Earth. The black overlay
+draws in `DrawOverlay`, above VGUI, with smoothstep easing. The approved
+timing is 0.22 s out, 0.1 s black and 0.4 s in. Launcher panels fade with
+the darkness, then wait 0.1 s after the new scene appears and fade in over
+0.35 s. Page content is rebuilt only once the scene has swapped behind
+black (`IsPresentationSwapPending`), so the previous menu no longer flashes
+on Back. The card portrait `DModelPanel` ignores its parent's alpha, so it
+applies the fade through its own colour. The day/night sky now swaps with
+the scene while the screen is fully black, not on the next presentation
+draw pass, which removed an intermittent day/space flicker.
+Both launcher BSPs were recompiled and staged: preview
+`6EB5D3A01BDAAA74890CD8F31BD6041896B012B2184B183FA8B7B8CCBBCDE16F`,
+city `D5A52F1C843570C2F1770A9027562D3FFF64B63AB086D79DBA961906B73A904D`.
+The parity test now checks the globe at `96 0 112` and the `deploy_camera`.
+After approved reloads, the launcher client suite passes 24/24 with no Lua
+errors. The user approved the timing and panel reveal and confirmed that the
+sky changes only behind black (user review, 2026-11-01). `buildcubemaps`
+has not been run on the new launcher BSPs; it is a manual user step. The
+city launcher has not been reviewed live.
 
 ## Phase E - Player structures and claims
 
@@ -2364,10 +2425,11 @@ wireframe preview with a completed structure.
       clothing build/staging proposal, costs and hash/ownership verification.
       Ask before expensive processing; do not overwrite edited sources or
       imply the new assets are staged until verified in the game and package.
-- [ ] Inventory `cl_skybox.lua` public table identities, hook ordering, render
+- [x] Inventory `cl_skybox.lua` public table identities, hook ordering, render
       phases and state cleanup before splitting it into focused modules like
       atmosphere. First capture a baseline, then preserve behavior and run
       the relevant skybox/atmosphere fixtures and fresh visual review.
+      Done 2026-11-01; see "Skybox module split" in Phase G.
 - [ ] Inventory finite-number/vector/angle helpers by realm and semantics;
       centralize only compatible duplicates with load order and NaN guards
       retained. Similarly compare JSON readers' error and search-path behavior
@@ -2396,6 +2458,305 @@ candidate techniques; the exact system is still to be designed. This
 supersedes the
 "simplest Source fog adjustment first" item below.
 
+**Further direction (user, 2026-11-01):** the current fog is broken and is
+being rethought, not tuned. Fog should mainly communicate weather and
+radiated zones. Replace default Source fog as the main effect with a custom
+system; Source fog may still be applied extremely gently where it helps. The
+new fog must (1) improve skybox visual density and clarity and (2) make the
+level seem larger than it is. Radiation is per cell (`cell.radiation` 0..1
+through `ZM_World:GetRadiationIntensity`), so radiated neighbour cells in
+the skybox can be shown as well as the current cell.
+
+**Phase G decisions (user, 2026-11-01):** layered design. A gentle matching
+base Source fog for world and skybox; a skybox ground-fog layer that
+skyscrapers rise out of, with aerial-perspective fading; in-world edge haze
+and ground mist to make the level seem larger; weather-driven density; and
+radiated zones shown as a sickly yellow-green haze, in the current cell and
+over radiated skybox neighbours. Prototype order: base fog plus the skybox
+ground-fog layer first, with visual review before each next step. The Low
+quality preset keeps a cheap simplified layer rather than turning it off.
+Added to Phase G scope at the user's request:
+- clouds that are more noticeable and visibly move;
+- lightning strikes;
+- rain reworked so it also appears around building edges, not only over the
+  player's head;
+- split `cl_skybox.lua` into a module system like the atmosphere modules,
+  with profile-driven size and local-scope complexity.
+New skybox fog work starts as a separate module; a full skybox split must
+preserve current behaviour and is a separate step.
+
+**First prototype (source-only, 2026-11-01; not live-loaded):**
+`gamemode/skybox/cl_haze.lua` draws a static nested-shell skybox ground-haze
+`IMesh` (high 8x48, Low 4x24, off at `zombiesim_sky_haze 0`), rebuilt only
+when cell/profile/radius/tier change. Shell alpha accumulates exponentially
+toward the horizon, radiated neighbour columns are tinted yellow-green, and
+weather eases density/height. `cl_skybox.lua` draws it after activity and
+before clouds, with a `zombiesim_sky_haze_density` tuning slider and status
+diagnostics. `zombiesim_fog_style` (default `layered`, alternative `legacy`)
+pushes Source fog out (start x1.4, end x1.6, density x0.45), tints it toward
+yellow-green by player radiation and halves the skybox fog amount; `legacy`
+keeps the original values exactly. Offline atmosphere19/19 (new layered/
+radiation/legacy case) and GLua392/0 pass. No haze offline fixture yet.
+Layered density <1 disables snow fog-culling (possible cost). Visual
+appearance, dome/tower-fog interaction, density factors and performance
+are unreviewed.
+After a user-approved reload of `zz_preview_8577eb587cd3-oceanw`, the user
+reported the skybox ground haze looks good and the scoreboard bio pencil is
+correctly placed and opens the editor. Weather/radiated-cell variants, the
+Low preset, legacy comparison and performance remain unsampled.
+
+**In-world edge haze and ground mist (source-only, 2026-11-01; not
+live-loaded):** `gamemode/atmosphere/cl_world_haze.lua` (`Modules.WorldHaze`)
+draws static per-side curtain `IMesh`es in the traversable-to-seam band
+(2240..2880 in preview; high 3 curtains x32 columns, Low 2x16, off at
+`zombiesim_world_haze 0`, preset Low0.5/Medium/High1), rebuilt only on
+tier/bounds change. Each side fades out as the player approaches it
+(300..1200 units). Pooled camera-facing ground-mist sprites (high48, Low16)
+seed at most two per frame on open-sky walkable ground within the visual
+bounds. Density eases with rain/snow/storm and player radiation, and colour
+follows the layered fog tint. It is disabled for `legacy` fog style, dens,
+the launcher, prefab editor and map captures, and skips depth/skybox passes.
+`zombiesim_world_haze_density` is a tuning convar; diagnostics expose a
+`worldHaze` snapshot. Offline atmosphere24/24 (five new world-haze cases)
+and GLua393/0 pass. Seam hiding, sense of scale, mist appearance, weather/
+radiated variants, the Low preset and performance are unreviewed.
+
+**First live review and radiated tuning (2026-11-01; source/offline only):**
+the world haze was live-loaded on `zz_preview_d5f99e3edc66`; the user found
+the edges too weak, the mist too faint, atmosphere changes popping, and wanted
+radiated cells to feel post-nuclear. Choices: heavy yellow-green fog closing
+in, falling fallout ash, a darker brown-orange sky, a distant fiery horizon
+glow and stronger ground dust; yellow-green near the ground, orange in the
+sky. Source now: layered fog eases all targets with a 3 s time constant
+(snapping on first use/profile or style change) and adds an eased radiation
+fog (start x0.65, finish x0.5, density toward0.85, colour {150,165,55}) plus
+a separate darker orange `skyColor` consumed by the skybox fog; skybox haze
+thickens/rises with eased radiation and a static additive horizon glow ring
+draws behind towers in radiated cells; world haze is stronger (curtains
+1200 high, stack opacity0.82, mist64/20 larger sprites, eased density) with
+a dust tint and a pooled fallout-ash layer (high160/Low60, scaled by
+radiation, open-sky seeding, one batch). Legacy fog is unchanged. Offline
+atmosphere24/24 (updated cases cover easing, radiated fog/sky colour, ash
+seeding/draw/fade) and GLua393/0 pass; the skybox glow has no offline
+fixture. Live appearance, weather smoothing, the Low preset and performance
+are unreviewed.
+
+**Top-down fog fade (2026-11-01; source/offline only):** the user asked for
+fog to fade away in the top-down camera. The locked top-down camera exposes
+`ZM_GetTopDownCameraWeight()` (smoothstepped lock glide, zero in the den
+camera); layered Source fog density and world-haze curtains/mist scale by
+`1 - weight`, so they ease out with the camera glide and return in the free/
+shoulder camera. Fog range, colour, skybox haze/glow and fallout ash are
+unchanged, and legacy fog is never faded. Atmosphere25/25 and GLua393/0 pass.
+The radiated tuning was reloaded on `zz_preview_49d203952b23-v1` before this
+change; after a second approved reload the live client reported topDown1 with
+haze alpha0, and the user confirmed the top-down fade and the free/shoulder
+fog and haze look right. Radiated review: otherwise fine but too green, so the
+fog's yellow-green weight drops from0.75 to0.35. After a reload on
+`zz_preview_1c3546b3ae49` the user found the green too hazy against the red
+sky and asked for red matching the sky, slightly less haze, and fire embers.
+Radiated fog now leans0.7 toward the sky's burnt orange (170,92,40); radiated
+density0.7, start/finish scales0.25/0.35, world-haze radiation boost0.5 and
+red-brown mist dust. Additive `sprites/light_glow02` embers (low12/high36)
+rise and swirl in open air with radiation, like the ash, and stay visible in
+top-down. Atmosphere25/25 and GLua393/0 pass. After an approved reload the
+live client reported radiation1,160 ash and36 drawn embers with no material
+error; the user approved the red-orange fog and the embers.
+
+Operation sample, 2026-11-01. This is operation evidence only, not a matched
+comparison.
+
+- **Setup:** map `zz_preview_a39fe92b1e79-v3`, logical cell (14,-1), clear
+  weather, radiation0.667, world-haze tier High, free camera. The user stood
+  still with the game in the foreground; other quality settings were not
+  captured.
+- **Whole frame (10 s client hook profile):** average 38.8FPS, p50 17.0ms,
+  p95 45.6ms, Lua hooks 5.89ms per frame.
+- **Skybox draw:** 3.07ms per frame and 98KiB per frame. This is the largest
+  owner and predates the haze work.
+- **World haze:** draw 0.443ms plus think 0.179ms. The status read 107 ash,
+  24 embers, 3 curtains and 64 mist particles.
+- **Other hooks:** skybox fog 0.069ms; colour correction 0.053ms.
+
+The hook timings exclude engine particle and sprite fill cost.
+
+**Low preset, same cell:** the user set the Low preset and judged that the
+fog, ash, embers and skybox look right. The sample used the same 10 s method.
+
+- **Setup:** tier Low; the status read 40 ash, 8 embers, 2 curtains and
+  20 mist particles.
+- **Whole frame:** 56.9FPS, p50 16.6ms, p95 19.3ms, Lua hooks 3.87ms per
+  frame.
+- **World haze:** draw 0.221ms plus think 0.090ms.
+- **Skybox draw:** 1.97ms per frame and 195KiB per frame.
+
+The preset changes many other settings and the view was not controlled, so
+these figures do not attribute the FPS difference to the haze. A matched
+non-radiated comparison remains open.
+
+**Moving clouds (2026-11-01):** the deck in `cl_skybox.lua` was rebuilt to be
+more visible and to move.
+
+- **Drift:** about 4× faster at 7 sky units/s, rising to 2.5× in storms. Drift
+  is integrated per frame, so speed changes never jump the deck.
+- **Clusters:** 72 instead of 56, with larger puffs.
+- **Cover and opacity:** clear-weather cover rose from 0.38 to 0.55, and
+  opacity rose.
+- **Billowing:** each puff slowly spins in place.
+- **Diagnostics:** status now reports `cloudSpeed`.
+
+The Low preset still turns clouds off. GLua393/0 and atmosphere25/25 pass.
+After an approved reload (`zz_preview_900219675ce7`, 22 clusters, cover 0.55)
+the user said the clouds look great.
+
+**Lightning (2026-11-01):** a new module, `gamemode/skybox/cl_lightning.lua`, is
+included by `cl_skybox.lua`. Lightning is cosmetic and client-local. It
+strikes only in rain with storm intensity ≥ 0.3, every random(20,60)/storm
+seconds, so about 36–109 s at normal rain. It does not strike in the launcher
+or a den.
+
+- **Bolt:** a branching 3D-skybox bolt with a cloud-base glow.
+- **Flash:** 1–3 pulses that brighten the sky and cloud fog colour. A gentle
+  world `DrawColorModify` flash is halved under shelter.
+- **Thunder:** mounted `ambient/atmosphere/thunder1-4.wav`, delayed by
+  distance (0.4–6 s).
+- **Reduced mode:** the `zombiesim_lightning_reduce_flashes` option (under
+  Advanced sky & horizon) gives a single pulse with a much softer flash.
+- **Dev command:** `zombiesim_dev_lightning_strike` (bridge) forces a strike.
+
+GLua394/0 and atmosphere25/25 pass. After an approved reload on
+`zz_preview_8577eb587cd3-oceanw`, logical (0,0), in rain at storm 0.55, the
+status confirmed the strikes, bolt draws, played thunder and loaded
+materials. The user approved the bolt, sky flash, world flash and thunder.
+The user skipped the live check of reduced mode, so it is unverified. The user
+chose to leave the option where it is: a future first-run photosensitivity
+prompt will disable lightning flashes and any later flashing effects. That
+prompt is deferred and not yet designed.
+
+**Reported (user, 2026-11-01): fog z-fighting.** When fog overlaps a solid
+in the skybox or level at just the right angle, it z-fights; the user
+suggested making the fog layer flutter. Not yet reproduced. All haze layers
+are translucent, depth-tested and do not write depth. Candidate causes:
+camera-facing mist sprites swinging near-parallel to a nearby wall, and
+static curtains/skybox shells cutting through solids. Isolate which layer it
+is (`zombiesim_world_haze 0` / `zombiesim_sky_haze 0`) before changing it.
+The user placed it at the haze wall at their cell's edge: a flickering,
+striped patch. Hypothesis: the edge curtains were straight, axis-aligned
+planes on the 16-unit grid (e.g. 2368/2592/2816), so one could lie in the
+plane of an authored wall face. Source fix: curtains now zigzag in small
+pleats (20 units, +5.5 off-grid base), so every segment is slanted by at
+least 16 units and none can be coplanar with a brush face. A per-frame
+flutter was rejected because it would only turn the stripes into flicker.
+The fixture checks that no segment is axis-aligned; atmosphere25/25 and
+GLua394/0 pass. The user then reported the fix solved the issue (user
+confirmation, 2026-11-01); the coplanar cause remains a plausible, not
+isolated, explanation.
+
+**Rain rework (user-selected scope, 2026-11-01).** The user chose four
+problems to address: rain should stay visible while sheltered, spawn only
+under open sky, run off roof edges, and reach further.
+Source in `atmosphere/cl_weather.lua`:
+- Precipitation no longer stops under cover. Each column is traced upward
+  and spawns only beneath open sky, below that hit. Covered columns are
+  rejected and counted.
+- Sheltered rain sound fades to a lower volume instead of stopping.
+- Rain adds a fainter far band in a forward ±62° cone at 720–1700 units.
+- Up to ten roof edges are probed at a bounded rate. An edge must be open,
+  with no wall between the shelter and the opening, and it emits short
+  colliding drip streaks. Edges expire with time or distance and are
+  cleared when rain stops or turns to snow.
+- Snow uses the same sky-only spawning but has no far band or runoff.
+- Boundary mist still stops under cover (unchanged).
+
+New fixtures cover sky-only spawning while sheltered for rain and snow, the
+far band, the sheltered sound, runoff at an open roof edge, rejection of a
+walled room, cleanup, and a sky beyond trace range. Atmosphere27/27 and
+GLua394/0 pass.
+The first live load on `zz_preview_87675eafec47-v2` failed. The sky there is beyond
+the 4096-unit trace, and spawning rejected any column that did not hit sky.
+Spawning and the runoff probe now treat a trace that hits nothing as open
+sky, as the shelter check already did; a fixture covers this. After a
+second approved reload, in cell (3,-1) with rain at storm 0.55, the status
+showed near and far spawns. The user approved open-ground and far rain,
+sheltered visuals and sound, roof-edge drips, and said performance is fine
+(user review, 2026-11-01). Afterwards the weather schedule resumed (`auto`),
+and a status check reported clear weather. Multiplayer and matched
+performance samples were not run.
+
+**Skybox module split (2026-11-01).** `cl_skybox.lua` (about 2,350 lines)
+now keeps the constants, materials, noise/water textures, manifest refresh,
+lighting, tower drawing, hooks and commands (about 920 lines). Five sections
+moved without behaviour changes into factory modules under
+`gamemode/skybox/`, following the existing haze and lightning pattern
+(`return function(Skybox, helpers)`): `cl_coast.lua`, `cl_edge_terrain.lua`,
+`cl_clouds.lua`, `cl_activity.lua` (fires, smoke, tracers, details) and
+`cl_diagnostics.lua` (`GetDiagnosticSnapshot`). The core passes one shared
+`moduleHelpers` table. Coast exports its mesh helpers to edge terrain. All
+modules load before the hooks and the hot-reload cleanup. `init.lua` sends
+them with `AddCSLuaFile`. Checks: every free local resolves, no lines were
+lost, GLua399/0 and atmosphere27/27. A temporary LuaJIT load-time comparison
+showed identical method, hook, command, convar and haze/lightning surfaces
+(40/7/4/8/25). After an approved reload of `zz_preview_49d203952b23-v1`,
+the fresh `zombiesim_dev_skybox_edges` passed with 0 failures. The user
+confirmed the skybox looked unchanged with no errors (user review,
+2026-11-01).
+
+**Noted for later (user, 2026-11-01): billboard z-fighting.** The user also
+sees z-fighting on billboards. Investigate later; not yet reproduced.
+
+**Noted for later (user, 2026-11-01): epicenter cell look.** The epicenter
+uses the settlement cell. The user believes this stops the radiated
+border/edge pieces from being selected, so the epicenter looks like a
+residential block rather than radioactive and destroyed. **Cause verified
+(2026-11-01):** settlement is only a tag. The epicenter (14,14) and the 20
+other blast-core cells (x12-16, y12-16) resolve to environment profile
+`destroyed`, which is first in `profilePriority`. Border and outer-edge
+selection key on that profile, but only radioactive/military/fortified had
+pools, so all 21 cells fell back to the ordinary walls. Source fix:
+`generator-settings.json` gives `destroyed` the radioactive border and
+outer-edge pools. `test_outer_edges.ps1` now asserts that parity. Its stale
+1a prop count (3) and 1a-15a ocean-pool expectations were aligned with the
+authored sources. The settings assertions pass. The suite's later fixture
+planner calls still predate the required `-TrustedMotorwayPlan` (a
+pre-existing harness gap). Also observed: radioactive cells placed mostly
+`tile_industrial_3aaa` (626 versus about 18 `_ra_` placements), and there is
+no radioactive terrain tile.
+
+The user chose to prefer `_ra_` buildings wherever one fits the density
+tier, keeping industrial as the fallback; they will author medium/high
+`_ra_` tiles later. `Select-ZMSceneryTemplate` takes an optional preferred
+pattern, and radioactive cells pass the `radioactiveBuildings` pattern. Only
+`building_ra_1a` (low tier) currently qualifies. Scenery density2733/2733
+passes with a new preference regression. Frontage and multi-tile now pass
+when run with an isolated outer-edge settings copy and the trusted plan
+(`-SettingsPath`/`-CitySettingsPath` and `-TrustedMotorwayPlan` are new
+optional test parameters). The multi-tile helper now counts bus, driveway
+and parking markers as junctions, matching the planner. An unmatched
+full-plan comparison raises radioactive/destroyed `_ra_` building
+placements from 48 to 159, while industrial still dominates (1068).
+The user approved regenerating after the Cell Health batch. The change
+alters roughly all radioactive-cell recipes, not just the 21 `dx` ones;
+regenerate, recompile the affected maps and stage only after the batch.
+
+**On-ramp road approach regression (user, 2026-11-01):** the ordinary road
+no longer joined the motorway on-ramp in on-ramp/motorway-corner cells.
+`Set-ZMTrustedMotorwayGridContract` (`bin/motorway_grid_placements.psm1`)
+discarded the trusted plan's `ordinaryRoadApproaches` doglegs and replaced
+them with a plain grid branch. It now restores each trusted dogleg from
+native corner/768-straight/corner pieces; restored directions get no
+competing grid branch. Only two trusted cells use doglegs: logical (13,18),
+heading S, and (6,23), heading E. The user chose to extend (6,23) with one
+extra native 640 straight so its road stays on the y=0 grid; that cell is
+`grid_normalised_dogleg_hammer_review_pending`. An isolated full plan with
+the Phase J inputs matched a pre-fix baseline plan exactly in every cell
+except those two. Its 332 VMFs built, and both cells emit the expected
+instances. `test_motorway_grid_placements.ps1` passes 1515 assertions with
+the new `-BaselinePlanData` comparison. The Alpha 3.3 inputs also restore
+both approaches. Not yet compiled, Hammer-reviewed or played; both maps join
+the post-batch regeneration. Known pre-existing issue:
+`build_motorway_cell_preview.ps1 -NormalComplex` fails because it compares
+`topology` on manifest cells, which have no such field.
+
 - [ ] Reproduce skybox mismatch and double-fog seam on the exact preview map,
       weather, camera and settings, comparing world/skybox fog ownership and
       a known-good baseline. Check sky inspection, map capture and weather
@@ -2413,12 +2774,52 @@ supersedes the
 
 ## Phase H - World-generation rules and separately approved output batch (last)
 
+**Reported issue (user, 2026-11-01, not yet investigated):** on an ocean-coast
+cell of the staged Alpha 3.3 preview, the beach meets the cell edge and
+skybox ocean with a visible seam, and the underside of the beach can be
+seen. Before changing anything, trace the physical connection across the
+authored `edge_ocean` border, the generated map shell (floor and walls) and
+the skybox shoreline/coast renderer, using the exact compiled cell. Matching
+attachment coordinates do not prove continuity.
+
 - [ ] Include the user's aesthetic 1x1 road redesign in the separately
       approved full-world recompile. Inventory the edited/new road sources,
       their instance dependencies and affected profiles, then regenerate
       matching derivatives as needed and review the new appearance. Do not
       overwrite user sources or present existing BSPs as updated; scope
       preview versus production and obtain approval before running the batch.
+- [ ] Road connections: add `parking` and `dual_driveway`, wire 1x1 building
+      markers to the adjacent ordinary road and resolve per-road conflicts
+      (two driveways -> dual; driveway > parking > bus). Cover all four
+      rotations, 1x1/multi-tile, non-road rejection and protected neighbours.
+- [ ] West-ocean outer ring: place `edges/tile_edge_ocean_*` in ocean-adjacent
+      outer edge slots of every west-ocean cell, move the shell and skybox
+      shoreline out accordingly and verify a seamless `blendrocksand004a`
+      coast join on the exact compiled fixture before rollout.
+      Source: connections fixtures107/107 (no authored parking markers yet);
+      ocean pool1a-9a, sea +Y, NW/SW corners, coast2880 (revision2),
+      `sandfloor009a` beach and suppressed embankment. Outer-edge units1186,
+      skybox geometry11/11 offline, GLua391/0. Native bounds suite, compiled
+      seam fixture and visual review pending approval.
+- [ ] Anti-grid roads (user, 2026-10-31): `deadZones` is retired and replaced
+      by `mapGeneration.road.antiGrid`, which breaks straight ordinary-road
+      avenues longer than a deterministic per-run limit (city9-16, preview5-8)
+      into T-sections or one-cell jogs, preserving origin reachability and
+      leaving highways/bridges/origin avenue untouched. Source done:
+      `test_road_anti_grid.ps1`103 assertions pass (preview seed1337: longest
+      avenue10->8, over-8 runs13->0, 55 breaks/jogs). An isolated planner run
+      with the trusted motorway plan kept every motorway cell. No preview
+      output was regenerated; awaits the approved batch.
+- [ ] Empty cells (user, 2026-10-31): roadless cells with no safe zone or
+      landmark are not built. The plan lists them under `emptyCells` (no
+      recipe/VMF/BSP); runtime exports `empty`/`emptyTerrain`/`emptyColor`,
+      no map and no exits; travel/pathing refuse them; world map, catalogue,
+      Cell Health, capture, importer and stitchers show one flat terrain
+      tile. Fixed: the planner counted the `none` landmark sentinel as a
+      landmark, and the exporter read a missing `topology`. Isolated preview:
+      571 map cells, 5 empty ((23,0),(2,1),(12,2),(21,22),(22,22)), 318
+      recipes (installed 336). Offline `test_world_empty_cells.py`2/2,
+      GLua391/0. Live world map, travel and Cell Health remain unverified.
 - [ ] Inventory actual renamed/new source files, exact `_ra_`/military tags,
       environments and fixed landmark/army-base rules. Preserve user VMF/VMX
       edits and army-only siren intent. Check all relevant selection paths,

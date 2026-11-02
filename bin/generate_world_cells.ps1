@@ -66,6 +66,13 @@ $airportMinimumSeparationCells = if ($airportSettings.ContainsKey('minimumSepara
 $maximumLandmarksPerCell = if ($landmarkSettings.ContainsKey('maximumPerCell')) { [int]$landmarkSettings.maximumPerCell } else { 2 }
 $minimumLandmarksPerFeaturedCell = if ($landmarkSettings.ContainsKey('minimumLandmarksPerFeaturedCell')) { [int]$landmarkSettings.minimumLandmarksPerFeaturedCell } else { 0 }
 $minimumFeaturedLandmarkCells = if ($landmarkSettings.ContainsKey('minimumFeaturedCells')) { [int]$landmarkSettings.minimumFeaturedCells } else { 0 }
+$commonLandmarkWeights = if ($landmarkSettings.ContainsKey('commonWeights')) { $landmarkSettings.commonWeights } else { @{} }
+foreach ($weightName in @($commonLandmarkWeights.Keys)) {
+    $weightValue = [double]$commonLandmarkWeights[$weightName]
+    if ([double]::IsNaN($weightValue) -or [double]::IsInfinity($weightValue) -or $weightValue -le 0) {
+        throw "mapGeneration.landmarks.commonWeights.$weightName must be a finite number greater than zero."
+    }
+}
 $settlementMinimumDensity = [Math]::Max(0, [Math]::Min(1, $settlementMinimumDensity))
 $settlementDistrictCenterDensity = [Math]::Max(0, [Math]::Min(1, $settlementDistrictCenterDensity))
 $settlementPlacementMode = $settlementPlacementMode.Trim().ToLowerInvariant()
@@ -120,6 +127,16 @@ if ($minimumFeaturedLandmarkCells -lt 0) {
 $maximumRoadJunctionDegree = if ($mapSettings.road.ContainsKey('maximumJunctionDegree')) { [int]$mapSettings.road.maximumJunctionDegree } else { 4 }
 if ($maximumRoadJunctionDegree -lt 2 -or $maximumRoadJunctionDegree -gt 4) {
     throw 'mapGeneration.road.maximumJunctionDegree must be between 2 and 4.'
+}
+$antiGridSettings = if ($mapSettings.road.ContainsKey('antiGrid')) { $mapSettings.road.antiGrid } else { @{} }
+$antiGridEnabled = if ($antiGridSettings.ContainsKey('enabled')) { [bool]$antiGridSettings.enabled } else { $false }
+$antiGridMinimumRunCells = if ($antiGridSettings.ContainsKey('minimumRunCells')) { [int]$antiGridSettings.minimumRunCells } else { 9 }
+$antiGridMaximumRunCells = if ($antiGridSettings.ContainsKey('maximumRunCells')) { [int]$antiGridSettings.maximumRunCells } else { 16 }
+if ($antiGridMinimumRunCells -lt 3) {
+    throw 'mapGeneration.road.antiGrid.minimumRunCells must be at least 3.'
+}
+if ($antiGridMaximumRunCells -lt $antiGridMinimumRunCells) {
+    throw 'mapGeneration.road.antiGrid.maximumRunCells cannot be less than minimumRunCells.'
 }
 if (-not $PSBoundParameters.ContainsKey('GridCells')) { $GridCells = [int]$profileSettings.gridCells }
 if (-not $PSBoundParameters.ContainsKey('CellSize')) { $CellSize = [int]$mapSettings.cellSizePixels }
@@ -270,18 +287,12 @@ $dirtColor = [System.Drawing.Color]::FromArgb(125, 78, 44)
 $zones = @($mapSettings.districts | ForEach-Object {
     @{ Name = $_.name; X = [int]$_.x; Y = [int]$_.y; Radius = [int]$_.radius; Color = [System.Drawing.Color]::FromArgb([int]$_.color[0], [int]$_.color[1], [int]$_.color[2], [int]$_.color[3]) }
 })
-$deadZones = @($mapSettings.deadZones | ForEach-Object { @{ X = [int]$_.x; Y = [int]$_.y; Radius = [int]$_.radius } })
 $layoutScale = ($GridCells - 1) / 63.0
 if ($GridCells -ne 64) {
     foreach ($zone in $zones) {
         $zone.X = [int][Math]::Round($zone.X * $layoutScale)
         $zone.Y = [int][Math]::Round($zone.Y * $layoutScale)
         $zone.Radius = [Math]::Max(2, [int][Math]::Round($zone.Radius * ($GridCells / 64.0)))
-    }
-    foreach ($deadZone in $deadZones) {
-        $deadZone.X = [int][Math]::Round($deadZone.X * $layoutScale)
-        $deadZone.Y = [int][Math]::Round($deadZone.Y * $layoutScale)
-        $deadZone.Radius = [Math]::Max(1, [int][Math]::Round($deadZone.Radius * ($GridCells / 64.0)))
     }
 }
 $cityPrefixes = @($mapSettings.cityNaming.prefixes)
@@ -1496,13 +1507,6 @@ function Connect-MetroRouteThroughStops {
 
         $nearestZone = $zones | Sort-Object { [Math]::Pow($CellX - $_.X, 2) + [Math]::Pow($CellY - $_.Y, 2) } | Select-Object -First 1
     $nearestDistance = [Math]::Sqrt([Math]::Pow($CellX - $nearestZone.X, 2) + [Math]::Pow($CellY - $nearestZone.Y, 2))
-        $isDeadZone = $false
-        foreach ($deadZone in $deadZones) {
-            if ([Math]::Sqrt([Math]::Pow($CellX - $deadZone.X, 2) + [Math]::Pow($CellY - $deadZone.Y, 2)) -le $deadZone.Radius) {
-                $isDeadZone = $true
-                break
-            }
-        }
 
         $neighborOffsets = @(
             @{ direction = "N"; x = 0; y = -1 },
@@ -1558,7 +1562,6 @@ function Connect-MetroRouteThroughStops {
             radiation = [ordered]@{ intensity = Get-RadiationIntensity $CellX $CellY }
             danger = $danger
             district = [ordered]@{ name = $nearestZone.Name; distance = [Math]::Round([Math]::Sqrt([Math]::Pow($CellX - $nearestZone.X, 2) + [Math]::Pow($CellY - $nearestZone.Y, 2)), 3); inside = $nearestDistance -le $nearestZone.Radius }
-            deadZone = $isDeadZone
             building = if ($buildingCells.ContainsKey($cellKey)) { [ordered]@{ present = $true; color = ConvertTo-MapColor $buildingCells[$cellKey] } } else { [ordered]@{ present = $false } }
             landmarks = $cellLandmarks
             safeZone = $safeZone
@@ -1578,7 +1581,12 @@ function Connect-MetroRouteThroughStops {
         }
 
         # Matches the current runtime/skybox contract: only west of x=0 is actual ocean.
-        Set-ZMSceneryDensityFields $cells @($cells | Where-Object x -eq 0) @($generatorSettings.cellPlanning.environment.profilePriority)
+        $industrialZoneSettings = if ($generatorSettings.mapGeneration -is [System.Collections.IDictionary] -and $generatorSettings.mapGeneration.Contains('industrialZones')) { $generatorSettings.mapGeneration.industrialZones } else { $null }
+        Set-ZMSceneryDensityFields $cells @($cells | Where-Object x -eq 0) @($generatorSettings.cellPlanning.environment.profilePriority) -Seed $Seed -IndustrialZoneSettings $industrialZoneSettings
+        $industrialZoneData = @($cells | Where-Object { (Test-ZMIndustrialZoneCell $_) -and $_.industrialZone.distance -eq 0 } | Sort-Object { $_.industrialZone.id } | ForEach-Object {
+            $zoneId = $_.industrialZone.id
+            [ordered]@{ id = $zoneId; x = [int]$_.x; y = [int]$_.y; worldY = [int]$_.y - $originCellY; radius = $_.industrialZone.radius; cells = @($cells | Where-Object { (Test-ZMIndustrialZoneCell $_) -and $_.industrialZone.id -eq $zoneId }).Count }
+        })
 
         $districtData = @($zones | ForEach-Object {
             $district = $_
@@ -1606,7 +1614,7 @@ function Connect-MetroRouteThroughStops {
         $mapData = [ordered]@{
             schemaVersion = 2
             map = [ordered]@{ seed = $Seed; cityName = $cityName; gridCells = $GridCells; cellSize = $CellSize; width = $width; height = $height; origin = [ordered]@{ cellX = 0; cellY = $originCellY; worldX = 0; worldY = 0 }; environment = [ordered]@{ taggingVersion = 1; sceneryDensityPolicyVersion = 1; tags = @($cells | ForEach-Object { $_.environment.tags } | Sort-Object -Unique) } }
-            generation = [ordered]@{ roadDepth = $RoadDepth; branchChance = $BranchChance; blockadeChance = $BlockadeChance; bridgeChance = $BridgeChance; biomeOpacity = $biomeOpacity; safeZonePlacement = [ordered]@{ minimumSpacingCells = $safeZoneMinimumSpacingCells; actualMinimumSpacingCells = [Math]::Round($minimumSafeZoneDistance, 3); districts = @($safeZonePlacementDiagnostics) }; landmarkDensityShortages = @($landmarkDensityShortageDiagnostics); radiation = [ordered]@{ enabled = $radiationEnabled; epicenter = if ($radiationSources.Count -gt 0) { $radiationSources[0] } else { $null }; epicenters = @($radiationSources); placementDiagnostics = @($radiationSourcePlacementDiagnostics); falloutRadiusCells = $radiationFalloutRadiusCells; destroyedThreshold = $radiationDestroyedThreshold; damagePerSecondAtPeak = $radiationDamagePerSecondAtPeak; cellMiles = $radiationCellMiles; loreYieldMegatons = $radiationLoreYieldMegatons }; danger = [ordered]@{ enabled = $dangerEnabled; pattern = 'chevron'; origin = [ordered]@{ worldX = 0; worldY = 0; cellX = 0; cellY = $originCellY }; tierCount = $dangerTierCount } }
+            generation = [ordered]@{ roadDepth = $RoadDepth; branchChance = $BranchChance; blockadeChance = $BlockadeChance; bridgeChance = $BridgeChance; biomeOpacity = $biomeOpacity; safeZonePlacement = [ordered]@{ minimumSpacingCells = $safeZoneMinimumSpacingCells; actualMinimumSpacingCells = [Math]::Round($minimumSafeZoneDistance, 3); districts = @($safeZonePlacementDiagnostics) }; landmarkDensityShortages = @($landmarkDensityShortageDiagnostics); industrialZones = @($industrialZoneData); radiation = [ordered]@{ enabled = $radiationEnabled; epicenter = if ($radiationSources.Count -gt 0) { $radiationSources[0] } else { $null }; epicenters = @($radiationSources); placementDiagnostics = @($radiationSourcePlacementDiagnostics); falloutRadiusCells = $radiationFalloutRadiusCells; destroyedThreshold = $radiationDestroyedThreshold; damagePerSecondAtPeak = $radiationDamagePerSecondAtPeak; cellMiles = $radiationCellMiles; loreYieldMegatons = $radiationLoreYieldMegatons }; danger = [ordered]@{ enabled = $dangerEnabled; pattern = 'chevron'; origin = [ordered]@{ worldX = 0; worldY = 0; cellX = 0; cellY = $originCellY }; tierCount = $dangerTierCount } }
             statistics = [ordered]@{ population = $population; roadCells = $roadCells.Count; highwayCells = $highwayCells.Count; buildingCells = $buildingCells.Count; landmarkCells = $landmarkCells.Count; airports = $airportKeys.Count; safeZones = $denCells.Count; metroLines = $metroLines.Count; metroStops = $metroStations.Count }
             districts = $districtData
             safeZones = $safeZoneData
@@ -2380,6 +2388,192 @@ foreach ($zone in $zones) {
     $reachableRoadCells = Get-ConnectedRoadCells $originKey
 }
 
+function Test-AntiGridOrdinaryRoadCell {
+    param([string]$Key)
+
+    return $roadCells.ContainsKey($Key) -and -not $highwayCells.ContainsKey($Key) -and -not $diagonalHighwayCells.ContainsKey($Key) -and -not $bridgeCells.ContainsKey($Key)
+}
+
+function Test-AntiGridFreeCell {
+    param([int]$CellX, [int]$CellY)
+
+    if ($CellX -lt 0 -or $CellX -ge $GridCells -or $CellY -lt 0 -or $CellY -ge $GridCells) { return $false }
+    $key = "$CellX,$CellY"
+    return -not $highwayCells.ContainsKey($key) -and -not $diagonalHighwayCells.ContainsKey($key) -and -not $bridgeCells.ContainsKey($key)
+}
+
+function Get-AntiGridReachableSet {
+    $visited = [System.Collections.Generic.HashSet[string]]::new()
+    $queue = [System.Collections.Generic.Queue[string]]::new()
+    [void]$visited.Add($originKey)
+    $queue.Enqueue($originKey)
+    while ($queue.Count -gt 0) {
+        $currentKey = $queue.Dequeue()
+        $coordinates = $currentKey -split ","
+        foreach ($direction in @("N", "E", "S", "W")) {
+            if (-not $roadCells[$currentKey][$direction]) { continue }
+            $neighborKey = Get-RoadNeighborKey ([int]$coordinates[0]) ([int]$coordinates[1]) $direction
+            if ($null -ne $neighborKey -and $roadCells.ContainsKey($neighborKey) -and $visited.Add($neighborKey)) {
+                $queue.Enqueue($neighborKey)
+            }
+        }
+    }
+
+    Write-Output -NoEnumerate $visited
+}
+
+function Get-AntiGridRunLimit {
+    param([string]$Axis, [int]$Line, [int]$Start)
+
+    $hash = [int64]$Seed * 2654435761 + ([int64]([int][char]$Axis[0]) * 40503) + ([int64]$Line * 73856093) + ([int64]$Start * 19349663)
+    $hash = [Math]::Abs($hash % 2147483647)
+    return $antiGridMinimumRunCells + [int]($hash % ($antiGridMaximumRunCells - $antiGridMinimumRunCells + 1))
+}
+
+function Get-AntiGridLongRuns {
+    $runs = [System.Collections.Generic.List[object]]::new()
+    foreach ($axis in @("EW", "NS")) {
+        for ($line = 0; $line -lt $GridCells; $line++) {
+            if ($axis -eq "EW" -and $line -eq $originCellY) { continue }
+            $runStart = -1
+            for ($position = 0; $position -le $GridCells; $position++) {
+                $linked = $false
+                if ($position -lt $GridCells) {
+                    $key = if ($axis -eq "EW") { "$position,$line" } else { "$line,$position" }
+                    $nextKey = if ($axis -eq "EW") { "$($position + 1),$line" } else { "$line,$($position + 1)" }
+                    $forward = if ($axis -eq "EW") { "E" } else { "S" }
+                    $linked = (Test-AntiGridOrdinaryRoadCell $key) -and (Test-AntiGridOrdinaryRoadCell $nextKey) -and $roadCells[$key][$forward]
+                }
+                if ($linked) {
+                    if ($runStart -lt 0) { $runStart = $position }
+                    continue
+                }
+                if ($runStart -ge 0) {
+                    $length = $position - $runStart + 1
+                    $limit = Get-AntiGridRunLimit $axis $line $runStart
+                    if ($length -gt $limit) {
+                        $runs.Add([pscustomobject]@{ Axis = $axis; Line = $line; Start = $runStart; Length = $length; Limit = $limit })
+                    }
+                    $runStart = -1
+                }
+            }
+        }
+    }
+
+    return $runs
+}
+
+function Get-AntiGridCellState {
+    param([string[]]$Keys)
+
+    $state = @{}
+    foreach ($key in $Keys) {
+        $state[$key] = if ($roadCells.ContainsKey($key)) { $roadCells[$key].Clone() } else { $null }
+    }
+    return $state
+}
+
+function Restore-AntiGridCellState {
+    param([hashtable]$State)
+
+    foreach ($key in $State.Keys) {
+        if ($null -eq $State[$key]) {
+            [void]$roadCells.Remove($key)
+        } else {
+            $roadCells[$key] = $State[$key].Clone()
+        }
+    }
+}
+
+# Breaks straight ordinary-road avenues that exceed a deterministic per-run
+# limit, preferring a T-break and falling back to a one-cell parallel jog.
+# Every change must preserve the cells reachable from the origin.
+function Break-LongRoadRuns {
+    $result = @{ Breaks = 0; Jogs = 0; Unresolved = 0 }
+    $unresolvedRuns = @{}
+    $iterationLimit = $GridCells * $GridCells
+    for ($iteration = 0; $iteration -lt $iterationLimit; $iteration++) {
+        $run = $null
+        foreach ($candidate in (Get-AntiGridLongRuns)) {
+            if (-not $unresolvedRuns.ContainsKey("$($candidate.Axis):$($candidate.Line):$($candidate.Start):$($candidate.Length)")) {
+                $run = $candidate
+                break
+            }
+        }
+        if ($null -eq $run) { break }
+
+        $forward = if ($run.Axis -eq "EW") { "E" } else { "S" }
+        $requiredReachable = Get-AntiGridReachableSet
+        $resolved = $false
+        $lowest = [Math]::Max(2, [int][Math]::Ceiling($run.Limit / 2))
+        $breakOffsets = @($run.Limit..$lowest)
+
+        # T-break: remove one avenue link between two junction cells.
+        foreach ($offset in $breakOffsets) {
+            $position = $run.Start + $offset - 1
+            $key = if ($run.Axis -eq "EW") { "$position,$($run.Line)" } else { "$($run.Line),$position" }
+            $nextKey = if ($run.Axis -eq "EW") { "$($position + 1),$($run.Line)" } else { "$($run.Line),$($position + 1)" }
+            if ((Get-RoadDegree $roadCells[$key]) -lt 3 -or (Get-RoadDegree $roadCells[$nextKey]) -lt 3) { continue }
+
+            $state = Get-AntiGridCellState @($key, $nextKey)
+            $coordinates = $key -split ","
+            Remove-RoadConnection ([int]$coordinates[0]) ([int]$coordinates[1]) $forward
+            if ((Get-AntiGridReachableSet).IsSupersetOf($requiredReachable)) {
+                $result.Breaks++
+                $resolved = $true
+                break
+            }
+            Restore-AntiGridCellState $state
+        }
+
+        # Jog: replace one avenue link with a detour through a parallel line.
+        if (-not $resolved) {
+            foreach ($offset in $breakOffsets) {
+                $position = $run.Start + $offset - 1
+                foreach ($side in @(-1, 1)) {
+                    if ($run.Axis -eq "EW") {
+                        $ax = $position; $ay = $run.Line; $bx = $position + 1; $by = $run.Line
+                        $px = $ax; $py = $ay + $side; $qx = $bx; $qy = $by + $side
+                        $outDirection = if ($side -lt 0) { "N" } else { "S" }
+                        $acrossDirection = "E"
+                    } else {
+                        $ax = $run.Line; $ay = $position; $bx = $run.Line; $by = $position + 1
+                        $px = $ax + $side; $py = $ay; $qx = $bx + $side; $qy = $by
+                        $outDirection = if ($side -lt 0) { "W" } else { "E" }
+                        $acrossDirection = "S"
+                    }
+                    if (-not (Test-AntiGridFreeCell $px $py) -or -not (Test-AntiGridFreeCell $qx $qy)) { continue }
+                    $returnDirection = @{ N = 'S'; E = 'W'; S = 'N'; W = 'E' }[$outDirection]
+
+                    $state = Get-AntiGridCellState @("$ax,$ay", "$bx,$by", "$px,$py", "$qx,$qy")
+                    Remove-RoadConnection $ax $ay $forward
+                    $added = (Add-RoadConnection $ax $ay $outDirection) -and (Add-RoadConnection $px $py $acrossDirection) -and (Add-RoadConnection $qx $qy $returnDirection)
+                    if ($added -and (Get-AntiGridReachableSet).IsSupersetOf($requiredReachable)) {
+                        $result.Jogs++
+                        $resolved = $true
+                        break
+                    }
+                    Restore-AntiGridCellState $state
+                }
+                if ($resolved) { break }
+            }
+        }
+
+        if (-not $resolved) {
+            $unresolvedRuns["$($run.Axis):$($run.Line):$($run.Start):$($run.Length)"] = $true
+            $result.Unresolved++
+        }
+    }
+
+    return $result
+}
+
+if ($antiGridEnabled) {
+    $antiGridResult = Break-LongRoadRuns
+    Write-Host "[WorldGen][Roads] Anti-grid breaks=$($antiGridResult.Breaks); jogs=$($antiGridResult.Jogs); unresolved=$($antiGridResult.Unresolved)"
+    $reachableRoadCells = Get-ConnectedRoadCells $originKey
+}
+
 # Epicenters deliberately claim reachable ordinary-road cells; planning handles their road overwrite.
 function Move-RadiationSourcesToReachableRoadCells {
     $relocatedSources = [System.Collections.Generic.List[object]]::new()
@@ -2489,15 +2683,6 @@ for ($cellY = 0; $cellY -lt $GridCells; $cellY++) {
             }
         }
 
-        $inDeadZone = $false
-        foreach ($deadZone in $deadZones) {
-            $deadZoneDistance = [Math]::Sqrt([Math]::Pow($cellX - $deadZone.X, 2) + [Math]::Pow($cellY - $deadZone.Y, 2))
-            if ($deadZoneDistance -le $deadZone.Radius) {
-                $inDeadZone = $true
-                break
-            }
-        }
-
         $cellKey = "$cellX,$cellY"
         $roadNearby = $roadCells.ContainsKey($cellKey)
         $localRoadNearby = $roadCells.ContainsKey($cellKey) -and -not $highwayCells.ContainsKey($cellKey) -and -not $diagonalHighwayCells.ContainsKey($cellKey)
@@ -2510,7 +2695,8 @@ for ($cellY = 0; $cellY -lt $GridCells; $cellY++) {
             if ($highwayCells.ContainsKey($neighborKey) -or $diagonalHighwayCells.ContainsKey($neighborKey)) { $highwayNearby = $true }
         }
 
-        if ($nearestDistance -le $nearestZone.Radius -and -not $inDeadZone -and -not $highwayCells.ContainsKey($cellKey) -and -not $diagonalHighwayCells.ContainsKey($cellKey) -and $roadNearby -and (-not $highwayNearby -or $localRoadNearby)) {
+        # Settlements need a road in their own cell; a roadless cell has no entrance and becomes an unbuilt empty cell.
+        if ($nearestDistance -le $nearestZone.Radius -and -not $highwayCells.ContainsKey($cellKey) -and -not $diagonalHighwayCells.ContainsKey($cellKey) -and $roadCells.ContainsKey($cellKey) -and $roadNearby -and (-not $highwayNearby -or $localRoadNearby)) {
             $placeSettlement = if ($settlementPlacementMode -eq 'random') {
                 $density = $settlementMinimumDensity + $settlementDistrictCenterDensity * (1 - ($nearestDistance / $nearestZone.Radius))
                 ([int]($random.NextDouble() * 10000)) -lt [int][Math]::Round($density * 10000)
@@ -2539,6 +2725,14 @@ $commonLandmarks = @(
     @{ Label = "L"; Name = "Leisure"; Color = [System.Drawing.Color]::FromArgb(255, 80, 200, 125) },
     @{ Label = "K"; Name = "Park"; Color = [System.Drawing.Color]::FromArgb(255, 105, 170, 80) }
 )
+foreach ($weightName in @($commonLandmarkWeights.Keys)) {
+    if (@($commonLandmarks | Where-Object { [string]$_.Name -eq [string]$weightName }).Count -eq 0) {
+        throw "mapGeneration.landmarks.commonWeights.$weightName does not name a common landmark."
+    }
+}
+foreach ($commonLandmark in $commonLandmarks) {
+    $commonLandmark.Weight = if ($commonLandmarkWeights.ContainsKey($commonLandmark.Name)) { [double]$commonLandmarkWeights[$commonLandmark.Name] } else { 1.0 }
+}
 $policeLandmark = @{ Label = "P"; Name = "Police"; Color = [System.Drawing.Color]::FromArgb(255, 70, 130, 230) }
 $hospitalLandmark = @{ Label = "H"; Name = "Hospital"; Color = [System.Drawing.Color]::FromArgb(255, 230, 75, 85) }
 $fireLandmark = @{ Label = "F"; Name = "Fire"; Color = [System.Drawing.Color]::FromArgb(255, 235, 110, 55) }
@@ -2594,7 +2788,19 @@ function Add-UniqueLandmark {
         return @($Landmarks)
     }
 
-    return @($Landmarks) + $availableCandidates[$random.Next(0, $availableCandidates.Count)]
+    # One sample per pick, like Random.Next, so equal weights reproduce the old uniform choice.
+    $totalWeight = 0.0
+    foreach ($candidate in $availableCandidates) {
+        $candidateWeight = if ($candidate.ContainsKey('Weight')) { [double]$candidate.Weight } else { 1.0 }
+        $totalWeight += $candidateWeight
+    }
+    $roll = $random.NextDouble() * $totalWeight
+    foreach ($candidate in $availableCandidates) {
+        $candidateWeight = if ($candidate.ContainsKey('Weight')) { [double]$candidate.Weight } else { 1.0 }
+        $roll -= $candidateWeight
+        if ($roll -lt 0) { return @($Landmarks) + $candidate }
+    }
+    return @($Landmarks) + $availableCandidates[$availableCandidates.Count - 1]
 }
 
 function Get-FeaturedLandmarkSortKey {
@@ -2662,18 +2868,6 @@ function Get-DistrictDenName {
 
 $eligibleLandmarkCandidates = @()
 foreach ($key in $landmarkCandidates.Keys) {
-    $coordinates = $key -split ","
-    $cellX = [int]$coordinates[0]
-    $cellY = [int]$coordinates[1]
-    $inDeadZone = $false
-    foreach ($deadZone in $deadZones) {
-        $deadZoneDistance = [Math]::Sqrt([Math]::Pow($cellX - $deadZone.X, 2) + [Math]::Pow($cellY - $deadZone.Y, 2))
-        if ($deadZoneDistance -le $deadZone.Radius) {
-            $inDeadZone = $true
-            break
-        }
-    }
-    if ($inDeadZone) { continue }
     if (-not $roadCells.ContainsKey($key) -or -not $reachableRoadCells.ContainsKey($key)) { continue }
     if ($highwayCells.ContainsKey($key) -or $diagonalHighwayCells.ContainsKey($key)) { continue }
     $eligibleLandmarkCandidates += $key
@@ -2750,6 +2944,56 @@ foreach ($key in $eligibleLandmarkCandidates) {
 }
 
 Ensure-FeaturedLandmarkCoverage
+
+function Get-NearestDistrictIndex {
+    param([int]$CellX, [int]$CellY)
+
+    $nearestIndex = -1
+    $nearestDistance = [double]::PositiveInfinity
+    for ($zoneIndex = 0; $zoneIndex -lt $zones.Count; $zoneIndex++) {
+        $distance = [Math]::Pow($CellX - $zones[$zoneIndex].X, 2) + [Math]::Pow($CellY - $zones[$zoneIndex].Y, 2)
+        if ($distance -lt $nearestDistance) {
+            $nearestIndex = $zoneIndex
+            $nearestDistance = $distance
+        }
+    }
+    return $nearestIndex
+}
+
+# Every district needs a Police and a Fire station; a missing service takes an empty eligible road cell in that district.
+# Deterministic hash ranking keeps the shared random stream (and every later placement) unchanged.
+function Ensure-DistrictServiceLandmarks {
+    $epicenterKeys = @{}
+    foreach ($source in @($radiationSources)) { $epicenterKeys["$($source.x),$($source.y)"] = $true }
+    foreach ($service in @($policeLandmark, $fireLandmark)) {
+        $covered = @{}
+        foreach ($key in $landmarkCells.Keys) {
+            if (@($landmarkCells[$key] | Where-Object { [string]$_.Name -eq [string]$service.Name }).Count -eq 0) { continue }
+            $coordinates = $key -split ","
+            $covered[(Get-NearestDistrictIndex ([int]$coordinates[0]) ([int]$coordinates[1]))] = $true
+        }
+        for ($zoneIndex = 0; $zoneIndex -lt $zones.Count; $zoneIndex++) {
+            if ($covered.ContainsKey($zoneIndex)) { continue }
+            $districtCandidates = @($eligibleLandmarkCandidates | Where-Object {
+                if ($landmarkCells.ContainsKey($_) -or $epicenterKeys.ContainsKey($_)) { return $false }
+                $coordinates = $_ -split ","
+                (Get-NearestDistrictIndex ([int]$coordinates[0]) ([int]$coordinates[1])) -eq $zoneIndex
+            })
+            if ($districtCandidates.Count -eq 0) {
+                Write-Warning "[WorldGen][Landmarks] District '$($zones[$zoneIndex].Name)' has no empty eligible road cell for a $($service.Name) station."
+                continue
+            }
+            $ranked = @($districtCandidates | Sort-Object {
+                $coordinates = $_ -split ","
+                if ((Get-RadiationIntensity ([int]$coordinates[0]) ([int]$coordinates[1])) -gt 0) { 1 } else { 0 }
+            }, { Get-FeaturedLandmarkSortKey "$($service.Name)|$_" }, { $_ })
+            $landmarkCells[$ranked[0]] = @($service)
+            Write-Host "[WorldGen][Landmarks] District '$($zones[$zoneIndex].Name)' received a $($service.Name) station at $($ranked[0])."
+        }
+    }
+}
+
+Ensure-DistrictServiceLandmarks
 
 # Airports occupy empty reachable road cells outside fallout. Extra airports require both a larger world and a wide separation.
 $airportKeys = @()

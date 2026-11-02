@@ -59,6 +59,27 @@ function Get-ZMPlacementField {
     return $property.Value
 }
 
+function Get-ZMWallProfileKey {
+    # The recipe's own environment profile wins when it has a dedicated wall pool. Otherwise a cell
+    # whose core buildings are mostly industrial/warehouse tiles uses the 'industrial' pool if one exists.
+    param([object]$Recipe, [System.Collections.IDictionary]$ProfileTemplates)
+
+    $profile = ([string](Get-ZMPlacementField $Recipe 'environmentProfile')).ToLowerInvariant()
+    if ($null -eq $ProfileTemplates) { return $profile }
+    if ($ProfileTemplates.Contains($profile)) { return $profile }
+    if (-not $ProfileTemplates.Contains('industrial')) { return $profile }
+    $buildings = @(@(Get-ZMPlacementField $Recipe 'tilePlacements') | Where-Object {
+        $null -ne $_ -and ([string](Get-ZMPlacementField $_ 'template')).Replace('\', '/') -match '^buildings/' -and
+            $(($emits = Get-ZMPlacementField $_ 'emitsInstance'); $null -eq $emits -or [bool]$emits)
+    })
+    if ($buildings.Count -eq 0) { return $profile }
+    $industrial = @($buildings | Where-Object {
+        ([string](Get-ZMPlacementField $_ 'template')).Replace('\', '/') -match '^buildings/tile_(industrial|warehouse)_'
+    }).Count
+    if ($industrial * 2 -gt $buildings.Count) { return 'industrial' }
+    return $profile
+}
+
 function Get-ZMRouteFootprintSlots {
     # Every tile occupied by a road, bridge or motorway corridor, including non-emitting occupied
     # records and motorway inspection leases. Carpark lanes, entrances and endcaps are not corridors.
@@ -162,17 +183,39 @@ function Get-ZMOuterEdgePlacements {
 
     if (-not $Settings.ContainsKey('enabled') -or -not $Settings.enabled) { return @() }
     $walls = @($Settings.wallVariationTemplates)
-    $corner = [string]$Settings.cornerTemplate
-    $profile = ([string]$Recipe.environmentProfile).ToLowerInvariant()
+    $corner = if ($Settings.ContainsKey('cornerTemplate')) { [string]$Settings.cornerTemplate } else { '' }
+    $corners = @(if ($Settings.ContainsKey('cornerVariationTemplates')) { $Settings.cornerVariationTemplates | ForEach-Object { [string]$_ } })
+    $profile = if ($Settings.ContainsKey('profileTemplates')) { Get-ZMWallProfileKey $Recipe $Settings.profileTemplates } else { ([string]$Recipe.environmentProfile).ToLowerInvariant() }
     if ($Settings.ContainsKey('profileTemplates') -and $Settings.profileTemplates.ContainsKey($profile)) {
         $pool = $Settings.profileTemplates[$profile]
         if ($pool.ContainsKey('wallVariationTemplates') -and @($pool.wallVariationTemplates).Count -gt 0) { $walls = @($pool.wallVariationTemplates) }
-        if ($pool.ContainsKey('cornerTemplate') -and -not [string]::IsNullOrWhiteSpace($pool.cornerTemplate)) { $corner = [string]$pool.cornerTemplate }
+        if ($pool.ContainsKey('cornerTemplate') -and -not [string]::IsNullOrWhiteSpace($pool.cornerTemplate)) {
+            # A profile corner overrides the default density-selected corner set.
+            $corner = [string]$pool.cornerTemplate
+            $corners = @()
+        }
+        if ($pool.ContainsKey('cornerVariationTemplates') -and @($pool.cornerVariationTemplates).Count -gt 0) {
+            $corners = @($pool.cornerVariationTemplates | ForEach-Object { [string]$_ })
+        }
     }
-    if ($walls.Count -eq 0 -or [string]::IsNullOrWhiteSpace($corner)) { throw 'Outer edges require a default wall pool and corner template.' }
+    $corners = @($corners | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($corners.Count -eq 0 -and -not [string]::IsNullOrWhiteSpace($corner)) { $corners = @($corner) }
+    if ($walls.Count -eq 0 -or $corners.Count -eq 0) { throw 'Outer edges require a default wall pool and corner template.' }
+    $oceanPieces = @(Get-ZMOuterEdgeOceanTemplates $Settings)
+    # Canonical ocean pieces face the sea at +Y, so each side uses the land wall yaw turned 180 degrees.
+    $oceanYaw = @{ N = 0; E = 270; S = 180; W = 90 }
 
     $borderSlots = @{}
     foreach ($placement in $BorderPlacements) { $borderSlots["$($placement.tileX),$($placement.tileY)"] = $placement }
+    $entranceSuppressedSlots = @{}
+    if ($null -ne $Recipe.PSObject.Properties['safeZoneEntrance'] -and $null -ne $Recipe.safeZoneEntrance) {
+        $suppressedTilesProperty = $Recipe.PSObject.Properties['suppressedBorderTiles']
+        if ($null -ne $suppressedTilesProperty) {
+            foreach ($tile in @($suppressedTilesProperty.Value)) {
+                $entranceSuppressedSlots["$([int]$tile.tileX),$([int]$tile.tileY)"] = $true
+            }
+        }
+    }
     $routeSlots = @(Get-ZMRouteFootprintSlots $BorderPlacements (Get-ZMRecipeRouteLeases $Recipe) @('border', 'outer'))
     $sideYaw = @{ N = 180; E = 90; S = 0; W = 270 }
     $cornerYaw = @{ NW = 180; NE = 90; SE = 0; SW = 270 }
@@ -187,15 +230,40 @@ function Get-ZMOuterEdgePlacements {
             $side = if ($vertical) { $vertical } else { $horizontal }
             $bx = [Math]::Max(-1, [Math]::Min($TileGridSize, $x))
             $by = [Math]::Max(-1, [Math]::Min($TileGridSize, $y))
-            # Project suppressed entrance slots outward; never fill their authored footprint.
-            if (-not $borderSlots.ContainsKey("$bx,$by")) { continue }
-            if ($vertical -and $horizontal) {
+            $oceanSide = $null
+            if ($oceanPieces.Count -gt 0) {
+                # Corners continue the coastline of whichever adjacent side faces the ocean.
+                $oceanSide = @($horizontal, $vertical | Where-Object { $_ -and $WaterSides.ContainsKey($_) } | Select-Object -First 1)
+                $oceanSide = if ($oceanSide.Count -gt 0) { [string]$oceanSide[0] } else { $null }
+            }
+            # Fill the projected outer slot behind an entrance without adding a piece to its footprint.
+            $borderKey = "$bx,$by"
+            $entranceBackfill = $entranceSuppressedSlots.ContainsKey($borderKey)
+            if (-not $borderSlots.ContainsKey($borderKey) -and -not $entranceBackfill -and $null -eq $oceanSide) { continue }
+            $isRoute = -not ($vertical -and $horizontal) -and $RoadTemplates.ContainsKey($side) -and $(if ($vertical) { $x -eq $center } else { $y -eq $center })
+            if ($null -ne $oceanSide -and -not $isRoute) {
+                $hash = ([int64]$Recipe.placementSeed * 2654435761) -bxor ([int64]$x * 73856093) -bxor ([int64]$y * 19349663) -bxor 0x5EA
+                $hash = $hash -bxor ($hash -shr 15)
+                $template = [string]$oceanPieces[[int]([Math]::Abs($hash) % $oceanPieces.Count)]
+                $yaw = $oceanYaw[$oceanSide]
+                $kind = 'ocean'
+            } elseif ($vertical -and $horizontal) {
                 if ($WaterSides.ContainsKey($vertical) -or $WaterSides.ContainsKey($horizontal)) { continue }
-                $template = $corner
+                if ($corners.Count -eq 1) {
+                    $template = [string]$corners[0]
+                } else {
+                    $wallSelection = Get-ZMSceneryWallTemplateSelection $Recipe $corners $MapSeed 'outer' "$x,$y" 'corner' $false
+                    $template = if ($null -ne $wallSelection) {
+                        [string]$wallSelection.template
+                    } else {
+                        $hash = ([int64]$Recipe.placementSeed * 2654435761) -bxor ([int64]$x * 73856093) -bxor ([int64]$y * 19349663) -bxor 0xC0
+                        $hash = $hash -bxor ($hash -shr 15)
+                        [string]$corners[[int]([Math]::Abs($hash) % $corners.Count)]
+                    }
+                }
                 $yaw = $cornerYaw["$vertical$horizontal"]
                 $kind = 'corner'
             } else {
-                $isRoute = $RoadTemplates.ContainsKey($side) -and $(if ($vertical) { $x -eq $center } else { $y -eq $center })
                 if ($WaterSides.ContainsKey($side) -and -not $isRoute) { continue }
                 if ($isRoute) {
                     $template = [string]$RoadTemplates[$side]
@@ -227,7 +295,7 @@ function Get-ZMOuterEdgePlacements {
                 tileX = $x; tileY = $y; template = $template; rotationYaw = $yaw
                 targetname = "zm_outer_$kind`_$x`_$y"
             }
-            if ($kind -eq 'wall' -and $null -ne $wallSelection -and $null -ne $wallSelection.selection) {
+            if ($kind -in @('wall', 'corner') -and $null -ne $wallSelection -and $null -ne $wallSelection.selection) {
                 $placement.sceneryDensitySelection = $wallSelection.selection
             }
             $result.Add($placement)
@@ -311,4 +379,11 @@ function Convert-ZMVmfNodeToText {
     return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
 }
 
-Export-ModuleMember -Function Get-ZMSceneryWallTemplateSelection, Get-ZMRouteFootprintSlots, Get-ZMRecipeRouteLeases, Get-ZMRoadAdjacentWallPool, Get-ZMOuterEdgeRoadTemplates, Get-ZMOuterEdgePlacements, Expand-ZMOuterEdgeShell
+function Get-ZMOuterEdgeOceanTemplates {
+    param([System.Collections.IDictionary]$Settings)
+
+    if ($null -eq $Settings -or -not $Settings.Contains('oceanTemplates')) { return @() }
+    return @($Settings.oceanTemplates | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { [string]$_ })
+}
+
+Export-ModuleMember -Function Get-ZMWallProfileKey, Get-ZMSceneryWallTemplateSelection, Get-ZMRouteFootprintSlots, Get-ZMRecipeRouteLeases, Get-ZMRoadAdjacentWallPool, Get-ZMOuterEdgeRoadTemplates, Get-ZMOuterEdgeOceanTemplates, Get-ZMOuterEdgePlacements, Expand-ZMOuterEdgeShell

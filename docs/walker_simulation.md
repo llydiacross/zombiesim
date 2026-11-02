@@ -10,7 +10,7 @@ The worker is deliberately independent from in-level NPCs. A `zn_walker_zombie` 
 
 | Component | Location | Responsibility |
 | --- | --- | --- |
-| Core | `bin/walker-simulator` | Deterministic world import, horde movement, tickets, checkpoints, and snapshots. |
+| Core | `walker-simulator` | Deterministic world import, horde movement, tickets, checkpoints, and snapshots. |
 | Worker | `src/gmod_adapter/walker_worker.*` | Runs the core at 4 Hz and publishes synchronized immutable snapshots. |
 | Native adapter | `src/gmod_adapter/module_server.cpp` | Validates Lua arguments, enqueues worker commands, and serializes snapshots to Lua tables. |
 | Server host | `gamemode/sv_walker_sim.lua` | Loads the active profile, refreshes the active cell, exposes server-only diagnostics, runs the manual Phase C entity lifecycle probes, and sends preview summaries. |
@@ -152,7 +152,7 @@ The walker status adds attack hits and misses, noises heard, alerts sent, groupi
 
 ## Build And Test
 
-Run from `bin/walker-simulator`:
+Run from `walker-simulator` (the observer executable and the optional module are written to the repository `bin/` folder):
 
 ```powershell
 cmake --preset mingw-debug
