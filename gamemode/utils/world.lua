@@ -421,7 +421,8 @@ function World:Load(path)
 		cellsByLandmark = {},
 		cellsByMetroLine = {},
 		safeZonesById = {},
-		atmosphereProfilesById = {}
+		atmosphereProfilesById = {},
+		claimTilesByCell = {}
 	}
 
 	for profileIndex, profile in ipairs(data.atmosphereProfiles) do
@@ -485,6 +486,18 @@ function World:Load(path)
 		cell.y = y
 		indexes.cellsById[id] = cell
 		indexes.cellsByCoordinate[coordinateKey(x, y)] = cell
+
+		// Structure claims: absent claimTiles means nothing in the cell is claimable.
+		if cell.claimTiles ~= nil then
+			local claimSet = World.BuildClaimTileSet(cell.claimTiles, cell.empty == true, data.world.cellBounds)
+			if not claimSet then
+				self.Data = nil
+				self.Indexes = nil
+				self.LastError = "Runtime world data at " .. path .. " has invalid claim tiles for cell " .. id
+				return false, self.LastError
+			end
+			indexes.claimTilesByCell[id] = claimSet
+		end
 
 		if type(cell.map) == "string" and cell.map ~= "" then
 			indexes.cellsByMap[cell.map] = indexes.cellsByMap[cell.map] or {}
@@ -936,6 +949,71 @@ end
 // Returns whether a cell has an associated safe-zone record.
 function World:IsSafeZone(reference, y)
 	return self:GetSafeZone(reference, y) ~= nil
+end
+
+// Validates exported [x, y] centred core-tile offsets (east +X, north +Y).
+// Returns a set keyed "x,y", or nil when the list is malformed.
+function World.BuildClaimTileSet(claimTiles, isEmpty, cellBounds)
+	if type(claimTiles) ~= "table" or isEmpty then
+		return nil
+	end
+	local gridSize = tonumber(type(cellBounds) == "table" and cellBounds.coreTileGridSize or nil) or 5
+	local half = math.floor(gridSize / 2)
+	local set = {}
+	for _, tile in ipairs(claimTiles) do
+		local tileX = type(tile) == "table" and tile[1] or nil
+		local tileY = type(tile) == "table" and tile[2] or nil
+		if type(tileX) ~= "number" or type(tileY) ~= "number" or tileX ~= math.floor(tileX) or tileY ~= math.floor(tileY) or
+			math.abs(tileX) > half or math.abs(tileY) > half then
+			return nil
+		end
+		local key = coordinateKey(tileX, tileY)
+		if set[key] then
+			return nil
+		end
+		set[key] = true
+	end
+	return set
+end
+
+// Returns the claimable core tiles of a cell as { { x = tileX, y = tileY }, ... }.
+// Cells exported without claim data have no claimable tiles.
+function World:GetClaimTiles(reference, y)
+	local cell = self:ResolveCell(reference, y)
+	local set = cell and self.Indexes.claimTilesByCell[cell.id] or nil
+	local tiles = {}
+	if not set then
+		return tiles
+	end
+	for _, tile in ipairs(cell.claimTiles) do
+		tiles[#tiles + 1] = { x = tile[1], y = tile[2] }
+	end
+	return tiles
+end
+
+// Returns whether a centred core tile offset may hold a structure claim.
+// The cell is an id or cell table; tile offsets use east +X, north +Y.
+function World:IsClaimableTile(cellReference, tileX, tileY)
+	if type(cellReference) ~= "number" and type(cellReference) ~= "table" then
+		return false
+	end
+	local cell = self:ResolveCell(cellReference)
+	local set = cell and self.Indexes.claimTilesByCell[cell.id] or nil
+	return set ~= nil and type(tileX) == "number" and type(tileY) == "number" and set[coordinateKey(tileX, tileY)] == true
+end
+
+// Converts a cell-local world position to its centred core tile offset, or nil outside the core.
+function World:GetCoreTileAt(position)
+	if not position or position.x ~= position.x or position.y ~= position.y then
+		return nil
+	end
+	local bounds = self:GetCellBounds()
+	local tileSize = tonumber(bounds.tileSize) or 640
+	local half = bounds.coreHalfExtent
+	if math.abs(position.x) >= half or math.abs(position.y) >= half then
+		return nil
+	end
+	return math.floor(position.x / tileSize + 0.5), math.floor(position.y / tileSize + 0.5)
 end
 
 // Finds a graph exit by direction. Call as GetExit(cellOrId, "N") or GetExit(x, y, "N").

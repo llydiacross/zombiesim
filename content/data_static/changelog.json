@@ -2,6 +2,16 @@
   "schemaVersion": 1,
   "entries": [
     {
+      "version": "3.4",
+      "title": "Next Update",
+      "status": "in development",
+      "date": "2026-11-02",
+      "summary": "Alpha 3.4 continues Alpha 3.3, starting with player structures.",
+      "highlights": [
+        "? Player structures and claims are being designed."
+      ]
+    },
+    {
       "version": "3.3",
       "title": "Next Update",
       "status": "in development",
@@ -13,6 +23,7 @@
         "+ Added Cell Health to the preview launcher Tools.",
         "+ Added weapon-family skill effects and stat-based armour.",
         "+ Added AFK protection while using the world map.",
+        "+ Added many new city, industrial, army and radiation buildings, with better district variety.",
         "? The profession selector redesign is ready for in-game review.",
         "? Calling cards and deferred prefab validation remain in development."
       ]

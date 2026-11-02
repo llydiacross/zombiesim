@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "product": "Z-Nation",
   "stage": "Alpha",
-  "version": "3.3",
+  "version": "3.4",
   "status": "in development",
-  "currentPhase": "Phase D profession selection is ready for preview review; calling cards remain in development.",
+  "currentPhase": "Phase E player structures and claims design (continuing Alpha 3.3).",
   "nextMilestone": null,
-  "started": "2026-10-28",
+  "started": "2026-11-02",
   "released": null,
   "previousRelease": "3.0"
 }

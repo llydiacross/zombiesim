@@ -1077,6 +1077,12 @@ A cell with no ordinary road, highway, safe zone or landmark is an *empty cell*.
 
 At runtime `ZM_World:IsEmptyCell`/`GetEmptyCellTerrain` identify these cells. `CanTravel`, `GetTransitionMap` and `FindPath` refuse to enter them, and `Load` rejects an empty cell that has a map, exits or no terrain. The world map, map catalogue, Cell Health, capture queue, capture importer and wireframe/satellite stitchers draw or skip them as a single flat terrain tile. `tests/glua/test_world_empty_cells.py` covers the runtime contract.
 
+### Claimable Tiles
+
+For revision-2 layouts the runtime export adds `claimTiles` to every non-empty cell: a list of centred `[x, y]` core-tile offsets (east +X, north +Y, each -2..2) where a player structure claim may be placed. `bin/claim_tiles.psm1` owns eligibility. A tile qualifies only when it has exactly one 1x1 placement that emits its own instance, with role `terrain` or `decoration` and a template under `terrain/` or `decorations/`. Roads, borders, buildings, motorway-occupied slots and multi-tile footprints never qualify. A cell without the list has no claimable tiles; there is no fallback.
+
+`ZM_World` rejects duplicates, out-of-range offsets and the field on empty cells at load. `GetClaimTiles(cell)` returns copies, `IsClaimableTile(cell, x, y)` checks one offset, and `GetCoreTileAt(position)` maps a cell-local position to its tile offset (nil outside the core). `tests/powershell/test_claim_tiles.ps1` and `tests/glua/test_world_claim_tiles.py` cover the contract.
+
 ### `rendering`
 
 | Setting | What it controls |

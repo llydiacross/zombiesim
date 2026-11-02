@@ -381,3 +381,6 @@ foreach ($entry in $entries) {
     [IO.File]::WriteAllText($reportPath, ($report | ConvertTo-Json -Depth 8), $utf8)
     Write-Output $report
 }
+
+# Hammer reads the engine search paths, not content\; stage the referenced tile models there.
+& (Join-Path $PSScriptRoot 'stage_hammer_assets.ps1') | Out-Host

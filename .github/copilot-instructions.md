@@ -15,7 +15,7 @@ ZombieSim is an installed Garry's Mod gamemode with realm-specific GLua gameplay
 ## Architecture
 
 - `gamemode/init.lua` and `sv_*.lua` are server-side; `cl_init.lua` and `cl_*.lua` are client-side; `shared.lua` and `sh_*.lua` run in both realms. Send client/shared files with `AddCSLuaFile` and include server code on the server.
-- Gameplay services are server-authoritative. Shared static registries load definitions from `content/data_static/`; persistence is server-only through the SQL helpers. Keep related writes atomic and retain profile scoping.
+- Gameplay services are server-authoritative. Shared static registries load definitions from `content/data_static/`; persistence is server-only through the SQL helpers. Keep related writes atomic and retain profile scoping. Persistence tests should cover success and injected write failures, asserting related rows remain unchanged on rollback and data stays isolated by profile.
 - `ZM_World` owns runtime world-data and map resolution; `ZM_SafeZones` owns safe-zone lookup. Use these APIs rather than reconstructing coordinates, profiles, or map paths locally.
 - `ZM_Util` (`gamemode/utils/server.lua`) provides shared server command helpers. New gameplay test suites should use `ZM_TestHarness` (`gamemode/utils/test_harness.lua`) rather than duplicating test-runner and reporting logic.
 - The Walker simulator in `walker-simulator/` is an independent C++ population system. Its worker owns simulation state; GLua consumes published snapshots and queues commands. Keep this project isolated from Lua gameplay and generated world assets.
@@ -45,6 +45,10 @@ Client-only dev test commands should print case results and a pass/fail summary
 as well as write their `data/zombiesim/` report. If a client command appears
 silent, inspect that report before calling it failed; a server-bridge
 acknowledgement is not proof that the client test ran.
+When fixture suites load modules through nested includes, exercise the real
+cold-start bootstrap and load order. Inject factories and dependencies through
+their owning initializer instead of relying on nested relative `include` paths;
+direct module tests alone do not prove production registration works.
 
 ### Focused world-generation regressions
 
@@ -123,4 +127,4 @@ For bridge-driven checks, use `.\bin\invoke_dev_bridge.ps1 -Command '<cmd>'`; it
 - For renderer or other visual presentation changes, inspect the affected surface in a running client and check the relevant mode and option settings. A successful syntax check, build, or automated test does not verify visual appearance.
 - Report validation precisely: list static/test results separately from in-game or visual checks, and state which acceptance items remain unverified or deferred. Do not mark a phase accepted solely because its automated tests pass when required live checks remain.
 - For performance samples, record the map and logical cell, weather, camera, quality settings, population/effect counts, and measurement scope. Hook timings do not include all feature-rendering costs, such as entity `RenderOverride` work. Require matched workloads before claiming a regression or improvement; unmatched samples demonstrate operation or cleanup, not comparative performance.
-- Preserve unrelated user work and generated outputs. Before temporarily substituting maps or changing persistent player data for a probe, retain a safe restoration path and verify restoration afterward.
+- Preserve unrelated user work and generated outputs. Prefer transient fixtures and isolated targets for live probes. Before a probe can kill a survivor or mutate persistent player data, capture the exact affected state and get explicit approval for irreversible side effects; clean up and verify restoration against the baseline. A newly rolled replacement item is not exact restoration.

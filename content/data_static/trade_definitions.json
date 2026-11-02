@@ -26,7 +26,9 @@
         { "item": "itemScrews", "bundle": 10, "minStock": 1, "maxStock": 4 },
         { "item": "itemGlue", "minStock": 2, "maxStock": 5 },
         { "item": "itemGunpowder", "minStock": 0, "maxStock": 4, "minDanger": 0.2 },
-        { "item": "weaponMeleeCrowbar", "minStock": 1, "maxStock": 2 }
+        { "item": "weaponMeleeCrowbar", "minStock": 1, "maxStock": 2 },
+        { "item": "weaponMeleeHammer", "minStock": 0, "maxStock": 1 },
+        { "item": "itemClaimToken", "credits": 25, "minStock": 3, "maxStock": 5 }
       ]
     },
     "quartermaster": {

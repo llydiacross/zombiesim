@@ -1220,6 +1220,8 @@ acceptance remains; these results do not establish full Phase H completion.
 
 For local Hammer/GMod development, run `.\bin\stage_sign_assets.ps1` to copy and hash-verify the current sign models/materials into the installed `garrysmod` root, or add `-StageToGame` when building sign assets. Generate a six-variant Hammer showroom with `.\bin\build_sign_zoo.ps1`; add `-Compile` to compile and stage **one standalone development BSP**, `zn_dev_sign_zoo`. Open `generated\signs_preview\zoo\zn_dev_sign_zoo.vmf` in Hammer, or use `map zn_dev_sign_zoo` in a sandbox development session. This does not rebuild city recipes, change production staging, or package the zoo for release.
 
+Hammer only searches the engine paths in `gameinfo.txt` (`garrysmod/addons/*` and `garrysmod`), never this gamemode's `content/` folder. Run `.\bin\stage_hammer_assets.ps1` (add `-WhatIf` to preview) to copy every content-owned model referenced by `tiletemplates`/`celltemplates` VMF/VMX files, with its MDL companions and the VMT/VTF materials it uses, into `garrysmod\models` and `garrysmod\materials`. Copies are hash-verified and recorded in `generated\hammer_assets\staging-ledger.json`; identical pre-existing files are recorded as not owned, and the script stops rather than overwrite a differing file it does not own. `build_tile_detail_models.ps1` runs it automatically after building detail models.
+
 Build the six original sign variants with `.\bin\build_sign_assets.ps1 -WorldProfile preview`: detailed freestanding and lamp-lit billboards, legless panel, small wall sign, thin framed print and borderless poster. Use `-ArtworkPath` for a finished opaque 1024 x 512 panel, or `-ImagePath` / `-BackgroundImagePath` for aspect-preserving foreground/background layers. The sign JSON controls image paths, self-lighting and independent leg/rim/back textures; mounted Source textures are referenced, not copied. Run `.\tests\powershell\test_sign_assets.ps1` after building. This compiles six small models and two original textures, not city BSPs. The [artist workflow](../docs/sign_artist_workflow.md) documents geometry budgets, settings, placement prefabs, light baking, skybox limits and packaging. Preview admins can use `zombiesim_dev_sign on [freestanding|panel|illuminated|wall|print|poster]` through the bridge, and `off` to remove it; it expires after three minutes. The print and poster mount to the aimed wall, and the two-triangle poster has no collision or physical border. The illuminated preview casts a temporary real projected light, while its Hammer prefab uses a baked spotlight. Live appearance of the detailed billboard and both thin variants was approved by the user; compiled-tile collision, baked lighting and an actual skybox view remain integrated checks.
 
 Once generator work is approved, use matching isolated settings and output
@@ -1869,7 +1871,7 @@ Each gameplay service has a server-side suite that uses throwaway SteamIDs and p
 zn_test_static_data zn_test_weapon_catalog zn_test_inventory zn_test_loot zn_test_loot_spots zn_test_enemies
 zn_test_bosses zn_test_crafting zn_test_implants zn_test_professions zn_test_mastercraft zn_test_bank zn_test_trading zn_test_foliage
 zn_test_atmosphere zn_test_gore zn_test_afk zn_test_damage_feedback
-zn_test_armour zn_test_movement zn_test_weapon_effects
+zn_test_armour zn_test_movement zn_test_weapon_effects zn_test_claims
 ```
 
 Standalone GLua suites live in `gamemode/tests/`, including client suites. Keep realm prefixes and register client suites through both `AddCSLuaFile` and client `include` after their dependencies. Root `tests/` holds static-data fixtures; `bin/` holds offline PowerShell checks.
@@ -2092,6 +2094,40 @@ zn_test_trading                                // trading and den NPC tests
 ```
 
 Through the bridge these add `reports.denNpcs`, `reports.trade`, and `reports.tradingTests`.
+
+# Land Claims
+
+Survivors claim exported terrain/decoration core tiles with a claim token
+(`itemClaimToken`, 25 credits from the General Trader). Claims are keyed by
+world profile, logical cell id and tile offset (`-2..2`, east +X/north +Y), are
+owned by one survivor and lapse 30 days after the last visit. Visits by the
+owner, the owner's other survivors or listed friend accounts within 1.5 tiles
+refresh active claims only; a lapsed tile can be claimed afresh.
+
+```
+zn_claim_tile [x y]                // claim the tile you stand on, or an adjacent offset
+zn_claim_status                    // claimable tiles and claims in your current cell
+zn_claim_friend_add <STEAM_x:y:z>  // grant a friend access to your survivor's claims
+zn_claim_friend_remove <STEAM_x:y:z>
+zn_test_claims                     // isolated claim persistence tests
+```
+
+Offline: `python -m unittest tests.glua.test_claim_service tests.glua.test_world_claim_tiles`.
+
+## Construction (prototype)
+
+Equip the Hammer (`weaponMeleeHammer`, loot or General Trader stock 0-1) and
+press Reload within 640 units of an accessible active claim tile to toggle
+build mode. While it is on, zombies ignore the builder and damage between the
+builder and zombies or other players is blocked. LMB places a blueprint
+(`zn_construction_piece`) snapped to the 64-unit grid inside your claim tiles,
+RMB removes your own unpaid blueprint or cycles foundation/wall, and holding E
+builds it. The first contribution takes the whole cost from the backpack
+(foundation 4 Wood + 2 Scrap Metal, wall 3 Wood + 1 Scrap Metal, halved by a
+mastercraft hammer); speed rises from 1x at hammer level 8 to 2x at level 30.
+Pieces are not yet persisted across map loads.
+
+Offline: `python -m unittest tests.glua.test_construction`.
 # Loot Rolls
 
 `ZM_Loot` (server) rolls items from the resolved loot groups, entity-loot rules, enemies, and bosses. Weights interpolate linearly from `minWeight` (danger 0) to `maxWeight` (danger 1); `activationChance` and the enemy loot-drop chances are probabilities, not weights.

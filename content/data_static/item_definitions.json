@@ -955,6 +955,14 @@
       "value": 5,
       "maxStack": 20
     },
+    "itemClaimToken": {
+      "name": "Land Claim Token",
+      "entityClass": "generic",
+      "iconModel": "models/props_lab/clipboard.mdl",
+      "value": 10,
+      "maxStack": 10,
+      "lootCategory": "other"
+    },
     "itemEngineParts": {
       "name": "Engine Parts",
       "entityClass": "generic",

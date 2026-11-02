@@ -570,6 +570,88 @@ function ZM_GetCallingCardSelection(steamid, profile)
     return result and result[1] or { background = "background_default", detail = "detail_default" }
 end
 
+// Structure land claims: one row per claimed core tile of a logical cell (never keyed by BSP name). A survivor owns
+// each claim; that survivor's Steam account and its claim_friends accounts share access. A claim lapses when nobody
+// with access has visited it for ZM_ClaimLifetimeSeconds; a lapsed tile can be claimed again.
+ZM_ClaimLifetimeSeconds = 30 * 24 * 60 * 60
+local steamAccountPattern = "^STEAM_[0-5]:[01]:%d+$"
+
+local function claimTileOffset(value)
+    return type(value) == "number" and value == math.floor(value) and value >= -2 and value <= 2
+end
+
+local function validClaimTile(step)
+    return type(step.cellId) == "number" and validInteger(step.cellId)
+        and claimTileOffset(step.tileX) and claimTileOffset(step.tileY)
+end
+
+local function claimTileWhere(profile, step)
+    return " WHERE profile = " .. sql.SQLStr(profile) .. " AND cellId = " .. integerValue(step.cellId)
+        .. " AND tileX = " .. integerValue(step.tileX) .. " AND tileY = " .. integerValue(step.tileY)
+end
+
+local function claimRows(result)
+    local rows = {}
+    for _, row in ipairs(result or {}) do
+        rows[#rows + 1] = {
+            cellId = tonumber(row.cellId), tileX = tonumber(row.tileX), tileY = tonumber(row.tileY),
+            owner = row.owner, account = row.account,
+            createdAt = tonumber(row.createdAt), lastVisitAt = tonumber(row.lastVisitAt)
+        }
+    end
+    return rows
+end
+
+function ZM_CreateClaimTables()
+    local claims, claimsError = runQuery("CREATE TABLE IF NOT EXISTS player_claims (profile TEXT NOT NULL, cellId INTEGER NOT NULL, tileX INTEGER NOT NULL, tileY INTEGER NOT NULL, owner TEXT NOT NULL, account TEXT NOT NULL, createdAt INTEGER NOT NULL, lastVisitAt INTEGER NOT NULL, PRIMARY KEY (profile, cellId, tileX, tileY))")
+    if not claims then return false, claimsError end
+    local ownerIndex, ownerIndexError = runQuery("CREATE INDEX IF NOT EXISTS player_claims_owner ON player_claims (profile, owner)")
+    if not ownerIndex then return false, ownerIndexError end
+    return runQuery("CREATE TABLE IF NOT EXISTS claim_friends (profile TEXT NOT NULL, owner TEXT NOT NULL, friendAccount TEXT NOT NULL, addedAt INTEGER NOT NULL, PRIMARY KEY (profile, owner, friendAccount))")
+end
+
+// Every claim row in one logical cell, including lapsed rows; callers decide expiry with ZM_ClaimLifetimeSeconds.
+function ZM_GetCellClaims(profile, cellId)
+    profile = getPlayerDataProfile(profile)
+    if not profile or not validInteger(cellId) then return nil, "Invalid claim profile or cell" end
+    local result = sql.Query("SELECT * FROM player_claims WHERE profile = " .. sql.SQLStr(profile)
+        .. " AND cellId = " .. integerValue(cellId) .. " ORDER BY tileY, tileX")
+    if result == false then return nil, sql.LastError() or "Could not read cell claims" end
+    return claimRows(result)
+end
+
+function ZM_GetOwnerClaims(profile, owner)
+    profile = getPlayerDataProfile(profile)
+    if not profile or type(owner) ~= "string" or owner == "" then return nil, "Invalid claim profile or owner" end
+    local result = sql.Query("SELECT * FROM player_claims WHERE profile = " .. sql.SQLStr(profile)
+        .. " AND owner = " .. sql.SQLStr(owner) .. " ORDER BY cellId, tileY, tileX")
+    if result == false then return nil, sql.LastError() or "Could not read owner claims" end
+    return claimRows(result)
+end
+
+function ZM_GetClaimFriends(profile, owner)
+    profile = getPlayerDataProfile(profile)
+    if not profile or type(owner) ~= "string" or owner == "" then return nil, "Invalid claim profile or owner" end
+    local result = sql.Query("SELECT friendAccount FROM claim_friends WHERE profile = " .. sql.SQLStr(profile)
+        .. " AND owner = " .. sql.SQLStr(owner) .. " ORDER BY friendAccount")
+    if result == false then return nil, sql.LastError() or "Could not read claim friends" end
+    local accounts = {}
+    for _, row in ipairs(result or {}) do accounts[#accounts + 1] = row.friendAccount end
+    return accounts
+end
+
+// Development and test cleanup: one owner's claims and friend list in a profile.
+function ZM_DeleteClaimData(profile, owner)
+    profile = getPlayerDataProfile(profile)
+    if not profile or type(owner) ~= "string" or owner == "" then return false, "Invalid claim profile or owner" end
+    local scope = " WHERE profile = " .. sql.SQLStr(profile) .. " AND owner = " .. sql.SQLStr(owner)
+    return inTransaction(function()
+        local deleted, deleteError = runQuery("DELETE FROM player_claims" .. scope)
+        if not deleted then return false, deleteError end
+        return runQuery("DELETE FROM claim_friends" .. scope)
+    end)
+end
+
 // Offline den trading. trade_stock holds each den's shared daily stock per trader offer (sold counts only; the
 // stock itself is regenerated deterministically). trade_ledger records every buy and sell once per request id.
 function ZM_CreateTradeTables()
@@ -656,6 +738,52 @@ local commitWriters = {
         return runQuery("INSERT OR REPLACE INTO calling_card_selections (steamid, profile, background, detail, updatedAt) VALUES ("
             .. sql.SQLStr(step.steamid) .. ", " .. sql.SQLStr(profile) .. ", " .. sql.SQLStr(step.background)
             .. ", " .. sql.SQLStr(step.detail) .. ", " .. os.time() .. ")")
+    end,
+    // Claims one tile for step.steamid (the owning survivor). An active claim by anyone blocks it; a lapsed claim and
+    // its row are replaced atomically, so two tokens cannot claim the same tile and a lapsed claim restarts its period.
+    claimCreate = function(profile, step)
+        if not validClaimTile(step) or type(step.account) ~= "string" or not string.match(step.account, steamAccountPattern)
+            or not validInteger(step.now, 1) then
+            return false, "invalid land claim"
+        end
+        local where = claimTileWhere(profile, step)
+        local cutoff = math.floor(step.now) - ZM_ClaimLifetimeSeconds
+        local rows = sql.Query("SELECT lastVisitAt FROM player_claims" .. where)
+        if rows == false then return false, sql.LastError() or "could not read the land claim" end
+        if rows and rows[1] then
+            if (tonumber(rows[1].lastVisitAt) or 0) >= cutoff then return false, "that tile is already claimed" end
+            local cleared, clearError = runQuery("DELETE FROM player_claims" .. where .. " AND lastVisitAt < " .. cutoff)
+            if not cleared then return false, clearError end
+            if tonumber(sql.QueryValue("SELECT changes()")) ~= 1 then return false, "the land claim changed; try again" end
+        end
+        return runQuery("INSERT INTO player_claims (profile, cellId, tileX, tileY, owner, account, createdAt, lastVisitAt) VALUES ("
+            .. sql.SQLStr(profile) .. ", " .. integerValue(step.cellId) .. ", " .. integerValue(step.tileX) .. ", "
+            .. integerValue(step.tileY) .. ", " .. sql.SQLStr(step.steamid) .. ", " .. sql.SQLStr(step.account) .. ", "
+            .. math.floor(step.now) .. ", " .. math.floor(step.now) .. ")")
+    end,
+    // Refreshes an active claim owned by step.owner; the service has already checked the visitor's access. A lapsed
+    // claim is never revived, and an unchanged row (already visited this second) is not an error.
+    claimVisit = function(profile, step)
+        if not validClaimTile(step) or type(step.owner) ~= "string" or step.owner == "" or not validInteger(step.now, 1) then
+            return false, "invalid claim visit"
+        end
+        return runQuery("UPDATE player_claims SET lastVisitAt = " .. math.floor(step.now) .. claimTileWhere(profile, step)
+            .. " AND owner = " .. sql.SQLStr(step.owner) .. " AND lastVisitAt >= " .. (math.floor(step.now) - ZM_ClaimLifetimeSeconds)
+            .. " AND lastVisitAt < " .. math.floor(step.now))
+    end,
+    claimFriendAdd = function(profile, step)
+        if type(step.friendAccount) ~= "string" or not string.match(step.friendAccount, steamAccountPattern) then
+            return false, "invalid claim friend"
+        end
+        return runQuery("INSERT OR IGNORE INTO claim_friends (profile, owner, friendAccount, addedAt) VALUES ("
+            .. sql.SQLStr(profile) .. ", " .. sql.SQLStr(step.steamid) .. ", " .. sql.SQLStr(step.friendAccount) .. ", " .. os.time() .. ")")
+    end,
+    claimFriendRemove = function(profile, step)
+        if type(step.friendAccount) ~= "string" or not string.match(step.friendAccount, steamAccountPattern) then
+            return false, "invalid claim friend"
+        end
+        return runQuery("DELETE FROM claim_friends WHERE profile = " .. sql.SQLStr(profile) .. " AND owner = "
+            .. sql.SQLStr(step.steamid) .. " AND friendAccount = " .. sql.SQLStr(step.friendAccount))
     end,
     lootSpotClaim = function(profile, step)
         if not validInteger(step.cellId) or type(step.spotKey) ~= "string" or step.spotKey == ""

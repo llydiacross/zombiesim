@@ -26,15 +26,43 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Active Task Tracker
 
-**Alpha 3.4 is the primary focus (user, 2026-11-01); the remaining Alpha
-3.3 work is deferred.** Follow [todo-alpha-3.4.md](todo-alpha-3.4.md): wire
-the user's new/renamed tiles into the generator, generate fresh isolated
-preview data, build the world viewer and load that data for review. The
-Satellite image waits for the later preview rebuild; compiling, staging,
-navmesh and Cell Health still need separate approval. Tile-wiring decisions
-(ra buildings radioactive-only, industrial walls on industry-majority cells,
-added border/edge walls and density-selected edge corners) are recorded in
-that tracker. The Alpha 3.3 notes below are history for deferred work.
+**Tracker restructure (user, 2026-11-02):** the world viewer, new-tile
+wiring and generation changes (formerly Alpha 3.4) now close Alpha 3.3 as
+[Phase J](todo-alpha.3.3.md); the user approved the viewed world. Unfinished
+Alpha 3.3 phases E (player structures and claims), F (asset staging/
+refactors), H (world-generation output batch) and I (closure) moved to
+[todo-alpha-3.4.md](todo-alpha-3.4.md), which continues 3.3 with the
+structure system first. Settle Phase E's design gate with the user before
+coding. Satellite, compiling, staging, navmesh and Cell Health still need
+separate approval. Tile-wiring decisions are recorded in 3.3 Phase J. The
+user's new `tile_ra_building_2aaa/3aaa` and `edges/tile_edge_ra_wall_4aaa`
+are wired into the isolated `generated/preview_alpha34_v2` data.
+Phase E decisions are recorded in the 3.4 tracker. Source now exports
+per-cell `claimTiles` (`bin/claim_tiles.psm1`) and `ZM_World` exposes
+`GetClaimTiles`/`IsClaimableTile`/`GetCoreTileAt`; installed runtime JSON
+is unchanged until approved preview staging.
+`gamemode/sv_claims.lua` (`ZM_ClaimService`) owns claims: one
+`itemClaimToken` is consumed in the same inventory transaction as the claim
+insert, lapsed (30-day) claims are replaceable and never revived, and visits
+refresh active claims for the owner's account and friends. Offline claim
+fixtures 8/8 and GLua 401/0 pass; native `zn_test_claims` is written but
+not run live. Construction (source/offline only, not live-tested): the
+Hammer's Reload toggles build mode (`sh_/sv_/cl_construction.lua`), and
+`zn_construction_piece` blueprints (foundation/wall) are placed inside
+accessible claim tiles, paid atomically on first E contribution and fade in
+when complete. Construction fixtures 14/14, GLua 407/0. Pieces are not
+persisted; see the 3.4 tracker's Phase E for decisions and live unknowns.
+**Paused (user, 2026-11-02):** the agreed next step is staging the preview
+runtime JSON with `claimTiles` (backup first), a reload with the new Lua and a
+bounded live construction review. Wait for the user to resume.
+
+**Hammer asset staging (user, 2026-11-02):** Hammer reads only engine
+search paths (`garrysmod/`, `garrysmod/addons/*`), not this gamemode's
+`content/`. `bin/stage_hammer_assets.ps1` copies content-owned models (with
+MDL/VMT/VTF dependencies) referenced by `tiletemplates`/`celltemplates` into
+`garrysmod/models`/`materials`, hash-verified with an ownership ledger at
+`generated/hammer_assets/staging-ledger.json`; it refuses to overwrite
+unowned differing files. `build_tile_detail_models.ps1` runs it at the end.
 
 **Skyline ra_ towers and view distance, 2026-11-01:** the distant-tower
 filter in `bin/skybox_models.psm1` now accepts `tile_skyscraper_ra_*`
@@ -153,8 +181,8 @@ straight). A baseline plan proves no other cell changed; the grid test
 passes 1515. Both maps join that regeneration, uncompiled and unreviewed.
 **Plan change (user, 2026-11-01):** the Cell Health batch was cancelled at
 the user's request (1048/1142, verified restored to the Doctor at (3,-2)).
-Next comes the Alpha 3.4 world visualization tool, then the
-generation changes noted in `todo-alpha-3.4.md` (commercial spread, fewer
+Next comes the world visualization tool, then the
+generation changes now in Alpha 3.3 Phase J (commercial spread, fewer
 parks/more leisure, police and fire in every district). The regeneration
 above folds into that work and is reviewed in the viewer before compiling.
 Source-only so far: `landmarks.commonWeights` (Park0.35) makes parks rarer

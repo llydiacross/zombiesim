@@ -137,6 +137,9 @@ function ENT:IsValidTarget(target)
     if ZM_AFK and ZM_AFK:IsProtected(target) then
         return false
     end
+    if ZM_Construction and ZM_Construction.IsProtected and ZM_Construction:IsProtected(target) then
+        return false
+    end
     local cell = target:GetWorldCell()
     return cell and cell.id == self.WalkerSourceCellId
 end

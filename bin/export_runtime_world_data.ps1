@@ -13,6 +13,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'scenery_density.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'motorway_geometry.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'claim_tiles.psm1') -Force
 
 function Get-RuntimeMotorwayGates {
     param([object]$PlanCell)
@@ -199,6 +200,7 @@ $map = Get-Content -Raw -LiteralPath $MapData | ConvertFrom-Json
 Test-ZMSceneryDensityManifest $map | Out-Null
 $plan = Get-Content -Raw -LiteralPath $PlanData | ConvertFrom-Json
 $cellBounds = Get-OptionalProperty $plan 'cellBounds'
+$claimTilesByRecipe = @{}
 if ($null -ne $cellBounds -and [int]$cellBounds.revision -eq 2) {
     foreach ($recipe in @($plan.cells | Group-Object cellTemplateFilename)) {
         $sourcePath = Join-Path $plan.cellDirectory $recipe.Name
@@ -211,6 +213,7 @@ if ($null -ne $cellBounds -and [int]$cellBounds.revision -eq 2) {
             $layout.vmfSha256 -ne (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash.ToLowerInvariant()) {
             throw "Expanded runtime export has stale or incompatible layout metadata: $layoutPath"
         }
+        $claimTilesByRecipe[$recipe.Name] = Get-ZMClaimTiles $layout
         foreach ($cell in $recipe.Group) {
             $expectedSides = @($(if ($cell.x -eq 0) { 'W' }))
             if ($null -eq $cell.PSObject.Properties['skyboxOceanSides'] -or
@@ -513,6 +516,9 @@ foreach ($mapCell in ($mapCells | Sort-Object y, x)) {
     if ($null -ne $planCell.PSObject.Properties['motorwayAssembly']) {
         $templateRoot = Join-Path $projectRoot $generatorSettings.paths.templateDirectory
         $runtimeCell.motorwayGates = @(Get-RuntimeMotorwayGates $planCell)
+    }
+    if ($claimTilesByRecipe.ContainsKey([string]$planCell.cellTemplateFilename)) {
+        $runtimeCell.claimTiles = @($claimTilesByRecipe[[string]$planCell.cellTemplateFilename])
     }
     $runtimeCells.Add($runtimeCell)
 }

@@ -175,7 +175,8 @@ function Awareness:EmitNoise(kind, position, source)
     if not definition or not isvector(position) or not IsValid(source) or not source:IsPlayer() then
         return 0
     end
-    if source:IsFlagSet(FL_NOTARGET) or (ZM_AFK and ZM_AFK:IsProtected(source)) then
+    if source:IsFlagSet(FL_NOTARGET) or (ZM_AFK and ZM_AFK:IsProtected(source)) or
+        (ZM_Construction and ZM_Construction.IsProtected and ZM_Construction:IsProtected(source)) then
         return 0
     end
     local now = CurTime()
