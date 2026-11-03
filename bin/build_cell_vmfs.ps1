@@ -851,6 +851,7 @@ function Get-BorderTemplateSet {
     param([object]$Recipe)
 
     $wallTemplates = @($borderSettings.wallVariationTemplates)
+    $wallDensityFallbacks = if ($borderSettings.ContainsKey('wallDensityFallbacks')) { $borderSettings.wallDensityFallbacks } else { @{} }
     $cornerTemplate = [string]$borderSettings.cornerTemplate
     $cornerVariationTemplates = if ($borderSettings.ContainsKey('cornerVariationTemplates')) { @($borderSettings.cornerVariationTemplates) } else { @() }
     $cornerDensityFallbacks = if ($borderSettings.ContainsKey('cornerDensityFallbacks')) { $borderSettings.cornerDensityFallbacks } else { @{} }
@@ -860,6 +861,7 @@ function Get-BorderTemplateSet {
         $profileTemplates = $borderSettings.profileTemplates[$profile]
         if ($profileTemplates.ContainsKey('wallVariationTemplates') -and @($profileTemplates.wallVariationTemplates).Count -gt 0) {
             $wallTemplates = @($profileTemplates.wallVariationTemplates)
+            $wallDensityFallbacks = if ($profileTemplates.ContainsKey('wallDensityFallbacks')) { $profileTemplates.wallDensityFallbacks } else { @{} }
         }
         if ($profileTemplates.ContainsKey('cornerVariationTemplates') -and @($profileTemplates.cornerVariationTemplates).Count -gt 0) {
             $cornerVariationTemplates = @($profileTemplates.cornerVariationTemplates)
@@ -878,6 +880,7 @@ function Get-BorderTemplateSet {
 
     return [ordered]@{
         wallTemplates = $wallTemplates
+        wallDensityFallbacks = $wallDensityFallbacks
         cornerTemplate = $cornerTemplate
         cornerVariationTemplates = if ($cornerVariationTemplates.Count -gt 0) { $cornerVariationTemplates } else { @($cornerTemplate) }
         cornerDensityFallbacks = $cornerDensityFallbacks
@@ -1120,7 +1123,7 @@ function Get-BorderPlacements {
             } else { @($borderTemplates.wallTemplates) }
             $wallSelection = $null
             if (-not ($usesRoad -or $null -ne $carparkEndcap -or $usesWaterDeadend -or $usesWaterFill)) {
-                $wallSelection = Get-ZMSceneryWallTemplateSelection $Recipe $wallTemplates ([int]$plan.mapSeed) 'border' "$tileX,$tileY" 'border_wall' $routeAdjacentWall
+                $wallSelection = Get-ZMSceneryWallTemplateSelection $Recipe $wallTemplates ([int]$plan.mapSeed) 'border' "$tileX,$tileY" 'border_wall' $routeAdjacentWall $borderTemplates.wallDensityFallbacks
             }
             $placement = [ordered]@{
                 tileX = $tileX

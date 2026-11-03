@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "14"
+	"mapversion" "15"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "14"
+	"mapversion" "15"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -109,7 +109,7 @@ world
 				"v" "320 -320 32"
 				"v" "-320 -320 32"
 			}
-			"material" "CS_HAVANA/SWAMPDIRT01"
+			"material" "CONCRETE/CONCRETEFLOOR006A"
 			"uaxis" "[1 0 0 256] 0.25"
 			"vaxis" "[0 -1 0 -256] 0.25"
 			"rotation" "0"
@@ -292,7 +292,7 @@ entity
 {
 	"id" "136"
 	"classname" "prop_dynamic_override"
-	"angles" "0 0 0"
+	"angles" "0 -90 0"
 	"AnimateEveryFrame" "0"
 	"DisableBoneFollowers" "0"
 	"disableflashlight" "0"
@@ -319,7 +319,7 @@ entity
 	"skin" "0"
 	"solid" "6"
 	"spawnflags" "0"
-	"origin" "70.0795 -41.516 93.3849"
+	"origin" "97.484 114 93.3849"
 	editor
 	{
 		"color" "220 30 220"
@@ -332,7 +332,7 @@ entity
 {
 	"id" "146"
 	"classname" "prop_dynamic_override"
-	"angles" "0 0 0"
+	"angles" "0 -90 0"
 	"AnimateEveryFrame" "0"
 	"DisableBoneFollowers" "0"
 	"disableflashlight" "0"
@@ -359,7 +359,7 @@ entity
 	"skin" "0"
 	"solid" "6"
 	"spawnflags" "0"
-	"origin" "-73.6018 -42.693 93.3849"
+	"origin" "96.307 257.681 93.3849"
 	editor
 	{
 		"color" "220 30 220"
@@ -372,7 +372,7 @@ entity
 {
 	"id" "158"
 	"classname" "prop_dynamic_override"
-	"angles" "0 0 0"
+	"angles" "0 -90 0"
 	"AnimateEveryFrame" "0"
 	"DisableBoneFollowers" "0"
 	"disableflashlight" "0"
@@ -399,7 +399,7 @@ entity
 	"skin" "0"
 	"solid" "6"
 	"spawnflags" "0"
-	"origin" "70.0795 -39 224"
+	"origin" "100 114 224"
 	editor
 	{
 		"color" "220 30 220"
@@ -412,7 +412,7 @@ entity
 {
 	"id" "160"
 	"classname" "prop_dynamic_override"
-	"angles" "0 0 0"
+	"angles" "0 -90 0"
 	"AnimateEveryFrame" "0"
 	"DisableBoneFollowers" "0"
 	"disableflashlight" "0"
@@ -439,7 +439,167 @@ entity
 	"skin" "0"
 	"solid" "6"
 	"spawnflags" "0"
-	"origin" "-73.6018 -40.177 224"
+	"origin" "98.823 257.681 224"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 2000]"
+	}
+}
+entity
+{
+	"id" "183"
+	"classname" "prop_dynamic_override"
+	"angles" "0 -90 0"
+	"AnimateEveryFrame" "0"
+	"DisableBoneFollowers" "0"
+	"disableflashlight" "0"
+	"disablereceiveshadows" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"HoldAnimation" "0"
+	"MaxAnimTime" "10"
+	"MinAnimTime" "5"
+	"model" "models/props/de_port/cargo_container01.mdl"
+	"modelscale" "1.0"
+	"PerformanceMode" "0"
+	"pressuredelay" "0"
+	"RandomAnimation" "0"
+	"renderamt" "255"
+	"rendercolor" "255 255 255"
+	"renderfx" "0"
+	"rendermode" "0"
+	"SetBodyGroup" "0"
+	"skin" "0"
+	"solid" "6"
+	"spawnflags" "0"
+	"origin" "-115 -223.681 224"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 2000]"
+	}
+}
+entity
+{
+	"id" "185"
+	"classname" "prop_dynamic_override"
+	"angles" "0 -90 0"
+	"AnimateEveryFrame" "0"
+	"DisableBoneFollowers" "0"
+	"disableflashlight" "0"
+	"disablereceiveshadows" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"HoldAnimation" "0"
+	"MaxAnimTime" "10"
+	"MinAnimTime" "5"
+	"model" "models/props/de_port/cargo_container01.mdl"
+	"modelscale" "1.0"
+	"PerformanceMode" "0"
+	"pressuredelay" "0"
+	"RandomAnimation" "0"
+	"renderamt" "255"
+	"rendercolor" "255 255 255"
+	"renderfx" "0"
+	"rendermode" "0"
+	"SetBodyGroup" "0"
+	"skin" "0"
+	"solid" "6"
+	"spawnflags" "0"
+	"origin" "-117.516 -223.681 93.3849"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 2000]"
+	}
+}
+entity
+{
+	"id" "187"
+	"classname" "prop_dynamic_override"
+	"angles" "0 -90 0"
+	"AnimateEveryFrame" "0"
+	"DisableBoneFollowers" "0"
+	"disableflashlight" "0"
+	"disablereceiveshadows" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"HoldAnimation" "0"
+	"MaxAnimTime" "10"
+	"MinAnimTime" "5"
+	"model" "models/props/de_port/cargo_container01.mdl"
+	"modelscale" "1.0"
+	"PerformanceMode" "0"
+	"pressuredelay" "0"
+	"RandomAnimation" "0"
+	"renderamt" "255"
+	"rendercolor" "255 255 255"
+	"renderfx" "0"
+	"rendermode" "0"
+	"SetBodyGroup" "0"
+	"skin" "0"
+	"solid" "6"
+	"spawnflags" "0"
+	"origin" "-118.693 -80 93.3849"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 2000]"
+	}
+}
+entity
+{
+	"id" "189"
+	"classname" "prop_dynamic_override"
+	"angles" "0 -90 0"
+	"AnimateEveryFrame" "0"
+	"DisableBoneFollowers" "0"
+	"disableflashlight" "0"
+	"disablereceiveshadows" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"HoldAnimation" "0"
+	"MaxAnimTime" "10"
+	"MinAnimTime" "5"
+	"model" "models/props/de_port/cargo_container01.mdl"
+	"modelscale" "1.0"
+	"PerformanceMode" "0"
+	"pressuredelay" "0"
+	"RandomAnimation" "0"
+	"renderamt" "255"
+	"rendercolor" "255 255 255"
+	"renderfx" "0"
+	"rendermode" "0"
+	"SetBodyGroup" "0"
+	"skin" "0"
+	"solid" "6"
+	"spawnflags" "0"
+	"origin" "-116.177 -80 224"
 	editor
 	{
 		"color" "220 30 220"

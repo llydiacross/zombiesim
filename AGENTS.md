@@ -26,12 +26,27 @@ ZombieSim is an installed Garry's Mod gamemode. It combines realm-specific Lua g
 
 ## Active Task Tracker
 
-**Tracker restructure (user, 2026-11-02):** the world viewer, new-tile
+**Alpha 3.5 is active (user, 2026-11-02):** use
+[todo-alpha-3.5.md](todo-alpha-3.5.md) for the new city-generation goals and
+unfinished work carried from [Alpha 3.3](docs/todo-alpha-3.3.md) and
+[Alpha 3.4](docs/todo-alpha-3.4.md). The user reports adding new tiles and
+generator variants; preserve the current authored sources and do not infer
+that older generated or staged outputs include them. Archiving the prior
+plans does not declare either milestone released or fully accepted.
+
+The tracker consolidation does not resume the paused construction review or
+set a new priority between it and the world-generation work. Confirm the
+next workstream before implementation. Generation, compilation, staging,
+navmesh, Cell Health, Satellite, production and publication retain their
+separate approval gates. The dated status and next-step notes below are
+historical where they conflict with the active tracker.
+
+**Previous tracker restructure (user, 2026-11-02; historical):** the world viewer, new-tile
 wiring and generation changes (formerly Alpha 3.4) now close Alpha 3.3 as
-[Phase J](todo-alpha.3.3.md); the user approved the viewed world. Unfinished
+[Phase J](docs/todo-alpha-3.3.md); the user approved the viewed world. Unfinished
 Alpha 3.3 phases E (player structures and claims), F (asset staging/
 refactors), H (world-generation output batch) and I (closure) moved to
-[todo-alpha-3.4.md](todo-alpha-3.4.md), which continues 3.3 with the
+[todo-alpha-3.4.md](docs/todo-alpha-3.4.md), which continues 3.3 with the
 structure system first. Settle Phase E's design gate with the user before
 coding. Satellite, compiling, staging, navmesh and Cell Health still need
 separate approval. Tile-wiring decisions are recorded in 3.3 Phase J. The
@@ -143,10 +158,9 @@ faster, billowing) is user-approved. Storm lightning
 (`gamemode/skybox/cl_lightning.lua`: skybox bolt, sky/world flash, distance-
 delayed thunder) is user-approved live, except that the reduced-flash option
 was not checked. A future first-run photosensitivity prompt will disable
-flashes; it is deferred. Rain at building edges and the `cl_skybox` split come
-next. After that, the queued requests in the tracker's Phase B: player
-walk/sprint 15% slower with sprint lasting twice as long, walkers 25%
-slower, and a walker on-screen capacity study. Ask before `changelevel`.
+flashes; it is deferred. Rain, the `cl_skybox` split and the player/Walker
+speed changes were completed later; Walker feel and the on-screen capacity
+study remain open. Ask before `changelevel`.
 The user reported a flickering, striped z-fight at their cell's haze wall.
 Edge curtains now zigzag in slanted pleats so none can be coplanar with a
 wall face (atmosphere25/25, GLua394/0). The user confirmed this solved the
@@ -502,13 +516,11 @@ ground shadows and defer the issue until the end of Alpha 3.3. Continue other
 approved work without treating spotlight visuals, replication or visibility
 selection as accepted. Do not reopen this investigation early.
 
-**Alpha 3.3 implementation is authorized; A1/A2/A3, B and C are accepted
-with limits and D is active:** follow the
-[Alpha 3.3 phased plan](todo-alpha.3.3.md). The prefab editor and explorer are
-the top priority, zombie AI is medium priority, fog is the least-priority
-presentation work, and world-generation rules are last. The order of other
-features is a proposal, not user-approved priority. Settle each phase's open
-behavior decisions first; preserve the separate expensive-work gates.
+**Historical Alpha 3.3 status:** A1/A2/A3, B and C were accepted with limits
+and D was active at this checkpoint; see the
+[archived Alpha 3.3 phased plan](docs/todo-alpha-3.3.md). Its old priorities
+and next steps do not override the active Alpha 3.5 tracker. Settle each
+workstream's open behavior decisions and preserve the expensive-work gates.
 Phase C attribute and armour implementation and its transactional migration
 are source-wired. Live inventory52/52 and weapon-effects24/24 include the
 new equip/persistence and firearm-calculation cases; the user approved the
@@ -1190,8 +1202,8 @@ expensive output, production and publication work separately gated.
 ### Historical Alpha 3.2 chronology
 
 The dated entries below preserve their checkpoint-specific status; their
-"active", "next" and "pending" wording is historical. The Alpha 3.3 plan above
-is authoritative for current priority.
+"active", "next" and "pending" wording is historical. The
+[Alpha 3.5 tracker](todo-alpha-3.5.md) is authoritative for current scope.
 
 - **Motorway source cleanup, 2026-10-28:** normal planning and emission consume
   approved trusted-plan motorway placements and gate records; the old

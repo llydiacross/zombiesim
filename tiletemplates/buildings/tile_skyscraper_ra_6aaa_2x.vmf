@@ -685,56 +685,6 @@ world
 			"visgroupautoshown" "1"
 		}
 	}
-	group
-	{
-		"id" "7235"
-		editor
-		{
-			"color" "227 236 0"
-			"visgroupshown" "1"
-			"visgroupautoshown" "1"
-		}
-	}
-	group
-	{
-		"id" "7236"
-		editor
-		{
-			"color" "227 236 0"
-			"visgroupshown" "1"
-			"visgroupautoshown" "1"
-		}
-	}
-	group
-	{
-		"id" "7261"
-		editor
-		{
-			"color" "227 236 0"
-			"visgroupshown" "1"
-			"visgroupautoshown" "1"
-		}
-	}
-	group
-	{
-		"id" "7266"
-		editor
-		{
-			"color" "227 236 0"
-			"visgroupshown" "1"
-			"visgroupautoshown" "1"
-		}
-	}
-	group
-	{
-		"id" "7303"
-		editor
-		{
-			"color" "227 236 0"
-			"visgroupshown" "1"
-			"visgroupautoshown" "1"
-		}
-	}
 }
 entity
 {

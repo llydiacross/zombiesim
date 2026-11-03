@@ -17,7 +17,7 @@ Assert ($errors.Count -eq 0) 'Planner parses.'
 foreach ($name in @('Resolve-Template', 'Get-OppositeDirection', 'Get-DirectionToCoordinate', 'Get-CarparkJunctionRotation', 'Get-RotatedFootprint',
         'Get-RotatedCardinalDirection', 'Get-OffsetTileCoordinate', 'Get-FootprintCoordinates', 'Get-FootprintAnchorCandidates',
         'Get-MarkedRoadConnectionCandidates', 'Get-RoadConnectionTemplateMap', 'Get-RoadConnectionBase', 'Test-RoadConnectionAvailable',
-        'Resolve-RoadConnectionRequests', 'Get-SingleTileRoadConnectionRequest', 'Set-MarkedRoadJunctions')) {
+        'Resolve-RoadConnectionRequests', 'Get-SingleTileRoadConnectionRequest', 'Set-ResolvedRoadConnection', 'Set-MarkedRoadJunctions')) {
     $definition = @($ast.FindAll({
         param($node)
         $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name

@@ -10,7 +10,8 @@ function Get-ZMSceneryWallTemplateSelection {
         [string]$Ring,
         [string]$Slot,
         [string]$Role,
-        [bool]$RouteAdjacentWall
+        [bool]$RouteAdjacentWall,
+        [System.Collections.IDictionary]$DensityFallbacks = @{}
     )
 
     $density = Get-ZMStoredSceneryDensity $Recipe
@@ -29,18 +30,33 @@ function Get-ZMSceneryWallTemplateSelection {
     $tierHash = Get-ZMScenerySelectionHash @selectionContext -Purpose tier
     $templateHash = Get-ZMScenerySelectionHash @selectionContext -Purpose template
     $context = 'cell={0},{1} ring={2} slot={3} role={4}' -f $Recipe.x, $Recipe.y, $Ring, $Slot, $Role
-    $selection = Select-ZMSceneryTemplate $Templates $density.sceneryDensityTier ([int]($tierHash % 100)) $templateHash $context -RouteAdjacentWall:$RouteAdjacentWall -Required
+    $selection = Select-ZMSceneryTemplate $Templates $density.sceneryDensityTier ([int]($tierHash % 100)) $templateHash $context -RouteAdjacentWall:$RouteAdjacentWall
+    $template = [string]$selection.template
+    $status = [string]$selection.status
+    $actualTag = $selection.actualTag
+    $exception = $null
+    if ($status -ne 'selected') {
+        $fallbackKey = [string]$selection.targetTier
+        if (-not $DensityFallbacks.Contains($fallbackKey)) {
+            throw "Required scenery pool unavailable at ${context}: zone=$($selection.zoneTier) target=$($selection.targetTier) routeAdjacentWall=$RouteAdjacentWall."
+        }
+        $template = [string]$DensityFallbacks[$fallbackKey]
+        if ($template -notin $Templates) { throw "Scenery wall fallback '$template' is not in the eligible $Ring pool at $context." }
+        $actualTag = Get-ZMTemplateDensityTag $template
+        $status = 'selected_explicit_exception'
+        $exception = "target_tier_$($selection.targetTier)_fallback"
+    }
     return [pscustomobject]@{
-        template = [string]$selection.template
+        template = $template
         selection = [ordered]@{
             policyVersion = 1
             source = $density.sceneryDensitySource
-            status = $selection.status
+            status = $status
             zoneTier = $selection.zoneTier
             targetTier = $selection.targetTier
-            template = [string]$selection.template
-            actualTag = $selection.actualTag
-            densityException = $null
+            template = $template
+            actualTag = $actualTag
+            densityException = $exception
             routeAdjacentWall = $selection.routeAdjacentWall
             excluded = @($selection.excluded)
         }
@@ -183,12 +199,16 @@ function Get-ZMOuterEdgePlacements {
 
     if (-not $Settings.ContainsKey('enabled') -or -not $Settings.enabled) { return @() }
     $walls = @($Settings.wallVariationTemplates)
+    $wallDensityFallbacks = if ($Settings.ContainsKey('wallDensityFallbacks')) { $Settings.wallDensityFallbacks } else { @{} }
     $corner = if ($Settings.ContainsKey('cornerTemplate')) { [string]$Settings.cornerTemplate } else { '' }
     $corners = @(if ($Settings.ContainsKey('cornerVariationTemplates')) { $Settings.cornerVariationTemplates | ForEach-Object { [string]$_ } })
     $profile = if ($Settings.ContainsKey('profileTemplates')) { Get-ZMWallProfileKey $Recipe $Settings.profileTemplates } else { ([string]$Recipe.environmentProfile).ToLowerInvariant() }
     if ($Settings.ContainsKey('profileTemplates') -and $Settings.profileTemplates.ContainsKey($profile)) {
         $pool = $Settings.profileTemplates[$profile]
-        if ($pool.ContainsKey('wallVariationTemplates') -and @($pool.wallVariationTemplates).Count -gt 0) { $walls = @($pool.wallVariationTemplates) }
+        if ($pool.ContainsKey('wallVariationTemplates') -and @($pool.wallVariationTemplates).Count -gt 0) {
+            $walls = @($pool.wallVariationTemplates)
+            $wallDensityFallbacks = if ($pool.ContainsKey('wallDensityFallbacks')) { $pool.wallDensityFallbacks } else { @{} }
+        }
         if ($pool.ContainsKey('cornerTemplate') -and -not [string]::IsNullOrWhiteSpace($pool.cornerTemplate)) {
             # A profile corner overrides the default density-selected corner set.
             $corner = [string]$pool.cornerTemplate
@@ -281,7 +301,7 @@ function Get-ZMOuterEdgePlacements {
                         [Math]::Abs([int]$_.tileX - $x) + [Math]::Abs([int]$_.tileY - $y) -eq 1
                     }).Count -gt 0
                     $eligibleWalls = @(Get-ZMRoadAdjacentWallPool $walls $adjacentSlots $x $y)
-                    $wallSelection = Get-ZMSceneryWallTemplateSelection $Recipe $eligibleWalls $MapSeed 'outer' "$x,$y" 'outer_wall' $routeAdjacentWall
+                    $wallSelection = Get-ZMSceneryWallTemplateSelection $Recipe $eligibleWalls $MapSeed 'outer' "$x,$y" 'outer_wall' $routeAdjacentWall $wallDensityFallbacks
                     $template = if ($null -ne $wallSelection) {
                         [string]$wallSelection.template
                     } else {

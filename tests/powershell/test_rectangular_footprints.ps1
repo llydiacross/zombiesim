@@ -26,7 +26,7 @@ function Assert-Rejected {
 }
 
 foreach ($source in @(
-    @{ file = 'plan_cell_templates.ps1'; functions = @('Get-FootprintCoordinates', 'Get-RotatedFootprint', 'Get-FootprintAnchorCandidates', 'Set-FootprintPlacement', 'Set-TilePlacementDefaults', 'Get-TemplateRoadConnection', 'Get-ForcedMultiTileTemplate', 'Get-BuildingHeightTier', 'Get-TemplateRoadConnectionRotation', 'Get-OppositeDirection', 'Get-RotatedCardinalDirection', 'Get-OffsetTileCoordinate', 'Get-DirectionToCoordinate', 'Test-RoadPlacementFacesCoordinate', 'Get-FootprintRoadFacingCandidates', 'Get-MarkedRoadConnectionCandidates', 'Get-RoadConnectionBase', 'Test-RoadConnectionAvailable') },
+    @{ file = 'plan_cell_templates.ps1'; functions = @('Get-FootprintCoordinates', 'Get-RotatedFootprint', 'Get-FootprintAnchorCandidates', 'Set-FootprintPlacement', 'Set-TilePlacementDefaults', 'Get-TemplateRoadConnection', 'Get-TemplateFrontageDirection', 'Get-ForcedMultiTileTemplate', 'Get-BuildingHeightTier', 'Get-TemplateRoadConnectionRotation', 'Get-OppositeDirection', 'Get-RotatedCardinalDirection', 'Get-OffsetTileCoordinate', 'Get-DirectionToCoordinate', 'Test-RoadPlacementFacesCoordinate', 'Get-FootprintRoadFacingCandidates', 'Get-MarkedRoadConnectionCandidates', 'Get-RoadConnectionBase', 'Test-RoadConnectionAvailable') },
     @{ file = 'build_tile_zoos.ps1'; functions = @('Get-ZooGridPlacements', 'Get-TemplateFootprint') },
     @{ file = 'build_cell_vmfs.ps1'; functions = @('Get-PlacementFootprint', 'Test-PlacementEmitsInstance', 'Get-PlacementId', 'Get-PlacementOwnerCoordinate', 'Get-PlacementCoordinates', 'Test-RecipeTilePlacements', 'Get-RecipeInteriorInstanceCount') }
 )) {
@@ -131,6 +131,9 @@ $script:RoadConnectionState = [System.Runtime.CompilerServices.ConditionalWeakTa
 $fixtureTemplate = 'fixture-frontage.vmf'
 $roadTemplate = [string]$plannerSettings.topologyTemplates['road-straight']
 $multiTileFixtureTemplateProperty = 'fixtureMultiTileTemplate'
+foreach ($case in @(@('N', 180), @('E', 90), @('S', 0), @('W', 270))) {
+    Assert ((Get-TemplateRoadConnectionRotation 'unmarked.vmf' $case[0]) -eq $case[1]) "An unmarked south-facing template rotates correctly toward $($case[0])."
+}
 foreach ($case in @(
     @('tile_1aa.vmf', 1, 1), @('tile_1aa_2x.vmf', 2, 2),
     @('tile_1aa_3x.vmf', 3, 3), @('tile_1aa_2x2.vmf', 2, 2),
@@ -171,7 +174,14 @@ try {
             [IO.File]::WriteAllText($path, $text.Replace("$x $y 0", "$($x + 1) $y 0"))
             Assert-Rejected { Get-TemplateRoadConnection $path } '*midpoint*'
         }
+        $text = "entity`r`n{`r`n`"classname`" `"zn_road_connection`"`r`n`"connection_type`" `"driveway`"`r`n`"origin`" `"0 $(-$size[1] * 320) 0`"`r`n}`r`n"
+        [IO.File]::WriteAllText($path, $text)
+        $metadata = Get-TemplateRoadConnection $path
+        Assert ($metadata.direction -eq 'S' -and $metadata.directionOriginY -eq (-$size[1] * 320) -and $metadata.markers.Count -eq 1) 'A road marker without a direction marker retains its connection and defaults south.'
     }
+    $path = Join-Path $markerDirectory 'tile_unmarked.vmf'
+    [IO.File]::WriteAllText($path, "// markerless fixture`r`n")
+    Assert ($null -eq (Get-TemplateRoadConnection $path)) 'A markerless template needs no stored connection metadata.'
 }
 finally {
     Remove-Item -LiteralPath $markerDirectory -Recurse -Force

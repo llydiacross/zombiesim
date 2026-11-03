@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "25"
+	"mapversion" "26"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "25"
+	"mapversion" "26"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -573,17 +573,17 @@ world
 		side
 		{
 			"id" "552"
-			"plane" "(-320 320 1408) (64 320 1408) (64 -64 1408)"
+			"plane" "(-256 256 1136) (256 256 1136) (256 -256 1136)"
 			vertices_plus
 			{
-				"v" "-320 320 1408"
-				"v" "64 320 1408"
-				"v" "64 -64 1408"
-				"v" "-320 -64 1408"
+				"v" "-256 256 1136"
+				"v" "256 256 1136"
+				"v" "256 -256 1136"
+				"v" "-256 -256 1136"
 			}
 			"material" "CONCRETE/CONCRETEFLOOR016A"
-			"uaxis" "[1 0 0 0] 0.55"
-			"vaxis" "[0 -1 0 195.048] 1.05"
+			"uaxis" "[1 0 0 -116.364] 0.55"
+			"vaxis" "[0 -1 0 160.453] 1.85"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -591,17 +591,17 @@ world
 		side
 		{
 			"id" "553"
-			"plane" "(-320 -64 32) (64 -64 32) (64 320 32)"
+			"plane" "(-256 -256 32) (256 -256 32) (256 256 32)"
 			vertices_plus
 			{
-				"v" "-320 -64 32"
-				"v" "64 -64 32"
-				"v" "64 320 32"
-				"v" "-320 320 32"
+				"v" "-256 -256 32"
+				"v" "256 -256 32"
+				"v" "256 256 32"
+				"v" "-256 256 32"
 			}
 			"material" "COMPOSITE/BUILDINGSET050A"
-			"uaxis" "[1 0 0 0] 0.55"
-			"vaxis" "[0 -1 0 195.048] 1.05"
+			"uaxis" "[1 0 0 -116.364] 0.55"
+			"vaxis" "[0 -1 0 160.453] 1.85"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -609,17 +609,17 @@ world
 		side
 		{
 			"id" "554"
-			"plane" "(-320 320 1408) (-320 -64 1408) (-320 -64 32)"
+			"plane" "(-256 256 1136) (-256 -256 1136) (-256 -256 32)"
 			vertices_plus
 			{
-				"v" "-320 320 1408"
-				"v" "-320 -64 1408"
-				"v" "-320 -64 32"
-				"v" "-320 320 32"
+				"v" "-256 256 1136"
+				"v" "-256 -256 1136"
+				"v" "-256 -256 32"
+				"v" "-256 256 32"
 			}
 			"material" "COMPOSITE/BUILDINGSET050A"
-			"uaxis" "[0 1 0 0] 0.55"
-			"vaxis" "[0 0 -1 30.4762] 1.05"
+			"uaxis" "[0 1 0 116.364] 0.55"
+			"vaxis" "[0 0 -1 30.4762] 1.85"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -627,17 +627,17 @@ world
 		side
 		{
 			"id" "555"
-			"plane" "(64 320 32) (64 -64 32) (64 -64 1408)"
+			"plane" "(256 256 32) (256 -256 32) (256 -256 1136)"
 			vertices_plus
 			{
-				"v" "64 320 32"
-				"v" "64 -64 32"
-				"v" "64 -64 1408"
-				"v" "64 320 1408"
+				"v" "256 256 32"
+				"v" "256 -256 32"
+				"v" "256 -256 1136"
+				"v" "256 256 1136"
 			}
 			"material" "COMPOSITE/BUILDINGSET050A"
-			"uaxis" "[0 1 0 0] 0.55"
-			"vaxis" "[0 0 -1 30.4762] 1.05"
+			"uaxis" "[0 1 0 116.364] 0.55"
+			"vaxis" "[0 0 -1 30.4762] 1.85"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -645,17 +645,17 @@ world
 		side
 		{
 			"id" "556"
-			"plane" "(64 320 1408) (-320 320 1408) (-320 320 32)"
+			"plane" "(256 256 1136) (-256 256 1136) (-256 256 32)"
 			vertices_plus
 			{
-				"v" "64 320 1408"
-				"v" "-320 320 1408"
-				"v" "-320 320 32"
-				"v" "64 320 32"
+				"v" "256 256 1136"
+				"v" "-256 256 1136"
+				"v" "-256 256 32"
+				"v" "256 256 32"
 			}
 			"material" "COMPOSITE/BUILDINGSET050A"
-			"uaxis" "[1 0 0 0] 0.55"
-			"vaxis" "[0 0 -1 30.4762] 1.05"
+			"uaxis" "[1 0 0 -116.364] 0.55"
+			"vaxis" "[0 0 -1 30.4762] 1.85"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -663,17 +663,17 @@ world
 		side
 		{
 			"id" "557"
-			"plane" "(64 -64 32) (-320 -64 32) (-320 -64 1408)"
+			"plane" "(256 -256 32) (-256 -256 32) (-256 -256 1136)"
 			vertices_plus
 			{
-				"v" "64 -64 32"
-				"v" "-320 -64 32"
-				"v" "-320 -64 1408"
-				"v" "64 -64 1408"
+				"v" "256 -256 32"
+				"v" "-256 -256 32"
+				"v" "-256 -256 1136"
+				"v" "256 -256 1136"
 			}
 			"material" "COMPOSITE/BUILDINGSET050A"
-			"uaxis" "[1 0 0 0] 0.55"
-			"vaxis" "[0 0 -1 30.4762] 1.05"
+			"uaxis" "[1 0 0 -116.364] 0.55"
+			"vaxis" "[0 0 -1 30.4762] 1.85"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -691,8 +691,8 @@ cameras
 	"activecamera" "0"
 	camera
 	{
-		"position" "[-391.475 580.28 1431.16]"
-		"look" "[-391.138 579.339 1431.14]"
+		"position" "[-966.224 910.119 358.236]"
+		"look" "[-965.504 909.433 358.333]"
 	}
 }
 cordons

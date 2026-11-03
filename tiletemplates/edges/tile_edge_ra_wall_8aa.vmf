@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "20"
+	"mapversion" "21"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "20"
+	"mapversion" "21"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -504,12 +504,12 @@ entity
 			{
 				"v" "-285.207 321.902 704"
 				"v" "180.016 281.2 704"
-				"v" "138.007 -198.966 704"
+				"v" "138 -198.966 704"
 				"v" "-327.216 -158.264 704"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021E"
-			"uaxis" "[0.996195 -0.0871557 0 224.71] 0.25"
-			"vaxis" "[-0.0871557 -0.996195 0 475.277] 0.25"
+			"material" "DE_DUST/TILEFLOOR01"
+			"uaxis" "[0.9962 -0.0872 0 224.71] 0.25"
+			"vaxis" "[-0.0872 -0.9962 0 475.277] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -521,7 +521,7 @@ entity
 			vertices_plus
 			{
 				"v" "-327.216 -158.264 304"
-				"v" "138.007 -198.966 304"
+				"v" "138 -198.966 304"
 				"v" "180.016 281.2 304"
 				"v" "-285.207 321.902 304"
 			}
@@ -557,8 +557,8 @@ entity
 			vertices_plus
 			{
 				"v" "180.016 281.2 304"
-				"v" "138.007 -198.966 304"
-				"v" "138.007 -198.966 704"
+				"v" "138 -198.966 304"
+				"v" "138 -198.966 704"
 				"v" "180.016 281.2 704"
 			}
 			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021E"
@@ -592,10 +592,10 @@ entity
 			"plane" "(138.007 -198.966 304) (-327.216 -158.264 304) (-327.216 -158.264 704)"
 			vertices_plus
 			{
-				"v" "138.007 -198.966 304"
+				"v" "138 -198.966 304"
 				"v" "-327.216 -158.264 304"
 				"v" "-327.216 -158.264 704"
-				"v" "138.007 -198.966 704"
+				"v" "138 -198.966 704"
 			}
 			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021E"
 			"uaxis" "[0.996195 -0.0871557 0 224.71] 0.25"

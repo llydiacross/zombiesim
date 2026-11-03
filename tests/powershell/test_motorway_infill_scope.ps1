@@ -91,6 +91,9 @@ if (-not [string]::IsNullOrWhiteSpace($PlanData)) {
             throw "Current recipe VMF is missing: $vmfPath"
         }
         $layout = Get-Content -LiteralPath $layoutPath -Raw | ConvertFrom-Json
+        $plannedCore = ConvertTo-Json -InputObject @($recipe.tilePlacements) -Depth 100 -Compress
+        $emittedCore = ConvertTo-Json -InputObject @($layout.corePlacements) -Depth 100 -Compress
+        Assert ($emittedCore -ceq $plannedCore) "Emitted core placements match the plan for $($recipe.cellTemplateFilename)."
         $isSelected = @($planSelected | Where-Object { $_.cellTemplateFilename -eq $recipe.cellTemplateFilename }).Count -eq 1
         $hasInfill = $null -ne $layout.PSObject.Properties['terrainInfill']
         Assert ($isSelected -eq $hasInfill) "Motorway-only selection and emitted infill agree for $($recipe.cellTemplateFilename)."
@@ -101,6 +104,9 @@ if (-not [string]::IsNullOrWhiteSpace($PlanData)) {
             if ($null -eq $authority -or $authority.Value -ne 'trusted_prior_approved_grid_layout') {
                 throw "Motorway layout lacks trusted authority: $($recipe.cellTemplateFilename)"
             }
+            $plannedContract = ConvertTo-Json -InputObject $recipe.motorwayAssembly -Depth 100 -Compress
+            $emittedContract = ConvertTo-Json -InputObject $layout.motorwayAssembly -Depth 100 -Compress
+            Assert ($emittedContract -ceq $plannedContract) "Motorway placements, leases and gates match the plan for $($recipe.cellTemplateFilename)."
             Assert ($null -eq $layout.motorwayAssembly.PSObject.Properties['sourceFingerprints']) "Trusted prior plan does not retain stale geometry fingerprints for $($recipe.cellTemplateFilename)."
             Assert (@($layout.motorwayAssembly.gates).Count -gt 0) "Trusted prior plan retains its approved gates for $($recipe.cellTemplateFilename)."
             foreach ($placement in $layout.terrainInfill.placements) {

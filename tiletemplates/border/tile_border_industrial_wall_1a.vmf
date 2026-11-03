@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "29"
+	"mapversion" "30"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "29"
+	"mapversion" "30"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -216,23 +216,9 @@ world
 }
 entity
 {
-	"id" "5785"
-	"classname" "infodecal"
-	"texture" "cs_assault/assault_building_decal04"
-	"origin" "164.351 192 974.161"
-	editor
-	{
-		"color" "220 30 220"
-		"visgroupshown" "1"
-		"visgroupautoshown" "1"
-		"logicalpos" "[0 -15768]"
-	}
-}
-entity
-{
 	"id" "5829"
 	"classname" "prop_dynamic_override"
-	"angles" "0 0 0"
+	"angles" "0 -90 0"
 	"AnimateEveryFrame" "0"
 	"DisableBoneFollowers" "0"
 	"disableflashlight" "0"
@@ -251,7 +237,7 @@ entity
 	"MinAnimTime" "5"
 	"mindxlevel" "0"
 	"model" "models/props_c17/factorymachine01.mdl"
-	"modelscale" "3"
+	"modelscale" "1.75"
 	"PerformanceMode" "0"
 	"pressuredelay" "0"
 	"RandomAnimation" "0"
@@ -262,7 +248,7 @@ entity
 	"SetBodyGroup" "0"
 	"skin" "0"
 	"solid" "6"
-	"origin" "24 0 185.457"
+	"origin" "-112 176 120"
 	editor
 	{
 		"color" "220 30 220"
@@ -452,6 +438,49 @@ entity
 	editor
 	{
 		"color" "255 255 0"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "5917"
+	"classname" "prop_dynamic_override"
+	"angles" "0 -90 0"
+	"AnimateEveryFrame" "0"
+	"DisableBoneFollowers" "0"
+	"disableflashlight" "0"
+	"disablereceiveshadows" "0"
+	"disableshadows" "0"
+	"ExplodeDamage" "0"
+	"ExplodeRadius" "0"
+	"fademaxdist" "0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"health" "0"
+	"HoldAnimation" "0"
+	"MaxAnimTime" "10"
+	"maxdxlevel" "0"
+	"MinAnimTime" "5"
+	"mindxlevel" "0"
+	"model" "models/props_c17/factorymachine01.mdl"
+	"modelscale" "1.75"
+	"PerformanceMode" "0"
+	"pressuredelay" "0"
+	"RandomAnimation" "0"
+	"renderamt" "255"
+	"rendercolor" "255 255 255"
+	"renderfx" "0"
+	"rendermode" "0"
+	"SetBodyGroup" "0"
+	"skin" "0"
+	"solid" "6"
+	"origin" "-104 -152 120"
+	editor
+	{
+		"color" "220 30 220"
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 0]"

@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "6"
+	"mapversion" "7"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "6"
+	"mapversion" "7"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -816,7 +816,7 @@ entity
 	"model" "models/props_forest/fence_border_512.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "-248 -22 32"
+	"origin" "-224 56 32"
 	editor
 	{
 		"color" "255 255 0"
@@ -837,7 +837,7 @@ entity
 	"model" "models/props_forest/fence_border_512.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "-4 -262 32"
+	"origin" "-32 -264 32"
 	editor
 	{
 		"color" "255 255 0"
@@ -858,7 +858,7 @@ entity
 	"model" "models/props_forest/fence_border_512.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "250 -16 32"
+	"origin" "224 -16 32"
 	editor
 	{
 		"color" "255 255 0"

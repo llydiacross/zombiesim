@@ -39,6 +39,7 @@ From the repository root:
 | `--untextured` | Start with flat material colours. |
 | `--lit` | Start in lit mode (VMF light entities). |
 | `--night` | Start in night mode (implies `--lit`). |
+| `--props` | Show supported model props at startup. |
 | `--size w h` | Window size. |
 | `--screenshot out.png --frames N` | Render N frames, save, exit. |
 | `--stats` | Load, print mounts/material/light statistics, exit. |
@@ -54,6 +55,7 @@ From the repository root:
 | Left click | Select cell (world or minimap; minimap also flies there) |
 | 1-5 | Minimap colouring: district, environment, density, landmark, radiation |
 | T / L / N | Textures / lit / night (night enables lit) |
+| P / `[` / `]` | Toggle props / decrease or increase their draw distance |
 | G / B / F | Grid / map shell / fog |
 | `=` / `-` | Draw distance |
 | O | Overview |
@@ -86,7 +88,9 @@ cell with the most lights (for the current preview, `--cell 18 1 --night`).
 - No shadows: light passes through walls. No bounce lighting; this is not
   the VRAD lightmap.
 - At most 8 lights per 640-unit grid cell; extra lights are dropped.
-- Only `$basetexture`; blend textures, water shaders, decals, overlays and
-  props are not drawn. Water materials without a base texture use a flat
-  colour.
+- Only `$basetexture`; blend textures, water shaders, decals and overlays are
+  not drawn. Water materials without a base texture use a flat colour.
+- Model props are optional, drawn within a separate distance, and may differ
+  from their in-game appearance or fail to load. Animation and effects are
+  not reproduced.
 - The RGB565 channel order in the VTF decoder is unverified.

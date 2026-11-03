@@ -1,8 +1,12 @@
 # Alpha 3.4 - Continuation of Alpha 3.3
 
+**Archived 2026-11-02:** unfinished work is carried into the active
+[Alpha 3.5 tracker](../todo-alpha-3.5.md). Archival does not mean Alpha 3.4
+was released or fully accepted; the decisions and evidence below are retained.
+
 **Restructured (user, 2026-11-02):** the world viewer, new-tile wiring and
 generation changes that were started as Alpha 3.4 now close Alpha 3.3 as its
-[Phase J](todo-alpha.3.3.md). Alpha 3.4 continues the unfinished Alpha 3.3
+[Phase J](todo-alpha-3.3.md). Alpha 3.4 continues the unfinished Alpha 3.3
 work, led by the player structure system. Phase letters are kept from Alpha
 3.3 so existing references remain valid. Compiling, staging, navmesh, Cell
 Health and Satellite work still need separate approval.

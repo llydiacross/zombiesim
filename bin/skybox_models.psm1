@@ -384,7 +384,7 @@ namespace ZombieSim.Skybox {
             var parts = new List<CellModelPart>();
             StringBuilder sb = null; HashSet<string> vertexKeys = null; HashSet<string> partMaterials = null; CellModelPart part = null;
             foreach (var placement in ReadInstances(recipePath)) {
-                if (towersOnly && !Regex.IsMatch(Path.GetFileName(placement.File), @"^tile_skyscraper_(?:ra_)?[0-9]+[a-z]+_2x\.vmf$", RegexOptions.IgnoreCase)) continue;
+                if (towersOnly && !Regex.IsMatch(Path.GetFileName(placement.File), @"^tile_skyscraper_(?:(?:ra|destroyed)_)?[0-9]+[a-z]+_2x\.vmf$", RegexOptions.IgnoreCase)) continue;
                 if (!File.Exists(placement.File)) continue;
                 var mesh = GetTile(placement.File);
                 var lines = new List<string>();

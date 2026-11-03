@@ -33,9 +33,10 @@ The user instead prefers larger, interesting authored tiles with varied
 width/height placed through the normal generator. The historical rectangular
 footprint and instance work is recorded in
 [Alpha 3.2 Phase E](docs/todo-alpha.3.2.md#phase-e---rectangular-vmfs-ring-leases-and-actual-travel).
-Future generator work is last in the [Alpha 3.3 plan](todo-alpha.3.3.md);
-inspect each actual asset's footprint, orientation and frontage before wiring
-it. This direction does not authorize arbitrary geometry edits or broad builds.
+See the active [Alpha 3.5 plan](todo-alpha-3.5.md) for current generator scope
+and approval gates; inspect each actual asset's footprint, orientation and
+frontage before wiring it. This direction does not authorize arbitrary
+geometry edits or broad builds.
 
 Existing entrance fixtures remain available without a full-world planning pass:
 
@@ -216,7 +217,7 @@ This source-only fixture exercises footprint reservations, corridor leases and
 trusted gate contracts, including malformed-record rejection. It does not
 regenerate, compile or stage maps, and does not replace physical review.
 
-## Alpha 3.2 scenery-density contract
+## Alpha 3.2/3.5 scenery-density contract
 
 The pure policy in [scenery_density.psm1](bin/scenery_density.psm1) is covered by
 the fast, isolated regression:
@@ -228,20 +229,23 @@ the fast, isolated regression:
 This focused contract/planner regression is not full world regeneration or
 proof of every placement exclusion. It runs the real manifest serializer with
 explicit cell fixtures, reloads its temporary JSON and removes that file
-afterward. The planner fixtures also exercise strict policy-v1 selection for
+afterward. The planner fixtures also exercise strict policy-v1/v2 selection for
 ordinary single-tile buildings, decorations, optional multi-tile buildings and
 open-terrain fill, including decoration placement on a motorway cell with no
-building candidates. Motorway fixtures also verify that ordinary building
-selection remains active on ordinary roads, while motorway settlement
+building candidates. Policy-v2 fixtures additionally verify the 2:1 tier-1
+building preference and that it does not affect decorations, cross-tier
+`AnyTier` pools, legacy policy-v1 selections or medium/high tiers. Motorway
+fixtures also verify that ordinary building selection remains active on ordinary roads, while motorway settlement
 occupancy, building insertion, forced carparks, physical landmarks, multi-tile
 landmarks and safe-zone entrances are rejected. Radiation-source relocation
 fixtures verify that a source initially on a motorway fails without mutating its
 identity or location; successful ordinary-road placement records the original
 cell, destination, identity and reason in generation diagnostics. Special
-named-landmark templates are selected by hard density compatibility within the
-existing footprint; an unavailable required tier fails explicitly rather than
-changing the landmark or footprint. Legacy manifests retain the previous
-first-template behavior. Policy-v1 standard border and outer-edge walls also
+named-landmark templates use density-compatible choices within the existing
+footprint where available. When a fixed landmark's pool cannot cover a target
+tier, the planner retains and reports its explicit density exception rather
+than moving or replacing the landmark. Legacy manifests retain the previous
+first-template behavior. Standard border and outer-edge walls continue to
 select deterministically from their established profile-specific pools;
 road-adjacent slots use the prescribed route target and existing high-tier
 exclusion. Road, ramp, bridge, water, carpark, corner, and entrance behavior
@@ -252,29 +256,45 @@ identity conflicts and full-world behavior remain tracked in
 [Alpha 3.2](docs/todo-alpha.3.2.md).
 
 New manifest exports resolve the existing environment profile priority once,
-then store `sceneryDensityPolicyVersion=1`, `sceneryDensityTier`,
-`sceneryDensitySource`, `sceneryInlandDistance`, and the identical legacy
-`buildingDensityTier` alias on each cell. The manifest environment header
-declares policy version1. Higher-priority destroyed/safe-zone/etc. profiles
-retain their existing precedence over commercial/financial tags; density does
-not reinterpret tags separately from that profile resolution.
+then store `sceneryDensityPolicyVersion=2`, `sceneryDensityTier`,
+`sceneryDensitySource`, `sceneryInlandDistance`, `sceneryRadialDistance`, and
+the identical legacy `buildingDensityTier` alias on each cell. The manifest
+environment header declares policy version2. Radial distance is measured in
+logical cells from the grid center; tier 1 is below3 cells, tier 2 is from3 to
+below8, and tier 3 begins at8. The protected-coast rule still wins within
+three cardinal land steps of the actual ocean, and commercial/financial and
+settlement profiles retain their existing density floors. Higher-priority
+destroyed/safe-zone/etc. profiles retain their existing precedence over those
+district tags; density does not reinterpret tags separately from that profile
+resolution. Destruction uses its own low-to-high ring, except that the
+protected-coast rule still wins. Army, fortified and industrial zones cap
+the resolved tier near their origins.
 
 The planner consumes the stored result for recipe seeds, filename density and
-variants, and copies the metadata into its plan. On policy-v1 manifests, its
-optional scenery selectors apply hard tier compatibility: tagged candidates
-must match the deterministically rolled target tier, while untagged candidates
-remain neutral within their already-compatible family and footprint pool.
-Selection is deterministic across candidate enumeration order and includes the
-cell variant; a missing optional tier records a terrain-preserving shortage
-instead of falling back to a forbidden tier. Legacy manifests keep their
-existing selection behavior. Runtime export requires
-manifest/plan metadata to match and retains those fields for diagnostics.
-Consumers validate the policy, source/band consistency and alias rather than
-recomputing density from local environment tags. Incomplete metadata, unsupported
-versions and mismatched aliases fail explicitly. Legacy manifests without any
-density policy retain their prior tag/profile-based behavior; the planner emits
-a legacy warning. Regeneration, not loading old data, adopts the new zoning.
-No existing plan or staged runtime is migrated in place.
+variants, and copies the metadata into its plan. Policy-v2 tier-1 building
+selection favors compatible low-tagged templates over neutral templates at a
+2:1 ratio when both pools are available, while retaining usage balancing
+within each pool. This includes compatible multi-tile buildings, but not
+decorations, `AnyTier` pools, or medium/high selections. Optional scenery selectors retain hard tier
+compatibility: tagged candidates must match the deterministically rolled
+target tier, while untagged candidates remain neutral within their already-
+compatible family and footprint pool. Selection is deterministic across
+candidate enumeration order and includes the cell variant; a missing optional
+tier records a terrain-preserving shortage instead of falling back to a
+forbidden tier. Existing policy-v1 manifests retain their stored inland-zone
+tiers and selection behavior. Runtime export requires manifest/plan metadata
+to match and retains those fields for diagnostics. Consumers validate the
+policy, source/band consistency, radial coordinates and alias rather than
+recomputing density from local environment tags. Incomplete metadata,
+unsupported versions and mismatched aliases fail explicitly. Legacy manifests
+without any density policy retain their prior tag/profile-based behavior; the
+planner emits a legacy warning. Regeneration, not loading old data, adopts the
+new zoning. No existing plan or staged runtime is migrated in place.
+
+The plan's `mapData` reference is relative to the plan file, or absolute when
+the manifest is on another drive. This lets the world viewer load the matching
+manifest when an isolated build stores it in a different directory.
+`test_plan_manifest_reference.ps1` covers the path cases.
 
 Numeric template variants do not determine density. A terminal numeric variant
 plus letter tag, before an optional footprint suffix, is classified by letter
@@ -284,13 +304,14 @@ pool; they are not a global substitute for missing walls, corners or terrain.
 Unsupported tags fail rather than becoming neutral. Classification does not
 infer physical height or validate authored footprint geometry.
 
-Approved zoning measures cardinal land-cell steps from explicit actual-ocean
-boundary cells (distance zero), not decorative water, lakes or arbitrary grid
-edges. Distances0-2 are protected low;3-7 medium;8+ high. In the current straight
-west-ocean world this distance is logical x. Commercial/financial profiles raise
-inland cells to high; settlement raises to at least medium. Coast always wins;
-danger, radiation and occupancy do not participate. Missing ocean sources or
-land disconnected from them fail explicitly.
+Policy-v1 manifests retain the previous cardinal inland-distance bands:
+distance0-2 is protected low,3-7 medium, and8+ high, measured from explicit
+actual-ocean boundary cells rather than decorative water, lakes or arbitrary
+grid edges. Current policy-v2 manifests instead measure radial distance from
+the logical-grid center. Both policies retain the protected-coast override and
+commercial/financial and settlement density floors. Higher-priority
+destroyed/safe-zone/etc. profiles are resolved before these district floors;
+danger, radiation and occupancy do not participate in this density baseline.
 
 The target-tier roll is low100%, medium95% medium/5% high, high95% high/5%
 medium. Route-adjacent wall targets are low in low zones and medium otherwise.
@@ -300,21 +321,22 @@ paths ordinally, and permits only the target tag or neutral. Optional shortages
 report `shortage_keep_terrain`; required shortages fail with caller context.
 Consumers must aggregate/report these diagnostics, not silently discard them.
 
-The standard cell-border corner pool is an explicit exception to complete tier
-coverage: policy-v1 recipes choose the low `1a` corner for low targets and the
-medium `1aa` corner for medium targets. A high target explicitly falls back to
-that medium corner because no compatible high standard corner is authored.
-`cornerDensityFallbacks` must name a tagged member of
-`cornerVariationTemplates`, and builder preflight rejects uncovered targets or
-invalid fallbacks. This exception is limited to standard border corners;
-profile-specific single neutral corners, water corners, legacy plans and their
-single `cornerTemplate` setting retain their existing behavior.
+The standard border corner pool includes low `1a`, medium `1aa` and high
+`1aaa` templates. If a configured pool needs an explicit
+`cornerDensityFallbacks` exception, the fallback must be a tagged member of
+`cornerVariationTemplates`; builder preflight rejects uncovered targets or
+invalid fallbacks. Profile-specific single neutral corners, water corners,
+legacy plans and their single `cornerTemplate` setting retain their existing
+behavior. Destroyed walls have configured, recorded exceptions: the medium
+border wall covers high targets, and the low outer-edge wall covers medium
+and high targets. The configured fallback must belong to that profile's pool.
 
 `Get-ZMScenerySelectionHash` uses a versioned, length-framed SHA256 key containing
 seed, cell/recipe policy, ring, slot, role, variant and separate tier/template
-purpose. The policy-v1 planner selectors use the tier hash modulo100 for the
-roll and the template hash for choice; changing enumeration order must not
-change selection. Policy-v1 recipe layout identities also include the map seed,
+purpose. The tier hash modulo100 drives the roll; the template hash drives the
+choice, with policy-v2 tier-1 buildings using its modulo3 class choice before
+within-pool selection. Changing enumeration order must not change selection.
+Density-aware recipe layout identities include the map seed,
 which boundary-wall selection consumes, so different seeded wall layouts cannot
 reuse one recipe filename. This does not mean every scenery family or
 fixed-identity placement is already wired to the policy.
@@ -386,11 +408,17 @@ full-plan VMF build separately without infill switches first; the
 motorway-only pass is not a replacement for full preview generation.
 
 ```powershell
-.\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData <plan.json> -CellDirectory <generated-src> -SkyboxOutputDirectory <generated-skybox> -RefreshGenerated -MotorwayOnlyInfill -MeasureCompleteTerrainInfill
-.\bin\create_terrain_infill_templates.ps1 -WorldProfile preview -PartialGapLayoutDirectory <generated-src> -CompletePatches -MotorwayOnly
-.\bin\build_cell_vmfs.ps1 -WorldProfile preview -PlanData <plan.json> -CellDirectory <generated-src> -SkyboxOutputDirectory <generated-skybox> -RefreshGenerated -MotorwayOnlyInfill -SizedTerrainInfill -CompleteTerrainInfill
-.\tests\powershell\test_motorway_infill_scope.ps1
+.\bin\build_cell_vmfs.ps1 -WorldProfile preview -SettingsPath <settings.json> -PlanData <plan.json> -CellDirectory <generated-src> -SkyboxOutputDirectory <generated-skybox> -RefreshGenerated -MotorwayOnlyInfill -MeasureCompleteTerrainInfill
+.\bin\create_terrain_infill_templates.ps1 -WorldProfile preview -SettingsPath <settings.json> -PartialGapLayoutDirectory <generated-src> -CompletePatches -MotorwayOnly
+.\bin\build_cell_vmfs.ps1 -WorldProfile preview -SettingsPath <settings.json> -PlanData <plan.json> -CellDirectory <generated-src> -SkyboxOutputDirectory <generated-skybox> -RefreshGenerated -MotorwayOnlyInfill -SizedTerrainInfill -CompleteTerrainInfill
+.\tests\powershell\test_motorway_infill_scope.ps1 -PlanData <plan.json>
 ```
+
+Inspect the measured `requiredRectangles` against existing sources before the
+initializer; skip it when all sources exist and obtain approval before creating
+new authored templates. The test expects the plan's sibling `src` directory and
+checks emitted core placements, trusted motorway contracts, VMF hashes and
+infill sources against that plan.
 
 The original corner/crossroads reviews remain accepted. The infill pass
 subtracts recognized axis-aligned ground bases from each quarter and uses
@@ -525,9 +553,11 @@ The generated border ring sits one tile outside the playable cell. Its corner in
 
 ### Tile Road Connections
 
-Every building template has one `zn_tile_direction` point entity. Its `direction` identifies the local tile edge containing the entrance, and the point must sit at that edge's midpoint: `south` is `0 -320 32` (1x), `0 -640 32` (2x), `0 -960 32` (3x); `north` is `0 320 32` (1x), `0 640 32` (2x), `0 960 32` (3x); `east` is `320 0 32` (1x), `640 0 32` (2x), `960 0 32` (3x); `west` is `-320 0 32` (1x), `-640 0 32` (2x), `-960 0 32` (3x). The building is rotated so this tile edge aligns with an adjacent compatible ordinary road, motorway, or concrete path, if one is present, without changing which tile it occupies.
+A building's `zn_tile_direction` point entity identifies the local tile edge containing the entrance. At most one is allowed; if it is absent, the planner assumes the entrance is on the south edge, including when `zn_road_connection` points are present. An authored direction point must sit at its edge's midpoint: `south` is `0 -320 32` (1x), `0 -640 32` (2x), `0 -960 32` (3x); `north` is `0 320 32` (1x), `0 640 32` (2x), `0 960 32` (3x); `east` is `320 0 32` (1x), `640 0 32` (2x), `960 0 32` (3x); `west` is `-320 0 32` (1x), `-640 0 32` (2x), `-960 0 32` (3x). The building is rotated so this tile edge aligns with an adjacent compatible ordinary road, motorway, or concrete path, if one is present, without changing which tile it occupies.
 
-Add zero or more `zn_road_connection` points only where a generated road must physically connect. Each point must be centered on a single exterior footprint segment, and `connection_type` defaults to `none`. A `t_junction` point converts its exact adjacent compatible ordinary straight-road tile into a T-junction; a `bus` point converts it into `roads/tile_road_bus.vmf`, and a `driveway` point converts it into `roads/tile_road_driveway.vmf`. A `parking` point requests `roads/tile_road_parking.vmf`; when driveway requests reach the same road tile from two different sides, it becomes `roads/tile_road_driveway_double.vmf` (`dual_driveway`). Requests are resolved per road tile: a T-junction wins, then two-sided driveways become a dual driveway, then driveway > parking > bus; the losing request is not emitted rather than blocking the building. Connections apply to 1x1 and multi-tile buildings alike and are placed on the adjacent ordinary road tile. Multiple distinct points create multiple connections. The 2x commercial and hospital carpark-frontage templates each use one south-edge T-junction point. A motorway or concrete path is valid frontage but denies any of these connection requests and remains unchanged. A marked template is not placed when every requested connection cannot be satisfied. These markers are planning metadata and have no gameplay behavior.
+Add zero or more `zn_road_connection` points only where a generated road must physically connect. Each point must be centered on a single exterior footprint segment on the front edge, and `connection_type` defaults to `none`. A `t_junction` point converts its exact adjacent compatible ordinary straight-road tile into a T-junction; a `bus` point converts it into `roads/tile_road_bus.vmf`, and a `driveway` point converts it into `roads/tile_road_driveway.vmf`. A `parking` point requests `roads/tile_road_parking.vmf`; when driveway requests reach the same road tile from two different sides, it becomes `roads/tile_road_driveway_double.vmf` (`dual_driveway`). Requests are resolved per road tile: a T-junction wins, then two-sided driveways become a dual driveway, then driveway > parking > bus; the losing request is not emitted rather than blocking the building. Connections apply to 1x1 and multi-tile buildings alike and are placed on the adjacent ordinary road tile. Multiple distinct points create multiple connections. The 2x commercial and hospital carpark-frontage templates each use one south-edge T-junction point. A motorway or concrete path is valid frontage but denies any of these connection requests and remains unchanged. A marked template is not placed when every requested connection cannot be satisfied. These markers are planning metadata and have no gameplay behavior.
+
+After placement, the planner checks each building's entrance against the core border and other building, landmark, or safe-zone entrance footprints. For an even-width front, the midpoint falls between two neighboring tiles; either of those tiles being clear is sufficient. Already-clear placements are unchanged. Otherwise the planner tries cardinal rotations at the existing anchor, retaining the occupied footprint and compatible road and connection requirements. A rectangle is never rotated into a different-sized footprint over neighboring placements. If no rotation works, an ordinary building is replaced by open terrain that later decoration fill must leave open; an important landmark is retained and reported. Road-connection requests are re-resolved when a building moves or is removed, preserving other owners' requests. Warnings describe candidate layouts, which may not be the variant ultimately selected.
 
 Buildings and landmarks rotate their tile edge entrance toward a directly adjacent road, motorway, concrete path, or transport tile. A building next to a road corner's closed edge still faces the corner visually, although that edge is not a road connection.
 
@@ -1010,9 +1040,18 @@ The default terrain recipe makes grass more common to the west/north, dirt more 
 
 Radiation is a deterministic, source-centered fallout field. The first detonation is placed at `epicenterXFraction` across the map and at a seed-selected Y coordinate within the configured range. Larger maps add more deterministically placed sources, subject to `additionalSourceEveryGridCells` and `maximumSources`. Intensity decreases linearly with radial distance until it reaches `0` at the fallout radius. The generator exports a transparent `radiation` PNG layer, and the runtime applies radiation damage outside standalone safe rooms.
 
-Every source cell is a special `The Epicenter` landmark, marked with an `EPI` map key and an `epicenter` environment tag. Cells at or above `destroyedThreshold` receive the `destroyed` environment tag. The planner gives these cells a high building density and prefers templates matching `destroyedBuildings` when they are available; until then, it falls back to ordinary building templates.
+Every source cell is a special `The Epicenter` landmark, marked with an `EPI`
+map key and an `epicenter` environment tag. Destruction extends through
+`destroyedRadiusCells` inclusively and selects destroyed buildings before
+radioactive ones. Within the destruction zone the density tier increases in
+thirds of the radius; the protected coast and exact army, bunker and safe-zone
+cells remain exceptions. Radioactive scenery is independent of gameplay
+exposure: it applies strictly inside `sceneryFalloutRadiusCells` of a
+detonation or within `sceneryLaboratoryRadiusCells` inclusively of a
+laboratory. The wider exposure field and gameplay radioactive tags are not
+reduced. The radiation map layer shows exposure, not the smaller scenery zone.
 
-`cellMiles` supplies a lore scale for the grid. The displayed yield equivalence uses $Y = (R / R_{1\,MT})^3$, where $R$ is `falloutRadiusCells * cellMiles` and $R_{1\,MT}$ is `loreReferenceFalloutMilesAtOneMegaton`. With the preview defaults, a 9-cell radius at 4 miles per cell is 36 miles and produces a `27 MT` equivalence. This is a configurable lore approximation, not a physical fallout prediction: real deposition also depends on burst height, weapon design, wind, weather, terrain, and time.
+`cellMiles` supplies a lore scale for the grid. The displayed yield equivalence uses $Y = (R / R_{1\,MT})^3$, where $R$ is `falloutRadiusCells * cellMiles` and $R_{1\,MT}$ is `loreReferenceFalloutMilesAtOneMegaton`. With the preview defaults, a 9-cell radius at 2 miles per cell is 18 miles and produces an approximately `0.4 MT` equivalence. This is a configurable lore approximation, not a physical fallout prediction: real deposition also depends on burst height, weapon design, wind, weather, terrain, and time.
 
 | Setting | What it controls |
 | --- | --- |
@@ -1020,11 +1059,13 @@ Every source cell is a special `The Epicenter` landmark, marked with an `EPI` ma
 | `epicenterXFraction` | Horizontal source location. `0.6` places the detonation three-fifths of the way east. Must be greater than `0` and less than `1`. |
 | `epicenterYMinimumFraction`, `epicenterYMaximumFraction` | Inclusive vertical range used to choose the source from the seed. Both must be from `0` through `1` and ordered low to high. |
 | `falloutRadiusCells` | Fixed fallout radius in grid cells. Intensity is `0` beyond this distance from each epicenter. |
+| `sceneryFalloutRadiusCells` | Exclusive radius of radioactive scenery around each detonation; independent of exposure. |
+| `sceneryLaboratoryRadiusCells` | Inclusive radius of radioactive scenery around each laboratory. |
+| `destroyedRadiusCells` | Inclusive destruction radius and scale for its low-to-high density ring. |
 | `additionalSourceEveryGridCells` | Adds one possible source for each complete interval of grid width after the first source. |
 | `maximumSources` | Upper limit on the total number of detonation sources. |
 | `cellMiles` | Lore distance represented by one grid cell. |
 | `loreReferenceFalloutMilesAtOneMegaton` | Lore reference radius representing 1 MT in the yield-equivalence calculation. |
-| `destroyedThreshold` | Radiation intensity from greater than `0` to `1` at which a cell receives the `destroyed` tag and destroyed-city planning. |
 | `damagePerSecondAtPeak` | Exported peak-rate metadata. The current player-damage loop instead applies the discrete intervals documented in the readme. |
 | `overlayMaximumAlpha` | Opacity from `0` to `255` used by every discrete radiation grid cell. |
 
@@ -1121,11 +1162,12 @@ These regular-expression filters decide which VMF files from `templateDirectory`
 | Setting | Eligible files |
 | --- | --- |
 | `genericBuildings` | Ordinary building and construction assets. Special landmarks are intentionally excluded. |
-| `destroyedBuildings` | Optional destroyed building assets, such as `buildings/tile_destroyed_*.vmf`. They are selected for `destroyed` fallout-core cells when at least one matching template exists. |
+| `destroyedBuildings` | Destroyed buildings and destroyed skyscrapers, selected for the destruction zone. |
+| `radioactiveBuildings` | Radioactive buildings and skyscrapers, selected for radioactive scenery. |
 | `warehouses` | Warehouse assets usable by generic building selection. |
-| `commercial` | Commercial assets. They are only allowed in commercial profiles or a Market landmark cell. |
-| `industry` | Industry assets (`buildings/tile_industry_*` or `buildings/tile_industrial_*`). They are only allowed on dirt terrain or radioactive profiles. Each needs a `zn_tile_direction` frontage marker. |
-| `decorations` | Decoration assets. Dirt and radioactive cells prefer these more often. |
+| `commercial` | Commercial assets, available in configured profiles and district-influenced spread cells as well as Market landmark cells. |
+| `industry` | Industry assets, normally available within seeded industrial zones. Unmarked frontage defaults to south. |
+| `decorations` | General and themed decoration assets, including eligible brush and fence pieces. Special families are filtered by scenery profile. |
 | `carparks` | Carpark variants. They are only considered next to ordinary straight roads, not landmarks. |
 
 Do not remove the `.vmf` ending. A pattern that matches nothing can leave a profile without the prefabs you expected. A pattern that is too broad can accidentally select unfinished or special assets.
@@ -1181,7 +1223,12 @@ Use only `0`, `90`, `180`, or `270` for the current square tiles. Test any chang
 
 ### `environment`
 
-`profilePriority` decides which special identity a cell gets when it has more than one environment tag. The first matching item wins. For example, with the default order, `destroyed` wins over `radioactive` and `commercial` when a cell lies in the fallout core. Moving an item higher makes it override the entries below it.
+`profilePriority` orders ordinary special identities when a cell has multiple
+environment tags. Current policy first protects an exact Army Base or Bunker
+landmark, then an exact safe-zone cell. Elsewhere destruction wins over
+surrounding military/fortified and radioactive scenery. An Army Base sharing
+a den uses army surroundings while retaining the den and excluding industrial
+overlay; gameplay radiation still follows its separate exposure field.
 
 `buildingDensity` is the chance from `0` to `1` that an eligible empty prefab space receives a building or decoration.
 
@@ -1189,9 +1236,12 @@ Use only `0`, `90`, `180`, or `270` for the current square tiles. Test any chang
 | --- | --- |
 | `grassland`, `sandy`, `dirt` | Density for those plain terrain profiles. |
 | `parkland`, `recreation`, `settlement` | Density for these named profiles. Settlement is intentionally the densest listed profile. |
+| `specialZoneTierCaps` | Maximum building occupancy for special-zone low, medium and high tiers. |
 | `fallbackByTerrain` | Density for profiles without their own density entry, based on the terrain below them. `default` is the final fallback. |
 
-`densityTiers` controls building height preference, not how many buildings appear. Tags in `highTags`, `mediumTags`, and `lowTags` override profile defaults. Then `highProfiles` produces tier 3, `mediumProfiles` produces tier 2, and all other profiles produce tier 1.
+New manifests use the radial policy and explicit special-zone rules described
+above. `densityTiers` tags and profile defaults retain their former role for
+legacy manifests without policy metadata.
 
 ### `buildingSelection`
 
@@ -1200,22 +1250,52 @@ Use only `0`, `90`, `180`, or `270` for the current square tiles. Test any chang
 | `maximumHeightTier` | Highest filename-derived building-height tier the weighting system considers. |
 | `skyscraperCenterPercent` | Share of eligible automatic multi-tile building selection attempts preferring skyscrapers at the geometric world center (`40`). |
 | `skyscraperEdgePercent` | Skyscraper selection share at any outer world edge (`5`). The center-to-edge taper uses smoothstep over normalized Chebyshev distance and rounds to whole percentages for deterministic selection. Must be between zero and the center percentage. |
+| `skyscraperHighDensityPercent` | Optional fixed skyscraper preference in tier-3 cells (`45`), overriding the center-to-edge taper there. |
 | `minimumWeight` | Minimum chance weight for an allowed building asset. Keep at least `1`. |
 | `baseWeight` | Starting preference for a building whose height matches the cell density tier. |
 | `heightDistanceWeight` | How quickly preference drops when building height differs from the cell density tier. Higher numbers make districts specialize more strongly by height. |
+| `fortifiedThemedChancePercent` | Chance (`80`) to prefer compatible fortified buildings over Army-folder buildings in policy-v2 fortified cells, when both are eligible. |
 | `commercialProfiles` | Profiles allowed to use commercial building assets, in addition to Market landmark cells. |
+| `commercialSpreadChancePercent`, `commercialSpreadProfiles` | Default chance and eligible profiles for wider commercial selection; districts can override the chance. |
 | `industryTerrains` | Optional extra terrain types allowed to use industry assets outside an industrial zone (default empty). |
 | `industryProfiles` | Optional extra profiles allowed to use industry assets outside an industrial zone (default empty). |
 
-Industrial buildings normally appear only inside seeded industrial zones, configured by `mapGeneration.industrialZones` (`enabled`, `cellsPerZone`, `radius`, `minInlandDistance`, `minSpacing`, `excludedOriginTags`). The manifest generator picks `round(cells / cellsPerZone)` (at least one) origins by a seeded hash, rejecting coastal cells, safe zones, landmark cells, excluded tags and origins closer than `minSpacing`. Every cell within `radius` of an origin stores `industrialZone` (`id`, origin, `distance`, `radius`), gains the `industrial_zone` tag and has its density capped to `min(base, 1 + floor(2 * distance / radius))`, so a zone is low density at its origin and blends into the surrounding density at its edge. Radioactive cells only mix industrial buildings with `_ra_` buildings inside a zone. Zone membership is part of the recipe filename density code (`d1z`), and the manifest records origins under `generation.industrialZones`.
+Industrial buildings normally appear only inside seeded industrial zones,
+configured by `mapGeneration.industrialZones` (`enabled`, `cellsPerZone`,
+`radius`, `minInlandDistance`, `minSpacing`, `excludedOriginTags`). The
+manifest generator requests `round(cells / cellsPerZone)` origins (at least
+one), uses deterministic district-weighted choices and rejects coastal, safe-
+zone, landmark and excluded-origin candidates or origins too close together.
+Eligible cells within the inclusive radius store `industrialZone` and gain an
+`industrial_zone` tag. The zone caps ordinary density to
+`min(base, 1 + floor(2 * distance / radius))`; protected special-zone scenery
+keeps its own rule. Safe-zone cells receive no industrial overlay.
+Radioactive scenery can mix industrial and radioactive buildings inside an
+industrial zone. The manifest records origins under `generation.industrialZones`.
 
-Army Base landmark cells use only VMFs under `tiletemplates/army` for fallback building slots, in addition to the Army-only landmark template. Military-profile cells use the same exclusive pool. If the Army folder has no VMFs, planning fails explicitly rather than falling back to generic buildings.
+Army Base landmark cells use only VMFs under `tiletemplates/army` for fallback
+building slots, in addition to the Army-only landmark template. Military
+profiles use the same Army pool. Policy-v2 fortified profiles use that pool
+plus `cellPlanning.templatePatterns.fortifiedBuildings`: when both families
+fit the footprint and rolled density tier, the configured preference chooses
+fortified buildings 80% of the time and Army buildings 20%. If only one family
+is compatible, it remains eligible. Fortified buildings do not appear in
+other profiles, and legacy policy-v1 selection is unchanged. Army and
+fortified zones default to a four-cell radius and cap density with the same
+distance-based formula. If the Army folder has no VMFs, planning fails
+explicitly rather than falling back to generic buildings.
 
 Building height is inferred from the letter count after the number in names such as `tile_building_1a.vmf`, `tile_building_1aa.vmf`, and `tile_building_1aaa.vmf`. Keep that naming convention for new ordinary building prefabs.
 
+After placement the planner checks each building's authored front, defaulting
+unmarked fronts to south. A blocked building can rotate in place to a clear
+cardinal side only when its occupied footprint still fits. If no rotation
+works, an ordinary building becomes protected open terrain; important landmarks
+remain in place and are reported. This does not rotate roads or motorway art.
+
 `tile_skyscraper_*_2x` templates are ordinary 2x2 buildings, not landmarks. Their center-to-edge selection uses a separate deterministic hash after the existing automatic multi-tile placement chance. The selected tower family retains district height preference and falls back to ordinary multi-tile candidates if its footprint cannot fit. Existing landmarks, forced fixtures, destroyed-only pools and placement exclusions remain authoritative. The percentages describe preferred macro selection attempts, not all buildings or terrain tiles; measure successful placements separately. Selection percentages and preference results do not enter recipe identity: the existing macro key records the realized template, footprint, anchor and rotation. Variant generation refreshes this key after placement so different actual tower layouts cannot share a BSP. Omitting both percentage settings disables automatic skyscraper selection. Report the unique required BSP count and time impact before broad compilation, and obtain approval for a material increase.
 
-Run `.\tests\powershell\test_skyscraper_selection.ps1` for focused centrality, frequency, classification, height-weighting and recipe-identity checks. Pass `-PlanPath <preview-plan.json>` to additionally verify realized central-versus-outer tower concentration and shared-recipe consistency. Run `.\tests\powershell\test_building_frontage.ps1` and `.\tests\powershell\test_multi_tile_templates.ps1` for the placement paths affected by changing this building pool.
+Run `.\tests\powershell\test_skyscraper_selection.ps1` for focused centrality, frequency, classification, height-weighting and recipe-identity checks. Pass `-PlanPath <preview-plan.json>` to report realized central and outer tower counts and check shared-recipe consistency; the tier-3 override means the report is not an assertion that the center contains more towers. Run `.\tests\powershell\test_building_frontage.ps1` and `.\tests\powershell\test_multi_tile_templates.ps1` for the placement paths affected by changing this building pool.
 
 ### `decorations` And `carparks`
 
@@ -1225,6 +1305,7 @@ Run `.\tests\powershell\test_skyscraper_selection.ps1` for focused centrality, f
 | `decorations.preferredProfiles` | Profiles with the same decoration preference. |
 | `preferredChancePercent` | Decoration chance from `0` to `100` in preferred terrain/profile areas. |
 | `standardChancePercent` | Decoration chance from `0` to `100` elsewhere. |
+| `industrialThemedChancePercent` | Chance to prefer compatible industrial or radioactive decoration in an industrial zone (`80`); ordinary decorations remain eligible. |
 | `carparks.roadStraightChancePercent` | Optional extra chance from `0` to `100` that an eligible non-landmark straight-road recipe gets a carpark after coverage selection. Keep it at `0` for the most even distribution. |
 | `carparks.coverageCellSpan` | World-grid width and height of each coverage region. The planner reserves carparks across each region in separate passes, preferring straight roads and using junctions only when needed. Junction carparks branch from a spare internal road arm and keep the central road exits intact. Keep it at least `1`; the current `3` spreads coverage more evenly than the former 4-cell regions. |
 | `carparks.coverageCarparksPerRegion` | Number of eligible cells reserved per coverage region. The current value is `3`; selection is separation-aware, so a road-poor region can contribute fewer rather than cluster adjacent carparks. Keep it at least `1`. |

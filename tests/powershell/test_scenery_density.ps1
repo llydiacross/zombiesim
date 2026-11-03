@@ -40,6 +40,70 @@ foreach ($case in @(
 Assert-Rejected { Get-ZMTemplateDensityTag 'tile_wall_1aaaa.vmf' } 'Unsupported scenery density tag*'
 Assert-Rejected { Get-ZMTemplateDensityTag 'tile_wall_1a!.vmf' } 'Malformed scenery density tag*'
 
+$profileTerrainTemplates = @{
+    radioactive = @{ grassland = 'terrain/tile_ra_grass.vmf'; sandy = 'terrain/tile_ra_sand.vmf' }
+    industrial = @{ grassland = 'terrain/tile_industrial_grass.vmf' }
+}
+$terrainTemplates = @{ grassland = 'terrain/tile_grass.vmf'; sandy = 'terrain/tile_sand.vmf'; default = 'terrain/tile_dirt.vmf' }
+Assert ((Get-ZMProfileTerrainTemplate 'grassland' 'radioactive' $true $false $profileTerrainTemplates $terrainTemplates) -ceq 'terrain/tile_ra_grass.vmf') 'Radioactive profiles select their matching grass tile.'
+Assert ((Get-ZMProfileTerrainTemplate 'sandy' 'destroyed' $true $false $profileTerrainTemplates $terrainTemplates) -ceq 'terrain/tile_sand.vmf') 'Destroyed scenery takes precedence over radioactive terrain when no destroyed terrain exists.'
+Assert ((Get-ZMProfileTerrainTemplate 'grassland' 'military' $true $true $profileTerrainTemplates $terrainTemplates) -ceq 'terrain/tile_grass.vmf') 'Military scenery takes precedence over overlapping radioactive and industrial terrain.'
+Assert ((Get-ZMProfileTerrainTemplate 'grassland' 'grassland' $false $true $profileTerrainTemplates $terrainTemplates) -ceq 'terrain/tile_industrial_grass.vmf') 'Industrial zones select their themed grass tile.'
+Assert ((Get-ZMProfileTerrainTemplate 'sandy' 'industrial' $false $true $profileTerrainTemplates $terrainTemplates) -ceq 'terrain/tile_sand.vmf') 'Industrial zones retain ordinary terrain where no themed terrain exists.'
+Assert ((Get-ZMProfileTerrainTemplate 'unknown' 'grassland' $false $false $profileTerrainTemplates $terrainTemplates) -ceq 'terrain/tile_dirt.vmf') 'Unknown terrain keys retain the configured default.'
+
+$buildingPools = @{
+    army = @('army/tile_army_tent.vmf')
+    fortified = @('buildings/tile_fortified_1a.vmf')
+    destroyed = @('buildings/tile_destroyed_1a.vmf', 'buildings/tile_skyscraper_destroyed_1a_2x.vmf')
+    radioactive = @('buildings/tile_skyscraper_ra_2a_2x.vmf')
+    generic = @('buildings/tile_building_1a.vmf')
+    warehouse = @('buildings/tile_warehouse_1a.vmf')
+}
+Assert ((@(Get-ZMPrimaryBuildingTemplates 'destroyed' $true $buildingPools.army $buildingPools.destroyed $buildingPools.radioactive $buildingPools.generic $buildingPools.warehouse) -join ',') -ceq ($buildingPools.destroyed -join ',')) 'Destroyed buildings win over radioactive tags in overlapping profiles.'
+Assert ((@(Get-ZMPrimaryBuildingTemplates 'radioactive' $false $buildingPools.army $buildingPools.destroyed $buildingPools.radioactive $buildingPools.generic $buildingPools.warehouse) -join ',') -ceq ($buildingPools.radioactive -join ',')) 'Radioactive profiles use only their themed buildings.'
+Assert ((@(Get-ZMPrimaryBuildingTemplates 'military' $false $buildingPools.army $buildingPools.destroyed $buildingPools.radioactive $buildingPools.generic $buildingPools.warehouse) -join ',') -ceq ($buildingPools.army -join ',')) 'Military profiles use the special army building pool.'
+Assert ((@(Get-ZMPrimaryBuildingTemplates 'fortified' $false $buildingPools.army $buildingPools.destroyed $buildingPools.radioactive $buildingPools.generic $buildingPools.warehouse) -join ',') -ceq ($buildingPools.army -join ',')) 'Fortified profiles can use special army buildings.'
+Assert ((@(Get-ZMPrimaryBuildingTemplates 'fortified' $false $buildingPools.army $buildingPools.destroyed $buildingPools.radioactive $buildingPools.generic $buildingPools.warehouse -FortifiedTemplates $buildingPools.fortified) -join ',') -ceq (($buildingPools.army + $buildingPools.fortified) -join ',')) 'Fortified profiles can mix their authored buildings with Army buildings.'
+Assert ((@(Get-ZMPrimaryBuildingTemplates 'military' $false $buildingPools.army $buildingPools.destroyed $buildingPools.radioactive $buildingPools.generic $buildingPools.warehouse -FortifiedTemplates $buildingPools.fortified) -join ',') -ceq ($buildingPools.army -join ',')) 'Fortified buildings do not enter the military pool.'
+Assert ((@(Get-ZMPrimaryBuildingTemplates 'grassland' $false $buildingPools.army $buildingPools.destroyed $buildingPools.radioactive $buildingPools.generic $buildingPools.warehouse) -join ',') -ceq (($buildingPools.generic + $buildingPools.warehouse) -join ',')) 'Ordinary profiles retain generic and warehouse candidates.'
+
+$radioactiveBuildingPattern = '^buildings/tile_(?:(?:building|skyscraper)_ra|ra_building)_'
+$destroyedPattern = Get-ZMSceneryPreferredTemplatePattern 'destroyed' 'building' $false $true $radioactiveBuildingPattern
+Assert (('buildings/tile_skyscraper_destroyed_1a_2x.vmf' -match $destroyedPattern) -and -not ('buildings/tile_skyscraper_ra_2a_2x.vmf' -match $destroyedPattern)) 'Destroyed building preference supersedes radioactive art.'
+$industrialDecorationPattern = Get-ZMSceneryPreferredTemplatePattern 'grassland' 'decoration' $true $false $radioactiveBuildingPattern
+Assert (('decorations/tile_ra_bushes_1a.vmf' -match $industrialDecorationPattern) -and ('decorations/tile_industrial_containers_1a.vmf' -match $industrialDecorationPattern)) 'Industrial zones prefer both radioactive and industrial decorations.'
+$radioactiveDecorationPattern = Get-ZMSceneryPreferredTemplatePattern 'radioactive' 'decoration' $false $false $radioactiveBuildingPattern
+Assert ('terrain/tile_ra_fence_a_cap.vmf' -match $radioactiveDecorationPattern) 'Radioactive decoration preference includes terrain-owned fence caps.'
+$themedDecoration = Select-ZMSceneryTemplate @('decorations/tile_bushes_1a.vmf', 'decorations/tile_ra_trees_1a.vmf', 'decorations/tile_industrial_containers_1aa.vmf') 1 0 17 'fixture/industrial' -PreferredPattern $industrialDecorationPattern
+Assert ($themedDecoration.preferredPool -and $themedDecoration.template -eq 'decorations/tile_ra_trees_1a.vmf') 'Compatible themed industrial-zone decoration beats generic scenery.'
+$themedFallback = Select-ZMSceneryTemplate @('decorations/tile_bushes_1a.vmf', 'decorations/tile_ra_trees_2aa.vmf') 1 0 17 'fixture/industrial-fallback' -PreferredPattern $industrialDecorationPattern
+Assert (-not $themedFallback.preferredPool -and $themedFallback.template -eq 'decorations/tile_bushes_1a.vmf') 'An incompatible themed tier falls back to a compatible ordinary decoration.'
+
+$armyBasePatterns = @{ 'Army Base' = 'buildings/tile_armybase_*.vmf' }
+$armyBasePool = Get-ZMLandmarkTemplatePool @('Army Base') $armyBasePatterns @('buildings/tile_armybase_1a.vmf', 'army/tile_army_tent.vmf', 'decorations/tile_army_tent.vmf')
+Assert ($armyBasePool.template -ceq 'buildings/tile_armybase_1a.vmf') 'The Army Base landmark selects only the authored landmark building, not themed scenery.'
+$globalRoadVariants = @{ 'roads/tile_road.vmf' = @('roads/tile_road_a.vmf') }
+$profileRoadVariants = @{
+    destroyed = @{ 'roads/tile_road.vmf' = @('roads/tile_destroyed_road_a.vmf', 'roads/tile_destroyed_road_night.vmf') }
+    radioactive = @{ 'roads/tile_road.vmf' = @('roads/tile_ra_road_night.vmf') }
+    military = @{ 'roads/tile_road.vmf' = @('roads/tile_army_road_a.vmf') }
+}
+$availableRoads = @{
+    'roads/tile_road.vmf' = 'roads/tile_road.vmf'
+    'roads/tile_road_a.vmf' = 'roads/tile_road_a.vmf'
+    'roads/tile_destroyed_road_a.vmf' = 'roads/tile_destroyed_road_a.vmf'
+    'roads/tile_destroyed_road_night.vmf' = 'roads/tile_destroyed_road_night.vmf'
+    'roads/tile_ra_road_night.vmf' = 'roads/tile_ra_road_night.vmf'
+    'roads/tile_army_road_a.vmf' = 'roads/tile_army_road_a.vmf'
+}
+Assert ((@(Get-ZMTopologyVariantCandidates 'roads/tile_road.vmf' 'destroyed' $globalRoadVariants $profileRoadVariants $availableRoads) -join ',') -ceq 'roads/tile_destroyed_road_a.vmf,roads/tile_destroyed_road_night.vmf') 'Destroyed roads use their profile-specific straight variants, including the night-lighted piece.'
+Assert ((@(Get-ZMTopologyVariantCandidates 'roads/tile_road.vmf' 'radioactive' $globalRoadVariants $profileRoadVariants $availableRoads) -join ',') -ceq 'roads/tile_ra_road_night.vmf') 'Radioactive roads can select their night-lighted straight piece.'
+Assert ((@(Get-ZMTopologyVariantCandidates 'roads/tile_road.vmf' 'military' $globalRoadVariants $profileRoadVariants $availableRoads) -join ',') -ceq 'roads/tile_army_road_a.vmf') 'Military roads use their profile-specific straight variants.'
+Assert ((@(Get-ZMTopologyVariantCandidates 'roads/tile_road.vmf' 'commercial' $globalRoadVariants $profileRoadVariants $availableRoads) -join ',') -ceq 'roads/tile_road_a.vmf') 'Unmatched profiles retain the ordinary straight-road variants.'
+$missingProfileRoad = Get-ZMTopologyVariantCandidates 'roads/tile_road.vmf' 'destroyed' $globalRoadVariants $profileRoadVariants @{ 'roads/tile_road.vmf' = 'roads/tile_road.vmf' }
+Assert (@($missingProfileRoad).Count -eq 0) 'Unavailable themed variants do not silently fall back to ordinary roads.'
+
 $wallRecipe = [pscustomobject]@{
     x = 12; y = 9; environmentProfile = 'grassland'; topology = 'road-straight'; orientation = 'horizontal'
     landmarks = @(); cellVariant = 2; sceneryDensityPolicyVersion = 1
@@ -82,6 +146,19 @@ Assert ($neutralWall.template -eq 'border/tile_border_ra_wall.vmf' -and $neutral
 Assert-Rejected {
     Get-ZMSceneryWallTemplateSelection $wallRecipe @('border/tile_border_wall_1a.vmf') 1337 'border' '2,2' 'border_wall' $false
 } '*Required scenery pool unavailable*'
+$destroyedBorderPool = @('border/tile_border_destroyed_wall_1a.vmf', 'border/tile_border_destroyed_wall_2a.vmf', 'border/tile_border_destroyed_wall_2aa.vmf')
+$destroyedBorderFallback = @{ '3' = 'border/tile_border_destroyed_wall_2aa.vmf' }
+$destroyedBorderSelections = @(0..19 | ForEach-Object {
+    Get-ZMSceneryWallTemplateSelection $wallRecipe $destroyedBorderPool 1337 'border' "$_,2" 'border_wall' $false $destroyedBorderFallback
+})
+$destroyedBorderExceptions = @($destroyedBorderSelections | Where-Object { $_.selection.status -eq 'selected_explicit_exception' })
+Assert ($destroyedBorderExceptions.Count -gt 0 -and @($destroyedBorderExceptions | Where-Object {
+    $_.template -cne 'border/tile_border_destroyed_wall_2aa.vmf' -or
+        $_.selection.densityException -cne 'target_tier_3_fallback'
+}).Count -eq 0) 'Unavailable high destroyed border walls use only the recorded medium destroyed exception.'
+Assert-Rejected {
+    Get-ZMSceneryWallTemplateSelection $wallRecipe @('border/tile_border_wall_1a.vmf') 1337 'border' '2,-1' 'border_wall' $true @{ '2' = 'border/not_in_pool.vmf' }
+} '*fallback*not in the eligible*'
 $legacyWallRecipe = [pscustomobject]@{ x = 1; y = 2 }
 Assert ($null -eq (Get-ZMSceneryWallTemplateSelection $legacyWallRecipe $wallPool 1337 'border' '1,2' 'border_wall' $false)) 'Metadata-less legacy recipes retain the established wall selector.'
 
@@ -108,6 +185,24 @@ $outerRecipe = [pscustomobject]@{
 $outerWalls = @(Get-ZMOuterEdgePlacements $outerRecipe 5 $outerWallSettings $outerBorder @{} @{} 1337 | Where-Object targetname -like 'zm_outer_wall_*')
 Assert ($outerWalls.Count -gt 0 -and @($outerWalls | Where-Object { $null -eq $_.sceneryDensitySelection }).Count -eq 0) 'Policy-v1 outer walls record density selections.'
 Assert (@($outerWalls | Where-Object { $_.sceneryDensitySelection.actualTag -notin @(0, $_.sceneryDensitySelection.targetTier) }).Count -eq 0) 'Outer walls obey their selected density target.'
+$destroyedOuterRecipe = $outerRecipe.PSObject.Copy()
+$destroyedOuterRecipe.environmentProfile = 'destroyed'
+$destroyedOuterSettings = @{
+    enabled = $true
+    wallVariationTemplates = $wallPool
+    cornerTemplate = 'edges/tile_edge_wall_corner.vmf'
+    profileTemplates = @{
+        destroyed = @{
+            wallVariationTemplates = @('edges/tile_edge_destroyed_wall_1a.vmf')
+            wallDensityFallbacks = @{ '2' = 'edges/tile_edge_destroyed_wall_1a.vmf'; '3' = 'edges/tile_edge_destroyed_wall_1a.vmf' }
+        }
+    }
+}
+$destroyedOuterWalls = @(Get-ZMOuterEdgePlacements $destroyedOuterRecipe 5 $destroyedOuterSettings $outerBorder @{} @{} 1337 | Where-Object targetname -like 'zm_outer_wall_*')
+Assert ($destroyedOuterWalls.Count -gt 0 -and @($destroyedOuterWalls | Where-Object {
+    $_.template -cne 'edges/tile_edge_destroyed_wall_1a.vmf' -or
+        $_.sceneryDensitySelection.status -cne 'selected_explicit_exception'
+}).Count -eq 0) 'Destroyed outer walls retain their authored family and record explicit density exceptions.'
 $outerLegacy = [pscustomobject]@{ x = 12; y = 9; environmentProfile = 'grassland'; placementSeed = 1337 }
 $legacyOuterWalls = @(Get-ZMOuterEdgePlacements $outerLegacy 5 $outerWallSettings $outerBorder @{} @{} 1337 | Where-Object targetname -like 'zm_outer_wall_*')
 Assert (@($legacyOuterWalls | Where-Object { $null -ne $_.PSObject.Properties['sceneryDensitySelection'] }).Count -eq 0) 'Metadata-less outer-edge recipes keep legacy deterministic variation.'
@@ -258,6 +353,19 @@ foreach ($cell in $land) {
         Assert ($zone.source -eq $(if ($cell.x -lt 3) { 'protected_coast' } elseif ($cell.x -lt 8 -and $profile -in @('commercial', 'financial')) { "district:$profile" } else { 'inland_band' })) 'Resolved tier includes source.'
     }
 }
+Assert ((Get-ZMSceneryRadialDistance 23 23 48) -eq 0.707) 'Even grids measure radius from the shared logical center between the four central cells.'
+Assert ((Get-ZMSceneryRadialDistance 24 24 48) -eq 0.707) 'The opposite central cell has the same radial distance.'
+Assert ((Get-ZMSceneryRadialDensityZone 2.999 3 'grassland').tier -eq 1) 'Radial tier 1 ends below three cells.'
+Assert ((Get-ZMSceneryRadialDensityZone 3 3 'grassland').tier -eq 2) 'Radial tier 2 begins at three cells.'
+Assert ((Get-ZMSceneryRadialDensityZone 7.999 3 'grassland').tier -eq 2) 'Radial tier 2 extends to but not including eight cells.'
+Assert ((Get-ZMSceneryRadialDensityZone 8 3 'grassland').tier -eq 3) 'Radial tier 3 begins at eight cells.'
+$radialCoast = Get-ZMSceneryRadialDensityZone 12 0 'commercial'
+Assert ($radialCoast.tier -eq 1 -and $radialCoast.source -ceq 'protected_coast') 'Protected coast remains low density even far from the city center and inside a commercial district.'
+$radialCommercial = Get-ZMSceneryRadialDensityZone 0.707 20 'commercial'
+$radialSettlement = Get-ZMSceneryRadialDensityZone 0.707 20 'settlement'
+Assert ($radialCommercial.tier -eq 3 -and $radialCommercial.source -ceq 'district:commercial') 'Commercial density floor raises a low radial baseline to tier 3.'
+Assert ($radialSettlement.tier -eq 2 -and $radialSettlement.source -ceq 'district:settlement') 'Settlement density floor raises a low radial baseline to tier 2.'
+Assert-Rejected { Get-ZMSceneryRadialDistance 48 0 48 } '*outside the 48-cell grid*'
 $bentLand = @([pscustomobject]@{ x = 0; y = 0 }, [pscustomobject]@{ x = 0; y = 1 }, [pscustomobject]@{ x = 1; y = 1 })
 $bent = Get-ZMSceneryInlandDistances $bentLand @($bentLand[0])
 Assert ($bent['1,1'] -eq 2) 'Cardinal land distance does not shortcut diagonally across missing land.'
@@ -269,14 +377,16 @@ Assert-Rejected { Get-ZMSceneryInlandDistances @($land[0], [pscustomobject]@{ x 
 $root = $testsRepoRoot
 $profileSettings = & (Join-Path $testsBinDirectory 'resolve_world_generation_profile.ps1') -WorldProfile preview
 $plannerSettings = $profileSettings.Settings.cellPlanning
+$industrialThemedChancePercent = [int]$plannerSettings.decorations.industrialThemedChancePercent
+$fortifiedThemedChancePercent = [int]$plannerSettings.buildingSelection.fortifiedThemedChancePercent
 $sceneryDensityPolicyEnabled = $true
 $script:RoadConnectionState = [System.Runtime.CompilerServices.ConditionalWeakTable[object, hashtable]]::new()
 $script:sceneryUsageCounts = @{}
 $script:scenerySelectionCache = @{}
 foreach ($source in @(
-    @{ file = 'plan_cell_templates.ps1'; functions = @('Get-EnvironmentProfile', 'Get-BuildingDensityTier', 'Get-RecipePlacementSeed', 'Get-SceneryTemplateSelection', 'Set-ScenerySelectionMetadata', 'Get-BuildingDensity', 'Get-TemplateFootprint', 'Get-RotatedFootprint', 'Get-LandmarkTemplate', 'Get-LandmarkTemplateSelection', 'Get-RoadConnectionBase', 'Get-OppositeDirection', 'Test-CoreCornerTile', 'Get-InwardBuildingFrontageDirection', 'Get-CellTilePlacements', 'Set-PlayerStartTerrain', 'Get-CellLayoutSignature', 'Get-CellRecipeLayoutIdentity', 'Get-CellRecipeContentSignature', 'Get-RecipeSignatureDifferencePaths', 'Assert-RecipeFilenameContentUnique') },
+    @{ file = 'plan_cell_templates.ps1'; functions = @('Get-EnvironmentProfile', 'Get-BuildingDensityTier', 'Get-RecipePlacementSeed', 'Get-SceneryTemplateSelection', 'Set-ScenerySelectionMetadata', 'Get-BuildingDensity', 'Get-TemplateFootprint', 'Get-FootprintCoordinates', 'Get-RotatedFootprint', 'Get-FootprintAnchorCandidates', 'Set-FootprintPlacement', 'Get-SpecialLandmarkSettings', 'Test-TemplateRequestsRoadJunction', 'Get-LandmarkTemplate', 'Get-LandmarkTemplateSelection', 'Get-RoadConnectionBase', 'Get-OppositeDirection', 'Test-CoreCornerTile', 'Get-TemplateFrontageDirection', 'Get-InwardBuildingFrontageDirection', 'Get-CellTilePlacements', 'Set-PlayerStartTerrain', 'Get-CellLayoutSignature', 'Get-CellRecipeLayoutIdentity', 'Get-CellRecipeContentSignature', 'Get-RecipeSignatureDifferencePaths', 'Assert-RecipeFilenameContentUnique') },
     @{ file = 'build_cell_vmfs.ps1'; functions = @('Get-BorderCornerTemplate', 'Assert-BorderCornerVariationSettings') },
-    @{ file = 'generate_world_cells.ps1'; functions = @('Move-RadiationSourcesToReachableRoadCells', 'Get-EnvironmentTags', 'Get-GeneratorSceneryDensityZone', 'Test-LandmarkTemplateSupportsDensityZone', 'Get-LandmarkDensityShortages', 'Export-MapData') },
+    @{ file = 'generate_world_cells.ps1'; functions = @('Move-RadiationSourcesToReachableRoadCells', 'Get-EnvironmentTags', 'Test-RadioactiveScenery', 'Get-GeneratorSceneryDensityZone', 'Test-LandmarkTemplateSupportsDensityZone', 'Get-LandmarkDensityShortages', 'Export-MapData') },
     @{ file = 'export_runtime_world_data.ps1'; functions = @('Get-RuntimeSceneryDensityFields') }
 )) {
     $tokens = $null
@@ -381,7 +491,13 @@ function Initialize-LandmarkRelocationFixture {
     $script:denCells = @{ '0,0' = @{ Name = 'Origin'; District = -1; Difficult = $false }; '11,11' = @{ Name = 'Far Den'; District = 0; Difficult = $false } }
     $script:metroStations = @{}
     $script:metroLines = @()
-    $script:radiationDestroyedThreshold = 0.7
+    $script:radiationSources = @()
+    $script:radiationDestroyedRadiusCells = 4
+    $script:radiationSceneryRadiusCells = 7
+    $script:laboratorySceneryRadiusCells = 2
+    $script:militaryZoneRadiusCells = 4
+    $script:laboratoryZoneOrigins = @()
+    $script:militaryZoneOrigins = @()
     for ($fixtureY = 0; $fixtureY -lt $GridCells; $fixtureY++) {
         for ($fixtureX = 0; $fixtureX -lt $GridCells; $fixtureX++) {
             $script:terrainTypes["$fixtureX,$fixtureY"] = 'grassland'
@@ -406,13 +522,13 @@ try {
     Assert ($null -ne $fixturePool -and $fixturePool.templates.Count -eq 1) "Relocation fixture discovers its configured templates: $($fixtureTemplates -join ',')."
     Assert (-not (Test-LandmarkTemplateSupportsDensityZone $fixturePool 3)) 'Low-only fixture pool conflicts with the high-density source zone.'
     $fixtureDistance = @{ '8,2' = 8 }
-    Assert ((Get-GeneratorSceneryDensityZone '8,2' $fixtureDistance).tier -eq 3) 'Fixture source is in the intended high-density zone.'
+    Assert ((Get-GeneratorSceneryDensityZone '8,2' $fixtureDistance 12).tier -eq 2) 'Fixture source is in the intended medium-density radial zone.'
     $landmarkCellsSnapshot = ($landmarkCells | ConvertTo-Json -Depth 4 -Compress)
     $landmarkDensityShortageDiagnostics = @(Get-LandmarkDensityShortages)
     Assert ($landmarkDensityShortageDiagnostics.Count -eq 1 -and $landmarkDensityShortageDiagnostics[0].identity -ceq 'Hospital') "Generator reports the density-incompatible landmark exactly once: $($landmarkDensityShortageDiagnostics | ConvertTo-Json -Depth 6 -Compress)"
     Assert (($landmarkCells | ConvertTo-Json -Depth 4 -Compress) -ceq $landmarkCellsSnapshot -and @($landmarkCells['8,2'] | Where-Object { [object]::ReferenceEquals($_, $relocationHospital) }).Count -eq 1) 'Density-exempt landmarks stay where generated with their original object.'
     $shortage = $landmarkDensityShortageDiagnostics[0]
-    Assert ($shortage.cell.x -eq 8 -and $shortage.cell.y -eq 2 -and $shortage.zoneTier -eq 3 -and -not $shortage.moved -and $shortage.reason -ceq 'density_exempt_fixed_landmark') 'Shortage diagnostics identify the cell, zone and exemption reason.'
+    Assert ($shortage.cell.x -eq 8 -and $shortage.cell.y -eq 2 -and $shortage.zoneTier -eq 2 -and -not $shortage.moved -and $shortage.reason -ceq 'density_exempt_fixed_landmark') 'Shortage diagnostics identify the cell, zone and exemption reason.'
     Assert ((@($shortage.requiredTargetTiers) -join ',') -ceq '2,3' -and (@($shortage.availableTemplateTags) -join ',') -ceq '1') 'Shortage diagnostics record required targets against available template tags.'
     Assert (($denCells | ConvertTo-Json -Depth 4 -Compress) -ceq $safeZoneSnapshot) 'Shortage reporting leaves safe-zone identities untouched.'
     $landmarkCells['8,2'] = @(@{ Label = 'H'; Name = 'Hospital'; Color = 'red' })
@@ -499,6 +615,10 @@ Assert ($profileCorner.template -ceq 'border/tile_border_army_wall_corner.vmf' -
     $biomeOpacity = 45
     $safeZoneMinimumSpacingCells = 0
     $radiationFalloutRadiusCells = 9
+    $radiationSceneryRadiusCells = 7
+    $laboratorySceneryRadiusCells = 2
+    $radiationDestroyedRadiusCells = 0
+    $militaryZoneRadiusCells = 0
     $radiationDestroyedThreshold = 0.7
     $radiationDamagePerSecondAtPeak = 8
     $radiationCellMiles = 4
@@ -530,20 +650,21 @@ Assert ($profileCorner.template -ceq 'border/tile_border_army_wall_corner.vmf' -
         $firstHash = (Get-FileHash -LiteralPath $written -Algorithm SHA256).Hash
         Export-MapData | Out-Null
         Assert ((Get-FileHash -LiteralPath $written -Algorithm SHA256).Hash -ceq $firstHash) 'Repeated actual serialization is byte-identical.'
-        Assert ($fixture.map.environment.sceneryDensityPolicyVersion -eq 1 -and $fixture.cells.Count -eq 144) 'Serialized header declares the density policy and retains grid cells.'
+        Assert ($fixture.map.environment.sceneryDensityPolicyVersion -eq 2 -and $fixture.cells.Count -eq 144) 'Serialized header declares radial density policy v2 and retains grid cells.'
         Assert ($fixture.generation.landmarkDensityShortages.Count -eq 0) 'Map serialization emits an explicit empty landmark density-shortage list.'
         Assert (Test-ZMSceneryDensityManifest $fixture) 'The real exported manifest passes the shared header/cell policy guard.'
         foreach ($cell in $fixture.cells) {
-            $stored = Get-ZMStoredSceneryDensity $cell
+            $stored = Get-ZMStoredSceneryDensity $cell -GridCells 12
             $expectedProfile = Get-EnvironmentProfile $cell
-            $expectedZone = Get-ZMSceneryDensityZone $cell.x $expectedProfile
-            Assert ($stored.sceneryDensityTier -eq $expectedZone.tier -and $stored.sceneryDensitySource -ceq $expectedZone.source -and $stored.sceneryInlandDistance -eq $cell.x) 'Stored export tier/source/distance matches the approved fixture.'
+            $expectedRadius = Get-ZMSceneryRadialDistance $cell.x $cell.y 12
+            $expectedZone = Get-ZMSceneryRadialDensityZone $expectedRadius $cell.x $expectedProfile
+            Assert ($stored.sceneryDensityTier -eq $expectedZone.tier -and $stored.sceneryDensitySource -ceq $expectedZone.source -and $stored.sceneryInlandDistance -eq $cell.x -and $stored.sceneryRadialDistance -eq $expectedRadius) 'Stored export tier/source/radial and coast distances match the fixture.'
             Assert ((Get-BuildingDensityTier $cell $expectedProfile) -eq $stored.sceneryDensityTier) 'Production planner consumes the stored tier.'
             Assert ((Get-BuildingDensityTier $cell 'financial') -eq $stored.sceneryDensityTier) 'Consumers cannot reinterpret stored density using a different profile.'
             Assert ($cell.buildingDensityTier -eq $cell.sceneryDensityTier) 'Legacy building field is exactly the authoritative alias.'
             $planCell = ($cell | ConvertTo-Json -Depth 8 | ConvertFrom-Json)
             $fields = Get-RuntimeSceneryDensityFields $cell $planCell
-            Assert ($fields.Count -eq 5 -and $fields.sceneryDensitySource -ceq $cell.sceneryDensitySource) 'Runtime export retains identical density metadata.'
+            Assert ($fields.Count -eq 6 -and $fields.sceneryDensitySource -ceq $cell.sceneryDensitySource -and $fields.sceneryRadialDistance -eq $expectedRadius) 'Runtime export retains identical radial density metadata.'
             foreach ($field in $stored.PSObject.Properties) { $cell.PSObject.Properties.Remove($field.Name) }
             $original = [pscustomobject](Get-MapCellData $cell.x $cell.y)
             Assert (($cell | ConvertTo-Json -Depth 8 -Compress) -ceq ($original | ConvertTo-Json -Depth 8 -Compress)) 'Zoning changes no topology/location/occupancy/danger/radiation fixture data.'
@@ -557,7 +678,7 @@ Assert ($profileCorner.template -ceq 'border/tile_border_army_wall_corner.vmf' -
 $freshCells = @(foreach ($x in 0..11) {
     [pscustomobject]@{ x = $x; y = 0; environment = [pscustomobject]@{ terrain = 'grassland'; tags = @('commercial') }; building = [pscustomobject]@{ present = $false } }
 })
-Set-ZMSceneryDensityFields $freshCells @($freshCells[0]) @($plannerSettings.environment.profilePriority)
+Set-ZMSceneryDensityFields $freshCells @($freshCells[0]) @($plannerSettings.environment.profilePriority) -GridCells 12
 $fresh = $freshCells[3]
 $map = [pscustomobject]@{ map = [pscustomobject]@{ seed = 1337 } }
 $densitySelectionPool = @(
@@ -571,7 +692,45 @@ foreach ($tier in 1..3) {
     $repeat = Get-SceneryTemplateSelection $densitySelectionPool $fresh 'commercial' 'open' 'none' $tier @('none') 2 '2,3' 'building'
     Assert ($selection.status -eq 'selected' -and ($selection.actualTag -eq 0 -or $selection.actualTag -eq $selection.targetTier)) "Planner selects only target-tier or neutral building templates at zone $tier."
     Assert ($selection.template -ceq $repeat.template -and $selection.targetTier -eq $repeat.targetTier) "Planner density choice is deterministic at zone $tier."
+    Assert ([bool]$selection.lowDensityPreferenceApplied -eq ($tier -eq 1)) "Only tier-1 building selection applies the low-tagged preference."
 }
+$preferencePool = @('buildings/tile_building_1a.vmf', 'buildings/tile_building_2a.vmf', 'buildings/tile_building_neutral.vmf')
+$preferenceUsage = @{}
+$preferenceCounts = @{ low = 0; neutral = 0; firstLow = 0; secondLow = 0 }
+foreach ($choice in 0..299) {
+    $selection = Select-ZMSceneryTemplate $preferencePool 1 0 $choice 'fixture/low-tier-building-preference' -UsageCounts $preferenceUsage -LowDensityBuildingPreference
+    if ($selection.actualTag -eq 1) {
+        $preferenceCounts.low++
+        if ($selection.template -ceq 'buildings/tile_building_1a.vmf') { $preferenceCounts.firstLow++ }
+        if ($selection.template -ceq 'buildings/tile_building_2a.vmf') { $preferenceCounts.secondLow++ }
+    } else {
+        $preferenceCounts.neutral++
+    }
+}
+Assert ($preferenceCounts.low -eq 200 -and $preferenceCounts.neutral -eq 100) 'Tier-1 building selection maintains the chosen 2:1 low-tagged-to-neutral ratio under usage balancing.'
+Assert ($preferenceCounts.firstLow -eq 100 -and $preferenceCounts.secondLow -eq 100) 'Usage balancing remains even within the preferred low-tagged pool.'
+$tierInvariantPool = @('buildings/tile_building_1a.vmf', 'buildings/tile_building_2aa.vmf', 'buildings/tile_building_3aaa.vmf', 'buildings/tile_building_neutral.vmf')
+foreach ($tier in @(2, 3)) {
+    foreach ($choice in 0..29) {
+        $withoutPreference = Select-ZMSceneryTemplate $tierInvariantPool $tier 0 $choice "fixture/no-low-bias/$tier"
+        $withPreference = Select-ZMSceneryTemplate $tierInvariantPool $tier 0 $choice "fixture/no-low-bias/$tier" -LowDensityBuildingPreference
+        Assert ($withPreference.template -ceq $withoutPreference.template -and -not $withPreference.lowDensityPreferenceApplied) "Tier $tier selection is identical with the low-tier option enabled."
+    }
+}
+$decorationPreference = Get-SceneryTemplateSelection @('decorations/tile_bushes_1a.vmf', 'decorations/tile_bushes_neutral.vmf') $fresh 'grassland' 'open' 'none' 1 @('none') 2 'low-tier-decoration' 'decoration'
+Assert (-not $decorationPreference.lowDensityPreferenceApplied) 'Low-tier preference does not apply to decorations.'
+$multiTilePreference = Get-SceneryTemplateSelection @('buildings/tile_hospital_1a_2x.vmf', 'buildings/tile_hospital_neutral_2x.vmf') $fresh 'commercial' 'open' 'none' 1 @('none') 2 'low-tier-multi-building' 'multi_tile_building'
+Assert ($multiTilePreference.lowDensityPreferenceApplied) 'Compatible low-tier multi-tile buildings receive the same preference.'
+$anyTierPreference = Get-SceneryTemplateSelection $densitySelectionPool $fresh 'commercial' 'open' 'none' 1 @('none') 2 'low-tier-any-tier' 'multi_tile_building' -AnyTier
+Assert (-not $anyTierPreference.lowDensityPreferenceApplied) 'Cross-tier AnyTier pools do not receive the low-tier preference.'
+$v1SelectionCell = [pscustomobject]@{
+    x = 3; y = 0
+    environment = [pscustomobject]@{ terrain = 'grassland'; tags = @('low_density') }
+    building = [pscustomobject]@{ present = $false }
+    sceneryDensityPolicyVersion = 1
+}
+$v1Selection = Get-SceneryTemplateSelection $densitySelectionPool $v1SelectionCell 'grassland' 'open' 'none' 1 @('none') 2 'legacy-low-tier-building' 'building'
+Assert (-not $v1Selection.lowDensityPreferenceApplied) 'Policy-v1 selection preserves its legacy low-tier behavior.'
 $forbiddenOnly = Get-SceneryTemplateSelection @('buildings/tile_building_6a.vmf') $fresh 'commercial' 'open' 'none' 3 @('none') 2 '2,3' 'building'
 Assert ($forbiddenOnly.status -eq 'shortage_keep_terrain' -and $null -eq $forbiddenOnly.template) 'Planner never falls back to an incompatible tier.'
 $landmarkPool = @{
@@ -611,6 +770,7 @@ function Get-CarparkTemplateSet { param([string[]]$CarparkTemplates) return $nul
 function Get-PlacementVariationRoll { param([int]$PlacementSeed) return 100 }
 function Get-ClosedCornerFrontageDirection { param([object]$Placement, [object[]]$RoadCenterPlacements, [string[]]$Connections, [string]$Topology) return 'N' }
 function Get-TemplateRoadConnectionRotation { param([string]$Template, [string]$Direction) return 0 }
+function Repair-BlockedBuildingFrontages { param([hashtable]$Placements) return @{} }
 function Resolve-Template {
     param([string[]]$Candidates, [hashtable]$AvailableTemplates)
     foreach ($candidate in $Candidates) {
@@ -620,13 +780,14 @@ function Resolve-Template {
     return $null
 }
 function Set-OpenTerrainFill {
-    param([hashtable]$Placements, [int]$TileGridSize, [int]$PlacementSeed, [string[]]$DecorationTemplates, [object]$Cell, [string]$Profile, [string]$Topology, [string]$Orientation, [int]$BuildingDensityTier, [string[]]$Landmarks, [int]$CellVariant, [hashtable]$AvailableTemplates)
+    param([hashtable]$Placements, [int]$TileGridSize, [int]$PlacementSeed, [string[]]$DecorationTemplates, [object]$Cell, [string]$Profile, [string]$Topology, [string]$Orientation, [int]$BuildingDensityTier, [string[]]$Landmarks, [int]$CellVariant, [hashtable]$AvailableTemplates, [hashtable]$ProtectedTerrain)
 }
 function Set-TopologyVariants { param([hashtable]$Placements, [int]$PlacementSeed, [hashtable]$AvailableTemplates) }
 function Set-TilePlacementDefaults { param([object[]]$Placements) }
 $sceneryDensityPolicyEnabled = $true
 $plannerSettings = $profileSettings.Settings.cellPlanning
 $commercialTemplates = @()
+$epicenterLandmarkName = 'Epicenter'
 $topologyVariantChancePercent = 0
 $topologyVariantTemplates = @{}
 $templateRoadConnections = @{}
@@ -637,7 +798,7 @@ $emptyBuildingCell = [pscustomobject]@{
     environment = [pscustomobject]@{ terrain = 'grassland'; tags = @() }
     building = [pscustomobject]@{ present = $false }
 }
-Set-ZMSceneryDensityFields @($emptyBuildingCell) @($emptyBuildingCell) @($plannerSettings.environment.profilePriority)
+Set-ZMSceneryDensityFields @($emptyBuildingCell) @($emptyBuildingCell) @($plannerSettings.environment.profilePriority) -GridCells 1
 
 # Industrial zones: seeded origins, low-density core rising to the surrounding tier at the radius.
 Assert ((Get-ZMIndustrialZoneTierCap 0 3) -eq 1 -and (Get-ZMIndustrialZoneTierCap 1 3) -eq 1 -and (Get-ZMIndustrialZoneTierCap 2 3) -eq 2 -and (Get-ZMIndustrialZoneTierCap 3 3) -eq 3) 'Industrial zone cap is low at the origin and rises to high at the radius.'
@@ -648,7 +809,7 @@ $newZoneGrid = {
     } })
 }
 $zoneCells = & $newZoneGrid
-Set-ZMSceneryDensityFields $zoneCells @($zoneCells | Where-Object x -eq 0) @($plannerSettings.environment.profilePriority) -Seed 1337 -IndustrialZoneSettings $zoneSettings
+Set-ZMSceneryDensityFields $zoneCells @($zoneCells | Where-Object x -eq 0) @($plannerSettings.environment.profilePriority) -GridCells 12 -Seed 1337 -IndustrialZoneSettings $zoneSettings
 $zoneOrigins = @($zoneCells | Where-Object { (Test-ZMIndustrialZoneCell $_) -and $_.industrialZone.distance -eq 0 })
 Assert ($zoneOrigins.Count -eq 1) 'A 144-cell world receives exactly one seeded industrial zone origin.'
 $zoneOrigin = $zoneOrigins[0]
@@ -659,13 +820,13 @@ foreach ($zoneCell in $zoneCells) {
     Assert ((Test-ZMIndustrialZoneCell $zoneCell) -eq $inside) 'Exactly the cells within the radius join the zone.'
     Assert ((@($zoneCell.environment.tags) -contains 'industrial_zone') -eq $inside) 'Zone cells, and only zone cells, carry the industrial_zone tag.'
     if ($inside) {
-        $baseTier = (Get-ZMSceneryDensityZone $zoneCell.sceneryInlandDistance (Get-ZMSceneryEnvironmentProfile $zoneCell @($plannerSettings.environment.profilePriority))).tier
+        $baseTier = (Get-ZMSceneryRadialDensityZone $zoneCell.sceneryRadialDistance $zoneCell.sceneryInlandDistance (Get-ZMSceneryEnvironmentProfile $zoneCell @($plannerSettings.environment.profilePriority))).tier
         Assert ($zoneCell.sceneryDensityTier -eq [Math]::Min($baseTier, (Get-ZMIndustrialZoneTierCap $zoneCell.industrialZone.distance 3))) 'Zone cells use the capped tier.'
         Assert ($null -ne (Get-ZMStoredSceneryDensity $zoneCell)) 'Stored zone density passes validation.'
     }
 }
 $zoneRepeat = & $newZoneGrid
-Set-ZMSceneryDensityFields $zoneRepeat @($zoneRepeat | Where-Object x -eq 0) @($plannerSettings.environment.profilePriority) -Seed 1337 -IndustrialZoneSettings $zoneSettings
+Set-ZMSceneryDensityFields $zoneRepeat @($zoneRepeat | Where-Object x -eq 0) @($plannerSettings.environment.profilePriority) -GridCells 12 -Seed 1337 -IndustrialZoneSettings $zoneSettings
 Assert ((($zoneCells | ConvertTo-Json -Depth 6 -Compress)) -ceq (($zoneRepeat | ConvertTo-Json -Depth 6 -Compress))) 'Industrial zones are deterministic for a seed.'
 $zoneTampered = $zoneCells | Where-Object { (Test-ZMIndustrialZoneCell $_) -and $_.industrialZone.distance -eq 0 } | Select-Object -First 1
 $zoneTampered.sceneryDensityTier = 3; $zoneTampered.buildingDensityTier = 3
@@ -686,7 +847,8 @@ Assert ((Get-InwardBuildingFrontageDirection 'buildings/tile_west_marker.vmf' ''
 Assert ((Get-InwardBuildingFrontageDirection 'buildings/tile_south_marker.vmf' '' 1 3 2 2 5) -eq 'N') 'A 2x2 footprint reaching the south row turns north.'
 Assert ((Get-InwardBuildingFrontageDirection 'buildings/tile_south_marker.vmf' 'S' 1 4 1 1 5) -eq 'N') 'An explicit border-facing direction is reversed.'
 Assert ((Get-InwardBuildingFrontageDirection 'buildings/tile_south_marker.vmf' 'W' 2 4 1 1 5) -eq 'W') 'A road-facing inward direction is preserved.'
-Assert ([string]::IsNullOrEmpty((Get-InwardBuildingFrontageDirection 'buildings/tile_unmarked.vmf' '' 2 4 1 1 5))) 'Templates without a marker are left unchanged.'
+Assert ((Get-InwardBuildingFrontageDirection 'buildings/tile_unmarked.vmf' '' 2 4 1 1 5) -eq 'N') 'Unmarked templates default south and turn away from the south border.'
+Assert ([string]::IsNullOrEmpty((Get-InwardBuildingFrontageDirection 'buildings/tile_unmarked.vmf' '' 2 2 1 1 5))) 'An unmarked interior template retains its south-facing orientation.'
 $templateRoadConnections = $savedRoadConnections
 $generatorSettings = $savedGeneratorSettings
 $plannerSettings.decorations.preferredChancePercent = 100
@@ -699,6 +861,35 @@ $availableSceneryTemplates = @{
     'buildings/tile_building_neutral.vmf' = 'buildings/tile_building_neutral.vmf'
     'buildings/tile_landmark_2x.vmf' = 'buildings/tile_landmark_2x.vmf'
 }
+$maximumMultiTileFootprint = 3
+$specialLandmarkSettings = @{}
+$policeStationTemplates = @(
+    'buildings/tile_policestation_1aaa_2x.vmf',
+    'buildings/tile_policestation_1aaa_1x2.vmf'
+)
+$policeStationPool = Get-ZMLandmarkTemplatePool @('Police') $plannerSettings.landmarkTemplatePatterns @($policeStationTemplates)
+Assert ($policeStationPool.template -ceq 'buildings/tile_policestation_1aaa_2x.vmf' -and $policeStationPool.alternateFootprintTemplates.Count -eq 1 -and $policeStationPool.alternateFootprintTemplates[0].footprint.width -eq 1 -and $policeStationPool.alternateFootprintTemplates[0].footprint.height -eq 2) 'Police Station prefers its configured 2x2 tile and retains the 1x2 as the alternate footprint.'
+$availableSceneryTemplates[$policeStationTemplates[0]] = $policeStationTemplates[0]
+$availableSceneryTemplates[$policeStationTemplates[1]] = $policeStationTemplates[1]
+$policeStationFits = @(Get-CellTilePlacements $emptyBuildingCell 'terrain/tile_grass.vmf' @() $policeStationPool.template @('Police') 'grassland' @() @() 0 1 1 'none' 'road-straight' 'north' 3 $availableSceneryTemplates $false $null '' $policeStationPool.alternateFootprintTemplates)
+$policeStationFitAnchor = @($policeStationFits | Where-Object { $_.role -eq 'landmark' })[0]
+Assert ($null -ne $policeStationFitAnchor -and $policeStationFitAnchor.template -ceq $policeStationTemplates[0] -and $policeStationFitAnchor.footprintWidth -eq 2 -and $policeStationFitAnchor.footprintHeight -eq 2) 'Police Station uses the preferred 2x2 tile when that footprint fits.'
+$policeStationBlockedEntrance = [pscustomobject]@{
+    interiorTiles = @([pscustomobject]@{ tileX = 1; tileY = 1 })
+    template = 'safezones/tile_safezone_entrance.vmf'
+    yaw = 0
+}
+$policeStationFallback = @(Get-CellTilePlacements $emptyBuildingCell 'terrain/tile_grass.vmf' @() $policeStationPool.template @('Police') 'grassland' @() @() 0 1 1 'none' 'road-straight' 'north' 3 $availableSceneryTemplates $false $policeStationBlockedEntrance '' $policeStationPool.alternateFootprintTemplates)
+$policeStationFallbackAnchor = @($policeStationFallback | Where-Object { $_.role -eq 'landmark' })[0]
+Assert ($null -ne $policeStationFallbackAnchor -and $policeStationFallbackAnchor.template -ceq $policeStationTemplates[1] -and $policeStationFallbackAnchor.footprintWidth -eq 1 -and $policeStationFallbackAnchor.footprintHeight -eq 2) 'Police Station uses the 1x2 alternate only when the 2x2 footprint cannot fit.'
+$additionalPoliceStation = [pscustomobject]@{
+    landmark = 'Police'
+    template = $policeStationPool.template
+    alternateFootprintTemplates = @($policeStationPool.alternateFootprintTemplates)
+}
+$additionalPoliceFallback = @(Get-CellTilePlacements $emptyBuildingCell 'terrain/tile_grass.vmf' @() '' @('Primary', 'Police') 'grassland' @() @() 0 1 1 'none' 'road-straight' 'north' 3 $availableSceneryTemplates $false $policeStationBlockedEntrance '' @() @($additionalPoliceStation))
+$additionalPoliceFallbackAnchor = @($additionalPoliceFallback | Where-Object { $_.template -ceq $policeStationTemplates[1] -and $_.role -eq 'landmark' })[0]
+Assert ($null -ne $additionalPoliceFallbackAnchor -and $additionalPoliceFallbackAnchor.footprintWidth -eq 1 -and $additionalPoliceFallbackAnchor.footprintHeight -eq 2) 'Additional landmarks also use the alternate footprint when the preferred footprint cannot fit.'
 $decorationsWithoutBuildings = @(Get-CellTilePlacements $emptyBuildingCell 'terrain/tile_grass.vmf' @() '' @('none') 'grassland' @() @($decorationFixture) 0 1 1 'none' 'motorway-straight' 'north' 5 $availableSceneryTemplates $false $null)
 $placedDecorations = @($decorationsWithoutBuildings | Where-Object { $_.role -eq 'decoration' })
 Assert ($placedDecorations.Count -gt 0 -and @($decorationsWithoutBuildings | Where-Object { $_.role -eq 'building' }).Count -eq 0) 'Decoration-only motorway fixture places decorations without any building candidates.'
@@ -813,29 +1004,54 @@ Assert ($null -eq (Get-ZMStoredSceneryDensity $legacy) -and (Get-BuildingDensity
 Assert ((Get-RuntimeSceneryDensityFields $legacy $legacy).Count -eq 0) 'Legacy runtime export does not fabricate new policy metadata.'
 $legacyManifest = [pscustomobject]@{ map = [pscustomobject]@{ seed = 1337 }; cells = @($legacy) }
 Assert (-not (Test-ZMSceneryDensityManifest $legacyManifest)) 'Legacy fixture without environment metadata remains explicitly compatible.'
-$freshManifest = [pscustomobject]@{ map = [pscustomobject]@{ environment = [pscustomobject]@{ sceneryDensityPolicyVersion = 1 } }; cells = $freshCells }
+$freshManifest = [pscustomobject]@{ map = [pscustomobject]@{ gridCells = 12; environment = [pscustomobject]@{ sceneryDensityPolicyVersion = 2 } }; cells = $freshCells }
 Assert (Test-ZMSceneryDensityManifest $freshManifest) 'New manifest validates its policy header and every cell.'
 $missingManifest = [pscustomobject]@{ map = $freshManifest.map; cells = @($fresh, $legacy) }
 Assert-Rejected { Test-ZMSceneryDensityManifest $missingManifest } 'Manifest scenery density missing*'
 $undeclaredManifest = [pscustomobject]@{ map = $legacyManifest.map; cells = @($fresh) }
 Assert-Rejected { Test-ZMSceneryDensityManifest $undeclaredManifest } 'Stored scenery density requires a manifest policy header*'
-$futureManifest = [pscustomobject]@{ map = [pscustomobject]@{ environment = [pscustomobject]@{ sceneryDensityPolicyVersion = 2 } }; cells = $freshCells }
+$futureManifest = [pscustomobject]@{ map = [pscustomobject]@{ environment = [pscustomobject]@{ sceneryDensityPolicyVersion = 3 } }; cells = $freshCells }
 Assert-Rejected { Test-ZMSceneryDensityManifest $futureManifest } 'Unsupported manifest scenery density policy*'
+$missingGridManifest = [pscustomobject]@{ map = [pscustomobject]@{ environment = [pscustomobject]@{ sceneryDensityPolicyVersion = 2 } }; cells = $freshCells }
+Assert-Rejected { Test-ZMSceneryDensityManifest $missingGridManifest } 'Policy-v2 manifest requires a positive map.gridCells*'
 Assert-Rejected { Get-RuntimeSceneryDensityFields $fresh $legacy } 'Runtime scenery density requires matching manifest and plan*'
 Assert-Rejected { Get-RuntimeSceneryDensityFields $fresh $freshCells[8] } 'Runtime scenery density mismatch*'
 foreach ($case in @(
-    @('sceneryDensityPolicyVersion', 2, 'Unsupported scenery density policy*'),
+    @('sceneryDensityPolicyVersion', 3, 'Unsupported scenery density policy*'),
     @('sceneryDensityTier', 4, 'Invalid stored scenery density tier*'),
     @('sceneryDensityTier', '3', 'Invalid stored scenery density tier*'),
     @('sceneryDensitySource', 'invented', 'Invalid stored scenery density source*'),
     @('sceneryInlandDistance', -1, 'Invalid stored scenery inland distance*'),
     @('sceneryInlandDistance', 0, 'Inconsistent stored scenery density policy*'),
+    @('sceneryRadialDistance', -1, 'Invalid stored scenery radial distance*'),
+    @('sceneryRadialDistance', '5.7', 'Invalid stored scenery radial distance*'),
     @('buildingDensityTier', 2, 'Scenery/building density alias mismatch*')
 )) {
     $bad = $fresh | ConvertTo-Json -Depth 8 | ConvertFrom-Json
     $bad.($case[0]) = $case[1]
     Assert-Rejected { Get-BuildingDensityTier $bad 'commercial' } $case[2]
 }
+$badRadialManifestCell = $fresh | ConvertTo-Json -Depth 8 | ConvertFrom-Json
+$badRadialManifestCell.sceneryRadialDistance += 1
+Assert-Rejected {
+    Test-ZMSceneryDensityManifest ([pscustomobject]@{ map = $freshManifest.map; cells = @($badRadialManifestCell) })
+} '*Inconsistent stored scenery radial distance*'
+$legacyStored = [pscustomobject]@{
+    x = 3; y = 0
+    sceneryDensityPolicyVersion = 1; sceneryDensityTier = 2; sceneryDensitySource = 'inland_band'; sceneryInlandDistance = 3; buildingDensityTier = 2
+}
+Assert ((Get-ZMStoredSceneryDensity $legacyStored).sceneryDensityPolicyVersion -eq 1) 'Existing policy-v1 cell metadata remains consumable without radial fields.'
+$legacyStoredManifest = [pscustomobject]@{
+    map = [pscustomobject]@{ environment = [pscustomobject]@{ sceneryDensityPolicyVersion = 1 } }
+    cells = @($legacyStored)
+}
+Assert (Test-ZMSceneryDensityManifest $legacyStoredManifest) 'Policy-v1 manifest and per-cell metadata remain compatible.'
+Assert-Rejected {
+    Test-ZMSceneryDensityManifest ([pscustomobject]@{
+        map = [pscustomobject]@{ gridCells = 12; environment = [pscustomobject]@{ sceneryDensityPolicyVersion = 2 } }
+        cells = @($legacyStored)
+    })
+} 'Manifest/cell scenery density policy mismatch*'
 $partial = $fresh | ConvertTo-Json -Depth 8 | ConvertFrom-Json
 $partial.PSObject.Properties.Remove('sceneryDensitySource')
 Assert-Rejected { Get-BuildingDensityTier $partial 'commercial' } 'Incomplete stored scenery density*'
@@ -853,7 +1069,7 @@ foreach ($file in $authored) {
 }
 Write-Host 'Coast fixture (west ocean; columns x=0..11):'
 foreach ($profile in @('grassland', 'commercial', 'settlement')) {
-    $row = (0..11 | ForEach-Object { (Get-ZMSceneryDensityZone $_ $profile).tier }) -join ' '
+    $row = (0..11 | ForEach-Object { (Get-ZMSceneryRadialDensityZone (Get-ZMSceneryRadialDistance $_ 6 12) $_ $profile).tier }) -join ' '
     Write-Host "$profile : $row"
 }
 Write-Host "Scenery density: $passed assertions passed; $($authored.Count) authored templates classified. No world outputs changed."

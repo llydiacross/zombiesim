@@ -1,5 +1,6 @@
 param(
-    [string]$OutputRoot = ''
+    [string]$OutputRoot = '',
+    [string]$SettingsPath = ''
 )
 
 Set-StrictMode -Version Latest
@@ -24,7 +25,19 @@ if (-not (Test-Path -LiteralPath $fixtureMapPath -PathType Leaf)) {
     throw "Border showcase fixture map was not found: $fixtureMapPath"
 }
 
-& $plannerScript -WorldProfile preview -MapData $fixtureMapPath -Output $planPath -ListOutput $listPath | Out-Null
+$fixtureMap = Get-Content -Raw -LiteralPath $fixtureMapPath | ConvertFrom-Json
+$motorwayCells = @($fixtureMap.cells | Where-Object { $_.highway.present })
+$fixtureMap.cells = @($fixtureMap.cells | Where-Object { -not $_.highway.present })
+foreach ($cell in @($fixtureMap.cells | Where-Object {
+    ($_.x -eq 0 -and $_.y -eq 0) -or
+    ($_.x -eq 3 -and $_.y -eq 0) -or
+    ($_.x -eq 0 -and $_.y -eq 3)
+})) {
+    $cell.road.present = $true
+}
+$isolatedMapPath = Join-Path $OutputRoot 'border_showcase_without_motorways.json'
+[IO.File]::WriteAllText($isolatedMapPath, ($fixtureMap | ConvertTo-Json -Depth 100), [Text.UTF8Encoding]::new($false))
+& $plannerScript -WorldProfile preview -SettingsPath $SettingsPath -MapData $isolatedMapPath -CellDirectory $cellDirectory -Output $planPath -ListOutput $listPath | Out-Null
 if (-not $?) { throw 'Border showcase fixture planner failed.' }
 
 $plan = Get-Content -Raw -LiteralPath $planPath | ConvertFrom-Json
@@ -39,9 +52,9 @@ function Test-CellHasTemplate {
 }
 
 # Water-corner showcase: the fixture's fixed seed deterministically activates the NW corner.
-$cornerCell = @($plan.cells | Where-Object { $_.x -eq 0 -and $_.y -eq 0 })[0]
-$northTipCell = @($plan.cells | Where-Object { $_.x -eq 3 -and $_.y -eq 0 })[0]
-$westTipCell = @($plan.cells | Where-Object { $_.x -eq 0 -and $_.y -eq 3 })[0]
+$cornerCell = $plan.cells | Where-Object { $_.x -eq 0 -and $_.y -eq 0 } | Select-Object -First 1
+$northTipCell = $plan.cells | Where-Object { $_.x -eq 3 -and $_.y -eq 0 } | Select-Object -First 1
+$westTipCell = $plan.cells | Where-Object { $_.x -eq 0 -and $_.y -eq 3 } | Select-Object -First 1
 if ($null -eq $cornerCell -or $cornerCell.cellTemplateFilename -notlike '*-wtrnw.vmf') {
     $errors.Add('The (0,0) fixture cell must be the NW water-corner cell (filename suffix -wtrnw).')
 }
@@ -53,7 +66,7 @@ if ($null -eq $westTipCell -or $westTipCell.cellTemplateFilename -notlike '*-wtr
 }
 
 # Landmark showcase: the Park landmark pattern added in Phase B must still resolve to a real building.
-$parkCell = @($plan.cells | Where-Object { @($_.landmarks) -contains 'Park' })[0]
+$parkCell = $plan.cells | Where-Object { @($_.landmarks) -contains 'Park' } | Select-Object -First 1
 if ($null -eq $parkCell -or [string]$parkCell.landmarkTemplate -notlike '*tile_park*') {
     $errors.Add('The Park landmark fixture cell must resolve landmarkTemplate to a tile_park* building.')
 }
@@ -69,9 +82,9 @@ if ($errors.Count -gt 0) {
     throw "Border showcase fixture planner validation failed with $($errors.Count) error(s)."
 }
 
-$cornerDensityCell = @($plan.cells | Where-Object {
+$cornerDensityCell = $plan.cells | Where-Object {
     $_.cellTemplateFilename -notlike '*-wtr*' -and $_.environmentProfile -notin @('radioactive', 'military', 'fortified')
-} | Select-Object -First 1)[0]
+} | Select-Object -First 1
 if ($null -eq $cornerDensityCell) {
     throw 'Border showcase fixture needs a standard non-water corner recipe for density-selection coverage.'
 }
@@ -85,7 +98,7 @@ foreach ($recipe in @($plan.cells | Where-Object { $_.cellTemplateFilename -ceq 
 }
 [IO.File]::WriteAllText($planPath, ($plan | ConvertTo-Json -Depth 100), [Text.UTF8Encoding]::new($false))
 
-& $builderScript -WorldProfile preview -PlanData $planPath -CellDirectory $cellDirectory -Force | Out-Null
+& $builderScript -WorldProfile preview -SettingsPath $SettingsPath -PlanData $planPath -CellDirectory $cellDirectory -SkyboxOutputDirectory (Join-Path $OutputRoot 'skybox') -Force | Out-Null
 if (-not $?) { throw 'Border showcase fixture VMF builder failed.' }
 
 $cornerDensityVmfPath = Join-Path $cellDirectory $cornerDensityFilename
@@ -96,12 +109,13 @@ foreach ($corner in $expectedCornerYaw.GetEnumerator()) {
     $cornerEntity = [regex]::Match($cornerDensityVmf, '(?ms)entity\s*\{[^}]*"targetname"\s+"zm_border_corner_' + $corner.Key + '"[^}]*\}')
     $cornerLayout = @($cornerDensityLayout.borderPlacements | Where-Object { $_.targetname -ceq "zm_border_corner_$($corner.Key)" })[0]
     if (-not $cornerEntity.Success -or
-        $cornerEntity.Value -notmatch '"file"\s+"[^"]*tile_border_wall_corner_1aa\.vmf"' -or
+        $cornerEntity.Value -notmatch '"file"\s+"[^"]*tile_border_wall_corner_1aaa\.vmf"' -or
         $cornerEntity.Value -notmatch ('"angles"\s+"0 ' + $corner.Value + ' 0"') -or
         $null -eq $cornerLayout -or
-        $cornerLayout.sceneryDensitySelection.status -ne 'selected_explicit_exception' -or
-        $cornerLayout.sceneryDensitySelection.densityException -ne 'target_tier_3_fallback') {
-        $errors.Add("$cornerDensityFilename must emit the medium corner exception at $($corner.Key) with canonical yaw $($corner.Value).")
+        $cornerLayout.sceneryDensitySelection.status -ne 'selected' -or
+        $cornerLayout.sceneryDensitySelection.targetTier -ne 3 -or
+        $cornerLayout.sceneryDensitySelection.actualTag -ne 3) {
+        $errors.Add("$cornerDensityFilename must emit the high-density corner at $($corner.Key) with canonical yaw $($corner.Value).")
     }
 }
 $policyWalls = @($cornerDensityLayout.borderPlacements | Where-Object {
@@ -134,9 +148,10 @@ if (-not (Test-CellHasTemplate $westTipCell 'tile_border_water_deadend\.vmf')) {
     $errors.Add("$($westTipCell.cellTemplateFilename) must cap its water runway with tile_border_water_deadend.vmf.")
 }
 
-$wallVariationCell = @($plan.cells | Where-Object { $_.cellTemplateFilename -notlike '*-wtr*' } | Select-Object -First 1)[0]
-$wallVariationVmfPath = Join-Path $cellDirectory $wallVariationCell.cellTemplateFilename
-$distinctWallVariants = @(Select-String -Path $wallVariationVmfPath -Pattern 'border/tile_border_wall(_1a|_1aa|_1aaa)?\.vmf' | ForEach-Object { $_.Matches[0].Value } | Sort-Object -Unique)
+$wallVariationCell = $cornerDensityCell
+$distinctWallVariants = @($cornerDensityLayout.borderPlacements | Where-Object {
+    $_.template -match '^border/tile_border_wall_[0-9]+a{1,3}\.vmf$'
+} | ForEach-Object { $_.template } | Sort-Object -Unique)
 if ($distinctWallVariants.Count -lt 2) {
     $errors.Add("$($wallVariationCell.cellTemplateFilename) must mix at least two distinct wall-variation templates across its border ring; found $($distinctWallVariants.Count).")
 }
@@ -146,4 +161,4 @@ if ($errors.Count -gt 0) {
     throw "Border showcase fixture VMF validation failed with $($errors.Count) error(s)."
 }
 
-Write-Output "Border showcase fixture passed: cells=$($plan.cells.Count); topologies=$($distinctTopologies.Count); output=$OutputRoot"
+Write-Output "Border showcase fixture passed: cells=$($plan.cells.Count); topologies=$($distinctTopologies.Count); excludedMotorways=$($motorwayCells.Count) (covered separately by trusted-plan tests); output=$OutputRoot"

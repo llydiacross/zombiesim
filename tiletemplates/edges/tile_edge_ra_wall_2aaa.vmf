@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "22"
+	"mapversion" "23"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "22"
+	"mapversion" "23"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -921,6 +921,48 @@ world
 			"visgroupautoshown" "1"
 		}
 	}
+	group
+	{
+		"id" "494"
+		editor
+		{
+			"color" "117 162 0"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	group
+	{
+		"id" "488"
+		editor
+		{
+			"color" "117 162 0"
+			"groupid" "494"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	group
+	{
+		"id" "573"
+		editor
+		{
+			"color" "117 162 0"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
+	group
+	{
+		"id" "574"
+		editor
+		{
+			"color" "117 162 0"
+			"groupid" "573"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
 }
 entity
 {
@@ -1172,9 +1214,9 @@ entity
 }
 entity
 {
-	"id" "447"
+	"id" "471"
 	"classname" "prop_static"
-	"angles" "0 276.5 0"
+	"angles" "0 100 180"
 	"fademindist" "-1"
 	"fadescale" "1"
 	"lightmapresolutionx" "32"
@@ -1182,31 +1224,11 @@ entity
 	"model" "models/props_buildings/collapsedbuilding02b.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "0 -192 1984"
+	"origin" "-128 160 1536"
 	editor
 	{
-		"color" "255 255 0"
-		"visgroupshown" "1"
-		"visgroupautoshown" "1"
-		"logicalpos" "[0 0]"
-	}
-}
-entity
-{
-	"id" "457"
-	"classname" "prop_static"
-	"angles" "0 90 0"
-	"fademindist" "-1"
-	"fadescale" "1"
-	"lightmapresolutionx" "32"
-	"lightmapresolutiony" "32"
-	"model" "models/props_buildings/collapsedbuilding02b.mdl"
-	"skin" "0"
-	"solid" "6"
-	"origin" "128 160 1984"
-	editor
-	{
-		"color" "255 255 0"
+		"color" "117 162 0"
+		"groupid" "488"
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 0]"
@@ -1216,6 +1238,94 @@ entity
 {
 	"id" "465"
 	"classname" "prop_static"
+	"angles" "0 -94.5 180"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props_buildings/collapsedbuilding02b.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "-1.90735e-06 -224 1536"
+	editor
+	{
+		"color" "117 162 0"
+		"groupid" "488"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "447"
+	"classname" "prop_static"
+	"angles" "0 83.5 -180"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props_buildings/collapsedbuilding02b.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "-1.90735e-06 128 1536"
+	editor
+	{
+		"color" "117 162 0"
+		"groupid" "488"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "457"
+	"classname" "prop_static"
+	"angles" "0 -90 180"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props_buildings/collapsedbuilding02b.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "128 -224 1536"
+	editor
+	{
+		"color" "117 162 0"
+		"groupid" "488"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "575"
+	"classname" "prop_static"
+	"angles" "0 -100 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props_buildings/collapsedbuilding02b.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "-128 -224 2144"
+	editor
+	{
+		"color" "117 162 0"
+		"groupid" "574"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "579"
+	"classname" "prop_static"
 	"angles" "0 94.5 0"
 	"fademindist" "-1"
 	"fadescale" "1"
@@ -1224,10 +1334,11 @@ entity
 	"model" "models/props_buildings/collapsedbuilding02b.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "0 160 1984"
+	"origin" "-3.8147e-06 160 2144"
 	editor
 	{
-		"color" "255 255 0"
+		"color" "117 162 0"
+		"groupid" "574"
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 0]"
@@ -1235,9 +1346,9 @@ entity
 }
 entity
 {
-	"id" "471"
+	"id" "583"
 	"classname" "prop_static"
-	"angles" "0 260 0"
+	"angles" "0 -83.5 0"
 	"fademindist" "-1"
 	"fadescale" "1"
 	"lightmapresolutionx" "32"
@@ -1245,10 +1356,33 @@ entity
 	"model" "models/props_buildings/collapsedbuilding02b.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "-128 -224 1984"
+	"origin" "-3.8147e-06 -192 2144"
 	editor
 	{
-		"color" "255 255 0"
+		"color" "117 162 0"
+		"groupid" "574"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "587"
+	"classname" "prop_static"
+	"angles" "0 90 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props_buildings/collapsedbuilding02b.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "128 160 2144"
+	editor
+	{
+		"color" "117 162 0"
+		"groupid" "574"
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 0]"

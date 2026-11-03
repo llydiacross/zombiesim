@@ -50,11 +50,16 @@ $radiationEpicenterXFraction = if ($radiationSettings.ContainsKey('epicenterXFra
 $radiationEpicenterYMinimumFraction = if ($radiationSettings.ContainsKey('epicenterYMinimumFraction')) { [double]$radiationSettings.epicenterYMinimumFraction } else { 0.3 }
 $radiationEpicenterYMaximumFraction = if ($radiationSettings.ContainsKey('epicenterYMaximumFraction')) { [double]$radiationSettings.epicenterYMaximumFraction } else { 0.7 }
 $radiationFalloutRadiusCells = if ($radiationSettings.ContainsKey('falloutRadiusCells')) { [int]$radiationSettings.falloutRadiusCells } else { 9 }
+$radiationSceneryRadiusCells = if ($radiationSettings.ContainsKey('sceneryFalloutRadiusCells')) { [double]$radiationSettings.sceneryFalloutRadiusCells } else { [double]$radiationFalloutRadiusCells }
+$laboratorySceneryRadiusCells = if ($radiationSettings.ContainsKey('sceneryLaboratoryRadiusCells')) { [double]$radiationSettings.sceneryLaboratoryRadiusCells } else { 3.0 }
+$legacyDestroyedThreshold = if ($radiationSettings.ContainsKey('destroyedThreshold')) { [double]$radiationSettings.destroyedThreshold } else { 0.7 }
+$radiationDestroyedRadiusCells = if ($radiationSettings.ContainsKey('destroyedRadiusCells')) { [double]$radiationSettings.destroyedRadiusCells } else { $radiationFalloutRadiusCells * (1.0 - $legacyDestroyedThreshold) }
+$militaryZoneSettings = if ($mapSettings.ContainsKey('militaryZones')) { $mapSettings.militaryZones } else { @{} }
+$militaryZoneRadiusCells = if ($militaryZoneSettings.ContainsKey('radius')) { [double]$militaryZoneSettings.radius } else { 0.0 }
 $radiationAdditionalSourceEveryGridCells = if ($radiationSettings.ContainsKey('additionalSourceEveryGridCells')) { [int]$radiationSettings.additionalSourceEveryGridCells } else { 48 }
 $radiationMaximumSources = if ($radiationSettings.ContainsKey('maximumSources')) { [int]$radiationSettings.maximumSources } else { 3 }
 $radiationCellMiles = if ($radiationSettings.ContainsKey('cellMiles')) { [double]$radiationSettings.cellMiles } else { 4 }
 $radiationLoreReferenceFalloutMilesAtOneMegaton = if ($radiationSettings.ContainsKey('loreReferenceFalloutMilesAtOneMegaton')) { [double]$radiationSettings.loreReferenceFalloutMilesAtOneMegaton } else { 12 }
-$radiationDestroyedThreshold = if ($radiationSettings.ContainsKey('destroyedThreshold')) { [double]$radiationSettings.destroyedThreshold } else { 0.7 }
 $radiationDamagePerSecondAtPeak = if ($radiationSettings.ContainsKey('damagePerSecondAtPeak')) { [double]$radiationSettings.damagePerSecondAtPeak } else { 8 }
 $radiationOverlayMaximumAlpha = if ($radiationSettings.ContainsKey('overlayMaximumAlpha')) { [int]$radiationSettings.overlayMaximumAlpha } else { 150 }
 $dangerEnabled = if ($dangerSettings.ContainsKey('enabled')) { [bool]$dangerSettings.enabled } else { $true }
@@ -94,14 +99,24 @@ if ($radiationEpicenterYMinimumFraction -lt 0 -or $radiationEpicenterYMinimumFra
 if ($radiationFalloutRadiusCells -lt 1) {
     throw 'mapGeneration.radiation.falloutRadiusCells must be at least 1.'
 }
+foreach ($radius in @(
+    @('mapGeneration.radiation.sceneryFalloutRadiusCells', $radiationSceneryRadiusCells),
+    @('mapGeneration.radiation.sceneryLaboratoryRadiusCells', $laboratorySceneryRadiusCells),
+    @('mapGeneration.radiation.destroyedRadiusCells', $radiationDestroyedRadiusCells)
+)) {
+    if ([double]::IsNaN($radius[1]) -or [double]::IsInfinity($radius[1]) -or $radius[1] -le 0) {
+        throw "$($radius[0]) must be finite and positive."
+    }
+}
+if ([double]::IsNaN($militaryZoneRadiusCells) -or [double]::IsInfinity($militaryZoneRadiusCells) -or $militaryZoneRadiusCells -lt 0) {
+    throw 'mapGeneration.militaryZones.radius must be finite and non-negative.'
+}
+$radiationDestroyedThreshold = [Math]::Round([Math]::Max(0.0, 1.0 - ($radiationDestroyedRadiusCells / $radiationFalloutRadiusCells)), 3)
 if ($radiationAdditionalSourceEveryGridCells -lt 1 -or $radiationMaximumSources -lt 1) {
     throw 'mapGeneration.radiation source-count settings must be at least 1.'
 }
 if ($radiationCellMiles -le 0 -or $radiationLoreReferenceFalloutMilesAtOneMegaton -le 0) {
     throw 'mapGeneration.radiation lore scale settings must be greater than 0.'
-}
-if ($radiationDestroyedThreshold -le 0 -or $radiationDestroyedThreshold -gt 1) {
-    throw 'mapGeneration.radiation.destroyedThreshold must be greater than 0 and no more than 1.'
 }
 if ($radiationDamagePerSecondAtPeak -lt 0) {
     throw 'mapGeneration.radiation.damagePerSecondAtPeak cannot be negative.'
@@ -285,7 +300,15 @@ $grassColor = [System.Drawing.Color]::FromArgb(70, 125, 62)
 $sandColor = [System.Drawing.Color]::FromArgb(175, 145, 72)
 $dirtColor = [System.Drawing.Color]::FromArgb(125, 78, 44)
 $zones = @($mapSettings.districts | ForEach-Object {
-    @{ Name = $_.name; X = [int]$_.x; Y = [int]$_.y; Radius = [int]$_.radius; Color = [System.Drawing.Color]::FromArgb([int]$_.color[0], [int]$_.color[1], [int]$_.color[2], [int]$_.color[3]) }
+    $industrialWeight = if ($_.ContainsKey('industrialOriginWeight')) { [double]$_.industrialOriginWeight } else { 1.0 }
+    $commercialChance = if ($_.ContainsKey('commercialSpreadChancePercent')) { [int]$_.commercialSpreadChancePercent } else { [int]$generatorSettings.cellPlanning.buildingSelection.commercialSpreadChancePercent }
+    if ([double]::IsNaN($industrialWeight) -or [double]::IsInfinity($industrialWeight) -or $industrialWeight -lt 0) {
+        throw "District '$($_.name)' industrialOriginWeight must be finite and non-negative."
+    }
+    if ($commercialChance -lt 0 -or $commercialChance -gt 100) {
+        throw "District '$($_.name)' commercialSpreadChancePercent must be from 0 through 100."
+    }
+    @{ Name = $_.name; X = [int]$_.x; Y = [int]$_.y; Radius = [int]$_.radius; IndustrialOriginWeight = $industrialWeight; CommercialSpreadChancePercent = $commercialChance; Color = [System.Drawing.Color]::FromArgb([int]$_.color[0], [int]$_.color[1], [int]$_.color[2], [int]$_.color[3]) }
 })
 $layoutScale = ($GridCells - 1) / 63.0
 if ($GridCells -ne 64) {
@@ -1558,10 +1581,10 @@ function Connect-MetroRouteThroughStops {
             worldX = $CellX
             worldY = $CellY - $originCellY
             terrain = ConvertTo-MapColor $terrainCells[$cellKey]
-            environment = [ordered]@{ terrain = $terrainTypes[$cellKey]; tags = @(Get-EnvironmentTags $CellX $CellY) }
+            environment = [ordered]@{ terrain = $terrainTypes[$cellKey]; tags = @(Get-EnvironmentTags $CellX $CellY); sceneryRadioactive = (Test-RadioactiveScenery $CellX $CellY) }
             radiation = [ordered]@{ intensity = Get-RadiationIntensity $CellX $CellY }
             danger = $danger
-            district = [ordered]@{ name = $nearestZone.Name; distance = [Math]::Round([Math]::Sqrt([Math]::Pow($CellX - $nearestZone.X, 2) + [Math]::Pow($CellY - $nearestZone.Y, 2)), 3); inside = $nearestDistance -le $nearestZone.Radius }
+            district = [ordered]@{ name = $nearestZone.Name; distance = [Math]::Round([Math]::Sqrt([Math]::Pow($CellX - $nearestZone.X, 2) + [Math]::Pow($CellY - $nearestZone.Y, 2)), 3); inside = $nearestDistance -le $nearestZone.Radius; industrialOriginWeight = $nearestZone.IndustrialOriginWeight; commercialSpreadChancePercent = $nearestZone.CommercialSpreadChancePercent }
             building = if ($buildingCells.ContainsKey($cellKey)) { [ordered]@{ present = $true; color = ConvertTo-MapColor $buildingCells[$cellKey] } } else { [ordered]@{ present = $false } }
             landmarks = $cellLandmarks
             safeZone = $safeZone
@@ -1582,7 +1605,9 @@ function Connect-MetroRouteThroughStops {
 
         # Matches the current runtime/skybox contract: only west of x=0 is actual ocean.
         $industrialZoneSettings = if ($generatorSettings.mapGeneration -is [System.Collections.IDictionary] -and $generatorSettings.mapGeneration.Contains('industrialZones')) { $generatorSettings.mapGeneration.industrialZones } else { $null }
-        Set-ZMSceneryDensityFields $cells @($cells | Where-Object x -eq 0) @($generatorSettings.cellPlanning.environment.profilePriority) -Seed $Seed -IndustrialZoneSettings $industrialZoneSettings
+        Set-ZMSceneryDensityFields $cells @($cells | Where-Object x -eq 0) @($generatorSettings.cellPlanning.environment.profilePriority) -GridCells $GridCells -Seed $Seed -IndustrialZoneSettings $industrialZoneSettings -RadiationSources $radiationSources -DestroyedRadiusCells $radiationDestroyedRadiusCells -MilitaryRadiusCells $militaryZoneRadiusCells
+        $landmarkDensityShortageDiagnostics = @(Get-LandmarkDensityShortages -DensityCells $cells)
+        Write-Host "[WorldGen][Landmarks] Density-exempt landmark shortages=$($landmarkDensityShortageDiagnostics.Count); landmarks remain where generated with their existing template family."
         $industrialZoneData = @($cells | Where-Object { (Test-ZMIndustrialZoneCell $_) -and $_.industrialZone.distance -eq 0 } | Sort-Object { $_.industrialZone.id } | ForEach-Object {
             $zoneId = $_.industrialZone.id
             [ordered]@{ id = $zoneId; x = [int]$_.x; y = [int]$_.y; worldY = [int]$_.y - $originCellY; radius = $_.industrialZone.radius; cells = @($cells | Where-Object { (Test-ZMIndustrialZoneCell $_) -and $_.industrialZone.id -eq $zoneId }).Count }
@@ -1591,7 +1616,7 @@ function Connect-MetroRouteThroughStops {
         $districtData = @($zones | ForEach-Object {
             $district = $_
             $districtTags = @($cells | Where-Object { $_.district.name -eq $district.Name -and $_.district.inside } | ForEach-Object { $_.environment.tags } | Sort-Object -Unique)
-            [ordered]@{ name = $district.Name; x = $district.X; y = $district.Y; radius = $district.Radius; color = ConvertTo-MapColor $district.Color; environment = [ordered]@{ tags = $districtTags } }
+            [ordered]@{ name = $district.Name; x = $district.X; y = $district.Y; radius = $district.Radius; industrialOriginWeight = $district.IndustrialOriginWeight; commercialSpreadChancePercent = $district.CommercialSpreadChancePercent; color = ConvertTo-MapColor $district.Color; environment = [ordered]@{ tags = $districtTags } }
         })
         $safeZoneData = @($denCells.GetEnumerator() | Sort-Object { $_.Value.District } | ForEach-Object {
             $coordinates = $_.Key -split ","
@@ -1613,8 +1638,8 @@ function Connect-MetroRouteThroughStops {
         })
         $mapData = [ordered]@{
             schemaVersion = 2
-            map = [ordered]@{ seed = $Seed; cityName = $cityName; gridCells = $GridCells; cellSize = $CellSize; width = $width; height = $height; origin = [ordered]@{ cellX = 0; cellY = $originCellY; worldX = 0; worldY = 0 }; environment = [ordered]@{ taggingVersion = 1; sceneryDensityPolicyVersion = 1; tags = @($cells | ForEach-Object { $_.environment.tags } | Sort-Object -Unique) } }
-            generation = [ordered]@{ roadDepth = $RoadDepth; branchChance = $BranchChance; blockadeChance = $BlockadeChance; bridgeChance = $BridgeChance; biomeOpacity = $biomeOpacity; safeZonePlacement = [ordered]@{ minimumSpacingCells = $safeZoneMinimumSpacingCells; actualMinimumSpacingCells = [Math]::Round($minimumSafeZoneDistance, 3); districts = @($safeZonePlacementDiagnostics) }; landmarkDensityShortages = @($landmarkDensityShortageDiagnostics); industrialZones = @($industrialZoneData); radiation = [ordered]@{ enabled = $radiationEnabled; epicenter = if ($radiationSources.Count -gt 0) { $radiationSources[0] } else { $null }; epicenters = @($radiationSources); placementDiagnostics = @($radiationSourcePlacementDiagnostics); falloutRadiusCells = $radiationFalloutRadiusCells; destroyedThreshold = $radiationDestroyedThreshold; damagePerSecondAtPeak = $radiationDamagePerSecondAtPeak; cellMiles = $radiationCellMiles; loreYieldMegatons = $radiationLoreYieldMegatons }; danger = [ordered]@{ enabled = $dangerEnabled; pattern = 'chevron'; origin = [ordered]@{ worldX = 0; worldY = 0; cellX = 0; cellY = $originCellY }; tierCount = $dangerTierCount } }
+            map = [ordered]@{ seed = $Seed; cityName = $cityName; gridCells = $GridCells; cellSize = $CellSize; width = $width; height = $height; origin = [ordered]@{ cellX = 0; cellY = $originCellY; worldX = 0; worldY = 0 }; environment = [ordered]@{ taggingVersion = 1; sceneryDensityPolicyVersion = 2; tags = @($cells | ForEach-Object { $_.environment.tags } | Sort-Object -Unique) } }
+            generation = [ordered]@{ roadDepth = $RoadDepth; branchChance = $BranchChance; blockadeChance = $BlockadeChance; bridgeChance = $BridgeChance; biomeOpacity = $biomeOpacity; safeZonePlacement = [ordered]@{ minimumSpacingCells = $safeZoneMinimumSpacingCells; actualMinimumSpacingCells = [Math]::Round($minimumSafeZoneDistance, 3); districts = @($safeZonePlacementDiagnostics) }; landmarkDensityShortages = @($landmarkDensityShortageDiagnostics); industrialZones = @($industrialZoneData); militaryZoneRadiusCells = $militaryZoneRadiusCells; radiation = [ordered]@{ enabled = $radiationEnabled; epicenter = if ($radiationSources.Count -gt 0) { $radiationSources[0] } else { $null }; epicenters = @($radiationSources); placementDiagnostics = @($radiationSourcePlacementDiagnostics); falloutRadiusCells = $radiationFalloutRadiusCells; sceneryFalloutRadiusCells = $radiationSceneryRadiusCells; sceneryLaboratoryRadiusCells = $laboratorySceneryRadiusCells; destroyedRadiusCells = $radiationDestroyedRadiusCells; destroyedThreshold = $radiationDestroyedThreshold; damagePerSecondAtPeak = $radiationDamagePerSecondAtPeak; cellMiles = $radiationCellMiles; loreYieldMegatons = $radiationLoreYieldMegatons }; danger = [ordered]@{ enabled = $dangerEnabled; pattern = 'chevron'; origin = [ordered]@{ worldX = 0; worldY = 0; cellX = 0; cellY = $originCellY }; tierCount = $dangerTierCount } }
             statistics = [ordered]@{ population = $population; roadCells = $roadCells.Count; highwayCells = $highwayCells.Count; buildingCells = $buildingCells.Count; landmarkCells = $landmarkCells.Count; airports = $airportKeys.Count; safeZones = $denCells.Count; metroLines = $metroLines.Count; metroStops = $metroStations.Count }
             districts = $districtData
             safeZones = $safeZoneData
@@ -3042,29 +3067,35 @@ function Get-EnvironmentTags {
     if (@($metroLines | Where-Object { $_.RouteCells -contains $cellKey }).Count -gt 0) { $tags += "metro_route" }
     $radiationIntensity = Get-RadiationIntensity $CellX $CellY
     if ($radiationIntensity -gt 0) { $tags += "radioactive" }
-    if ($radiationIntensity -ge $radiationDestroyedThreshold) { $tags += "destroyed" }
+    if ($null -ne (Get-ZMNearestSceneryZone $CellX $CellY $radiationSources $radiationDestroyedRadiusCells)) { $tags += "destroyed" }
     if ($landmarkCells.ContainsKey($cellKey)) {
         $tags += @(Get-ZMSceneryLandmarkTags -Landmarks @($landmarkCells[$cellKey]))
     }
-
-    foreach ($landmarkKey in $landmarkCells.Keys) {
-        $laboratoryPresent = @($landmarkCells[$landmarkKey] | Where-Object { $_.Label -eq "LAB" }).Count -gt 0
-        if (-not $laboratoryPresent) { continue }
-        $laboratoryCoordinates = $landmarkKey -split ","
-        $distance = [Math]::Sqrt([Math]::Pow($CellX - [int]$laboratoryCoordinates[0], 2) + [Math]::Pow($CellY - [int]$laboratoryCoordinates[1], 2))
-        if ($distance -le 3) {
-            $tags += "radioactive"
-            break
+    if ($null -ne (Get-ZMNearestSceneryZone $CellX $CellY $laboratoryZoneOrigins 3.0)) { $tags += "radioactive" }
+    if ($militaryZoneRadiusCells -gt 0) {
+        $militaryZone = Get-ZMNearestSceneryZone $CellX $CellY $militaryZoneOrigins $militaryZoneRadiusCells
+        if ($null -ne $militaryZone) {
+            $tags += 'military'
+            if ($militaryZone.kind -eq 'fortified') { $tags += 'fortified' }
         }
     }
 
     return @($tags | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
 }
 
+function Test-RadioactiveScenery {
+    param([int]$CellX, [int]$CellY)
+
+    $fallout = Get-ZMNearestSceneryZone $CellX $CellY $radiationSources $radiationSceneryRadiusCells
+    if ($null -ne $fallout -and $fallout.distance -lt $radiationSceneryRadiusCells) { return $true }
+    return $null -ne (Get-ZMNearestSceneryZone $CellX $CellY $laboratoryZoneOrigins $laboratorySceneryRadiusCells)
+}
+
 function Get-GeneratorSceneryDensityZone {
     param(
         [Parameter(Mandatory = $true)][string]$CellKey,
-        [Parameter(Mandatory = $true)][hashtable]$InlandDistances
+        [Parameter(Mandatory = $true)][hashtable]$InlandDistances,
+        [Parameter(Mandatory = $true)][ValidateRange(1, 2147483647)][int]$GridCells
     )
 
     $coordinates = $CellKey -split ','
@@ -3074,11 +3105,13 @@ function Get-GeneratorSceneryDensityZone {
     $cell = [pscustomobject]@{
         x = $cellX
         y = $cellY
-        environment = [pscustomobject]@{ terrain = [string]$terrainTypes[$CellKey]; tags = @(Get-EnvironmentTags $cellX $cellY) }
+        environment = [pscustomobject]@{ terrain = [string]$terrainTypes[$CellKey]; tags = @(Get-EnvironmentTags $cellX $cellY); sceneryRadioactive = (Test-RadioactiveScenery $cellX $cellY) }
         building = [pscustomobject]@{ present = $buildingCells.ContainsKey($CellKey) }
+        landmarks = if ($landmarkCells.ContainsKey($CellKey)) { @($landmarkCells[$CellKey]) } else { @() }
     }
-    $profile = Get-ZMSceneryEnvironmentProfile $cell @($generatorSettings.cellPlanning.environment.profilePriority)
-    return Get-ZMSceneryDensityZone $InlandDistances[$CellKey] $profile
+    $profile = Get-ZMSceneryEnvironmentProfile $cell @($generatorSettings.cellPlanning.environment.profilePriority) -CurrentPolicy
+    $radialDistance = Get-ZMSceneryRadialDistance $cellX $cellY $GridCells
+    return Get-ZMSceneryRadialDensityZone $radialDistance $InlandDistances[$CellKey] $profile
 }
 
 function Test-LandmarkTemplateSupportsDensityZone {
@@ -3098,7 +3131,9 @@ function Test-LandmarkTemplateSupportsDensityZone {
 }
 
 function Get-LandmarkDensityShortages {
-    # Physical landmarks are density-exempt: they stay where generated and keep their template family.
+    param([AllowEmptyCollection()][object[]]$DensityCells = @())
+
+    if ($LandmarkCells.Count -eq 0) { return @() }
     $landmarkPatterns = $generatorSettings.cellPlanning.landmarkTemplatePatterns
     $templateDirectory = Join-Path $projectRoot $generatorSettings.paths.templateDirectory
     $availableTemplates = @(
@@ -3113,6 +3148,8 @@ function Get-LandmarkDensityShortages {
         }
     )
     $inlandDistances = Get-ZMSceneryInlandDistances $sceneryCells @($sceneryCells | Where-Object x -eq 0)
+    $resolvedCells = @{}
+    foreach ($cell in $DensityCells) { $resolvedCells["$($cell.x),$($cell.y)"] = $cell }
     $diagnostics = [System.Collections.Generic.List[object]]::new()
     $cellKeys = @($LandmarkCells.Keys | Sort-Object {
         [int](($_ -split ',')[1])
@@ -3123,7 +3160,13 @@ function Get-LandmarkDensityShortages {
         $cellLandmarks = @($LandmarkCells[$cellKey])
         $pool = Get-ZMLandmarkTemplatePool @($cellLandmarks | ForEach-Object { [string]$_.Name }) $landmarkPatterns $availableTemplates
         if ($null -eq $pool) { continue }
-        $zone = Get-GeneratorSceneryDensityZone $cellKey $inlandDistances
+        $zone = if ($resolvedCells.Count -gt 0) {
+            if (-not $resolvedCells.ContainsKey($cellKey)) { throw "Landmark density cell $cellKey is missing from the generated manifest." }
+            $stored = Get-ZMStoredSceneryDensity $resolvedCells[$cellKey] -GridCells $GridCells
+            [pscustomobject]@{ tier = $stored.sceneryDensityTier; source = $stored.sceneryDensitySource }
+        } else {
+            Get-GeneratorSceneryDensityZone $cellKey $inlandDistances $GridCells
+        }
         if (Test-LandmarkTemplateSupportsDensityZone $pool $zone.tier) { continue }
         $feature = @($cellLandmarks | Where-Object { [string]$_.Name -ceq [string]$pool.landmark } | Select-Object -First 1)[0]
         $coordinates = $cellKey -split ','
@@ -3149,8 +3192,22 @@ foreach ($source in $radiationSources) {
     $sourceKey = "$($source.x),$($source.y)"
     $landmarkCells[$sourceKey] = @($epicenterLandmark)
 }
-$landmarkDensityShortageDiagnostics = @(Get-LandmarkDensityShortages)
-Write-Host "[WorldGen][Landmarks] Density-exempt landmark shortages=$($landmarkDensityShortageDiagnostics.Count); landmarks remain where generated with their existing template family."
+$laboratoryOriginList = [System.Collections.Generic.List[object]]::new()
+$militaryOriginList = [System.Collections.Generic.List[object]]::new()
+foreach ($landmarkKey in @($landmarkCells.Keys | Sort-Object)) {
+    $coordinates = $landmarkKey -split ','
+    $landmarks = @($landmarkCells[$landmarkKey])
+    if (@($landmarks | Where-Object { $_.Label -eq 'LAB' }).Count -gt 0) {
+        $laboratoryOriginList.Add([pscustomobject]@{ x = [int]$coordinates[0]; y = [int]$coordinates[1] })
+    }
+    $kind = Get-ZMSceneryLandmarkZoneType $landmarks
+    if (-not [string]::IsNullOrWhiteSpace($kind)) {
+        $militaryOriginList.Add([pscustomobject]@{ x = [int]$coordinates[0]; y = [int]$coordinates[1]; kind = $kind })
+    }
+}
+$laboratoryZoneOrigins = @($laboratoryOriginList.ToArray())
+$militaryZoneOrigins = @($militaryOriginList.ToArray())
+$landmarkDensityShortageDiagnostics = @()
 
 $landmarkNameCounts = @{}
 foreach ($landmarkGroup in $landmarkCells.Values) {

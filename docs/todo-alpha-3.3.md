@@ -1,6 +1,11 @@
 # Alpha 3.3 - Phased Implementation Plan
 
-**Status: ACTIVE IMPLEMENTATION - PHASE D, 2026-10-30.** The user accepted
+**Archived 2026-11-02:** unfinished work is carried into the active
+[Alpha 3.5 tracker](../todo-alpha-3.5.md). This archive is a historical
+record, not a declaration that Alpha 3.3 was released or fully accepted.
+Later dated evidence supersedes earlier active-status and next-step notes.
+
+**Historical status: ACTIVE IMPLEMENTATION - PHASE D, 2026-10-30.** The user accepted
 Phase C with the limits recorded below and asked for uninterrupted progress.
 The requested world-map AFK behavior has received the bounded live review
 recorded below. Continue Phase D, preserving the explicit guard-testing
@@ -740,7 +745,7 @@ verbatim after this plan; if details conflict, ask rather than silently choose.
 
 ### Alpha 3.2 and carried work
 
-The [Alpha 3.2 tracker](docs/todo-alpha.3.2.md) is archived, **not released or
+The [Alpha 3.2 tracker](todo-alpha.3.2.md) is archived, **not released or
 fully accepted**. The user accepted motorway live gate/alignment checks and
 the current default-off CSM checks; do not redo them without new evidence.
 Its full-world outputs, precise skyline replacements/revision hashes,
@@ -748,7 +753,7 @@ motorway-cleanup compile/live validation, Cell Health maintenance execution,
 and carried Alpha 3.1.5 Phase D/I closure remain deferred. Record their status
 and ownership at the end of this plan; do not block prefab work with a full
 rebuild or pretend archival completed them. CSM's separate backlog remains
-deferred in [its technical tracker](docs/csm-implementation.md).
+deferred in [its technical tracker](csm-implementation.md).
 
 ## Current evidence and boundaries
 

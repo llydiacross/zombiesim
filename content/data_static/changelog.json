@@ -2,6 +2,17 @@
   "schemaVersion": 1,
   "entries": [
     {
+      "version": "3.5",
+      "title": "Next Update",
+      "status": "in development",
+      "date": "2026-11-02",
+      "summary": "Alpha 3.5 plans city-generation variety and continues unfinished work.",
+      "highlights": [
+        "? City density, districts and themed areas are being planned.",
+        "? Player structures and claims remain in development."
+      ]
+    },
+    {
       "version": "3.4",
       "title": "Next Update",
       "status": "in development",

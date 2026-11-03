@@ -4,9 +4,10 @@
 
 The user chose to move unfinished Phase D output acceptance and Phase I
 integration to the end of [Alpha 3.2](todo-alpha.3.2.md). Alpha 3.2 was later
-archived without full acceptance, and the [Alpha 3.3 plan](../todo-alpha.3.3.md)
-now records the still-deferred closure. Do not run a separate 3.1.5 closure
-batch ahead of the current priorities.
+archived without full acceptance, and the [Alpha 3.3 plan](todo-alpha-3.3.md)
+recorded the still-deferred closure. The active
+[Alpha 3.5 plan](../todo-alpha-3.5.md) carries it forward; do not run a
+separate 3.1.5 closure batch ahead of current priorities.
 
 Phases 0/A/B/C/E/F/G/H remain accepted; current-cell Level/minimap projection
 is accepted. Phase D generated-output review and Phase I remain pending, not

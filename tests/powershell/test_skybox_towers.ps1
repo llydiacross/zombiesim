@@ -12,6 +12,7 @@ $terrainPath = Join-Path $projectRoot 'tiletemplates\terrain\tile_dirt.vmf'
 $mixedPath = Join-Path $fixtureRoot 'mixed.vmf'
 $emptyPath = Join-Path $fixtureRoot 'without_tower.vmf'
 $towerOnlyPath = Join-Path $fixtureRoot 'tower_only.vmf'
+$destroyedPath = Join-Path $fixtureRoot 'destroyed_tower.vmf'
 
 function New-TestInstance {
     param([string]$Path, [string]$Origin, [int]$Id)
@@ -21,15 +22,18 @@ function New-TestInstance {
 
 $towerInstance = New-TestInstance $towerPath '640 -640 0' 1
 $terrainInstance = New-TestInstance $terrainPath '6400 0 0' 2
-$radioactiveTowerPath = Join-Path $projectRoot 'tiletemplates\buildings\tile_skyscraper_ra_1aaa_2x.vmf'
+$radioactiveTowerPath = Join-Path $projectRoot 'tiletemplates\buildings\tile_skyscraper_ra_2aa_2x.vmf'
+$destroyedTowerPath = Join-Path $projectRoot 'tiletemplates\buildings\tile_skyscraper_destroyed_1a_2x.vmf'
 $radioactivePath = Join-Path $fixtureRoot 'radioactive_tower.vmf'
+$destroyedInstance = New-TestInstance $destroyedTowerPath '640 -640 0' 4
 [System.IO.File]::WriteAllText($mixedPath, $towerInstance + $terrainInstance)
 [System.IO.File]::WriteAllText($towerOnlyPath, $towerInstance)
 [System.IO.File]::WriteAllText($emptyPath, $terrainInstance)
 [System.IO.File]::WriteAllText($radioactivePath, (New-TestInstance $radioactiveTowerPath '640 -640 0' 3) + $terrainInstance)
+$null = [System.IO.File]::WriteAllText($destroyedPath, $destroyedInstance + $terrainInstance)
 $builder = [ZombieSim.Skybox.CellModelBuilder]::new(24)
 $materials = [System.Collections.Generic.Dictionary[string, ZombieSim.Skybox.MaterialInfo]]::new()
-foreach ($material in $builder.CollectMaterials([string[]]@($mixedPath, $radioactivePath))) {
+foreach ($material in $builder.CollectMaterials([string[]]@($mixedPath, $radioactivePath, $destroyedPath))) {
     if ($materials.ContainsKey($material)) { continue }
     $info = [ZombieSim.Skybox.MaterialInfo]::new()
     $info.ModelMaterial = $material
@@ -46,6 +50,11 @@ if ($towers.Count -eq 0 -or $towers.Count -ne $reference.Count -or $none.Count -
 }
 $radioactiveTowers = $builder.BuildTowerParts($radioactivePath, 1.0 / 16, $materials, 30000, 60)
 if ($radioactiveTowers.Count -eq 0) { throw 'Tower-only extraction must include radioactive tile_skyscraper_ra_* towers.' }
+$destroyedTowers = $builder.BuildTowerParts($destroyedPath, 1.0 / 16, $materials, 30000, 60)
+$destroyedReference = $builder.BuildParts($destroyedPath, 1.0 / 16, $materials, 30000, 60)
+if ($destroyedTowers.Count -eq 0 -or $destroyedTowers.Count -ne $destroyedReference.Count) {
+    throw 'Tower-only extraction must include destroyed tile_skyscraper_destroyed_* towers.'
+}
 for ($index = 0; $index -lt $towers.Count; $index++) {
     if ($towers[$index].Smd -cne $reference[$index].Smd) {
         throw 'Tower-only extraction must preserve exact instance transform, geometry, normals and UVs.'

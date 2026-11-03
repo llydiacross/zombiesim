@@ -5,10 +5,13 @@ documented here. For a player overview, see the [root README](../readme.md).
 
 ## Development status
 
-**Alpha 3.3 implementation is authorized; Phase D jobs and calling cards are
-active.** Phase C attributes and armour were accepted with documented limits.
-See the
-[phased plan](../todo-alpha.3.3.md) for phase order and acceptance gates.
+**Alpha 3.5 is the active planning tracker.** See the
+[Alpha 3.5 plan](../todo-alpha-3.5.md) for the new city-generation goals,
+carried work, decisions and approval gates. [Alpha 3.3](todo-alpha-3.3.md)
+and [Alpha 3.4](todo-alpha-3.4.md) are archived without implying full
+acceptance or release. The prior construction review remains paused; confirm
+the next workstream before implementation. Dated status notes below are
+historical where they differ from the active tracker.
 Alpha 3.2 is [archived](todo-alpha.3.2.md), not released or fully
 accepted; its outstanding outputs and carried closure are deferred. The
 historical 3.2 evidence below does not define the current phase order.
@@ -314,8 +317,9 @@ brightness 6, a 60-degree cone and 512-unit range. The editor previews at
 most eight lights and only the nearest projector enables shadows. Explorer
 reports the light count but previews illumination only in the editor. This
 feature still requires fresh in-game and visual verification.
-The missing ground shadows from editable props are deferred to the end of
-Alpha 3.3; do not interpret a shadow-enabled status as visual acceptance.
+The missing ground shadows from editable props were deferred during
+Alpha 3.3; consult the active tracker before resuming them, and do not
+interpret a shadow-enabled status as visual acceptance.
 
 The **Particles** section offers the verified Steam effect with spatial sound.
 Use the list or viewport handle to select it, then use move/rotate gizmos or
@@ -2267,14 +2271,17 @@ Generation is controlled from [generator-settings.json](../generator-settings.js
 ### Isolated Alpha 3.1.5 outer-edge checks
 
 ```powershell
-.\tests\powershell\test_outer_edges.ps1
+.\tests\powershell\test_outer_edges.ps1 -UnitOnly -OutputRoot <isolated-check-directory>
+.\tests\powershell\test_outer_edges.ps1 -TrustedMotorwayPlan <approved-plan.json> -OutputRoot <isolated-check-directory>
 .\tests\powershell\test_outer_edge_bsps.ps1
 ```
 
-The first command generates matching preview-only settings, plans, layout
-metadata and VMFs under `generated\outer_edges`; it does not stage maps or
-replace installed runtime data. The second checks previously compiled fixture
-BSPs, so run the focused VBSP workflow against the generated fixture lists
+The unit-only command checks bounds, authored pools and edge placement without
+planning a world. The full command requires the matching approved motorway
+plan and generates preview-only settings, plans, layout metadata and VMFs
+under its output directory; it does not stage maps or replace installed runtime
+data. The BSP check uses previously compiled fixture BSPs, so run the focused
+VBSP workflow against the generated fixture lists only when approved
 first (see [the archived geometry plan](../docs/todo-alpha.3.1.5.md#phase-a---shared-bounds-and-outer-edge-geometry)).
 `zn_test_world_bounds` runs six isolated in-engine cases without changing
 characters, loot or equipment. These checks do not establish visual acceptance.
@@ -2283,7 +2290,7 @@ When unfinished authored tiles must stay out of a regression, pass an isolated
 source inventory explicitly:
 
 ```powershell
-.\tests\powershell\test_outer_edges.ps1 -OutputRoot .\generated\phase_c_live_20261011\checks -TemplateDirectory .\generated\phase_c_live_20261011\tiletemplates
+.\tests\powershell\test_outer_edges.ps1 -OutputRoot <isolated-check-directory> -TemplateDirectory <isolated-tiletemplates> -TrustedMotorwayPlan <approved-plan.json>
 ```
 
 The supplied inventory is used consistently for source geometry, expanded

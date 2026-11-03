@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "24"
+	"mapversion" "25"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "24"
+	"mapversion" "25"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -227,7 +227,7 @@ world
 				"v" "320 -320 960"
 				"v" "-320 -320 960"
 			}
-			"material" "COMPOSITE/BUILDINGSET050A"
+			"material" "DE_DUST/TILEFLOOR01"
 			"uaxis" "[1 0 0 0] 1.55"
 			"vaxis" "[0 -1 0 62.0606] 1.65"
 			"rotation" "0"

@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "22"
+	"mapversion" "24"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "22"
+	"mapversion" "24"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -1189,8 +1189,8 @@ entity
 				"v" "-284.445 -275.512 670.23"
 			}
 			"material" "CONCRETE/CONCRETEFLOOR009A"
-			"uaxis" "[1 0 0 238] 1"
-			"vaxis" "[0 -1 0 226] 1"
+			"uaxis" "[1 0 0 113.78] 0.25"
+			"vaxis" "[0 -1 0 256.328] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -1207,8 +1207,8 @@ entity
 				"v" "-284.445 243.512 32"
 			}
 			"material" "BUILDINGS/GEN20"
-			"uaxis" "[1 0 0 238] 1"
-			"vaxis" "[0 -1 0 226] 1"
+			"uaxis" "[1 0 0 113.78] 0.55"
+			"vaxis" "[0 -1 0 256.328] 0.95"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -1225,8 +1225,8 @@ entity
 				"v" "-284.445 243.512 32"
 			}
 			"material" "BUILDINGS/GEN20"
-			"uaxis" "[0 1 0 286] 1"
-			"vaxis" "[0 0 -1 90.712] 1"
+			"uaxis" "[0 1 0 78.048] 0.55"
+			"vaxis" "[0 0 -1 193.505] 0.95"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -1243,8 +1243,8 @@ entity
 				"v" "284.445 243.512 670.23"
 			}
 			"material" "BUILDINGS/GEN20"
-			"uaxis" "[0 1 0 315.122] 1"
-			"vaxis" "[0 0 -1 147.183] 1"
+			"uaxis" "[0 1 0 78.048] 0.55"
+			"vaxis" "[0 0 -1 193.505] 0.95"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -1261,8 +1261,8 @@ entity
 				"v" "284.445 243.512 32"
 			}
 			"material" "BUILDINGS/GEN20"
-			"uaxis" "[1 0 0 392.667] 1.7"
-			"vaxis" "[0 0 -1 411.989] 1.6"
+			"uaxis" "[1 0 0 113.78] 0.55"
+			"vaxis" "[0 0 -1 193.505] 0.95"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
@@ -1279,8 +1279,8 @@ entity
 				"v" "284.445 -275.512 670.23"
 			}
 			"material" "BUILDINGS/GEN20"
-			"uaxis" "[1 0 0 238] 1"
-			"vaxis" "[0 0 -1 47.1205] 1"
+			"uaxis" "[1 0 0 113.78] 0.55"
+			"vaxis" "[0 0 -1 193.505] 0.95"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"

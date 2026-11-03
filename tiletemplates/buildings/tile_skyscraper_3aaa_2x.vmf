@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "25"
+	"mapversion" "26"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "25"
+	"mapversion" "26"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -934,9 +934,9 @@ world
 			"plane" "(-64 7.63192e-07 8768) (-5.59506e-06 -64 8768) (64 -2.79753e-06 8768)"
 			vertices_plus
 			{
-				"v" "-64 7.63192e-07 8768"
-				"v" "-5.59506e-06 -64 8768"
-				"v" "64 -2.79753e-06 8768"
+				"v" "-64 0 8768"
+				"v" "-0 -64 8768"
+				"v" "64 -0 8768"
 				"v" "0 64 8768"
 			}
 			"material" "METAL/METALTRUSS011A"
@@ -954,7 +954,7 @@ world
 			{
 				"v" "0 0 10176"
 				"v" "0 64 8768"
-				"v" "64 -2.79753e-06 8768"
+				"v" "64 -0 8768"
 			}
 			"material" "METAL/METALTRUSS011A"
 			"uaxis" "[0 1 0 0] 0.25"
@@ -970,8 +970,8 @@ world
 			vertices_plus
 			{
 				"v" "0 0 10176"
-				"v" "64 -2.79753e-06 8768"
-				"v" "-5.59506e-06 -64 8768"
+				"v" "64 -0 8768"
+				"v" "-0 -64 8768"
 			}
 			"material" "METAL/METALTRUSS011A"
 			"uaxis" "[1 0 0 0] 0.25"
@@ -987,8 +987,8 @@ world
 			vertices_plus
 			{
 				"v" "0 0 10176"
-				"v" "-5.59506e-06 -64 8768"
-				"v" "-64 7.63192e-07 8768"
+				"v" "-0 -64 8768"
+				"v" "-64 0 8768"
 			}
 			"material" "METAL/METALTRUSS011A"
 			"uaxis" "[0 1 0 0] 0.25"
@@ -1004,7 +1004,7 @@ world
 			vertices_plus
 			{
 				"v" "0 0 10176"
-				"v" "-64 7.63192e-07 8768"
+				"v" "-64 0 8768"
 				"v" "0 64 8768"
 			}
 			"material" "METAL/METALTRUSS011A"
@@ -3072,7 +3072,7 @@ entity
 				"v" "-271.529 271.529 4096"
 				"v" "-146.951 354.77 4096"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 256] 2.45"
 			"vaxis" "[0 -1 0 397.373] 3.35"
 			"rotation" "0"
@@ -3090,7 +3090,7 @@ entity
 				"v" "0 384 4096"
 				"v" "0 384 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 226.01] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3108,7 +3108,7 @@ entity
 				"v" "146.949 354.771 4096"
 				"v" "146.951 354.771 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 170.596] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3126,7 +3126,7 @@ entity
 				"v" "271.533 271.527 4096"
 				"v" "271.531 271.528 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 170.596] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3144,7 +3144,7 @@ entity
 				"v" "354.769 146.951 4096"
 				"v" "354.77 146.95 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 226.01] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3162,7 +3162,7 @@ entity
 				"v" "384 0 4096"
 				"v" "384 0 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 285.99] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3180,7 +3180,7 @@ entity
 				"v" "354.769 -146.951 4096"
 				"v" "354.77 -146.949 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 341.404] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3198,7 +3198,7 @@ entity
 				"v" "271.531 -271.528 4096"
 				"v" "271.529 -271.529 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 170.596] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3216,7 +3216,7 @@ entity
 				"v" "146.949 -354.771 4096"
 				"v" "146.948 -354.771 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 226.01] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3234,7 +3234,7 @@ entity
 				"v" "0 -384 4096"
 				"v" "0 -384 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 285.99] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3252,7 +3252,7 @@ entity
 				"v" "-146.948 -354.77 4096"
 				"v" "-146.95 -354.77 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 341.404] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3270,7 +3270,7 @@ entity
 				"v" "-271.53 -271.529 4096"
 				"v" "-271.528 -271.53 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 341.404] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3288,7 +3288,7 @@ entity
 				"v" "-354.77 -146.951 4096"
 				"v" "-354.769 -146.951 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 285.99] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3306,7 +3306,7 @@ entity
 				"v" "-384 0 4096"
 				"v" "-384 0 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 226.01] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3324,7 +3324,7 @@ entity
 				"v" "-354.769 146.953 4096"
 				"v" "-354.769 146.952 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 170.596] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3342,7 +3342,7 @@ entity
 				"v" "-271.528 271.531 4096"
 				"v" "-271.528 271.531 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 341.404] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3360,7 +3360,7 @@ entity
 				"v" "-146.95 354.77 4096"
 				"v" "-146.949 354.771 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 285.99] 2.45"
 			"vaxis" "[0 0 -1 0] 3.35"
 			"rotation" "0"
@@ -3390,7 +3390,7 @@ entity
 				"v" "384 0 304"
 				"v" "354.769 146.951 304"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"
@@ -5122,7 +5122,7 @@ entity
 				"v" "-271.529 271.529 8384"
 				"v" "-146.951 354.77 8384"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 256] 2.45"
 			"vaxis" "[0 -1 0 397.373] 3.35"
 			"rotation" "0"
@@ -5140,7 +5140,7 @@ entity
 				"v" "0 384 8384"
 				"v" "0 384 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 226.01] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5158,7 +5158,7 @@ entity
 				"v" "146.949 354.771 8384"
 				"v" "146.951 354.771 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 170.596] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5176,7 +5176,7 @@ entity
 				"v" "271.533 271.527 8384"
 				"v" "271.531 271.528 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 170.596] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5194,7 +5194,7 @@ entity
 				"v" "354.769 146.951 8384"
 				"v" "354.77 146.95 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 226.01] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5212,7 +5212,7 @@ entity
 				"v" "384 0 8384"
 				"v" "384 0 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 285.99] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5230,7 +5230,7 @@ entity
 				"v" "354.769 -146.951 8384"
 				"v" "354.77 -146.949 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 341.404] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5248,7 +5248,7 @@ entity
 				"v" "271.531 -271.528 8384"
 				"v" "271.529 -271.529 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 170.596] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5266,7 +5266,7 @@ entity
 				"v" "146.949 -354.771 8384"
 				"v" "146.948 -354.771 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 226.01] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5284,7 +5284,7 @@ entity
 				"v" "0 -384 8384"
 				"v" "0 -384 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 285.99] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5302,7 +5302,7 @@ entity
 				"v" "-146.948 -354.77 8384"
 				"v" "-146.95 -354.77 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 341.404] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5320,7 +5320,7 @@ entity
 				"v" "-271.53 -271.529 8384"
 				"v" "-271.528 -271.53 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 341.404] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5338,7 +5338,7 @@ entity
 				"v" "-354.77 -146.951 8384"
 				"v" "-354.769 -146.951 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 285.99] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5356,7 +5356,7 @@ entity
 				"v" "-384 0 8384"
 				"v" "-384 0 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 226.01] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5374,7 +5374,7 @@ entity
 				"v" "-354.769 146.953 8384"
 				"v" "-354.769 146.952 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[0 1 0 170.596] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5392,7 +5392,7 @@ entity
 				"v" "-271.528 271.531 8384"
 				"v" "-271.528 271.531 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 341.404] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5410,7 +5410,7 @@ entity
 				"v" "-146.95 354.77 8384"
 				"v" "-146.949 354.771 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 285.99] 2.45"
 			"vaxis" "[0 0 -1 256] 3.35"
 			"rotation" "0"
@@ -5440,7 +5440,7 @@ entity
 				"v" "384 0 4416"
 				"v" "354.769 146.951 4416"
 			}
-			"material" "BUILDINGS/GEN01"
+			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE006B"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 0] 0.25"
 			"rotation" "0"

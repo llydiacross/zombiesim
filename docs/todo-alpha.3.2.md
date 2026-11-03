@@ -1,7 +1,7 @@
 # Alpha 3.2 - Phased Implementation Plan
 
 **Status: ARCHIVED 2026-10-28 - NOT RELEASED OR FULLY ACCEPTED.** The user
-shifted priority to [Alpha 3.3](../todo-alpha.3.3.md). The previously accepted
+shifted priority to [Alpha 3.3](todo-alpha-3.3.md). The previously accepted
 motorway and CSM checks remain accepted; outstanding generator, output,
 maintenance, integration and Alpha 3.1.5 closure work remains deferred, not
 silently completed or made an immediate prerequisite to Alpha 3.3.

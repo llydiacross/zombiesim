@@ -2,6 +2,13 @@
 
 Internal engineering history for ZombieSim. The player-facing changelog is maintained in [changelog.json](../content/data_static/changelog.json).
 
+## 2026-11-02 - Alpha 3.5 planning
+
+- Made Alpha 3.5 the active tracker for the user's city-generation goals and
+  unfinished Alpha 3.3/3.4 work. Archived both prior trackers without declaring
+  them released or fully accepted; existing deferrals and output approvals
+  remain in force. No generation, compilation, staging or live testing ran.
+
 ## 2026-10-28 - Prefab editor live continuation
 
 - The user confirmed the editor workspace, prop placement and gizmo interaction. A visible valid-ID save failure exposed unsynchronized text-entry values; the editor now updates metadata while typing and synchronizes visible fields before save. Focused fixtures pass, and the user confirmed save/reopen with a one-prop prefab.

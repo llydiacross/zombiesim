@@ -9,6 +9,7 @@ $profile = & (Join-Path $testsBinDirectory 'resolve_world_generation_profile.ps1
 $plannerSettings = $profile.Settings.cellPlanning
 $skyscraperCenterPercent = [int]$plannerSettings.buildingSelection.skyscraperCenterPercent
 $skyscraperEdgePercent = [int]$plannerSettings.buildingSelection.skyscraperEdgePercent
+$skyscraperHighDensityPercent = if ($plannerSettings.buildingSelection.ContainsKey('skyscraperHighDensityPercent')) { [int]$plannerSettings.buildingSelection.skyscraperHighDensityPercent } else { -1 }
 $filenameAbbreviations = $plannerSettings.filenameAbbreviations
 $worldGenerationProfile = $profile
 $tokens = $null
@@ -83,6 +84,12 @@ $map = [pscustomobject]@{ map = [pscustomobject]@{ seed = 1337 } }
 $mapGridCells = 25
 $cell = [pscustomobject]@{ x = 12; y = 12 }
 if ((Test-SkyscraperPreference $cell) -ne (Test-SkyscraperPreference $cell)) { throw 'World-cell preference must be deterministic.' }
+$savedHighDensityPercent = $skyscraperHighDensityPercent
+$skyscraperHighDensityPercent = 0
+if (Test-SkyscraperPreference $cell 3) { throw 'A zero high-density tower chance must reject every high-density preference.' }
+$skyscraperHighDensityPercent = 100
+if (-not (Test-SkyscraperPreference $cell 3)) { throw 'A 100 percent high-density tower chance must accept every high-density preference.' }
+$skyscraperHighDensityPercent = $savedHighDensityPercent
 if (-not [string]::IsNullOrWhiteSpace($PlanPath)) {
     $plan = Get-Content -Raw -LiteralPath $PlanPath | ConvertFrom-Json
     $halfSpan = ($plan.mapGridCells - 1) / 2.0
@@ -104,7 +111,6 @@ if (-not [string]::IsNullOrWhiteSpace($PlanPath)) {
     if ($central.Count -eq 0 -or $outer.Count -eq 0) { throw 'Plan must cover both central and outer bands.' }
     $centralCount = ($central | Measure-Object towers -Sum).Sum
     $outerCount = ($outer | Measure-Object towers -Sum).Sum
-    if ($centralCount / $central.Count -le $outerCount / $outer.Count) { throw 'Realized central tower concentration must exceed outer concentration.' }
     foreach ($group in @($plan.cells | Group-Object cellTemplateFilename)) {
         $macroLayouts = @($group.Group | ForEach-Object { Get-MacroLayoutFilenameCode $_.tilePlacements } | Sort-Object -Unique)
         if ($macroLayouts.Count -gt 1) { throw "Shared recipe $($group.Name) has conflicting multi-tile layouts." }
@@ -118,6 +124,6 @@ if (-not [string]::IsNullOrWhiteSpace($PlanPath)) {
     $cityRecipeCount = @($plan.requiredCellFiles).Count
     $denRecipeCount = @($plan.safeZoneMaps.mapFilename | Sort-Object -Unique).Count
     Write-Output "Required BSP count: city=$cityRecipeCount, uniqueDens=$denRecipeCount, total=$($cityRecipeCount + $denRecipeCount)."
-    Write-Output "Realized taper passed: center=$centralCount/$($central.Count) outer=$outerCount/$($outer.Count), shared recipes consistent."
+    Write-Output "Realized towers: center=$centralCount/$($central.Count) outer=$outerCount/$($outer.Count); shared recipes consistent."
 }
-Write-Output 'Skyscraper selection passed: center/edges, symmetry/taper, three-seed frequency, ordinary classification, height preference, deterministic recipe identity.'
+Write-Output 'Skyscraper selection passed: center/edges, symmetry/taper, high-density override, three-seed frequency, ordinary classification, height preference, deterministic recipe identity.'

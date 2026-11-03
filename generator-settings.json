@@ -245,11 +245,13 @@
       "epicenterYMinimumFraction": 0.3,
       "epicenterYMaximumFraction": 0.7,
       "falloutRadiusCells": 9,
+      "sceneryFalloutRadiusCells": 7,
+      "sceneryLaboratoryRadiusCells": 2,
+      "destroyedRadiusCells": 4,
       "additionalSourceEveryGridCells": 48,
       "maximumSources": 3,
       "cellMiles": 2,
       "loreReferenceFalloutMilesAtOneMegaton": 24,
-      "destroyedThreshold": 0.7,
       "damagePerSecondAtPeak": 3,
       "overlayMaximumAlpha": 175
     },
@@ -275,26 +277,29 @@
     "industrialZones": {
       "enabled": true,
       "cellsPerZone": 144,
-      "radius": 3,
+      "radius": 4,
       "minInlandDistance": 3,
       "minSpacing": 8,
-      "excludedOriginTags": ["commercial", "financial", "radioactive", "destroyed"]
+      "excludedOriginTags": ["commercial", "financial", "radioactive", "destroyed", "military", "fortified"]
+    },
+    "militaryZones": {
+      "radius": 4
     },
     "cityNaming": {
       "prefixes": ["Ash", "Black", "Cinder", "Dun", "East", "Grey", "Iron", "New", "North", "Raven", "Red", "West"],
       "suffixes": ["bridge", "cross", "fall", "gate", "haven", "mere", "point", "reach", "ridge", "vale", "watch", "wick"]
     },
     "districts": [
-      { "name": "Ashwood", "x": 10, "y": 12, "radius": 15, "color": [180, 80, 180, 80] },
-      { "name": "Breakwater", "x": 8, "y": 38, "radius": 13, "color": [180, 70, 105, 190] },
-      { "name": "Cinder Ward", "x": 29, "y": 29, "radius": 17, "color": [190, 190, 150, 70] },
-      { "name": "Glassworks", "x": 37, "y": 9, "radius": 12, "color": [180, 70, 150, 145] },
-      { "name": "Greyline", "x": 54, "y": 9, "radius": 14, "color": [180, 150, 150, 150] },
-      { "name": "Iron Market", "x": 53, "y": 31, "radius": 17, "color": [180, 185, 75, 80] },
-      { "name": "Southwatch", "x": 13, "y": 51, "radius": 13, "color": [180, 150, 165, 65] },
-      { "name": "Red Hollow", "x": 31, "y": 51, "radius": 16, "color": [180, 175, 75, 75] },
-      { "name": "Raven Reach", "x": 57, "y": 51, "radius": 12, "color": [180, 165, 75, 190] },
-      { "name": "Dustfield", "x": 19, "y": 59, "radius": 9, "color": [180, 145, 75, 35] }
+      { "name": "Ashwood", "x": 10, "y": 12, "radius": 15, "industrialOriginWeight": 0.6, "commercialSpreadChancePercent": 35, "color": [180, 80, 180, 80] },
+      { "name": "Breakwater", "x": 8, "y": 38, "radius": 13, "industrialOriginWeight": 1.8, "commercialSpreadChancePercent": 55, "color": [180, 70, 105, 190] },
+      { "name": "Cinder Ward", "x": 29, "y": 29, "radius": 17, "industrialOriginWeight": 1.3, "commercialSpreadChancePercent": 65, "color": [190, 190, 150, 70] },
+      { "name": "Glassworks", "x": 37, "y": 9, "radius": 12, "industrialOriginWeight": 3.0, "commercialSpreadChancePercent": 40, "color": [180, 70, 150, 145] },
+      { "name": "Greyline", "x": 54, "y": 9, "radius": 14, "industrialOriginWeight": 1.7, "commercialSpreadChancePercent": 45, "color": [180, 150, 150, 150] },
+      { "name": "Iron Market", "x": 53, "y": 31, "radius": 17, "industrialOriginWeight": 0.7, "commercialSpreadChancePercent": 85, "color": [180, 185, 75, 80] },
+      { "name": "Southwatch", "x": 13, "y": 51, "radius": 13, "industrialOriginWeight": 0.8, "commercialSpreadChancePercent": 40, "color": [180, 150, 165, 65] },
+      { "name": "Red Hollow", "x": 31, "y": 51, "radius": 16, "industrialOriginWeight": 1.2, "commercialSpreadChancePercent": 45, "color": [180, 175, 75, 75] },
+      { "name": "Raven Reach", "x": 57, "y": 51, "radius": 12, "industrialOriginWeight": 0.9, "commercialSpreadChancePercent": 55, "color": [180, 165, 75, 190] },
+      { "name": "Dustfield", "x": 19, "y": 59, "radius": 9, "industrialOriginWeight": 1.8, "commercialSpreadChancePercent": 35, "color": [180, 145, 75, 35] }
     ],
     "rendering": {
       "biomeOpacity": 45
@@ -305,11 +310,12 @@
     "templatePatterns": {
       "genericBuildings": "^buildings/tile_(building|construction|skyscraper)_[0-9]+[a-z]+(?:_(?:2x|2x2|3x|3x3))?\\.vmf$",
       "radioactiveBuildings": "^buildings/tile_(?:(?:building|skyscraper)_ra|ra_building)_[0-9]+[a-z]+(?:_(?:2x|2x2|3x|3x3))?\\.vmf$",
-      "destroyedBuildings": "^buildings/tile_destroyed.*\\.vmf$",
+      "destroyedBuildings": "^buildings/tile_(?:destroyed|skyscraper_destroyed)_.*\\.vmf$",
+      "fortifiedBuildings": "^buildings/tile_fortified_[0-9]+[a-z]+(?:_(?:2x|2x2|3x|3x3))?\\.vmf$",
       "warehouses": "^buildings/tile_warehouse_.*\\.vmf$",
       "commercial": "^buildings/tile_commercial_.*\\.vmf$",
       "industry": "^buildings/tile_industr(?:y|ial)_[0-9]+[a-z]+(?:_(?:2x|2x2|3x|3x3))?\\.vmf$",
-      "decorations": "^(?:decorations/.*|terrain/tile_(?:brush(?:_[0-9]+[a-z]+)?|debris|fence_a(?:_(?:cap|corner|double))?))\\.vmf$",
+      "decorations": "^(?:decorations/.*|terrain/tile_(?:brush(?:_[0-9]+[a-z]+)?|ra_brush(?:_[0-9]+[st])?|debris|fence_a(?:_(?:cap|corner|double))?|ra_fence_a(?:_(?:cap|corner|double))?))\\.vmf$",
       "carparks": "^carparks/tile_carpark_(?:entrance[A-Za-z0-9_-]*|straight_[12]|deadend_(?:east|west))\\.vmf$"
     },
     "safeZones": {
@@ -330,6 +336,15 @@
       "grassland": "terrain/tile_grass.vmf",
       "sandy": "terrain/tile_sand.vmf",
       "default": "terrain/tile_dirt.vmf"
+    },
+    "terrainProfileTemplates": {
+      "radioactive": {
+        "grassland": "terrain/tile_ra_grass.vmf",
+        "sandy": "terrain/tile_ra_sand.vmf"
+      },
+      "industrial": {
+        "grassland": "terrain/tile_industrial_grass.vmf"
+      }
     },
     "topologyTemplates": {
       "road-straight": "roads/tile_road.vmf",
@@ -375,7 +390,7 @@
       }
     },
     "environment": {
-      "profilePriority": ["destroyed", "radioactive", "safe_zone", "fortified", "military", "medical", "emergency_services", "religious", "service_station", "financial", "commercial", "recreation", "parkland"],
+      "profilePriority": ["destroyed", "fortified", "military", "radioactive", "safe_zone", "medical", "emergency_services", "religious", "service_station", "financial", "commercial", "recreation", "parkland"],
       "buildingDensity": {
         "grassland": 0.3,
         "sandy": 0.4,
@@ -384,6 +399,7 @@
         "parkland": 0.25,
         "recreation": 0.4,
         "settlement": 0.7,
+        "specialZoneTierCaps": { "1": 0.35, "2": 0.55, "3": 1.0 },
         "fallbackByTerrain": { "grassland": 0.55, "sandy": 0.6, "default": 0.65 }
       },
       "densityTiers": {
@@ -402,6 +418,7 @@
       "minimumWeight": 1,
       "baseWeight": 7,
       "heightDistanceWeight": 3,
+      "fortifiedThemedChancePercent": 80,
       "commercialProfiles": ["commercial"],
       "commercialSpreadChancePercent": 55,
       "commercialSpreadProfiles": ["grassland", "sandy", "dirt", "settlement", "commercial", "financial", "recreation", "parkland", "radioactive"],
@@ -413,7 +430,8 @@
       "preferredTerrains": ["grassland", "sandy", "dirt"],
       "preferredProfiles": ["radioactive", "military"],
       "preferredChancePercent": 65,
-      "standardChancePercent": 20
+      "standardChancePercent": 20,
+      "industrialThemedChancePercent": 80
     },
     "openTerrain": {
       "maximumOpenTilePercent": 16
@@ -422,6 +440,44 @@
       "chancePercent": 35,
       "templates": {
         "road-straight": ["roads/tile_road_a.vmf", "roads/tile_road_b.vmf", "roads/tile_road_c.vmf"]
+      },
+      "profileTemplates": {
+        "radioactive": {
+          "road-straight": [
+            "roads/tile_ra_road.vmf",
+            "roads/tile_ra_road_a.vmf",
+            "roads/tile_ra_road_b.vmf",
+            "roads/tile_ra_road_c.vmf",
+            "roads/tile_ra_road_night.vmf"
+          ]
+        },
+        "destroyed": {
+          "road-straight": [
+            "roads/tile_destroyed_road.vmf",
+            "roads/tile_destroyed_road_a.vmf",
+            "roads/tile_destroyed_road_b.vmf",
+            "roads/tile_destroyed_road_c.vmf",
+            "roads/tile_destroyed_road_night.vmf"
+          ]
+        },
+        "military": {
+          "road-straight": [
+            "roads/tile_army_road.vmf",
+            "roads/tile_army_road_a.vmf",
+            "roads/tile_army_road_b.vmf",
+            "roads/tile_army_road_c.vmf",
+            "roads/tile_army_road_d.vmf"
+          ]
+        },
+        "fortified": {
+          "road-straight": [
+            "roads/tile_army_road.vmf",
+            "roads/tile_army_road_a.vmf",
+            "roads/tile_army_road_b.vmf",
+            "roads/tile_army_road_c.vmf",
+            "roads/tile_army_road_d.vmf"
+          ]
+        }
       }
     },
     "multiTileFeatures": {
@@ -469,7 +525,7 @@
       "Fire": "*/tile_fire*.vmf",
       "Petrol Station": "*/tile_petrol*.vmf",
       "Bank": "*/tile_bank*.vmf",
-      "Army Base": "*/tile_army*.vmf",
+      "Army Base": "buildings/tile_armybase_*.vmf",
       "Laboratory": "*/tile_laboratory*.vmf",
       "Bunker": "*/tile_bunker*.vmf",
       "Market": "*/tile_market*.vmf",
@@ -573,7 +629,8 @@
         "edges/tile_edge_wall_5a.vmf",
         "edges/tile_edge_wall_5aaa.vmf",
         "edges/tile_edge_wall_6a.vmf",
-        "edges/tile_edge_wall_6aaa.vmf"
+        "edges/tile_edge_wall_6aaa.vmf",
+        "edges/tile_edge_wall_7aaa.vmf"
       ],
       "cornerTemplate": "edges/tile_edge_wall_corner_1a.vmf",
       "cornerVariationTemplates": [
@@ -623,31 +680,26 @@
             "edges/tile_edge_ra_wall_5aa.vmf",
             "edges/tile_edge_ra_wall_6a.vmf",
             "edges/tile_edge_ra_wall_6aa.vmf",
+            "edges/tile_edge_ra_wall_6aaa.vmf",
             "edges/tile_edge_ra_wall_7aa.vmf",
-            "edges/tile_edge_ra_wall_8aa.vmf"
+            "edges/tile_edge_ra_wall_7aaa.vmf",
+            "edges/tile_edge_ra_wall_8aa.vmf",
+            "edges/tile_edge_ra_wall_8aaa.vmf"
+          ],
+          "cornerVariationTemplates": [
+            "edges/tile_edge_ra_wall_corner_1a.vmf",
+            "edges/tile_edge_ra_wall_corner_1aa.vmf",
+            "edges/tile_edge_ra_wall_corner_1aaa.vmf"
           ]
         },
         "destroyed": {
           "wallVariationTemplates": [
-            "edges/tile_edge_ra_none.vmf",
-            "edges/tile_edge_ra_wall_1a.vmf",
-            "edges/tile_edge_ra_wall_1aa.vmf",
-            "edges/tile_edge_ra_wall_1aaa.vmf",
-            "edges/tile_edge_ra_wall_2a.vmf",
-            "edges/tile_edge_ra_wall_2aa.vmf",
-            "edges/tile_edge_ra_wall_2aaa.vmf",
-            "edges/tile_edge_ra_wall_3a.vmf",
-            "edges/tile_edge_ra_wall_3aaa.vmf",
-            "edges/tile_edge_ra_wall_4a.vmf",
-            "edges/tile_edge_ra_wall_4aa.vmf",
-            "edges/tile_edge_ra_wall_4aaa.vmf",
-            "edges/tile_edge_ra_wall_5a.vmf",
-            "edges/tile_edge_ra_wall_5aa.vmf",
-            "edges/tile_edge_ra_wall_6a.vmf",
-            "edges/tile_edge_ra_wall_6aa.vmf",
-            "edges/tile_edge_ra_wall_7aa.vmf",
-            "edges/tile_edge_ra_wall_8aa.vmf"
-          ]
+            "edges/tile_edge_destroyed_wall_1a.vmf"
+          ],
+          "wallDensityFallbacks": {
+            "2": "edges/tile_edge_destroyed_wall_1a.vmf",
+            "3": "edges/tile_edge_destroyed_wall_1a.vmf"
+          }
         },
         "military": {
           "wallVariationTemplates": ["edges/tile_edge_army_none.vmf", "edges/tile_edge_army_wall_1a.vmf", "edges/tile_edge_army_wall_1aa.vmf", "edges/tile_edge_army_wall_1aaa.vmf"],
@@ -658,7 +710,8 @@
           "cornerTemplate": "edges/tile_edge_army_wall_corner.vmf"
         },
         "industrial": {
-          "wallVariationTemplates": ["edges/tile_edge_industrial_wall_1a.vmf", "edges/tile_edge_industrial_wall_1aa.vmf", "edges/tile_edge_industrial_wall_1aaa.vmf", "edges/tile_edge_industrial_wall_2a.vmf", "edges/tile_edge_industrial_wall_3a.vmf", "edges/tile_edge_industrial_wall_4a.vmf", "edges/tile_edge_industrial_wall_5a.vmf", "edges/tile_edge_industrial_wall_5aa.vmf", "edges/tile_edge_industrial_wall_5aaa.vmf", "edges/tile_edge_industrial_wall_6a.vmf", "edges/tile_edge_industrial_wall_6aa.vmf", "edges/tile_edge_industrial_wall_6aaa.vmf"]
+          "wallVariationTemplates": ["edges/tile_edge_industrial_wall_1a.vmf", "edges/tile_edge_industrial_wall_1aa.vmf", "edges/tile_edge_industrial_wall_1aaa.vmf", "edges/tile_edge_industrial_wall_2a.vmf", "edges/tile_edge_industrial_wall_3a.vmf", "edges/tile_edge_industrial_wall_4a.vmf", "edges/tile_edge_industrial_wall_5a.vmf", "edges/tile_edge_industrial_wall_5aa.vmf", "edges/tile_edge_industrial_wall_5aaa.vmf", "edges/tile_edge_industrial_wall_6a.vmf", "edges/tile_edge_industrial_wall_6aa.vmf", "edges/tile_edge_industrial_wall_6aaa.vmf"],
+          "cornerVariationTemplates": ["edges/tile_edge_industrial_wall_corner_1a.vmf", "edges/tile_edge_industrial_wall_corner_1aa.vmf", "edges/tile_edge_industrial_wall_corner_1aaa.vmf"]
         }
       }
     },
@@ -678,7 +731,9 @@
         "border/tile_border_wall_2aaa.vmf",
         "border/tile_border_wall_3a.vmf",
         "border/tile_border_wall_3aa.vmf",
-        "border/tile_border_wall_3aaa.vmf"
+        "border/tile_border_wall_3aaa.vmf",
+        "border/tile_border_wall_4aa.vmf",
+        "border/tile_border_wall_5aa.vmf"
       ],
       "cornerTemplate": "border/tile_border_wall_corner_1a.vmf",
       "cornerVariationTemplates": [
@@ -692,8 +747,14 @@
           "cornerTemplate": "border/tile_border_ra_wall_corner.vmf"
         },
         "destroyed": {
-          "wallVariationTemplates": ["border/tile_border_ra_wall.vmf"],
-          "cornerTemplate": "border/tile_border_ra_wall_corner.vmf"
+          "wallVariationTemplates": [
+            "border/tile_border_destroyed_wall_1a.vmf",
+            "border/tile_border_destroyed_wall_2a.vmf",
+            "border/tile_border_destroyed_wall_2aa.vmf"
+          ],
+          "wallDensityFallbacks": {
+            "3": "border/tile_border_destroyed_wall_2aa.vmf"
+          }
         },
         "military": {
           "wallVariationTemplates": [
@@ -714,7 +775,7 @@
           "cornerTemplate": "border/tile_border_army_wall_corner.vmf"
         },
         "industrial": {
-          "wallVariationTemplates": ["border/tile_border_industrial_wall_1a.vmf", "border/tile_border_industrial_wall_2a.vmf", "border/tile_border_industrial_wall_3a.vmf", "border/tile_border_industrial_wall_4aa.vmf", "border/tile_border_industrial_wall_4aaa.vmf", "border/tile_border_industrial_wall_5aaa.vmf"],
+          "wallVariationTemplates": ["border/tile_border_industrial_wall_1a.vmf", "border/tile_border_industrial_wall_2a.vmf", "border/tile_border_industrial_wall_3a.vmf", "border/tile_border_industrial_wall_3aaa.vmf", "border/tile_border_industrial_wall_4aa.vmf", "border/tile_border_industrial_wall_4aaa.vmf", "border/tile_border_industrial_wall_5aaa.vmf"],
           "cornerTemplate": "border/tile_border_industrial_wall_corner.vmf"
         }
       },

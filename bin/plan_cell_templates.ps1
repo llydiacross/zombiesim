@@ -52,19 +52,67 @@ $epicenterSettings = if ($multiTileSettings.ContainsKey('epicenter')) { $multiTi
 $epicenterLandmarkName = if ($epicenterSettings.ContainsKey('landmark')) { [string]$epicenterSettings.landmark } else { 'The Epicenter' }
 $epicenterPlacement = if ($epicenterSettings.ContainsKey('placement')) { [string]$epicenterSettings.placement } else { 'center' }
 $epicenterExclusive = -not $epicenterSettings.ContainsKey('exclusive') -or [bool]$epicenterSettings.exclusive
+if (-not $plannerSettings.templatePatterns.ContainsKey('fortifiedBuildings') -or
+    [string]::IsNullOrWhiteSpace([string]$plannerSettings.templatePatterns.fortifiedBuildings)) {
+    throw 'cellPlanning.templatePatterns.fortifiedBuildings is required; use current generator settings.'
+}
+if (-not $buildingSelectionSettings.ContainsKey('fortifiedThemedChancePercent')) {
+    throw 'cellPlanning.buildingSelection.fortifiedThemedChancePercent is required; use current generator settings.'
+}
+$fortifiedChanceSetting = $buildingSelectionSettings.fortifiedThemedChancePercent
+if (($fortifiedChanceSetting -isnot [int] -and $fortifiedChanceSetting -isnot [long]) -or
+    $fortifiedChanceSetting -lt 0 -or $fortifiedChanceSetting -gt 100) {
+    throw 'cellPlanning.buildingSelection.fortifiedThemedChancePercent must be an integer from 0 through 100.'
+}
+$fortifiedThemedChancePercent = [int]$fortifiedChanceSetting
 $commercialSpreadChancePercent = if ($buildingSelectionSettings.ContainsKey('commercialSpreadChancePercent')) { [int]$buildingSelectionSettings.commercialSpreadChancePercent } else { 0 }
 $commercialSpreadProfiles = if ($buildingSelectionSettings.ContainsKey('commercialSpreadProfiles')) { @($buildingSelectionSettings.commercialSpreadProfiles | ForEach-Object { [string]$_ }) } else { @() }
+$industrialThemedChancePercent = if ($plannerSettings.decorations.ContainsKey('industrialThemedChancePercent')) { [int]$plannerSettings.decorations.industrialThemedChancePercent } else { 100 }
+$specialZoneTierCaps = if ($plannerSettings.environment.buildingDensity.ContainsKey('specialZoneTierCaps')) { $plannerSettings.environment.buildingDensity.specialZoneTierCaps } else { @{} }
 $openTerrainSettings = if ($plannerSettings.ContainsKey('openTerrain')) { $plannerSettings.openTerrain } else { @{} }
 $maximumOpenTilePercent = if ($openTerrainSettings.ContainsKey('maximumOpenTilePercent')) { [int]$openTerrainSettings.maximumOpenTilePercent } else { 100 }
 $topologyVariantSettings = if ($plannerSettings.ContainsKey('topologyVariants')) { $plannerSettings.topologyVariants } else { @{} }
 $topologyVariantChancePercent = if ($topologyVariantSettings.ContainsKey('chancePercent')) { [int]$topologyVariantSettings.chancePercent } else { 0 }
 $topologyVariantTemplates = @{}
+$topologyVariantProfileTemplates = @{}
 if ($topologyVariantSettings.ContainsKey('templates')) {
     foreach ($variantTopology in $topologyVariantSettings.templates.Keys) {
         if ($variantTopology -notin @('road-straight', 'motorway-straight')) {
             throw "cellPlanning.topologyVariants.templates.$variantTopology is not supported; only straight road and motorway variants are."
         }
-        $topologyVariantTemplates[[string]$plannerSettings.topologyTemplates[$variantTopology]] = @($topologyVariantSettings.templates[$variantTopology] | ForEach-Object { [string]$_ })
+        if (-not $plannerSettings.topologyTemplates.ContainsKey($variantTopology)) {
+            throw "cellPlanning.topologyVariants.templates.$variantTopology requires a matching topologyTemplates entry."
+        }
+        $baseTemplate = ([string]$plannerSettings.topologyTemplates[$variantTopology]).Replace('\', '/').ToLowerInvariant()
+        $topologyVariantTemplates[$baseTemplate] = @($topologyVariantSettings.templates[$variantTopology] | ForEach-Object { [string]$_ })
+    }
+}
+if ($topologyVariantSettings.ContainsKey('profileTemplates')) {
+    if (-not ($topologyVariantSettings.profileTemplates -is [System.Collections.IDictionary])) {
+        throw 'cellPlanning.topologyVariants.profileTemplates must be an object.'
+    }
+    $knownEnvironmentProfiles = @($plannerSettings.environment.profilePriority | ForEach-Object { ([string]$_).ToLowerInvariant() }) + @('industrial')
+    foreach ($variantProfile in $topologyVariantSettings.profileTemplates.Keys) {
+        $profileKey = ([string]$variantProfile).ToLowerInvariant()
+        if ($profileKey -notin $knownEnvironmentProfiles) {
+            throw "cellPlanning.topologyVariants.profileTemplates.$variantProfile is not a known environment profile."
+        }
+        $profileVariants = $topologyVariantSettings.profileTemplates[$variantProfile]
+        if (-not ($profileVariants -is [System.Collections.IDictionary])) {
+            throw "cellPlanning.topologyVariants.profileTemplates.$variantProfile must be an object."
+        }
+        $mappedVariants = @{}
+        foreach ($variantTopology in $profileVariants.Keys) {
+            if ($variantTopology -notin @('road-straight', 'motorway-straight')) {
+                throw "cellPlanning.topologyVariants.profileTemplates.$variantProfile.$variantTopology is not supported; only straight road and motorway variants are."
+            }
+            if (-not $plannerSettings.topologyTemplates.ContainsKey($variantTopology)) {
+                throw "cellPlanning.topologyVariants.profileTemplates.$variantProfile.$variantTopology requires a matching topologyTemplates entry."
+            }
+            $baseTemplate = ([string]$plannerSettings.topologyTemplates[$variantTopology]).Replace('\', '/').ToLowerInvariant()
+            $mappedVariants[$baseTemplate] = @($profileVariants[$variantTopology] | ForEach-Object { [string]$_ })
+        }
+        $topologyVariantProfileTemplates[$profileKey] = $mappedVariants
     }
 }
 if ($maximumOpenTilePercent -lt 0 -or $maximumOpenTilePercent -gt 100) {
@@ -81,6 +129,20 @@ if ($multiTileBuildingChancePercent -lt 0 -or $multiTileBuildingChancePercent -g
 }
 if ($commercialSpreadChancePercent -lt 0 -or $commercialSpreadChancePercent -gt 100) {
     throw 'cellPlanning.buildingSelection.commercialSpreadChancePercent must be from 0 through 100.'
+}
+if ($industrialThemedChancePercent -lt 0 -or $industrialThemedChancePercent -gt 100) {
+    throw 'cellPlanning.decorations.industrialThemedChancePercent must be from 0 through 100.'
+}
+if ($specialZoneTierCaps.Count -gt 0) {
+    $previousCap = 0.0
+    foreach ($tier in @('1', '2', '3')) {
+        if (-not $specialZoneTierCaps.ContainsKey($tier)) { throw "cellPlanning.environment.buildingDensity.specialZoneTierCaps requires tier $tier." }
+        $cap = [double]$specialZoneTierCaps[$tier]
+        if ([double]::IsNaN($cap) -or [double]::IsInfinity($cap) -or $cap -lt $previousCap -or $cap -gt 1) {
+            throw 'Special-zone building density caps must be finite, nondecreasing values between 0 and 1.'
+        }
+        $previousCap = $cap
+    }
 }
 if ([string]::IsNullOrWhiteSpace($multiTileFixtureTemplateProperty)) {
     throw 'cellPlanning.multiTileFeatures.fixtureTemplateProperty cannot be empty.'
@@ -145,6 +207,19 @@ if ([string]::IsNullOrWhiteSpace($Output)) {
 if ([string]::IsNullOrWhiteSpace($ListOutput)) {
     $mapBaseName = [System.IO.Path]::GetFileNameWithoutExtension($MapData)
     $ListOutput = Join-Path (Join-Path $projectRoot $generatorSettings.paths.scriptOutputDirectory) ("{0}_required_cell_vmfs.txt" -f $mapBaseName)
+}
+
+function Get-PlanManifestReference {
+    param([string]$MapPath, [string]$PlanPath)
+
+    $manifestPath = [IO.Path]::GetFullPath($MapPath)
+    $planDirectory = [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($PlanPath))
+    if ([IO.Path]::GetPathRoot($manifestPath) -ine [IO.Path]::GetPathRoot($planDirectory)) {
+        return $manifestPath
+    }
+    $planUri = [Uri]::new($planDirectory.TrimEnd('\') + '\')
+    $manifestUri = [Uri]::new($manifestPath)
+    return [Uri]::UnescapeDataString($planUri.MakeRelativeUri($manifestUri).ToString()).Replace('/', '\')
 }
 
 $map = Get-Content -Raw $MapData | ConvertFrom-Json
@@ -301,10 +376,11 @@ function Get-TemplateRoadConnection {
     if ($directionMarkers.Count -gt 1) {
         throw "Template '$TemplatePath' must contain at most one zn_tile_direction marker."
     }
-    if ($markers.Count -gt 0 -and $directionMarkers.Count -eq 0) {
-        throw "Road connection markers in '$TemplatePath' require one zn_tile_direction marker."
+    if ($directionMarkers.Count -eq 0) {
+        if ($markers.Count -eq 0) { return $null }
+        $footprint = Get-ZMTemplateFootprint $TemplatePath
+        $directionMarkers.Add([pscustomobject]@{ direction = 'S'; originX = 0.0; originY = -$footprint.height * 320.0 })
     }
-    if ($directionMarkers.Count -eq 0) { return $null }
     return [pscustomobject]@{
         direction = [string]$directionMarkers[0].direction
         directionOriginX = [double]$directionMarkers[0].originX
@@ -331,6 +407,7 @@ foreach ($template in $templateFiles.Values) {
 }
 $buildingTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.genericBuildings } | Sort-Object)
 $armyBuildingTemplates = @($templateFiles.Values | Where-Object { $_ -match '^army/.*\.vmf$' } | Sort-Object)
+$fortifiedBuildingTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.fortifiedBuildings } | Sort-Object)
 if ($plannerSettings.templatePatterns.ContainsKey('destroyedBuildings')) {
     $destroyedBuildingTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.destroyedBuildings } | Sort-Object)
 } else {
@@ -347,6 +424,15 @@ $decorationTemplates = @($templateFiles.Values | Where-Object { $_ -match $plann
 $carparkTemplates = @($templateFiles.Values | Where-Object { $_ -match $plannerSettings.templatePatterns.carparks } | Sort-Object)
 $filenameAbbreviations = $plannerSettings.filenameAbbreviations
 
+function Get-TemplateFrontageDirection {
+    param([string]$Template)
+
+    $templateKey = $Template.ToLowerInvariant()
+    if (-not $templateRoadConnections.ContainsKey($templateKey)) { return 'S' }
+    $storedDirection = [string]$templateRoadConnections[$templateKey].direction
+    return @{ NORTH = 'N'; EAST = 'E'; SOUTH = 'S'; WEST = 'W'; N = 'N'; E = 'E'; S = 'S'; W = 'W' }[$storedDirection.ToUpperInvariant()]
+}
+
 function Get-TemplateRoadConnectionRotation {
     param(
         [string]$Template,
@@ -354,13 +440,7 @@ function Get-TemplateRoadConnectionRotation {
     )
 
     if ([string]::IsNullOrWhiteSpace($FrontageDirection)) { return 0 }
-    $templateKey = $Template.ToLowerInvariant()
-    $localConnectionDirection = if ($templateRoadConnections.ContainsKey($templateKey)) {
-        $storedDirection = [string]$templateRoadConnections[$templateKey].direction
-        @{ NORTH = 'N'; EAST = 'E'; SOUTH = 'S'; WEST = 'W'; N = 'N'; E = 'E'; S = 'S'; W = 'W' }[$storedDirection.ToUpperInvariant()]
-    } else {
-        'N'
-    }
+    $localConnectionDirection = Get-TemplateFrontageDirection $Template
     $yawByDirection = @{ N = 0; E = 270; S = 180; W = 90 }
     return (($yawByDirection[$FrontageDirection] - $yawByDirection[$localConnectionDirection] + 360) % 360)
 }
@@ -386,10 +466,7 @@ function Get-InwardBuildingFrontageDirection {
     # A null frontage keeps the template's canonical yaw-0 facing.
     $effectiveDirection = $FrontageDirection
     if ([string]::IsNullOrWhiteSpace($effectiveDirection)) {
-        $templateKey = $Template.ToLowerInvariant()
-        if (-not $templateRoadConnections.ContainsKey($templateKey)) { return $FrontageDirection }
-        $storedDirection = [string]$templateRoadConnections[$templateKey].direction
-        $effectiveDirection = @{ NORTH = 'N'; EAST = 'E'; SOUTH = 'S'; WEST = 'W'; N = 'N'; E = 'E'; S = 'S'; W = 'W' }[$storedDirection.ToUpperInvariant()]
+        $effectiveDirection = Get-TemplateFrontageDirection $Template
     }
     $facesBorder = switch ($effectiveDirection) {
         'N' { $TileY -eq 0 }
@@ -661,10 +738,22 @@ function Get-EnvironmentProfile {
 }
 
 function Get-TerrainTemplate {
-    param([string]$Terrain)
+    param(
+        [string]$Terrain,
+        [object]$Cell,
+        [string]$Profile
+    )
 
-    if ($plannerSettings.terrainTemplates.ContainsKey($Terrain)) { return $plannerSettings.terrainTemplates[$Terrain] }
-    return $plannerSettings.terrainTemplates.default
+    $version = $Cell.PSObject.Properties['sceneryDensityPolicyVersion']
+    if ($null -eq $version -or $version.Value -ne 2) {
+        if ($plannerSettings.terrainTemplates.ContainsKey($Terrain)) { return $plannerSettings.terrainTemplates[$Terrain] }
+        return $plannerSettings.terrainTemplates.default
+    }
+    $themeTags = if ($plannerSettings.buildingSelection.ContainsKey('radioactiveTags')) { @($plannerSettings.buildingSelection.radioactiveTags) } else { @() }
+    $isRadioactive = Test-ZMSceneryRadioactiveTheme $Cell $themeTags
+    $isIndustrialZone = Test-ZMIndustrialZoneCell $Cell
+    $profileTerrainTemplates = if ($plannerSettings.ContainsKey('terrainProfileTemplates')) { $plannerSettings.terrainProfileTemplates } else { @{} }
+    return Get-ZMProfileTerrainTemplate $Terrain $Profile $isRadioactive $isIndustrialZone $profileTerrainTemplates $plannerSettings.terrainTemplates
 }
 
 function Get-EmptyCellTerrain {
@@ -722,13 +811,28 @@ function Get-MotorwayDeadEndRotation {
 function Get-BuildingDensity {
     param(
         [string]$Terrain,
-        [string]$Profile
+        [string]$Profile,
+        [object]$Cell = $null,
+        [int]$DensityTier = 0
     )
 
     $densitySettings = $plannerSettings.environment.buildingDensity
-    if ($densitySettings.ContainsKey($Profile)) { return [double]$densitySettings[$Profile] }
-    if ($densitySettings.fallbackByTerrain.ContainsKey($Terrain)) { return [double]$densitySettings.fallbackByTerrain[$Terrain] }
-    return [double]$densitySettings.fallbackByTerrain.default
+    $density = if ($densitySettings.ContainsKey($Profile)) {
+        [double]$densitySettings[$Profile]
+    } elseif ($densitySettings.fallbackByTerrain.ContainsKey($Terrain)) {
+        [double]$densitySettings.fallbackByTerrain[$Terrain]
+    } else {
+        [double]$densitySettings.fallbackByTerrain.default
+    }
+    if ($null -ne $Cell -and $DensityTier -in 1..3 -and $densitySettings.ContainsKey('specialZoneTierCaps')) {
+        $version = $Cell.PSObject.Properties['sceneryDensityPolicyVersion']
+        $specialZone = $Profile -in @('destroyed', 'military', 'fortified') -or
+            ($Profile -ne 'safe_zone' -and (Test-ZMIndustrialZoneCell $Cell))
+        if ($null -ne $version -and $version.Value -eq 2 -and $specialZone) {
+            $density = [Math]::Min($density, [double]$densitySettings.specialZoneTierCaps[[string]$DensityTier])
+        }
+    }
+    return $density
 }
 
 function Get-BuildingDensityTier {
@@ -829,13 +933,29 @@ function Get-SceneryTemplateSelection {
     $tierHash = Get-ZMScenerySelectionHash @selectionContext -Purpose tier
     $templateHash = Get-ZMScenerySelectionHash @selectionContext -Purpose template
     $themeTags = if ($plannerSettings.buildingSelection.ContainsKey('radioactiveTags')) { @($plannerSettings.buildingSelection.radioactiveTags) } else { @() }
-    $isRadioactive = @(@($Cell.environment.tags) | Where-Object { $_ -in $themeTags }).Count -gt 0
-    $preferredPattern = if ($isRadioactive -and $plannerSettings.templatePatterns.ContainsKey('radioactiveBuildings')) { [string]$plannerSettings.templatePatterns.radioactiveBuildings } else { '' }
+    $isRadioactive = Test-ZMSceneryRadioactiveTheme $Cell $themeTags
+    $densityPolicyVersion = $Cell.PSObject.Properties['sceneryDensityPolicyVersion']
+    $currentPolicy = $null -ne $densityPolicyVersion -and $densityPolicyVersion.Value -eq 2
+    $isIndustrialZone = Test-ZMIndustrialZoneCell $Cell
+    if ($currentPolicy -and $Role -in @('decoration', 'open_terrain_fill')) {
+        $Templates = @(Get-ZMSceneryDecorationTemplates $Templates $Profile $isIndustrialZone $isRadioactive)
+    }
+    $radioactivePattern = if ($plannerSettings.templatePatterns.ContainsKey('radioactiveBuildings')) { [string]$plannerSettings.templatePatterns.radioactiveBuildings } else { '' }
+    $preferredPattern = if ($currentPolicy) {
+        Get-ZMSceneryPreferredTemplatePattern $Profile $Role $isIndustrialZone $isRadioactive $radioactivePattern $plannerSettings.templatePatterns.fortifiedBuildings
+    } elseif (@(@($Cell.environment.tags) | Where-Object { $_ -in $themeTags }).Count -gt 0) { $radioactivePattern } else { '' }
+    $preferredChance = if ($currentPolicy -and $Profile -eq 'fortified' -and $Role -in @('building', 'multi_tile_building')) {
+        $fortifiedThemedChancePercent
+    } elseif ($currentPolicy -and $Role -in @('decoration', 'open_terrain_fill') -and $isIndustrialZone -and $Profile -notin @('destroyed', 'military', 'fortified', 'safe_zone')) {
+        $industrialThemedChancePercent
+    } else { 100 }
+    $lowDensityBuildingPreference = $Role -in @('building', 'multi_tile_building') -and $DensityTier -eq 1 -and $currentPolicy
     # Cells sharing a policy must keep sharing a recipe, so each distinct decision is memoized and
     # usage balancing applies across decisions rather than per cell instance.
-    $cacheKey = '{0}#{1}#{2}#{3}#{4}#{5}#{6}' -f $cellPolicy, $Slot, $Role, $CellVariant, $preferredPattern, (@($Templates | ForEach-Object { $_.ToLowerInvariant() } | Sort-Object) -join ';'), [bool]$WithoutUsage
-        if ($AnyTier) { $cacheKey += '#any-tier' }
-        if ($script:scenerySelectionCache.ContainsKey($cacheKey)) {
+    $cacheKey = '{0}#{1}#{2}#{3}#{4}#{5}#{6}#{7}' -f $cellPolicy, $Slot, $Role, $CellVariant, $preferredPattern, (@($Templates | ForEach-Object { $_.ToLowerInvariant() } | Sort-Object) -join ';'), [bool]$WithoutUsage, [bool]$lowDensityBuildingPreference
+    $cacheKey += "#preferred-chance:$preferredChance"
+    if ($AnyTier) { $cacheKey += '#any-tier' }
+    if ($script:scenerySelectionCache.ContainsKey($cacheKey)) {
         $cached = $script:scenerySelectionCache[$cacheKey]
         $selection = $cached.PSObject.Copy()
         $selection.context = $context
@@ -843,7 +963,7 @@ function Get-SceneryTemplateSelection {
     }
     # A tier probe must not count usage for a template that is never placed.
     $usageCounts = if ($WithoutUsage) { $null } else { $script:sceneryUsageCounts }
-    $selection = Select-ZMSceneryTemplate $Templates $DensityTier ([int]($tierHash % 100))     $templateHash $context -PreferredPattern $preferredPattern -UsageCounts $usageCounts -AnyTier:$AnyTier
+    $selection = Select-ZMSceneryTemplate $Templates $DensityTier ([int]($tierHash % 100)) $templateHash $context -PreferredPattern $preferredPattern -PreferredChancePercent $preferredChance -UsageCounts $usageCounts -AnyTier:$AnyTier -LowDensityBuildingPreference:$lowDensityBuildingPreference
     $script:scenerySelectionCache[$cacheKey] = $selection
     return $selection
 }
@@ -1638,7 +1758,7 @@ function Get-MarkedRoadConnectionCandidates {
                         throw "Road connection marker in '$Template' must be centered on one exterior footprint edge."
                     }
                     if ($localDirection -ne $localConnectionDirection) {
-                        throw "Road connection marker in '$Template' must be on the zn_tile_direction edge."
+                        throw "Road connection marker in '$Template' must be on its front edge."
                     }
                     $rotatedTileX = $localTileX
                     $rotatedTileY = $localTileY
@@ -1806,6 +1926,27 @@ function Get-SingleTileRoadConnectionRequest {
     return [pscustomobject]@{ road = $RoadPlacement; branchDirection = $branchDirection; connectionType = [string]$marker[0].connectionType }
 }
 
+function Set-ResolvedRoadConnection {
+    param(
+        [hashtable]$Placements,
+        [string]$RoadKey,
+        [hashtable]$Entry,
+        [hashtable]$RoadConnectionTemplates
+    )
+
+    $resolved = Resolve-RoadConnectionRequests $Entry.requests.ToArray()
+    $placement = [pscustomobject]@{
+        tileX = $Entry.base.tileX
+        tileY = $Entry.base.tileY
+        template = $RoadConnectionTemplates[[string]$resolved.connectionType]
+        rotationYaw = Get-CarparkJunctionRotation $resolved.branchDirection
+        role = [string]$resolved.role
+    }
+    $Entry.resolved = $resolved
+    $Entry.current = $placement
+    $Placements[$RoadKey] = $placement
+}
+
 function Set-MarkedRoadJunctions {
     param(
         [hashtable]$Placements,
@@ -1829,17 +1970,38 @@ function Set-MarkedRoadJunctions {
             $state[$roadKey] = $entry
         }
         $entry.requests.Add([pscustomobject]@{ connectionType = $connectionType; branchDirection = [string]$roadConnection.branchDirection; role = $Role })
-        $resolved = Resolve-RoadConnectionRequests $entry.requests.ToArray()
-        $placement = [pscustomobject]@{
-            tileX = $roadConnection.road.tileX
-            tileY = $roadConnection.road.tileY
-            template = $RoadConnectionTemplates[[string]$resolved.connectionType]
-            rotationYaw = Get-CarparkJunctionRotation $resolved.branchDirection
-            role = [string]$resolved.role
+        Set-ResolvedRoadConnection $Placements $roadKey $entry $RoadConnectionTemplates
+    }
+}
+
+function Remove-PlacementRoadConnections {
+    param(
+        [hashtable]$Placements,
+        [hashtable]$OwnedKeys,
+        [hashtable]$RoadConnectionTemplates,
+        [string]$Role
+    )
+
+    $state = $null
+    if (-not $script:RoadConnectionState.TryGetValue($Placements, [ref]$state)) { return }
+    foreach ($roadKey in @($state.Keys | Sort-Object)) {
+        $entry = $state[$roadKey]
+        if (-not $Placements.ContainsKey($roadKey) -or -not [object]::ReferenceEquals($entry.current, $Placements[$roadKey])) { continue }
+        $remaining = [System.Collections.Generic.List[object]]::new()
+        foreach ($request in $entry.requests) {
+            $source = Get-OffsetTileCoordinate $entry.current ([string]$request.branchDirection)
+            $sourceKey = "$($source.tileX),$($source.tileY)"
+            if ($request.role -eq $Role -and $OwnedKeys.ContainsKey($sourceKey)) { continue }
+            $remaining.Add($request)
         }
-        $entry.resolved = $resolved
-        $entry.current = $placement
-        $Placements[$roadKey] = $placement
+        if ($remaining.Count -eq $entry.requests.Count) { continue }
+        $entry.requests = $remaining
+        if ($remaining.Count -eq 0) {
+            $Placements[$roadKey] = $entry.base
+            $state.Remove($roadKey)
+        } else {
+            Set-ResolvedRoadConnection $Placements $roadKey $entry $RoadConnectionTemplates
+        }
     }
 }
 
@@ -2038,6 +2200,7 @@ function Get-CellTilePlacements {
         [bool]$ForceCarpark,
         [object]$SafeZoneEntrance,
         [string]$LandmarkFallbackTemplate = '',
+        [object[]]$LandmarkFootprintAlternatives = @(),
         [object[]]$AdditionalLandmarks = @()
     )
 
@@ -2266,7 +2429,7 @@ function Get-CellTilePlacements {
         $footprint.width -eq 1 -and $footprint.height -eq 1
     })
     if ($singleTileBuildingTemplates.Count -gt 0 -or $DecorationTemplates.Count -gt 0) {
-        $buildingDensity = Get-BuildingDensity $Cell.environment.terrain $Profile
+        $buildingDensity = Get-BuildingDensity $Cell.environment.terrain $Profile $Cell $BuildingDensityTier
         $weightedBuildingTemplates = if ($sceneryDensityPolicyEnabled) { @() } else { @(Get-BuildingTemplatesForDensity $singleTileBuildingTemplates $BuildingDensityTier) }
         $preferDecorations = $Cell.environment.terrain -in $plannerSettings.decorations.preferredTerrains -or $Profile -in $plannerSettings.decorations.preferredProfiles
         foreach ($terrainPlacement in @($placements.Values | Where-Object { $_.role -eq 'terrain' } | Sort-Object tileY, tileX)) {
@@ -2404,9 +2567,9 @@ function Get-CellTilePlacements {
             $markerRoadConnectionMissing = $false
             if (-not $usesCenteredPlacement -and (Test-TemplateRequestsRoadJunction $resolvedLandmarkTemplate)) {
                 $markerRoadConnectionCandidates = @(Get-MarkedRoadConnectionCandidates $placements $TileGridSize $landmarkFootprint.width $landmarkFootprint.height $resolvedLandmarkTemplate $macroAllowedRoles $plannerSettings.topologyTemplates['road-straight'])
-                $markerRoadConnection = @($markerRoadConnectionCandidates | Select-Object -First 1)[0]
+                $markerRoadConnection = $markerRoadConnectionCandidates | Select-Object -First 1
                 if ($null -eq $markerRoadConnection) {
-                    if (-not $canUseLandmarkFallback) {
+                    if (-not $canUseLandmarkFallback -and $LandmarkFootprintAlternatives.Count -eq 0) {
                         throw "Multi-tile landmark '$resolvedLandmarkTemplate' has no compatible marked road frontage at $($Cell.x),$($Cell.y)."
                     }
                     $markerRoadConnectionMissing = $true
@@ -2430,7 +2593,54 @@ function Get-CellTilePlacements {
             } else {
                 @(Get-FootprintAnchorCandidates $placements $TileGridSize $landmarkFootprint.width $landmarkFootprint.height $macroAllowedRoles)
             }
-            $macroPlacement = @($macroCandidates | Select-Object -First 1)[0]
+            $macroPlacement = $macroCandidates | Select-Object -First 1
+            $macroSelection = $null
+            if ($null -eq $macroPlacement -and -not $usesForcedLandmarkTemplate -and -not $usesCenteredPlacement) {
+                foreach ($alternateFootprint in $LandmarkFootprintAlternatives) {
+                    $alternateTemplates = @($alternateFootprint.templates)
+                    if ($alternateTemplates.Count -eq 0) { continue }
+                    $alternateSelection = if ($sceneryDensityPolicyEnabled) {
+                        Get-SceneryTemplateSelection $alternateTemplates $Cell $Profile $Topology $Orientation $BuildingDensityTier $Landmarks $CellVariant "macro:landmark-alternate" 'landmark'
+                    } else { $null }
+                    $alternateTemplate = if ($null -ne $alternateSelection -and $alternateSelection.status -eq 'selected') {
+                        [string]$alternateSelection.template
+                    } else {
+                        [string]$alternateTemplates[0]
+                    }
+                    if ($null -ne $alternateSelection -and $alternateSelection.status -ne 'selected') {
+                        $alternateSelection.status = 'density_exempt_landmark'
+                        $alternateSelection.template = $alternateTemplate
+                        $alternateSelection.actualTag = Get-ZMTemplateDensityTag $alternateTemplate
+                    }
+                    $alternateSize = Get-TemplateFootprint $alternateTemplate
+                    $alternateMarkerConnection = $null
+                    $alternateRequiresMarker = -not $usesCenteredPlacement -and (Test-TemplateRequestsRoadJunction $alternateTemplate)
+                    if ($alternateRequiresMarker) {
+                        $alternateMarkerConnection = Get-MarkedRoadConnectionCandidates $placements $TileGridSize $alternateSize.width $alternateSize.height $alternateTemplate $macroAllowedRoles $plannerSettings.topologyTemplates['road-straight'] | Select-Object -First 1
+                        if ($null -eq $alternateMarkerConnection) { continue }
+                    }
+                    $alternateCandidates = if ($null -ne $alternateMarkerConnection) {
+                        @([pscustomobject]@{
+                            tileX = $alternateMarkerConnection.tileX
+                            tileY = $alternateMarkerConnection.tileY
+                            entranceDirection = $alternateMarkerConnection.frontageDirection
+                        })
+                    } elseif ($macroRoadPlacements.Count -gt 0) {
+                        @(Get-FootprintRoadFacingCandidates $placements $TileGridSize $alternateSize.width $alternateSize.height $macroRoadPlacements $connections $Topology $macroAllowedRoles $alternateTemplate)
+                    } else {
+                        @(Get-FootprintAnchorCandidates $placements $TileGridSize $alternateSize.width $alternateSize.height $macroAllowedRoles)
+                    }
+                    $alternatePlacement = $alternateCandidates | Select-Object -First 1
+                    if ($null -eq $alternatePlacement) { continue }
+                    $resolvedLandmarkTemplate = $alternateTemplate
+                    $landmarkFootprint = $alternateSize
+                    $markerRoadConnection = $alternateMarkerConnection
+                    $macroCandidates = $alternateCandidates
+                    $macroPlacement = $alternatePlacement
+                    $macroSelection = $alternateSelection
+                    break
+                }
+            }
             if ($null -eq $macroPlacement -and -not $canUseLandmarkFallback) {
                 $source = if ($usesForcedLandmarkTemplate) { 'Forced multi-tile landmark' } else { 'Multi-tile landmark' }
                 throw "$source '$resolvedLandmarkTemplate' has no compatible footprint at $($Cell.x),$($Cell.y)."
@@ -2447,6 +2657,9 @@ function Get-CellTilePlacements {
                 }
                 $placementId = "${macroRole}:$($macroPlacement.tileX),$($macroPlacement.tileY)"
                 Set-FootprintPlacement $placements $TileGridSize $macroPlacement.tileX $macroPlacement.tileY $placedFootprint.width $placedFootprint.height $resolvedLandmarkTemplate $macroRotationYaw $macroRole $placementId $macroAllowedRoles
+                if ($null -ne $macroSelection) {
+                    Set-ScenerySelectionMetadata $placements["$($macroPlacement.tileX),$($macroPlacement.tileY)"] $macroSelection $Cell 'landmark' $resolvedLandmarkTemplate
+                }
                 if ($null -ne $specialLandmark -and $specialLandmark.capApproachRoads) {
                     Set-SpecialLandmarkRoadCaps $placements $TileGridSize $macroPlacement.tileX $macroPlacement.tileY $placedFootprint.width $placedFootprint.height $Topology $TransportFeature $AvailableTemplates
                 }
@@ -2571,7 +2784,7 @@ function Get-CellTilePlacements {
             $extraMarkerConnection = $null
             $extraRequiresMarker = Test-TemplateRequestsRoadJunction $extraTemplate
             if ($extraRequiresMarker) {
-                $extraMarkerConnection = @(Get-MarkedRoadConnectionCandidates $placements $TileGridSize $extraFootprint.width $extraFootprint.height $extraTemplate $extraAllowedRoles $plannerSettings.topologyTemplates['road-straight'] | Select-Object -First 1)[0]
+                $extraMarkerConnection = Get-MarkedRoadConnectionCandidates $placements $TileGridSize $extraFootprint.width $extraFootprint.height $extraTemplate $extraAllowedRoles $plannerSettings.topologyTemplates['road-straight'] | Select-Object -First 1
             }
             $extraCandidates = if ($extraRequiresMarker) {
                 if ($null -eq $extraMarkerConnection) { @() } else {
@@ -2582,7 +2795,53 @@ function Get-CellTilePlacements {
             } else {
                 @(Get-FootprintAnchorCandidates $placements $TileGridSize $extraFootprint.width $extraFootprint.height $extraAllowedRoles)
             }
-            $extraAnchor = @($extraCandidates | Select-Object -First 1)[0]
+            $extraAnchor = $extraCandidates | Select-Object -First 1
+            $extraSelection = if ($additional.PSObject.Properties['selection']) { $additional.selection } else { $null }
+            if ($null -eq $extraAnchor) {
+                foreach ($alternateFootprint in @($additional.alternateFootprintTemplates)) {
+                    $alternateTemplates = @($alternateFootprint.templates)
+                    if ($alternateTemplates.Count -eq 0) { continue }
+                    $alternateSelection = if ($sceneryDensityPolicyEnabled) {
+                        Get-SceneryTemplateSelection $alternateTemplates $Cell $Profile $Topology $Orientation $BuildingDensityTier $Landmarks $CellVariant "macro:additional-landmark-alternate:$($additional.landmark)" 'landmark'
+                    } else { $null }
+                    $alternateTemplate = if ($null -ne $alternateSelection -and $alternateSelection.status -eq 'selected') {
+                        [string]$alternateSelection.template
+                    } else {
+                        [string]$alternateTemplates[0]
+                    }
+                    if ($null -ne $alternateSelection -and $alternateSelection.status -ne 'selected') {
+                        $alternateSelection.status = 'density_exempt_landmark'
+                        $alternateSelection.template = $alternateTemplate
+                        $alternateSelection.actualTag = Get-ZMTemplateDensityTag $alternateTemplate
+                    }
+                    $alternateFootprintSize = Get-TemplateFootprint $alternateTemplate
+                    $alternateMarkerConnection = $null
+                    $alternateRequiresMarker = Test-TemplateRequestsRoadJunction $alternateTemplate
+                    if ($alternateRequiresMarker) {
+                        $alternateMarkerConnection = Get-MarkedRoadConnectionCandidates $placements $TileGridSize $alternateFootprintSize.width $alternateFootprintSize.height $alternateTemplate $extraAllowedRoles $plannerSettings.topologyTemplates['road-straight'] | Select-Object -First 1
+                        if ($null -eq $alternateMarkerConnection) { continue }
+                    }
+                    $alternateCandidates = if ($null -ne $alternateMarkerConnection) {
+                        @([pscustomobject]@{
+                            tileX = $alternateMarkerConnection.tileX
+                            tileY = $alternateMarkerConnection.tileY
+                            entranceDirection = $alternateMarkerConnection.frontageDirection
+                        })
+                    } elseif ($extraRoadPlacements.Count -gt 0) {
+                        @(Get-FootprintRoadFacingCandidates $placements $TileGridSize $alternateFootprintSize.width $alternateFootprintSize.height $extraRoadPlacements $connections $Topology $extraAllowedRoles $alternateTemplate)
+                    } else {
+                        @(Get-FootprintAnchorCandidates $placements $TileGridSize $alternateFootprintSize.width $alternateFootprintSize.height $extraAllowedRoles)
+                    }
+                    $alternateAnchor = $alternateCandidates | Select-Object -First 1
+                    if ($null -eq $alternateAnchor) { continue }
+                    $extraTemplate = $alternateTemplate
+                    $extraFootprint = $alternateFootprintSize
+                    $extraMarkerConnection = $alternateMarkerConnection
+                    $extraAnchor = $alternateAnchor
+                    $extraSelection = $alternateSelection
+                    break
+                }
+            }
             if ($null -ne $extraAnchor) {
                 $extraYaw = if ($null -ne $extraMarkerConnection) { $extraMarkerConnection.rotationYaw } elseif ([string]::IsNullOrWhiteSpace([string]$extraAnchor.entranceDirection)) { 0 } else { Get-TemplateRoadConnectionRotation $extraTemplate $extraAnchor.entranceDirection }
                 $extraPlacedFootprint = Get-RotatedFootprint $extraFootprint.width $extraFootprint.height $extraYaw
@@ -2590,6 +2849,9 @@ function Get-CellTilePlacements {
                     Set-MarkedRoadJunctions $placements $extraMarkerConnection.roadConnections (Get-RoadConnectionTemplateMap $AvailableTemplates $TerrainTemplate) 'landmark_road_junction'
                 }
                 Set-FootprintPlacement $placements $TileGridSize $extraAnchor.tileX $extraAnchor.tileY $extraPlacedFootprint.width $extraPlacedFootprint.height $extraTemplate $extraYaw 'landmark' "landmark:$($extraAnchor.tileX),$($extraAnchor.tileY)" $extraAllowedRoles
+                if ($null -ne $extraSelection) {
+                    Set-ScenerySelectionMetadata $placements["$($extraAnchor.tileX),$($extraAnchor.tileY)"] $extraSelection $Cell 'landmark' $extraTemplate
+                }
                 $extraPlaced = $true
             } else {
                 $extraTemplate = [string]$additional.fallbackTemplate
@@ -2769,7 +3031,7 @@ function Get-CellTilePlacements {
             $radioactiveThemeTags = if ($plannerSettings.buildingSelection.ContainsKey('radioactiveTags')) { @($plannerSettings.buildingSelection.radioactiveTags) } else { @() }
             $radioactiveTowerPattern = if ($plannerSettings.templatePatterns.ContainsKey('radioactiveBuildings')) { [string]$plannerSettings.templatePatterns.radioactiveBuildings } else { '' }
             $allRadioactiveTowers = @()
-            if (-not [string]::IsNullOrWhiteSpace($radioactiveTowerPattern) -and @(@($Cell.environment.tags) | Where-Object { $_ -in $radioactiveThemeTags }).Count -gt 0) {
+            if (-not [string]::IsNullOrWhiteSpace($radioactiveTowerPattern) -and (Test-ZMSceneryRadioactiveTheme $Cell $radioactiveThemeTags)) {
                 $allRadioactiveTowers = @($multiTileCandidates | Where-Object { $_ -match '^buildings/tile_skyscraper_' -and $_ -match $radioactiveTowerPattern })
             }
             if ($sceneryDensityPolicyEnabled) {
@@ -2913,8 +3175,9 @@ function Get-CellTilePlacements {
         }
     }
 
-    Set-OpenTerrainFill $placements $TileGridSize $PlacementSeed $DecorationTemplates $Cell $Profile $Topology $Orientation $BuildingDensityTier $Landmarks $CellVariant $AvailableTemplates
-    Set-TopologyVariants $placements $PlacementSeed $AvailableTemplates
+    $frontageTerrain = Repair-BlockedBuildingFrontages $placements $TileGridSize $TerrainTemplate $Cell $TransportFeature $connections $Topology $AvailableTemplates
+    Set-OpenTerrainFill $placements $TileGridSize $PlacementSeed $DecorationTemplates $Cell $Profile $Topology $Orientation $BuildingDensityTier $Landmarks $CellVariant $AvailableTemplates $frontageTerrain
+    Set-TopologyVariants $placements $PlacementSeed $AvailableTemplates $Profile
     Set-PlayerStartTerrain $placements $center $TerrainTemplate
 
     $plannedPlacements = @($placements.Values | Sort-Object tileY, tileX)
@@ -2930,22 +3193,180 @@ function Get-PlannerTileHash {
     return [int64][Math]::Abs($hash % 2147483647)
 }
 
+function Get-BuildingFootprintDimensions {
+    param([object]$Placement)
+
+    $width = $Placement.PSObject.Properties['footprintWidth']
+    $height = $Placement.PSObject.Properties['footprintHeight']
+    return [pscustomobject]@{
+        width = if ($null -eq $width) { 1 } else { [int]$width.Value }
+        height = if ($null -eq $height) { 1 } else { [int]$height.Value }
+    }
+}
+
+function Get-BuildingFrontageCoordinates {
+    param([object]$Placement, [string]$Direction)
+
+    $size = Get-BuildingFootprintDimensions $Placement
+    $x = [int]$Placement.tileX
+    $y = [int]$Placement.tileY
+    $coordinates = [System.Collections.Generic.List[object]]::new()
+    if ($Direction -in @('N', 'S')) {
+        $targetY = if ($Direction -eq 'N') { $y - 1 } else { $y + $size.height }
+        foreach ($offset in @([int][Math]::Floor(($size.width - 1) / 2.0), [int][Math]::Floor($size.width / 2.0)) | Sort-Object -Unique) {
+            $coordinates.Add([pscustomobject]@{ tileX = $x + $offset; tileY = $targetY })
+        }
+    } elseif ($Direction -in @('E', 'W')) {
+        $targetX = if ($Direction -eq 'W') { $x - 1 } else { $x + $size.width }
+        foreach ($offset in @([int][Math]::Floor(($size.height - 1) / 2.0), [int][Math]::Floor($size.height / 2.0)) | Sort-Object -Unique) {
+            $coordinates.Add([pscustomobject]@{ tileX = $targetX; tileY = $y + $offset })
+        }
+    } else {
+        throw "Invalid building frontage direction '$Direction'."
+    }
+    return @($coordinates)
+}
+
+function Test-BuildingFrontageClear {
+    param([hashtable]$Placements, [object]$Placement, [string]$Direction)
+
+    foreach ($coordinate in @(Get-BuildingFrontageCoordinates $Placement $Direction)) {
+        $key = "$($coordinate.tileX),$($coordinate.tileY)"
+        if (-not $Placements.ContainsKey($key)) { continue }
+        if ([string]$Placements[$key].role -notin @('building', 'building_occupied', 'landmark', 'landmark_occupied', 'landmark_epicenter', 'landmark_epicenter_occupied', 'safezone_entrance_occupied')) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Get-BuildingAdjacentRoadDirections {
+    param([hashtable]$Placements, [object]$Placement, [string]$TransportFeature, [string[]]$CellConnections, [string]$Topology)
+
+    $size = Get-BuildingFootprintDimensions $Placement
+    $owned = @{}
+    $coordinates = @(Get-FootprintCoordinates ([int]$Placement.tileX) ([int]$Placement.tileY) $size.width $size.height)
+    foreach ($coordinate in $coordinates) { $owned["$($coordinate.tileX),$($coordinate.tileY)"] = $true }
+    $directions = @{}
+    $touchesRoad = $false
+    foreach ($coordinate in $coordinates) {
+        foreach ($direction in @('N', 'E', 'S', 'W')) {
+            $neighbour = Get-OffsetTileCoordinate $coordinate $direction
+            $key = "$($neighbour.tileX),$($neighbour.tileY)"
+            if ($owned.ContainsKey($key) -or -not $Placements.ContainsKey($key)) { continue }
+            $role = [string]$Placements[$key].role
+            if ($role -in @('road', 'road_center', 'onramp_road', 'bridge_road', 'path', 'building_road_junction', 'landmark_road_junction', 'landmark_carpark_junction', 'carpark_road_junction') -or
+                ($TransportFeature -ne 'none' -and $role -eq $TransportFeature)) {
+                $touchesRoad = $true
+                if (($role -eq 'road_center' -and $Topology -like '*-corner') -or
+                    (Test-RoadPlacementFacesCoordinate $Placements[$key] $coordinate $CellConnections $Topology)) {
+                    $directions[$direction] = $true
+                }
+            }
+        }
+    }
+    return [pscustomobject]@{ touchesRoad = $touchesRoad; directions = @($directions.Keys | Sort-Object) }
+}
+
+function Repair-BlockedBuildingFrontages {
+    param(
+        [hashtable]$Placements,
+        [int]$TileGridSize,
+        [string]$TerrainTemplate,
+        [object]$Cell,
+        [string]$TransportFeature,
+        [string[]]$CellConnections,
+        [string]$Topology,
+        [hashtable]$AvailableTemplates
+    )
+
+    $protectedTerrain = @{}
+    $owners = @($Placements.Values | Where-Object { $_.role -in @('building', 'landmark', 'landmark_epicenter') } |
+        Sort-Object @{ Expression = { if ($_.role -eq 'building') { 0 } else { 1 } } }, tileY, tileX)
+    foreach ($owner in $owners) {
+        $localDirection = Get-TemplateFrontageDirection ([string]$owner.template)
+        $yaw = (([int]$owner.rotationYaw % 360) + 360) % 360
+        $frontage = Get-RotatedCardinalDirection $localDirection $yaw
+        if ($null -eq $frontage) { throw "Building '$($owner.template)' has non-cardinal yaw $yaw." }
+        if (Test-BuildingFrontageClear $Placements $owner $frontage) { continue }
+
+        $size = Get-BuildingFootprintDimensions $owner
+        $authoredSize = Get-TemplateFootprint ([string]$owner.template)
+        $owned = @{}
+        foreach ($coordinate in @(Get-FootprintCoordinates ([int]$owner.tileX) ([int]$owner.tileY) $size.width $size.height)) {
+            $owned["$($coordinate.tileX),$($coordinate.tileY)"] = $true
+        }
+        $roadAdjacency = Get-BuildingAdjacentRoadDirections $Placements $owner $TransportFeature $CellConnections $Topology
+        $requiresConnections = Test-TemplateRequestsRoadJunction ([string]$owner.template)
+        $chosenYaw = $null
+        $chosenConnections = @()
+        if ($owner.role -ne 'landmark_epicenter') {
+            foreach ($offset in @(90, 180, 270)) {
+                $candidateYaw = ($yaw + $offset) % 360
+                $candidateSize = Get-RotatedFootprint $authoredSize.width $authoredSize.height $candidateYaw
+                if ($candidateSize.width -ne $size.width -or $candidateSize.height -ne $size.height) { continue }
+                $candidateDirection = Get-RotatedCardinalDirection $localDirection $candidateYaw
+                if (-not (Test-BuildingFrontageClear $Placements $owner $candidateDirection)) { continue }
+                if ($roadAdjacency.touchesRoad -and $candidateDirection -notin $roadAdjacency.directions) { continue }
+                if ($requiresConnections) {
+                    $candidateConnections = @(Get-MarkedRoadConnectionCandidates $Placements $TileGridSize $authoredSize.width $authoredSize.height ([string]$owner.template) @('building', 'building_occupied', 'landmark', 'landmark_occupied') $plannerSettings.topologyTemplates['road-straight'] |
+                        Where-Object { $_.tileX -eq $owner.tileX -and $_.tileY -eq $owner.tileY -and $_.rotationYaw -eq $candidateYaw -and $_.footprintWidth -eq $size.width -and $_.footprintHeight -eq $size.height })
+                    if ($candidateConnections.Count -eq 0) { continue }
+                    $chosenConnections = @($candidateConnections[0].roadConnections)
+                }
+                $chosenYaw = $candidateYaw
+                break
+            }
+        }
+        $connectionRole = if ($owner.role -eq 'landmark') { 'landmark_road_junction' } else { 'building_road_junction' }
+        if ($null -ne $chosenYaw) {
+            if ($requiresConnections) {
+                $roadConnectionTemplates = Get-RoadConnectionTemplateMap $AvailableTemplates $TerrainTemplate
+                Remove-PlacementRoadConnections $Placements $owned $roadConnectionTemplates $connectionRole
+                if ($chosenConnections.Count -gt 0) {
+                    Set-MarkedRoadJunctions $Placements $chosenConnections $roadConnectionTemplates $connectionRole
+                }
+            }
+            foreach ($key in $owned.Keys) { $Placements[$key].rotationYaw = $chosenYaw }
+            continue
+        }
+
+        if ($owner.role -ne 'building') {
+            Write-Warning "[Planner] Candidate cell $($Cell.x),$($Cell.y) retains blocked required frontage for '$($owner.template)' at $($owner.tileX),$($owner.tileY); no safe in-place rotation exists."
+            continue
+        }
+        if ($requiresConnections) {
+            $roadConnectionTemplates = Get-RoadConnectionTemplateMap $AvailableTemplates $TerrainTemplate
+            Remove-PlacementRoadConnections $Placements $owned $roadConnectionTemplates $connectionRole
+        }
+        foreach ($coordinate in @(Get-FootprintCoordinates ([int]$owner.tileX) ([int]$owner.tileY) $size.width $size.height)) {
+            $key = "$($coordinate.tileX),$($coordinate.tileY)"
+            $Placements[$key] = [pscustomobject]@{
+                tileX = [int]$coordinate.tileX
+                tileY = [int]$coordinate.tileY
+                template = $TerrainTemplate
+                rotationYaw = 0
+                role = 'terrain'
+            }
+            $protectedTerrain[$key] = $true
+        }
+        Write-Warning "[Planner] Candidate cell $($Cell.x),$($Cell.y) replaced blocked building '$($owner.template)' at $($owner.tileX),$($owner.tileY) with open terrain; no safe in-place rotation exists."
+    }
+    return $protectedTerrain
+}
+
 function Get-BuildingFrontageKeys {
     param([hashtable]$Placements)
 
     $keys = @{}
-    $yawByDirection = @{ N = 0; E = 270; S = 180; W = 90 }
-    $directionByYaw = @{ 0 = 'N'; 270 = 'E'; 180 = 'S'; 90 = 'W' }
-    foreach ($placement in @($Placements.Values | Where-Object { $_.role -eq 'building' })) {
-        $footprint = Get-TemplateFootprint ([string]$placement.template)
-        if ($footprint.width -ne 1 -or $footprint.height -ne 1) { continue }
-        $templateKey = ([string]$placement.template).ToLowerInvariant()
-        $localDirection = if ($templateRoadConnections.ContainsKey($templateKey)) {
-            @{ NORTH = 'N'; EAST = 'E'; SOUTH = 'S'; WEST = 'W'; N = 'N'; E = 'E'; S = 'S'; W = 'W' }[([string]$templateRoadConnections[$templateKey].direction).ToUpperInvariant()]
-        } else { 'N' }
-        $frontageYaw = ((([int]$placement.rotationYaw + $yawByDirection[$localDirection]) % 360) + 360) % 360
-        $frontage = Get-DirectionalAdjacentCoordinate $directionByYaw[$frontageYaw] 0
-        $keys["$([int]$placement.tileX + [int]$frontage.tileX),$([int]$placement.tileY + [int]$frontage.tileY)"] = $true
+    foreach ($placement in @($Placements.Values | Where-Object { $_.role -in @('building', 'landmark', 'landmark_epicenter') })) {
+        $localDirection = Get-TemplateFrontageDirection ([string]$placement.template)
+        $yaw = (([int]$placement.rotationYaw % 360) + 360) % 360
+        $direction = Get-RotatedCardinalDirection $localDirection $yaw
+        if ($null -eq $direction) { throw "Building '$($placement.template)' has non-cardinal yaw $yaw." }
+        foreach ($coordinate in @(Get-BuildingFrontageCoordinates $placement $direction)) {
+            $keys["$($coordinate.tileX),$($coordinate.tileY)"] = $true
+        }
     }
     return $keys
 }
@@ -2992,7 +3413,8 @@ function Set-OpenTerrainFill {
         [int]$BuildingDensityTier,
         [string[]]$Landmarks,
         [int]$CellVariant,
-        [hashtable]$AvailableTemplates
+        [hashtable]$AvailableTemplates,
+        [hashtable]$ProtectedTerrain = @{}
     )
 
     if ($DecorationTemplates.Count -eq 0 -or $maximumOpenTilePercent -ge 100) { return }
@@ -3002,9 +3424,12 @@ function Set-OpenTerrainFill {
     })
     if ($openPlacements.Count -le $maximumOpenTiles) { return }
 
-    # Building doors that do not face a road keep their facing terrain tile open.
+    # Keep building entrances and blocked-building replacement terrain open.
     $frontageKeys = Get-BuildingFrontageKeys $Placements
-    $candidates = @($openPlacements | Where-Object { -not $frontageKeys.ContainsKey("$($_.tileX),$($_.tileY)") } | Sort-Object @{ Expression = { Get-PlannerTileHash $PlacementSeed ([int]$_.tileX) ([int]$_.tileY) 401 } }, tileY, tileX)
+    $candidates = @($openPlacements | Where-Object {
+        $key = "$($_.tileX),$($_.tileY)"
+        -not $frontageKeys.ContainsKey($key) -and -not $ProtectedTerrain.ContainsKey($key)
+    } | Sort-Object @{ Expression = { Get-PlannerTileHash $PlacementSeed ([int]$_.tileX) ([int]$_.tileY) 401 } }, tileY, tileX)
     $fillCount = [Math]::Min($candidates.Count, $openPlacements.Count - $maximumOpenTiles)
     for ($index = 0; $index -lt $fillCount; $index++) {
         $terrainPlacement = $candidates[$index]
@@ -3042,14 +3467,14 @@ function Set-TopologyVariants {
     param(
         [hashtable]$Placements,
         [int]$PlacementSeed,
-        [hashtable]$AvailableTemplates
+        [hashtable]$AvailableTemplates,
+        [string]$Profile
     )
 
-    if ($topologyVariantChancePercent -le 0 -or $topologyVariantTemplates.Count -eq 0) { return }
+    if ($topologyVariantChancePercent -le 0 -or ($topologyVariantTemplates.Count -eq 0 -and $topologyVariantProfileTemplates.Count -eq 0)) { return }
     foreach ($roadPlacement in @($Placements.Values | Where-Object { $_.role -eq 'road' } | Sort-Object tileY, tileX)) {
         $baseTemplate = [string]$roadPlacement.template
-        if (-not $topologyVariantTemplates.ContainsKey($baseTemplate)) { continue }
-        $variants = @($topologyVariantTemplates[$baseTemplate] | Where-Object { $AvailableTemplates.ContainsKey($_.ToLowerInvariant()) } | ForEach-Object { $AvailableTemplates[$_.ToLowerInvariant()] })
+        $variants = @(Get-ZMTopologyVariantCandidates $baseTemplate $Profile $topologyVariantTemplates $topologyVariantProfileTemplates $AvailableTemplates)
         if ($variants.Count -eq 0) { continue }
         $hash = Get-PlannerTileHash $PlacementSeed ([int]$roadPlacement.tileX) ([int]$roadPlacement.tileY) 503
         if (($hash % 100) -ge $topologyVariantChancePercent) { continue }
@@ -3064,24 +3489,29 @@ function Get-ProfileFallbackTemplates {
         [string[]]$Landmarks
     )
 
-    if ($Profile -eq 'military' -or ($Landmarks -contains 'Army Base')) {
+    $version = $Cell.PSObject.Properties['sceneryDensityPolicyVersion']
+    $currentPolicy = $null -ne $version -and $version.Value -eq 2
+    if ($Profile -eq 'military' -or ($currentPolicy -and $Profile -eq 'fortified') -or
+        ($Landmarks -contains 'Army Base' -and (-not $currentPolicy -or $Profile -ne 'destroyed'))) {
         if ($armyBuildingTemplates.Count -eq 0) { throw 'Army-only building placement requires VMFs under tiletemplates\army.' }
+        if ($currentPolicy -and $Profile -eq 'fortified') {
+            return @(Get-ZMPrimaryBuildingTemplates $Profile $false $armyBuildingTemplates $destroyedBuildingTemplates $radioactiveBuildingTemplates $buildingTemplates $warehouseTemplates -FortifiedTemplates $fortifiedBuildingTemplates)
+        }
         return @($armyBuildingTemplates)
     }
     $candidates = [System.Collections.Generic.List[string]]::new()
-    $isRadioactive = @(@($Cell.environment.tags) | Where-Object { $_ -in $radioactiveBuildingTags }).Count -gt 0
-    $allowCommercial = $Profile -in $plannerSettings.buildingSelection.commercialProfiles -or (Test-CommercialSpreadPlacement $Cell $Profile)
+    $isRadioactive = if ($currentPolicy) {
+        $Profile -notin @('destroyed', 'military', 'fortified', 'safe_zone') -and (Test-ZMSceneryRadioactiveTheme $Cell $radioactiveBuildingTags)
+    } else { @(@($Cell.environment.tags) | Where-Object { $_ -in $radioactiveBuildingTags }).Count -gt 0 }
+    $exclusiveTheme = $Profile -in @('destroyed', 'radioactive') -or $isRadioactive
+    $allowCommercial = (-not $currentPolicy -or -not $exclusiveTheme) -and ($Profile -in $plannerSettings.buildingSelection.commercialProfiles -or (Test-CommercialSpreadPlacement $Cell $Profile))
     # Industrial buildings only appear inside seeded industrial zones (or legacy terrain/profile opt-ins).
-    $allowIndustry = (Test-ZMIndustrialZoneCell $Cell) -or $Cell.environment.terrain -in @($plannerSettings.buildingSelection.industryTerrains) -or $Profile -in @($plannerSettings.buildingSelection.industryProfiles)
-    # User rule: radioactive cells never use untagged generic/warehouse buildings; _ra_ assets stay
-    # exclusive to them, alongside the industry and commercial-spread pools.
-    $candidatePool = if ($isRadioactive) {
-        @($radioactiveBuildingTemplates)
-    } elseif ($Profile -eq 'destroyed' -and $destroyedBuildingTemplates.Count -gt 0) {
-        @($destroyedBuildingTemplates)
-    } else {
-        @($buildingTemplates) + @($warehouseTemplates)
-    }
+    $allowIndustry = (-not $currentPolicy -or -not $exclusiveTheme) -and ((Test-ZMIndustrialZoneCell $Cell) -or $Cell.environment.terrain -in @($plannerSettings.buildingSelection.industryTerrains) -or $Profile -in @($plannerSettings.buildingSelection.industryProfiles))
+    $candidatePool = @(if ($currentPolicy) {
+        Get-ZMPrimaryBuildingTemplates $Profile $isRadioactive $armyBuildingTemplates $destroyedBuildingTemplates $radioactiveBuildingTemplates $buildingTemplates $warehouseTemplates
+    } elseif ($isRadioactive) { @($radioactiveBuildingTemplates) }
+    elseif ($Profile -eq 'destroyed' -and $destroyedBuildingTemplates.Count -gt 0) { @($destroyedBuildingTemplates) }
+    else { @($buildingTemplates) + @($warehouseTemplates) })
     if ($allowCommercial) { $candidatePool += @($commercialTemplates) }
     if ($allowIndustry) { $candidatePool += @($industryTemplates) }
     foreach ($candidate in $candidatePool) {
@@ -3098,10 +3528,21 @@ function Test-CommercialSpreadPlacement {
         [string]$Profile
     )
 
-    if ($commercialSpreadChancePercent -eq 0 -or $Profile -notin $commercialSpreadProfiles) { return $false }
+    if ($Profile -notin $commercialSpreadProfiles) { return $false }
+    $chance = $commercialSpreadChancePercent
+    $districtProperty = $Cell.PSObject.Properties['district']
+    if ($null -ne $districtProperty -and $null -ne $districtProperty.Value) {
+        $district = $districtProperty.Value
+        $hasChance = if ($district -is [System.Collections.IDictionary]) { $district.Contains('commercialSpreadChancePercent') } else { $null -ne $district.PSObject.Properties['commercialSpreadChancePercent'] }
+        if ($hasChance) {
+            $chance = [int]$district.commercialSpreadChancePercent
+            if ($chance -lt 0 -or $chance -gt 100) { throw "Invalid district commercial spread at $($Cell.x),$($Cell.y)." }
+        }
+    }
+    if ($chance -eq 0) { return $false }
     [int64]$hash = ([int64]$map.map.seed * 73856093) + ([int64]$Cell.x * 19349663) + ([int64]$Cell.y * 83492791)
     $hash = $hash -bxor ($hash -shr 13) -bxor ($hash -shr 23)
-    return [int]([Math]::Abs($hash) % 100) -lt $commercialSpreadChancePercent
+    return [int]([Math]::Abs($hash) % 100) -lt $chance
 }
 
 function Get-LandmarkTemplate {
@@ -3131,13 +3572,13 @@ function Get-LandmarkTemplateSelection {
 
     $pool = Get-ZMLandmarkTemplatePool $Landmarks $plannerSettings.landmarkTemplatePatterns @($AvailableTemplates.Values)
     if ($null -eq $pool) {
-        return [pscustomobject]@{ landmark = $null; template = $null; selection = $null; fallbackTemplate = $null; fallbackSelection = $null }
+        return [pscustomobject]@{ landmark = $null; template = $null; selection = $null; fallbackTemplate = $null; fallbackSelection = $null; alternateFootprintTemplates = @() }
     }
 
     $fallbackTemplates = @($pool.singleTileFallbackTemplates)
     $fallbackTemplate = if ($fallbackTemplates.Count -gt 0) { [string]$fallbackTemplates[0] } else { $null }
     if (-not $sceneryDensityPolicyEnabled) {
-        return [pscustomobject]@{ landmark = [string]$pool.landmark; template = [string]$pool.template; selection = $null; fallbackTemplate = $fallbackTemplate; fallbackSelection = $null }
+        return [pscustomobject]@{ landmark = [string]$pool.landmark; template = [string]$pool.template; selection = $null; fallbackTemplate = $fallbackTemplate; fallbackSelection = $null; alternateFootprintTemplates = @($pool.alternateFootprintTemplates) }
     }
 
     $selection = Get-SceneryTemplateSelection $pool.templates $Cell $Profile $Topology $Orientation $DensityTier $Landmarks $CellVariant "macro:landmark" 'landmark'
@@ -3146,7 +3587,7 @@ function Get-LandmarkTemplateSelection {
         $singleSelection = Get-SceneryTemplateSelection $fallbackTemplates $Cell $Profile $Topology $Orientation $DensityTier $Landmarks $CellVariant "macro:landmark-fallback" 'landmark'
         if ($singleSelection.status -eq 'selected') {
             $singleTemplate = [string]$singleSelection.template
-            return [pscustomobject]@{ landmark = [string]$pool.landmark; template = $singleTemplate; selection = $singleSelection; fallbackTemplate = $singleTemplate; fallbackSelection = $singleSelection }
+            return [pscustomobject]@{ landmark = [string]$pool.landmark; template = $singleTemplate; selection = $singleSelection; fallbackTemplate = $singleTemplate; fallbackSelection = $singleSelection; alternateFootprintTemplates = @($pool.alternateFootprintTemplates) }
         }
     }
     if ($selection.status -ne 'selected') {
@@ -3166,7 +3607,7 @@ function Get-LandmarkTemplateSelection {
         }
         $fallbackTemplate = [string]$fallbackSelection.template
     }
-    return [pscustomobject]@{ landmark = [string]$pool.landmark; template = [string]$selection.template; selection = $selection; fallbackTemplate = $fallbackTemplate; fallbackSelection = $fallbackSelection }
+    return [pscustomobject]@{ landmark = [string]$pool.landmark; template = [string]$selection.template; selection = $selection; fallbackTemplate = $fallbackTemplate; fallbackSelection = $fallbackSelection; alternateFootprintTemplates = @($pool.alternateFootprintTemplates) }
 }
 
 function Get-AdditionalLandmarkSelections {
@@ -3633,7 +4074,7 @@ foreach ($cell in $map.cells) {
         }
     }
     $orientation = Get-CellOrientation $cell $topology
-    $terrainTemplate = Get-TerrainTemplate $cell.environment.terrain
+    $terrainTemplate = Get-TerrainTemplate $cell.environment.terrain $cell $profile
     $genericTopologyTemplate = Get-GenericTopologyTemplate $topology
     $transportFeature = Get-TransportFeature $cell
     $rampExits = @(Get-HighwayRampExits $cell)
@@ -3670,7 +4111,7 @@ foreach ($cell in $map.cells) {
     $excludedEntranceSlots = @{}
     do {
         $safeZoneEntrance = Get-SafeZoneEntrancePlan $cell $CellTileSize $placementSeed $excludedEntranceSlots
-        $tilePlacements = @(Get-CellTilePlacements $cell $terrainTemplate $buildingCandidates $landmarkTemplate $landmarks $profile $carparkTemplates $decorationTemplates $placementSeed $buildingDensityTier 0 $transportFeature $topology $orientation $CellTileSize         $templateFiles $forceCarpark $safeZoneEntrance $landmarkFallbackTemplate -AdditionalLandmarks $additionalLandmarks)
+        $tilePlacements = @(Get-CellTilePlacements $cell $terrainTemplate $buildingCandidates $landmarkTemplate $landmarks $profile $carparkTemplates $decorationTemplates $placementSeed $buildingDensityTier 0 $transportFeature $topology $orientation $CellTileSize         $templateFiles $forceCarpark $safeZoneEntrance $landmarkFallbackTemplate -LandmarkFootprintAlternatives $landmarkTemplateResult.alternateFootprintTemplates -AdditionalLandmarks $additionalLandmarks)
         foreach ($additional in $additionalLandmarks) {
             foreach ($additionalSelection in @(@($additional.selection, $additional.template), @($additional.fallbackSelection, $additional.fallbackTemplate))) {
                 if ($null -eq $additionalSelection[0] -or [string]::IsNullOrWhiteSpace([string]$additionalSelection[1])) { continue }
@@ -3745,7 +4186,8 @@ foreach ($cell in $map.cells) {
         buildingTemplates = $buildingCandidates
         landmarkTemplate = $landmarkTemplate
         landmarkFallbackTemplate = $landmarkFallbackTemplate
-        additionalLandmarks = @($additionalLandmarks | ForEach-Object { [pscustomobject]@{ landmark = [string]$_.landmark; template = [string]$_.template; fallbackTemplate = [string]$_.fallbackTemplate } })
+        landmarkFootprintAlternatives = @($landmarkTemplateResult.alternateFootprintTemplates)
+        additionalLandmarks = @($additionalLandmarks | ForEach-Object { [pscustomobject]@{ landmark = [string]$_.landmark; template = [string]$_.template; fallbackTemplate = [string]$_.fallbackTemplate; alternateFootprintTemplates = @($_.alternateFootprintTemplates) } })
         placementSeed = $placementSeed
         forceCarpark = $forceCarpark
         chunkFallbackUsed = -not $exactTemplateExists
@@ -3830,10 +4272,11 @@ foreach ($recipeGroup in @($planCells | Group-Object baseCellTemplateFilename | 
             $candidate.placementSeed = Get-RecipePlacementSeed $candidate.environmentProfile $candidate.topology $candidate.orientation $candidate.buildingDensityTier $candidate.landmarks $candidate.cellVariant
             $mapCell = @($map.cells | Where-Object { $_.x -eq $candidate.x -and $_.y -eq $candidate.y } | Select-Object -First 1)[0]
             if ($null -eq $mapCell) { throw "Map cell was not found for variant at $($candidate.x),$($candidate.y)" }
-            $variantTerrainTemplate = Get-TerrainTemplate $mapCell.environment.terrain
+            $variantTerrainTemplate = Get-TerrainTemplate $mapCell.environment.terrain $mapCell $candidate.environmentProfile
             $variantLandmarkFallback = if ($candidate.PSObject.Properties['landmarkFallbackTemplate']) { [string]$candidate.landmarkFallbackTemplate } else { '' }
+            $variantLandmarkFootprintAlternatives = if ($candidate.PSObject.Properties['landmarkFootprintAlternatives']) { @($candidate.landmarkFootprintAlternatives) } else { @() }
             $variantAdditionalLandmarks = if ($candidate.PSObject.Properties['additionalLandmarks']) { @($candidate.additionalLandmarks) } else { @() }
-            $candidate.tilePlacements = @(Get-CellTilePlacements $mapCell $variantTerrainTemplate $candidate.buildingTemplates $candidate.landmarkTemplate $candidate.landmarks $candidate.environmentProfile $carparkTemplates $decorationTemplates $candidate.placementSeed $candidate.buildingDensityTier $candidate.cellVariant $candidate.transportFeature $candidate.topology $candidate.orientation $CellTileSize $templateFiles ([bool]$candidate.forceCarpark) $candidate.safeZoneEntrance $variantLandmarkFallback -AdditionalLandmarks $variantAdditionalLandmarks)
+            $candidate.tilePlacements = @(Get-CellTilePlacements $mapCell $variantTerrainTemplate $candidate.buildingTemplates $candidate.landmarkTemplate $candidate.landmarks $candidate.environmentProfile $carparkTemplates $decorationTemplates $candidate.placementSeed $candidate.buildingDensityTier $candidate.cellVariant $candidate.transportFeature $candidate.topology $candidate.orientation $CellTileSize $templateFiles ([bool]$candidate.forceCarpark) $candidate.safeZoneEntrance $variantLandmarkFallback -LandmarkFootprintAlternatives $variantLandmarkFootprintAlternatives -AdditionalLandmarks $variantAdditionalLandmarks)
             $candidate.filenameCodes = Get-RecipeFilenameCodes $candidate.environmentProfile $candidate.topology $candidate.orientation $candidate.transportFeature $candidate.buildingDensityTier $candidate.landmarks $candidate.tilePlacements $candidate.safeZoneEntrance ([bool]$candidate.industrialZone)
             $variantBaseFilename = Get-CarparkCoverageFilename (Get-WaterBorderFilename (Get-CellFilename $candidate.filenameCodes) @(Get-WaterBorderPlan $mapCell)) ([bool]$candidate.forceCarpark)
             $candidate.baseCellTemplateFilename = $variantBaseFilename
@@ -3990,7 +4433,7 @@ $missingCellFiles = @($requiredCellFiles | Where-Object { -not $_.cellTemplateEx
 
 $plan = [ordered]@{
     schemaVersion = 4
-    mapData = [System.IO.Path]::GetFileName($MapData)
+    mapData = Get-PlanManifestReference $MapData $Output
     cellDirectory = $CellDirectory
     chunkTemplateDirectory = $TemplateDirectory
     safeZoneTemplateDirectory = $safeZoneTemplateDirectory

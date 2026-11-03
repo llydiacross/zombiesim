@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "23"
+	"mapversion" "24"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "23"
+	"mapversion" "24"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -2019,9 +2019,9 @@ entity
 				"v" "296 -328 1016"
 			}
 			"material" "CONCRETE/CURBREDA"
-			"uaxis" "[1 0 0 -256] 0.25"
-			"vaxis" "[0 -1 0 -32] 0.25"
-			"rotation" "0"
+			"uaxis" "[-0 1 0 -256] 0.25"
+			"vaxis" "[1 0 0 -32] 0.25"
+			"rotation" "90"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
@@ -2037,9 +2037,9 @@ entity
 				"v" "296 -320 118.241"
 			}
 			"material" "CONCRETE/CURBREDA"
-			"uaxis" "[1 0 0 -256] 0.25"
-			"vaxis" "[0 -1 0 -32] 0.25"
-			"rotation" "0"
+			"uaxis" "[-0 1 0 -256] 0.25"
+			"vaxis" "[1 0 0 -32] 0.25"
+			"rotation" "90"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
@@ -2055,9 +2055,9 @@ entity
 				"v" "280 -328 1016"
 			}
 			"material" "CONCRETE/CURBREDA"
-			"uaxis" "[0 1 0 288] 0.25"
-			"vaxis" "[0 0 -1 -32] 0.25"
-			"rotation" "0"
+			"uaxis" "[0 -0 1 288] 0.25"
+			"vaxis" "[0 1 0 -32] 0.25"
+			"rotation" "90"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
@@ -2073,9 +2073,9 @@ entity
 				"v" "296 -320 1016"
 			}
 			"material" "CONCRETE/CURBREDA"
-			"uaxis" "[0 1 0 288] 0.25"
-			"vaxis" "[0 0 -1 -32] 0.25"
-			"rotation" "0"
+			"uaxis" "[0 -0 1 288] 0.25"
+			"vaxis" "[0 1 0 -32] 0.25"
+			"rotation" "90"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
@@ -2091,9 +2091,9 @@ entity
 				"v" "280 -320 1016"
 			}
 			"material" "CONCRETE/CURBREDA"
-			"uaxis" "[1 0 0 -256] 0.25"
-			"vaxis" "[0 0 -1 -32] 0.25"
-			"rotation" "0"
+			"uaxis" "[-0 0 1 -256] 0.25"
+			"vaxis" "[1 0 0 -32] 0.25"
+			"rotation" "90"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
@@ -2109,9 +2109,9 @@ entity
 				"v" "296 -328 1016"
 			}
 			"material" "CONCRETE/CURBREDA"
-			"uaxis" "[1 0 0 -256] 0.25"
-			"vaxis" "[0 0 -1 -32] 0.25"
-			"rotation" "0"
+			"uaxis" "[-0 0 1 -256] 0.25"
+			"vaxis" "[1 0 0 -32] 0.25"
+			"rotation" "90"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
@@ -2137,9 +2137,9 @@ entity
 				"v" "-280 -328 1016"
 			}
 			"material" "CONCRETE/CURBREDA"
-			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 -1 0 -32] 0.25"
-			"rotation" "0"
+			"uaxis" "[-0 1 0 0] 0.25"
+			"vaxis" "[1 0 0 -32] 0.25"
+			"rotation" "90"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
@@ -2155,9 +2155,9 @@ entity
 				"v" "-280 -320 118.241"
 			}
 			"material" "CONCRETE/CURBREDA"
-			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 -1 0 -32] 0.25"
-			"rotation" "0"
+			"uaxis" "[-0 1 0 0] 0.25"
+			"vaxis" "[1 0 0 -32] 0.25"
+			"rotation" "90"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
@@ -2173,9 +2173,9 @@ entity
 				"v" "-296 -328 1016"
 			}
 			"material" "CONCRETE/CURBREDA"
-			"uaxis" "[0 1 0 288] 0.25"
-			"vaxis" "[0 0 -1 -32] 0.25"
-			"rotation" "0"
+			"uaxis" "[0 -0 1 288] 0.25"
+			"vaxis" "[0 1 0 -32] 0.25"
+			"rotation" "90"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
@@ -2191,9 +2191,9 @@ entity
 				"v" "-280 -320 1016"
 			}
 			"material" "CONCRETE/CURBREDA"
-			"uaxis" "[0 1 0 288] 0.25"
-			"vaxis" "[0 0 -1 -32] 0.25"
-			"rotation" "0"
+			"uaxis" "[0 -0 1 288] 0.25"
+			"vaxis" "[0 1 0 -32] 0.25"
+			"rotation" "90"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
@@ -2209,9 +2209,9 @@ entity
 				"v" "-296 -320 1016"
 			}
 			"material" "CONCRETE/CURBREDA"
-			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 0 -1 -32] 0.25"
-			"rotation" "0"
+			"uaxis" "[-0 0 1 0] 0.25"
+			"vaxis" "[1 0 0 -32] 0.25"
+			"rotation" "90"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}
@@ -2227,9 +2227,9 @@ entity
 				"v" "-280 -328 1016"
 			}
 			"material" "CONCRETE/CURBREDA"
-			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 0 -1 -32] 0.25"
-			"rotation" "0"
+			"uaxis" "[-0 0 1 0] 0.25"
+			"vaxis" "[1 0 0 -32] 0.25"
+			"rotation" "90"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"
 		}

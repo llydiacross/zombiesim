@@ -21,7 +21,7 @@ The user requested a source investigation of
 [Xenthio/RealCSM](https://github.com/Xenthio/RealCSM) and a future-agent plan for
 ZombieSim's own implementation.
 
-The current schedule is the [Alpha 3.3 plan](../todo-alpha.3.3.md) and
+The current schedule is the [Alpha 3.5 plan](../todo-alpha-3.5.md) and
 [AGENTS.md](../AGENTS.md); [Alpha 3.2](todo-alpha.3.2.md) is archived without
 claiming full acceptance. On 2026-10-13 the user moved unfinished
 Alpha 3.1.5 closure to the end of 3.2 and prioritized generator work. Old
@@ -1050,7 +1050,7 @@ exist, so also test practical shadow-pool coexistence.
 ## 9. Handoff and stop conditions
 
 No CSM action is currently scheduled. Continue the active non-CSM work in the
-[Alpha 3.3 plan](../todo-alpha.3.3.md). Do not repeat the completed
+[Alpha 3.5 plan](../todo-alpha-3.5.md). Do not repeat the completed
 one-projector probe or copy the upstream tree.
 
 When the user explicitly returns to CSM, first inspect the current owner and

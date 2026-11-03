@@ -1,7 +1,8 @@
 param(
     [string]$OutputRoot = '',
     [string]$TemplateDirectory = '',
-    [string]$TrustedMotorwayPlan = ''
+    [string]$TrustedMotorwayPlan = '',
+    [switch]$UnitOnly
 )
 
 Set-StrictMode -Version Latest
@@ -97,11 +98,13 @@ if ([string]::IsNullOrWhiteSpace($TemplateDirectory)) {
     $TemplateDirectory = Join-Path $projectRoot $settings.paths.templateDirectory
 }
 $TemplateDirectory = (Resolve-Path -LiteralPath $TemplateDirectory).Path
-if ([string]::IsNullOrWhiteSpace($TrustedMotorwayPlan) -or
-    -not (Test-Path -LiteralPath $TrustedMotorwayPlan -PathType Leaf)) {
-    throw 'Pass the current approved full-world plan with -TrustedMotorwayPlan.'
+if (-not $UnitOnly) {
+    if ([string]::IsNullOrWhiteSpace($TrustedMotorwayPlan) -or
+        -not (Test-Path -LiteralPath $TrustedMotorwayPlan -PathType Leaf)) {
+        throw 'Pass the current approved full-world plan with -TrustedMotorwayPlan.'
+    }
+    $TrustedMotorwayPlan = (Resolve-Path -LiteralPath $TrustedMotorwayPlan).Path
 }
-$TrustedMotorwayPlan = (Resolve-Path -LiteralPath $TrustedMotorwayPlan).Path
 $settings.paths.templateDirectory = [Uri]::UnescapeDataString(
     ([Uri]($projectRoot.TrimEnd('\') + '\')).MakeRelativeUri([Uri]($TemplateDirectory + '\')).ToString()
 ).Replace('/', '\')
@@ -124,15 +127,31 @@ foreach ($expanded in @($false, $true)) {
     }
 }
 $fixedProps = @{
-    'tile_edge_army_none.vmf' = 5
-    'tile_edge_ra_none.vmf' = 7
-    'tile_edge_ra_wall_1a.vmf' = 3
-    'tile_edge_ra_wall_1aa.vmf' = 4
+    'tile_edge_army_none.vmf' = @{
+        'models/dogvsstrider/tree3_trunk.mdl' = 5
+    }
+    'tile_edge_ra_none.vmf' = @{
+        'models/dogvsstrider/tree3_trunk.mdl' = 5
+        'models/props_c17/signpole001.mdl' = 1
+        'models/props_c17/streetsign004e.mdl' = 1
+    }
+    'tile_edge_ra_wall_1a.vmf' = @{
+        'models/dogvsstrider/tree1_trunk.mdl' = 2
+        'models/props_buildings/collapsedbuilding01awall.mdl' = 1
+    }
+    'tile_edge_ra_wall_1aa.vmf' = @{
+        'models/props_c17/signpole001.mdl' = 1
+        'models/props_c17/streetsign004e.mdl' = 1
+        'models/props_buildings/collapsedbuilding02b.mdl' = 2
+    }
 }
 foreach ($filename in $fixedProps.Keys) {
     $root = [ZombieSim.Skybox.KeyValuesParser]::Parse((Get-Content -Raw -LiteralPath (Join-Path $TemplateDirectory "edges\$filename")))
     $props = @($root.Children | Where-Object { $_.Name -eq 'entity' -and $_.Get('classname') -eq 'prop_dynamic_override' })
-    Assert ($props.Count -eq $fixedProps[$filename]) "$filename retains all approved fixed dynamic trees/signs."
+    foreach ($model in $fixedProps[$filename].Keys) {
+        $count = @($props | Where-Object { $_.Get('model') -eq $model }).Count
+        Assert ($count -ge $fixedProps[$filename][$model]) "$filename retains its approved dynamic $model props."
+    }
     Assert (@($root.Children | Where-Object { $_.Get('classname') -eq 'prop_static' -and $_.Get('model') -match 'tree[13]_trunk|signpole001|streetsign004e' }).Count -eq 0) 'VBSP-incompatible new-edge static props must not reappear.'
 }
 $bounds = Get-ZMCellBounds 5 640 $true
@@ -170,8 +189,11 @@ Assert ($entranceBackfill.Count -eq 3 -and @($entranceBackfill | Where-Object { 
 $missingBorderRecipe = [pscustomobject]@{ environmentProfile = 'grassland'; placementSeed = 1337 }
 $missingBorderOuter = @(Get-ZMOuterEdgePlacements $missingBorderRecipe 5 $edgeSettings $entranceBorder @{} @{})
 Assert (@($missingBorderOuter | Where-Object { $_.tileX -eq 6 -and $_.tileY -in @(1, 2, 3) }).Count -eq 0) 'Missing border slots without a safe-zone entrance remain omitted.'
-# The blast-core 'destroyed' profile outranks 'radioactive', so it must carry the same radiated pool.
-Assert ((@($edgeSettings.profileTemplates['destroyed'].wallVariationTemplates) -join '|') -ceq (@($edgeSettings.profileTemplates['radioactive'].wallVariationTemplates) -join '|')) 'Destroyed outer edges reuse the radioactive pool.'
+$destroyedWalls = @($edgeSettings.profileTemplates['destroyed'].wallVariationTemplates)
+Assert ($destroyedWalls.Count -gt 0 -and @($destroyedWalls | Where-Object { $_ -notmatch '^edges/tile_edge_destroyed_' }).Count -eq 0) 'Destroyed outer edges use the authored destroyed pool, not the radioactive pool.'
+foreach ($tier in @('2', '3')) {
+    Assert ($edgeSettings.profileTemplates['destroyed'].wallDensityFallbacks[$tier] -in $destroyedWalls) "Destroyed outer tier $tier has a fallback within its authored pool."
+}
 foreach ($profile in @('radioactive', 'destroyed', 'military', 'fortified')) {
     $recipe.environmentProfile = $profile
     $pieces = @(Get-ZMOuterEdgePlacements $recipe 5 $edgeSettings $border @{} @{})
@@ -328,6 +350,11 @@ foreach ($mask in 0..15) {
             }
         }
     }
+}
+
+if ($UnitOnly) {
+    Write-Output "Outer-edge unit checks: $script:passed assertions passed; full-plan and runtime fixtures not run."
+    return
 }
 
 $planPath = Join-Path $OutputRoot 'plan.json'

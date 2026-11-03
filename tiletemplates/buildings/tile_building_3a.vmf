@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "29"
+	"mapversion" "30"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "29"
+	"mapversion" "30"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -1783,86 +1783,6 @@ entity
 }
 entity
 {
-	"id" "592"
-	"classname" "prop_physics_override"
-	"angles" "0 0 0"
-	"damagetoenablemotion" "0"
-	"Damagetype" "0"
-	"disableflashlight" "0"
-	"disableshadows" "0"
-	"ExplodeDamage" "0"
-	"ExplodeRadius" "0"
-	"fademaxdist" "0"
-	"fademindist" "-1"
-	"fadescale" "1"
-	"forcetoenablemotion" "0"
-	"gmod_allowphysgun" "1"
-	"health" "0"
-	"inertiaScale" "1.0"
-	"massScale" "0"
-	"maxdxlevel" "0"
-	"mindxlevel" "0"
-	"minhealthdmg" "0"
-	"model" "models/props_wasteland/wood_fence01a.mdl"
-	"modelscale" "1.0"
-	"nodamageforces" "0"
-	"PerformanceMode" "0"
-	"physdamagescale" "0.1"
-	"pressuredelay" "0"
-	"shadowcastdist" "0"
-	"skin" "0"
-	"spawnflags" "265"
-	"origin" "-212 -272 113"
-	editor
-	{
-		"color" "220 30 220"
-		"visgroupshown" "1"
-		"visgroupautoshown" "1"
-		"logicalpos" "[0 -3768]"
-	}
-}
-entity
-{
-	"id" "600"
-	"classname" "prop_physics_override"
-	"angles" "0 0 0"
-	"damagetoenablemotion" "0"
-	"Damagetype" "0"
-	"disableflashlight" "0"
-	"disableshadows" "0"
-	"ExplodeDamage" "0"
-	"ExplodeRadius" "0"
-	"fademaxdist" "0"
-	"fademindist" "-1"
-	"fadescale" "1"
-	"forcetoenablemotion" "0"
-	"gmod_allowphysgun" "1"
-	"health" "0"
-	"inertiaScale" "1.0"
-	"massScale" "0"
-	"maxdxlevel" "0"
-	"mindxlevel" "0"
-	"minhealthdmg" "0"
-	"model" "models/props_wasteland/wood_fence01a.mdl"
-	"modelscale" "1.0"
-	"nodamageforces" "0"
-	"PerformanceMode" "0"
-	"physdamagescale" "0.1"
-	"pressuredelay" "0"
-	"shadowcastdist" "0"
-	"skin" "0"
-	"spawnflags" "265"
-	"origin" "212 -272 113"
-	editor
-	{
-		"color" "220 30 220"
-		"visgroupshown" "1"
-		"visgroupautoshown" "1"
-		"logicalpos" "[0 -3768]"
-	}
-}
-entity
-{
 	"id" "635"
 	"classname" "prop_static"
 	"angles" "0 0 0"
@@ -2301,13 +2221,13 @@ entity
 		side
 		{
 			"id" "750"
-			"plane" "(64 -256 64) (288 -256 64) (288 -288 64)"
+			"plane" "(-128 -256 64) (288 -256 64) (288 -288 64)"
 			vertices_plus
 			{
-				"v" "64 -256 64"
+				"v" "-128 -256 64"
 				"v" "288 -256 64"
 				"v" "288 -288 64"
-				"v" "64 -288 64"
+				"v" "-128 -288 64"
 			}
 			"material" "CONCRETE/CONCRETEFLOOR009A"
 			"uaxis" "[1 0 0 -245] 0.35"
@@ -2319,13 +2239,13 @@ entity
 		side
 		{
 			"id" "749"
-			"plane" "(64 -288 32) (288 -288 32) (288 -256 32)"
+			"plane" "(-128 -288 32) (288 -288 32) (288 -256 32)"
 			vertices_plus
 			{
-				"v" "64 -288 32"
+				"v" "-128 -288 32"
 				"v" "288 -288 32"
 				"v" "288 -256 32"
-				"v" "64 -256 32"
+				"v" "-128 -256 32"
 			}
 			"material" "BRICK/BRICKWALL032A"
 			"uaxis" "[1 0 0 0] 0.25"
@@ -2355,13 +2275,13 @@ entity
 		side
 		{
 			"id" "747"
-			"plane" "(64 -256 32) (288 -256 32) (288 -256 64)"
+			"plane" "(-128 -256 32) (288 -256 32) (288 -256 64)"
 			vertices_plus
 			{
-				"v" "64 -256 32"
+				"v" "-128 -256 32"
 				"v" "288 -256 32"
 				"v" "288 -256 64"
-				"v" "64 -256 64"
+				"v" "-128 -256 64"
 			}
 			"material" "BRICK/BRICKWALL032A"
 			"uaxis" "[1 0 0 0] 0.25"
@@ -2373,12 +2293,12 @@ entity
 		side
 		{
 			"id" "746"
-			"plane" "(288 -288 32) (64 -288 32) (64 -288 64)"
+			"plane" "(288 -288 32) (-128 -288 32) (-128 -288 64)"
 			vertices_plus
 			{
 				"v" "288 -288 32"
-				"v" "64 -288 32"
-				"v" "64 -288 64"
+				"v" "-128 -288 32"
+				"v" "-128 -288 64"
 				"v" "288 -288 64"
 			}
 			"material" "BRICK/BRICKWALL032A"
@@ -2391,13 +2311,13 @@ entity
 		side
 		{
 			"id" "745"
-			"plane" "(64 -288 32) (64 -256 32) (64 -256 64)"
+			"plane" "(-128 -288 32) (-128 -256 32) (-128 -256 64)"
 			vertices_plus
 			{
-				"v" "64 -288 32"
-				"v" "64 -256 32"
-				"v" "64 -256 64"
-				"v" "64 -288 64"
+				"v" "-128 -288 32"
+				"v" "-128 -256 32"
+				"v" "-128 -256 64"
+				"v" "-128 -288 64"
 			}
 			"material" "BRICK/BRICKWALL032A"
 			"uaxis" "[0 1 0 0] 0.25"
@@ -2419,16 +2339,16 @@ entity
 		side
 		{
 			"id" "756"
-			"plane" "(-288 -288 64) (-288 -256 64) (-64 -256 64)"
+			"plane" "(-224 -288 64) (-288 -288 64) (-288 -256 64)"
 			vertices_plus
 			{
-				"v" "-64 -288 64"
+				"v" "-224 -288 64"
 				"v" "-288 -288 64"
 				"v" "-288 -256 64"
-				"v" "-64 -256 64"
+				"v" "-224 -256 64"
 			}
 			"material" "CONCRETE/CONCRETEFLOOR009A"
-			"uaxis" "[1 0 0 -245] 0.35"
+			"uaxis" "[1 0 0 212.143] 0.35"
 			"vaxis" "[0 -1 0 -310.857] 0.35"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -2437,16 +2357,16 @@ entity
 		side
 		{
 			"id" "755"
-			"plane" "(-288 -256 32) (-288 -288 32) (-64 -288 32)"
+			"plane" "(-224 -256 32) (-288 -256 32) (-288 -288 32)"
 			vertices_plus
 			{
-				"v" "-64 -256 32"
+				"v" "-224 -256 32"
 				"v" "-288 -256 32"
 				"v" "-288 -288 32"
-				"v" "-64 -288 32"
+				"v" "-224 -288 32"
 			}
 			"material" "BRICK/BRICKWALL032A"
-			"uaxis" "[1 0 0 0] 0.25"
+			"uaxis" "[1 0 0 128] 0.25"
 			"vaxis" "[0 -1 0 -128] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -2473,16 +2393,16 @@ entity
 		side
 		{
 			"id" "753"
-			"plane" "(-288 -256 32) (-64 -256 32) (-64 -256 64)"
+			"plane" "(-288 -256 32) (-224 -256 32) (-224 -256 64)"
 			vertices_plus
 			{
 				"v" "-288 -256 32"
-				"v" "-64 -256 32"
-				"v" "-64 -256 64"
+				"v" "-224 -256 32"
+				"v" "-224 -256 64"
 				"v" "-288 -256 64"
 			}
 			"material" "BRICK/BRICKWALL032A"
-			"uaxis" "[1 0 0 0] 0.25"
+			"uaxis" "[1 0 0 128] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -2491,16 +2411,16 @@ entity
 		side
 		{
 			"id" "752"
-			"plane" "(-64 -288 32) (-288 -288 32) (-288 -288 64)"
+			"plane" "(-224 -288 32) (-288 -288 32) (-288 -288 64)"
 			vertices_plus
 			{
-				"v" "-64 -288 32"
+				"v" "-224 -288 32"
 				"v" "-288 -288 32"
 				"v" "-288 -288 64"
-				"v" "-64 -288 64"
+				"v" "-224 -288 64"
 			}
 			"material" "BRICK/BRICKWALL032A"
-			"uaxis" "[1 0 0 0] 0.25"
+			"uaxis" "[1 0 0 128] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -2509,13 +2429,13 @@ entity
 		side
 		{
 			"id" "751"
-			"plane" "(-64 -256 32) (-64 -288 32) (-64 -288 64)"
+			"plane" "(-224 -256 32) (-224 -288 32) (-224 -288 64)"
 			vertices_plus
 			{
-				"v" "-64 -256 32"
-				"v" "-64 -288 32"
-				"v" "-64 -288 64"
-				"v" "-64 -256 64"
+				"v" "-224 -256 32"
+				"v" "-224 -288 32"
+				"v" "-224 -288 64"
+				"v" "-224 -256 64"
 			}
 			"material" "BRICK/BRICKWALL032A"
 			"uaxis" "[0 1 0 0] 0.25"
@@ -2655,16 +2575,16 @@ entity
 		side
 		{
 			"id" "78"
-			"plane" "(-64 -256 40) (64 -256 40) (64 -288 40)"
+			"plane" "(-224 -256 40) (-128 -256 40) (-128 -288 40)"
 			vertices_plus
 			{
-				"v" "-64 -256 40"
-				"v" "64 -256 40"
-				"v" "64 -288 40"
-				"v" "-64 -288 40"
+				"v" "-224 -256 40"
+				"v" "-128 -256 40"
+				"v" "-128 -288 40"
+				"v" "-224 -288 40"
 			}
 			"material" "BRICK/BRICKFLOOR001A"
-			"uaxis" "[1 0 0 -245] 0.35"
+			"uaxis" "[1 0 0 212.143] 0.35"
 			"vaxis" "[0 -1 0 -310.857] 0.35"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -2673,16 +2593,16 @@ entity
 		side
 		{
 			"id" "77"
-			"plane" "(-64 -288 32) (64 -288 32) (64 -256 32)"
+			"plane" "(-224 -288 32) (-128 -288 32) (-128 -256 32)"
 			vertices_plus
 			{
-				"v" "-64 -288 32"
-				"v" "64 -288 32"
-				"v" "64 -256 32"
-				"v" "-64 -256 32"
+				"v" "-224 -288 32"
+				"v" "-128 -288 32"
+				"v" "-128 -256 32"
+				"v" "-224 -256 32"
 			}
 			"material" "BRICK/BRICKWALL032A"
-			"uaxis" "[1 0 0 0] 0.25"
+			"uaxis" "[1 0 0 128] 0.25"
 			"vaxis" "[0 -1 0 -128] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -2691,16 +2611,16 @@ entity
 		side
 		{
 			"id" "76"
-			"plane" "(-64 -256 32) (64 -256 32) (64 -256 40)"
+			"plane" "(-224 -256 32) (-128 -256 32) (-128 -256 40)"
 			vertices_plus
 			{
-				"v" "-64 -256 32"
-				"v" "64 -256 32"
-				"v" "64 -256 40"
-				"v" "-64 -256 40"
+				"v" "-224 -256 32"
+				"v" "-128 -256 32"
+				"v" "-128 -256 40"
+				"v" "-224 -256 40"
 			}
 			"material" "BRICK/BRICKWALL032A"
-			"uaxis" "[1 0 0 0] 0.25"
+			"uaxis" "[1 0 0 128] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -2709,16 +2629,16 @@ entity
 		side
 		{
 			"id" "75"
-			"plane" "(64 -288 32) (-64 -288 32) (-64 -288 40)"
+			"plane" "(-128 -288 32) (-224 -288 32) (-224 -288 40)"
 			vertices_plus
 			{
-				"v" "64 -288 32"
-				"v" "-64 -288 32"
-				"v" "-64 -288 40"
-				"v" "64 -288 40"
+				"v" "-128 -288 32"
+				"v" "-224 -288 32"
+				"v" "-224 -288 40"
+				"v" "-128 -288 40"
 			}
 			"material" "BRICK/BRICKWALL032A"
-			"uaxis" "[1 0 0 0] 0.25"
+			"uaxis" "[1 0 0 128] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -2727,13 +2647,13 @@ entity
 		side
 		{
 			"id" "74"
-			"plane" "(-64 -288 32) (-64 -256 32) (-64 -256 40)"
+			"plane" "(-224 -288 32) (-224 -256 32) (-224 -256 40)"
 			vertices_plus
 			{
-				"v" "-64 -288 32"
-				"v" "-64 -256 32"
-				"v" "-64 -256 40"
-				"v" "-64 -288 40"
+				"v" "-224 -288 32"
+				"v" "-224 -256 32"
+				"v" "-224 -256 40"
+				"v" "-224 -288 40"
 			}
 			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE011B"
 			"uaxis" "[0 1 0 0] 0.25"
@@ -2745,13 +2665,13 @@ entity
 		side
 		{
 			"id" "73"
-			"plane" "(64 -256 32) (64 -288 32) (64 -288 40)"
+			"plane" "(-128 -256 32) (-128 -288 32) (-128 -288 40)"
 			vertices_plus
 			{
-				"v" "64 -256 32"
-				"v" "64 -288 32"
-				"v" "64 -288 40"
-				"v" "64 -256 40"
+				"v" "-128 -256 32"
+				"v" "-128 -288 32"
+				"v" "-128 -288 40"
+				"v" "-128 -256 40"
 			}
 			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE011B"
 			"uaxis" "[0 1 0 0] 0.25"
@@ -2773,75 +2693,6 @@ entity
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 1000]"
-	}
-}
-entity
-{
-	"id" "863"
-	"classname" "prop_physics_override"
-	"angles" "0 0 0"
-	"fademindist" "-1"
-	"fadescale" "1"
-	"gmod_allowphysgun" "1"
-	"inertiaScale" "1.0"
-	"model" "models/props_junk/wood_crate001a.mdl"
-	"modelscale" "1.0"
-	"physdamagescale" "0.1"
-	"skin" "0"
-	"spawnflags" "265"
-	"origin" "-232 -232 68.2271"
-	editor
-	{
-		"color" "220 30 220"
-		"visgroupshown" "1"
-		"visgroupautoshown" "1"
-		"logicalpos" "[0 1500]"
-	}
-}
-entity
-{
-	"id" "867"
-	"classname" "prop_physics_override"
-	"angles" "0 347 0"
-	"fademindist" "-1"
-	"fadescale" "1"
-	"gmod_allowphysgun" "1"
-	"inertiaScale" "1.0"
-	"model" "models/props_junk/wood_crate001a.mdl"
-	"modelscale" "1.0"
-	"physdamagescale" "0.1"
-	"skin" "0"
-	"spawnflags" "265"
-	"origin" "-184 -228 68.2271"
-	editor
-	{
-		"color" "220 30 220"
-		"visgroupshown" "1"
-		"visgroupautoshown" "1"
-		"logicalpos" "[0 1500]"
-	}
-}
-entity
-{
-	"id" "876"
-	"classname" "prop_physics_override"
-	"angles" "0 167 0"
-	"fademindist" "-1"
-	"fadescale" "1"
-	"gmod_allowphysgun" "1"
-	"inertiaScale" "1.0"
-	"model" "models/props_junk/wood_crate001a.mdl"
-	"modelscale" "1.0"
-	"physdamagescale" "0.1"
-	"skin" "0"
-	"spawnflags" "265"
-	"origin" "180 -232 68.2271"
-	editor
-	{
-		"color" "220 30 220"
-		"visgroupshown" "1"
-		"visgroupautoshown" "1"
-		"logicalpos" "[0 1500]"
 	}
 }
 entity
@@ -5977,6 +5828,75 @@ entity
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 500]"
+	}
+}
+entity
+{
+	"id" "1400"
+	"classname" "prop_physics_override"
+	"angles" "0 -75 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"inertiaScale" "1.0"
+	"model" "models/props_junk/wood_crate001a.mdl"
+	"modelscale" "1.0"
+	"physdamagescale" "0.1"
+	"skin" "0"
+	"spawnflags" "265"
+	"origin" "-225.111 -102.884 68.2271"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1500]"
+	}
+}
+entity
+{
+	"id" "1404"
+	"classname" "prop_physics_override"
+	"angles" "0 -88 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"inertiaScale" "1.0"
+	"model" "models/props_junk/wood_crate001a.mdl"
+	"modelscale" "1.0"
+	"physdamagescale" "0.1"
+	"skin" "0"
+	"spawnflags" "265"
+	"origin" "-208.824 -148.213 68.2271"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1500]"
+	}
+}
+entity
+{
+	"id" "1416"
+	"classname" "prop_physics_override"
+	"angles" "0 167 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"gmod_allowphysgun" "1"
+	"inertiaScale" "1.0"
+	"model" "models/props_junk/wood_crate001a.mdl"
+	"modelscale" "1.0"
+	"physdamagescale" "0.1"
+	"skin" "0"
+	"spawnflags" "265"
+	"origin" "231.214 -228.491 108.465"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 1500]"
 	}
 }
 cameras

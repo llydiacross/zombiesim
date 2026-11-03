@@ -1,8 +1,8 @@
 versioninfo
 {
 	"editorversion" "400"
-	"editorbuild" "8871"
-	"mapversion" "22"
+	"editorbuild" "8873"
+	"mapversion" "23"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "22"
+	"mapversion" "23"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -557,53 +557,9 @@ entity
 }
 entity
 {
-	"id" "502"
-	"classname" "prop_dynamic_override"
-	"angles" "0 240 0"
-	"AnimateEveryFrame" "0"
-	"DisableBoneFollowers" "0"
-	"disableflashlight" "0"
-	"disablereceiveshadows" "0"
-	"disableshadows" "0"
-	"ExplodeDamage" "0"
-	"ExplodeRadius" "0"
-	"fademaxdist" "0"
-	"fademindist" "-1"
-	"fadescale" "1"
-	"gmod_allowphysgun" "1"
-	"health" "0"
-	"HoldAnimation" "0"
-	"MaxAnimTime" "10"
-	"maxdxlevel" "0"
-	"MinAnimTime" "5"
-	"mindxlevel" "0"
-	"model" "models/props_wasteland/wood_fence01a.mdl"
-	"modelscale" "1.0"
-	"PerformanceMode" "0"
-	"pressuredelay" "0"
-	"RandomAnimation" "0"
-	"renderamt" "255"
-	"rendercolor" "255 255 255"
-	"renderfx" "0"
-	"rendermode" "0"
-	"SetBodyGroup" "0"
-	"skin" "0"
-	"solid" "6"
-	"spawnflags" "0"
-	"origin" "-128 248 96"
-	editor
-	{
-		"color" "220 30 220"
-		"visgroupshown" "1"
-		"visgroupautoshown" "1"
-		"logicalpos" "[0 5500]"
-	}
-}
-entity
-{
 	"id" "506"
 	"classname" "prop_dynamic_override"
-	"angles" "0 270 0"
+	"angles" "0 -90 0"
 	"AnimateEveryFrame" "0"
 	"DisableBoneFollowers" "0"
 	"disableflashlight" "0"
@@ -634,7 +590,7 @@ entity
 	"skin" "0"
 	"solid" "6"
 	"spawnflags" "0"
-	"origin" "-160 128 96"
+	"origin" "-292 188 84"
 	editor
 	{
 		"color" "220 30 220"
@@ -647,7 +603,7 @@ entity
 {
 	"id" "511"
 	"classname" "prop_dynamic_override"
-	"angles" "0 270 0"
+	"angles" "0 -90 0"
 	"AnimateEveryFrame" "0"
 	"DisableBoneFollowers" "0"
 	"disableflashlight" "0"
@@ -678,7 +634,7 @@ entity
 	"skin" "0"
 	"solid" "6"
 	"spawnflags" "0"
-	"origin" "-160 0 96"
+	"origin" "-292 60 84"
 	editor
 	{
 		"color" "220 30 220"
@@ -691,7 +647,7 @@ entity
 {
 	"id" "514"
 	"classname" "prop_dynamic_override"
-	"angles" "0 270 0"
+	"angles" "0 -90 0"
 	"AnimateEveryFrame" "0"
 	"DisableBoneFollowers" "0"
 	"disableflashlight" "0"
@@ -722,7 +678,7 @@ entity
 	"skin" "0"
 	"solid" "6"
 	"spawnflags" "0"
-	"origin" "-160 -128 96"
+	"origin" "-292 -68 84"
 	editor
 	{
 		"color" "220 30 220"
@@ -735,7 +691,7 @@ entity
 {
 	"id" "516"
 	"classname" "prop_dynamic_override"
-	"angles" "0 270 0"
+	"angles" "0 -90 0"
 	"AnimateEveryFrame" "0"
 	"DisableBoneFollowers" "0"
 	"disableflashlight" "0"
@@ -766,7 +722,7 @@ entity
 	"skin" "0"
 	"solid" "6"
 	"spawnflags" "0"
-	"origin" "-160 -256 96"
+	"origin" "-292 -196 84"
 	editor
 	{
 		"color" "220 30 220"

@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "4"
+	"mapversion" "5"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "4"
+	"mapversion" "5"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -216,17 +216,17 @@ world
 }
 entity
 {
-	"id" "3"
+	"id" "55"
 	"classname" "prop_static"
 	"angles" "0 0 0"
 	"fademindist" "-1"
 	"fadescale" "1"
 	"lightmapresolutionx" "32"
 	"lightmapresolutiony" "32"
-	"model" "models/props_forest/fence_border_512.mdl"
+	"model" "models/props_c17/fence03a.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "-288 -64 32"
+	"origin" "-314 -190 86.3624"
 	editor
 	{
 		"color" "255 255 0"
@@ -237,38 +237,17 @@ entity
 }
 entity
 {
-	"id" "12"
+	"id" "60"
 	"classname" "prop_static"
-	"angles" "0 0 0"
+	"angles" "0 -90 0"
 	"fademindist" "-1"
 	"fadescale" "1"
 	"lightmapresolutionx" "32"
 	"lightmapresolutiony" "32"
-	"model" "models/props_forest/fence_border_128.mdl"
+	"model" "models/props_c17/fence03a.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "-288 248 32"
-	editor
-	{
-		"color" "255 255 0"
-		"visgroupshown" "1"
-		"visgroupautoshown" "1"
-		"logicalpos" "[0 500]"
-	}
-}
-entity
-{
-	"id" "25"
-	"classname" "prop_static"
-	"angles" "0 270 0"
-	"fademindist" "-1"
-	"fadescale" "1"
-	"lightmapresolutionx" "32"
-	"lightmapresolutiony" "32"
-	"model" "models/props_forest/fence_border_512.mdl"
-	"skin" "0"
-	"solid" "6"
-	"origin" "-44 -304 32"
+	"origin" "-186 -316 86.3624"
 	editor
 	{
 		"color" "255 255 0"
@@ -279,23 +258,128 @@ entity
 }
 entity
 {
-	"id" "29"
+	"id" "66"
 	"classname" "prop_static"
-	"angles" "0 270 0"
+	"angles" "0 180 0"
 	"fademindist" "-1"
 	"fadescale" "1"
 	"lightmapresolutionx" "32"
 	"lightmapresolutiony" "32"
-	"model" "models/props_forest/fence_border_128.mdl"
+	"model" "models/props_c17/fence03a.mdl"
 	"skin" "0"
 	"solid" "6"
-	"origin" "244 -304 32"
+	"origin" "-314 188 86.3624"
 	editor
 	{
 		"color" "255 255 0"
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
-		"logicalpos" "[0 500]"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "70"
+	"classname" "prop_static"
+	"angles" "0 -90 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props_c17/fence03a.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "-188 316 86.3624"
+	editor
+	{
+		"color" "255 255 0"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "80"
+	"classname" "prop_static"
+	"angles" "0 0 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props_c17/fence03a.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "314 -188 86.3624"
+	editor
+	{
+		"color" "255 255 0"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "84"
+	"classname" "prop_static"
+	"angles" "0 90 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props_c17/fence03a.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "188 -316 86.3624"
+	editor
+	{
+		"color" "255 255 0"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "88"
+	"classname" "prop_static"
+	"angles" "0 -180 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props_c17/fence03a.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "314 190 86.3624"
+	editor
+	{
+		"color" "255 255 0"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
+	}
+}
+entity
+{
+	"id" "92"
+	"classname" "prop_static"
+	"angles" "0 90 0"
+	"fademindist" "-1"
+	"fadescale" "1"
+	"lightmapresolutionx" "32"
+	"lightmapresolutiony" "32"
+	"model" "models/props_c17/fence03a.mdl"
+	"skin" "0"
+	"solid" "6"
+	"origin" "186 316 86.3624"
+	editor
+	{
+		"color" "255 255 0"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
 	}
 }
 cameras

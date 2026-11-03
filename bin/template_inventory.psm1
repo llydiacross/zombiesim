@@ -62,15 +62,13 @@ function Assert-ZMConfiguredTileTemplatePaths {
 
     $references = [System.Collections.Generic.List[object]]::new()
     if ($Settings.ContainsKey('cellPlanning') -and $Settings.cellPlanning -is [System.Collections.IDictionary]) {
-        foreach ($section in @('terrainTemplates', 'topologyTemplates', 'transportTemplates', 'roadConnectionTemplates', 'carparks')) {
+        foreach ($section in @('terrainTemplates', 'terrainProfileTemplates', 'topologyTemplates', 'transportTemplates', 'roadConnectionTemplates', 'carparks')) {
             if ($Settings.cellPlanning.ContainsKey($section)) {
                 Add-ZMExplicitTileTemplateReferences $Settings.cellPlanning[$section] "cellPlanning.$section" $references
             }
         }
-        if ($Settings.cellPlanning.ContainsKey('topologyVariants') -and
-            $Settings.cellPlanning.topologyVariants -is [System.Collections.IDictionary] -and
-            $Settings.cellPlanning.topologyVariants.ContainsKey('templates')) {
-            Add-ZMExplicitTileTemplateReferences $Settings.cellPlanning.topologyVariants.templates 'cellPlanning.topologyVariants.templates' $references
+        if ($Settings.cellPlanning.ContainsKey('topologyVariants')) {
+            Add-ZMExplicitTileTemplateReferences $Settings.cellPlanning.topologyVariants 'cellPlanning.topologyVariants' $references
         }
     }
     if ($Settings.ContainsKey('vmfBuild') -and $Settings.vmfBuild -is [System.Collections.IDictionary]) {

@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "19"
+	"mapversion" "21"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "19"
+	"mapversion" "21"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -109,7 +109,7 @@ world
 				"v" "320 -320 160"
 				"v" "-320 -320 160"
 			}
-			"material" "CONCRETE/CONCRETECEILING003A"
+			"material" "CONCRETE/CONCRETEFLOOR005A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 -128] 0.25"
 			"rotation" "0"
@@ -127,7 +127,7 @@ world
 				"v" "320 -288 32"
 				"v" "-320 -288 32"
 			}
-			"material" "BRICK/BRICKWALL003D"
+			"material" "BRICK/BRICKWALL004A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 -1 0 -128] 0.25"
 			"rotation" "0"
@@ -145,7 +145,7 @@ world
 				"v" "-320 -320 32"
 				"v" "-320 -288 32"
 			}
-			"material" "BRICK/BRICKWALL003D"
+			"material" "BRICK/BRICKWALL004A"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -163,7 +163,7 @@ world
 				"v" "320 -320 160"
 				"v" "320 -288 160"
 			}
-			"material" "BRICK/BRICKWALL003D"
+			"material" "BRICK/BRICKWALL004A"
 			"uaxis" "[0 1 0 0] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -181,7 +181,7 @@ world
 				"v" "-320 -288 32"
 				"v" "320 -288 32"
 			}
-			"material" "BRICK/BRICKWALL003D"
+			"material" "BRICK/BRICKWALL004A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -199,7 +199,7 @@ world
 				"v" "-320 -320 160"
 				"v" "320 -320 160"
 			}
-			"material" "BRICK/BRICKWALL003D"
+			"material" "BRICK/BRICKWALL004A"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 0 -1 128] 0.25"
 			"rotation" "0"
@@ -415,9 +415,9 @@ entity
 				"v" "163 -178 432"
 				"v" "-304 -178 432"
 			}
-			"material" "BUILDING_TEMPLATE/BUILDING_TEMPLATE021E"
+			"material" "CONCRETE/CONCRETEFLOOR014A"
 			"uaxis" "[1 0 0 192] 0.25"
-			"vaxis" "[0 -1 0 508] 0.25"
+			"vaxis" "[0 -1 0 252] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"

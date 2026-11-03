@@ -92,7 +92,7 @@ function Get-AuthoredTileDirection {
     $marker = @([regex]::Matches($contents, '(?s)entity\s*\{\s*(?<body>.*?)\r?\n\}') | Where-Object {
         $_.Groups['body'].Value -match '"classname"\s+"zn_tile_direction"'
     } | Select-Object -First 1)[0]
-    if ($null -eq $marker) { return 'N' }
+    if ($null -eq $marker) { return 'S' }
     $directionMatch = [regex]::Match($marker.Groups['body'].Value, '"direction"\s+"([^"]+)"')
     if (-not $directionMatch.Success) { throw "Tile direction marker in '$Template' has no direction." }
     $direction = [string]$directionMatch.Groups[1].Value
@@ -328,7 +328,7 @@ if ($errors.Count -gt 0) {
     throw "Multi-tile fixture planner validation failed with $($errors.Count) error(s)."
 }
 
-& $builderScript -WorldProfile preview -PlanData $planPath -CellDirectory $cellDirectory -Force -SettingsPath $SettingsPath | Out-Null
+& $builderScript -WorldProfile preview -PlanData $planPath -CellDirectory $cellDirectory -SkyboxOutputDirectory (Join-Path $OutputRoot 'skybox') -Force -SettingsPath $SettingsPath | Out-Null
 if (-not $?) { throw 'Multi-tile fixture VMF builder failed.' }
 foreach ($recipe in $recipes) {
     $anchor = @($recipe.tilePlacements | Where-Object {
