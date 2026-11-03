@@ -20,6 +20,15 @@ local pageStates = {
     tools = "tools"
 }
 
+// Remove() is deferred by VGUI; hide first so a delayed deletion can never keep painting over the new page.
+function Menu:DiscardPanel(panel)
+    if not IsValid(panel) then return end
+    panel:Stop()
+    panel:SetMouseInputEnabled(false)
+    panel:SetVisible(false)
+    panel:Remove()
+end
+
 function Menu:RefreshState()
     if self.Credits then
         self.State = "credits"
@@ -62,6 +71,22 @@ function Menu:GetLogoStatus()
         width = texture and texture:Width() or 0,
         height = texture and texture:Height() or 0
     }
+end
+
+function Menu:GetPanelStatus()
+    local status = { children = {}, contentValid = IsValid(self.Content), contentParented = false }
+    if not IsValid(self.Frame) then return status end
+    status.contentParented = status.contentValid and self.Content:GetParent() == self.Frame
+    for _, panel in ipairs(self.Frame:GetChildren()) do
+        status.children[#status.children + 1] = {
+            name = panel:GetName(),
+            currentContent = panel == self.Content,
+            visible = panel:IsVisible(),
+            markedForDeletion = panel:IsMarkedForDeletion(),
+            alpha = panel:GetAlpha()
+        }
+    end
+    return status
 end
 
 // The Play page views the authored deploy scene once the black fade has swapped scenes.
@@ -522,7 +547,7 @@ function Menu:Open()
     self.Step = 1
     self.Waiting = nil
     if ZM_DependencyPrompts then ZM_DependencyPrompts:SetLauncherBlackout(not self.Camera) end
-    if IsValid(self.Frame) then self.Frame:Remove() end
+    self:DiscardPanel(self.Frame)
     local frame = vgui.Create("DFrame")
     frame:SetSkin("ZombieSim")
     frame:SetTitle("")
@@ -610,7 +635,7 @@ function Menu:Render(immediate)
     self:SyncCharacterPreview()
     self:SyncEarthControls()
     if ZM_CharacterCards then ZM_CharacterCards:Reset() end
-    if IsValid(self.Content) then self.Content:Remove() end
+    self:DiscardPanel(self.Content)
     self.ProfessionPickerView = nil
     local content = vgui.Create("DScrollPanel", self.Frame)
     content:Dock(FILL)

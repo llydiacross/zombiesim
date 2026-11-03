@@ -57,7 +57,7 @@ function Preview:SendCapabilities(playerEntity)
 end
 
 // Cheat toggles persist to DATA so they survive changelevel and cell transitions.
-Preview.CheatToggles = { "god", "noclip", "notarget", "infiniteAmmo", "survivalLock" }
+Preview.CheatToggles = { "god", "noclip", "notarget", "infiniteAmmo", "survivalLock", "freeBuild" }
 local cheatStatePath = "zombiesim/preview_cheats.json"
 
 local function loadCheatStates()
@@ -126,6 +126,7 @@ function Preview:ApplyCheatState(playerEntity)
     playerEntity:SetNoTarget(notarget)
     playerEntity.ZM_CheatInfiniteAmmo = allowed and state.infiniteAmmo == true
     playerEntity.ZM_CheatSurvivalLock = allowed and state.survivalLock == true
+    playerEntity.ZM_CheatFreeBuild = allowed and state.freeBuild == true
     playerEntity:SetNWBool("ZM_CheatGod", allowed and state.god == true)
 end
 
@@ -483,7 +484,8 @@ local cheatToggleActions = {
     toggle_noclip = { key = "noclip", label = "Noclip" },
     toggle_notarget = { key = "notarget", label = "Zombies ignore you" },
     toggle_infinite_ammo = { key = "infiniteAmmo", label = "Infinite ammo" },
-    toggle_survival_lock = { key = "survivalLock", label = "Survival lock" }
+    toggle_survival_lock = { key = "survivalLock", label = "Survival lock" },
+    toggle_free_build = { key = "freeBuild", label = "Free building" }
 }
 
 local cheatWeatherActions = {

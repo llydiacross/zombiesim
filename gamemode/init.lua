@@ -79,7 +79,10 @@ AddCSLuaFile( "cl_skin.lua" )
 AddCSLuaFile( "cl_quality.lua" )
 AddCSLuaFile( "cl_csm.lua" )
 AddCSLuaFile( "cl_chest_lamp.lua" )
+AddCSLuaFile( "cl_construction_geometry.lua" )
 AddCSLuaFile( "cl_construction.lua" )
+AddCSLuaFile( "cl_construction_gallery.lua" )
+AddCSLuaFile( "cl_claims.lua" )
 AddCSLuaFile( "tests/cl_chest_lamp_tests.lua" )
 AddCSLuaFile( "tests/cl_csm_tests.lua" )
 AddCSLuaFile( "cl_player.lua" )
@@ -229,6 +232,7 @@ include( "tests/sv_loot_spots_tests.lua" )
 include( "sv_claims.lua" )
 include( "tests/sv_claims_tests.lua" )
 include( "sv_construction.lua" )
+include( "sv_claim_review_test.lua" )
 include( "sv_foliage.lua" )
 include( "tests/sv_foliage_tests.lua" )
 include( "sv_loot_bodies.lua" )
@@ -327,6 +331,11 @@ local claimsReady, claimsError = ZM_CreateClaimTables()
 ZM_ClaimService.StorageReady = claimsReady == true
 if not claimsReady then
     ErrorNoHalt("[ZombieSim] Could not prepare land-claim storage: " .. tostring(claimsError) .. "\n")
+end
+local constructionReady, constructionError = ZM_CreateConstructionTables()
+ZM_Construction.StorageReady = constructionReady == true
+if not constructionReady then
+    ErrorNoHalt("[ZombieSim] Could not prepare construction storage: " .. tostring(constructionError) .. "\n")
 end
 local bankReady, bankError = ZM_BankService:Init()
 local tradeReady, tradeError = ZM_TradeService:Init()
@@ -874,6 +883,11 @@ function GM:LoadSelectedCharacter(ply, profile)
         ErrorNoHalt("[ZombieSim] Dropped-item crates could not be loaded: " .. tostring(droppedItemsLoadError) .. "\n")
     end
     logLoading(ply, "Prepared dropped-item crates")
+    // Player structures must never block a character load.
+    local constructionOk, constructionLoaded, constructionLoadError = pcall(ZM_Construction.OnPlayerReady, ZM_Construction, ply)
+    if not constructionOk or constructionLoaded == false then
+        ErrorNoHalt("[ZombieSim] Player structures could not be restored: " .. tostring(constructionOk and constructionLoadError or constructionLoaded) .. "\n")
+    end
     // Cosmetic/harvest foliage must never block a character load.
     local foliageOk, foliageError = pcall(ZM_Foliage.OnPlayerReady, ZM_Foliage, ply)
     if not foliageOk then

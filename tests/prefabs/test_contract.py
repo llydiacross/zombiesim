@@ -409,6 +409,15 @@ class PrefabContractTests(unittest.TestCase):
         self.assertFalse(visible())
         runner.lua.execute("ZM_PrefabEditorClient = { IsActive = function() return true end }")
         self.assertTrue(visible())
+        runner.lua.execute("""ZM_PrefabEditorClient = nil
+            ZM_LauncherMenu = {
+                Page = "menu", Frame = { IsVisible = function() return true end }
+            }""")
+        self.assertTrue(visible())
+        runner.lua.execute('ZM_LauncherMenu.Page = "tools"')
+        self.assertTrue(visible())
+        runner.lua.execute('ZM_LauncherMenu.Frame.IsVisible = function() return false end')
+        self.assertFalse(visible())
 
     def test_in_game_suite_registration(self):
         runner = FixtureRunner(

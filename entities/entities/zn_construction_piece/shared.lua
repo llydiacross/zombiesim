@@ -1,5 +1,4 @@
-// A player-built construction piece (Alpha 3.4 prototype). Its origin is the bottom centre and its collision is an
-// axis-aligned box from ZM_Construction.PieceBounds, so walls encode their yaw in PieceYaw rather than angles.
+// A player-built construction piece. Its origin is the bottom centre and its local geometry encodes PieceYaw.
 // Unpaid blueprints are non-solid wireframes; Use (E) contributes build progress through ZM_Construction.
 ENT.Type = "anim"
 ENT.Base = "base_anim"
@@ -12,6 +11,8 @@ function ENT:SetupDataTables()
 	self:NetworkVar("Int", 0, "PieceYaw")
 	self:NetworkVar("Float", 0, "Progress")
 	self:NetworkVar("Float", 1, "CompletedAt")
+	// 0 pristine .. 1 broken; the server owns health and derives this for the client damage stages.
+	self:NetworkVar("Float", 2, "Wear")
 	self:NetworkVar("Bool", 0, "Complete")
 	self:NetworkVar("Bool", 1, "Paid")
 end

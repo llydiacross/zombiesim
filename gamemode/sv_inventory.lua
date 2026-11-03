@@ -22,20 +22,33 @@ end
 local profileFor = ZM_Util.ProfileFor
 
 local function loadWeaponSlots(target)
-    local rows, loadError = ZM_GetEquippedWeaponSlots(ZM_Util.CharacterKeyFor(target), profileFor(target))
+    local rows, loadError = ZM_GetExactEquippedWeaponSlots(ZM_Util.CharacterKeyFor(target), profileFor(target))
     if not rows then return nil, loadError end
     local slots = {}
     for _, row in ipairs(rows) do
         local slot = tonumber(row.slot)
-        if slot and slot >= 1 and slot <= 3 then
+        if slot and slot >= 1 and slot <= 3 and type(row.instanceId) == "string" and row.instanceId ~= "" then
             slots[slot] = { instanceId = row.instanceId, selected = tonumber(row.selected) == 1 }
         end
     end
     return slots
 end
 
-local function saveWeaponSlots(target)
-    return ZM_ReplaceEquippedWeaponSlots(ZM_Util.CharacterKeyFor(target), profileFor(target), target.ZM_WeaponSlots or {})
+local function weaponSlotRows(slots)
+    local rows = {}
+    for slot = 1, 3 do
+        local entry = slots[slot]
+        rows[slot] = { slot = slot, instanceId = entry and entry.instanceId or nil, selected = entry and entry.selected and 1 or 0 }
+    end
+    return rows
+end
+
+local function saveWeaponSlots(target, slots)
+    local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+    if not characterKey then return false, keyError end
+    return ZM_CommitWrites(profileFor(target), {
+        { kind = "equippedWeaponSlotsExact", steamid = characterKey, rows = weaponSlotRows(slots or target.ZM_WeaponSlots or {}) }
+    })
 end
 
 local isWholeNumber = ZM_Util.IsWholeNumber
@@ -292,6 +305,19 @@ local function playerItemRows(inventory)
     return rows
 end
 
+local function commitWeaponState(target, inventory, slots)
+    local characterKey, keyError = ZM_Util.CharacterKeyFor(target)
+    if not characterKey then return false, "cannot save inventory without an active character: " .. tostring(keyError) end
+    local saved, saveError = ZM_CommitWrites(profileFor(target), {
+        { kind = "playerItems", steamid = characterKey, rows = playerItemRows(inventory) },
+        { kind = "equippedWeaponSlotsExact", steamid = characterKey, rows = weaponSlotRows(slots) }
+    })
+    if not saved then return false, "could not save inventory: " .. tostring(saveError) end
+    target.ZM_Inventory = inventory
+    target.ZM_WeaponSlots = slots
+    return true
+end
+
 local function readAttributes(value)
     if type(value) == "table" then
         return value
@@ -371,11 +397,17 @@ function Service:RefreshWearableAppearance(target)
     end
 end
 
-function Service:Send(target)
+function Service:Send(target, options)
     if not IsValid(target) or not target:IsPlayer() or not target.ZM_Inventory then
         return
     end
-    self:NormalizeWeaponSlots(target)
+    if not (options and options.skipWeaponSlotNormalization == true) then
+        local normalized, normalizeError = self:NormalizeWeaponSlots(target)
+        if not normalized then
+            ErrorNoHalt("[ZombieSim] Could not reconcile inventory weapon slots: " .. tostring(normalizeError) .. "\n")
+            return false, normalizeError
+        end
+    end
     target:SetNWBool("ZM_RadiationProtected", target:HasRadiationProtection())
     self:RefreshWearableAppearance(target)
     if target.ZM_PersistentStateLoaded and ZM_ImplantService then
@@ -392,12 +424,10 @@ function Service:Send(target)
     end
     local bankCash = math.max(0, tonumber(target.Cash) or 0)
     local snapshot = { serverTime = os.time(), capacity = Items.ContainerCapacity, canAccessStash = self:CanAccessStash(target), cash = bankCash + bundleCash, bankCash = bankCash, bundleCash = bundleCash, equipped = {}, weaponSlots = target.ZM_WeaponSlots or {}, equippedItems = {}, armour = target.ZM_Inventory.equipped[Items.ArmourSlot] }
-    local equippedIds = {}
     for slot = 1, 3 do
         local loadout = snapshot.weaponSlots[slot]
         if loadout then
             snapshot.equipped[slot] = loadout.instanceId
-            equippedIds[loadout.instanceId] = true
             if loadout.selected then snapshot.selectedWeaponSlot = slot end
         end
     end
@@ -406,11 +436,9 @@ function Service:Send(target)
             for slot, instance in SortedPairs(slots) do
                 table.insert(snapshot.equippedItems, { slot = slot, instanceId = instance.instanceId, itemId = instance.itemId, count = instance.count, level = instance.level, mastercraft = instance.mastercraft == true, attributes = instance.attributes, clip = tonumber(instance.clip) or 0 })
             end
-            continue
-        end
-        local list = {}
-        for slot, instance in SortedPairs(slots) do
-            if not equippedIds[instance.instanceId] then
+        else
+            local list = {}
+            for slot, instance in SortedPairs(slots) do
                 table.insert(list, {
                     slot = slot,
                     instanceId = instance.instanceId,
@@ -424,12 +452,13 @@ function Service:Send(target)
                     missingDefinition = instance.missingDefinition == true
                 })
             end
+            snapshot[container] = list
         end
-        snapshot[container] = list
     end
     net.Start("ZM.InventorySnapshot")
         net.WriteString(util.TableToJSON(snapshot, false) or "{}")
     net.Send(target)
+    return true
 end
 
 function Service:Load(target)
@@ -448,84 +477,74 @@ function Service:Load(target)
     local stashLoaded, stashError = self:LoadDenStash(target)
     if not stashLoaded then return false, stashError end
     target.ZM_Inventory.equipped = target.ZM_Inventory.equipped or {}
-    target.ZM_WeaponSlots = loadWeaponSlots(target) or {}
-    self:NormalizeWeaponSlots(target)
-    self:Send(target)
+    local slots, slotsError = loadWeaponSlots(target)
+    if not slots then return false, "could not load weapon slots: " .. tostring(slotsError) end
+    target.ZM_WeaponSlots = slots
+    local normalized, normalizeError = self:NormalizeWeaponSlots(target)
+    if not normalized then return false, normalizeError end
+    local sent, sendError = self:Send(target)
+    if sent == false then return false, sendError end
     self:RestoreEquippedWeapons(target)
     return true
 end
 
 function Service:NormalizeWeaponSlots(target)
-    target.ZM_WeaponSlots = target.ZM_WeaponSlots or {}
-    target.ZM_Inventory.equipped = target.ZM_Inventory.equipped or {}
+    if not target.ZM_Inventory then return false, "inventory is not loaded" end
+    local inventory = table.Copy(target.ZM_Inventory)
+    inventory.equipped = inventory.equipped or {}
+    inventory.stash = target.ZM_Inventory.stash
+    local slots = table.Copy(target.ZM_WeaponSlots or {})
     local changed = false
 
-    for _, weapon in ipairs(target:GetWeapons()) do
-        local instanceId = weapon.GetItemInstanceId and weapon:GetItemInstanceId() or ""
-        if instanceId ~= "" then
-            local equippedSlot, equippedInstance = Ops.FindInstance(target.ZM_Inventory, instanceId)
-            if equippedSlot ~= "equipped" then
-                local sourceContainer, sourceSlot, sourceInstance = Ops.FindInstance(target.ZM_Inventory, instanceId)
-                if sourceInstance and sourceContainer == "backpack" then
-                    local destination
-                    for slot = 1, 3 do
-                        if not target.ZM_Inventory.equipped[slot] then destination = slot break end
-                    end
-                    if destination then
-                        target.ZM_Inventory.backpack[sourceSlot] = nil
-                        target.ZM_Inventory.equipped[destination] = sourceInstance
-                        target.ZM_WeaponSlots[destination] = { instanceId = instanceId, selected = false }
-                        changed = true
-                    end
-                end
-            end
-        end
-    end
-
+    // The equipped container owns each slot; a legacy backpack reference only moves into its own empty slot.
     for slot = 1, 3 do
-        local loadout = target.ZM_WeaponSlots[slot]
-        local instance = loadout and loadout.instanceId and target.ZM_Inventory.equipped and select(3, Ops.FindInstance(target.ZM_Inventory, loadout.instanceId)) or nil
-        if loadout and not instance then
-            local backpackSlot, legacyInstance
-            for candidateSlot, candidate in pairs(target.ZM_Inventory.backpack or {}) do
-                if candidate.instanceId == loadout.instanceId then
-                    backpackSlot, legacyInstance = candidateSlot, candidate
-                    break
-                end
-            end
-            if legacyInstance and not target.ZM_Inventory.equipped[slot] then
-                target.ZM_Inventory.backpack[backpackSlot] = nil
-                target.ZM_Inventory.equipped[slot] = legacyInstance
-                instance = legacyInstance
+        local entry, equipped = slots[slot], inventory.equipped[slot]
+        if equipped then
+            if not entry or entry.instanceId ~= equipped.instanceId then
+                slots[slot] = { instanceId = equipped.instanceId, selected = entry and entry.selected == true or false }
                 changed = true
             end
-        end
-        if loadout and not instance then
-            target.ZM_WeaponSlots[slot] = nil
+        elseif entry then
+            local container, sourceSlot, instance = Ops.FindInstance(inventory, entry.instanceId)
+            local definition = instance and Items:GetDefinition(instance.itemId)
+            if container == "backpack" and definition and definition.entityClass == "weapon" then
+                inventory.backpack[sourceSlot] = nil
+                inventory.equipped[slot] = instance
+            else
+                slots[slot] = nil
+            end
             changed = true
         end
     end
-    if changed then
-        ZM_ReplacePlayerItems(ZM_Util.CharacterKeyFor(target), profileFor(target), playerItemRows(target.ZM_Inventory))
-        saveWeaponSlots(target)
-    end
+
+    if not changed then return true end
+    return commitWeaponState(target, inventory, slots)
 end
 
 function Service:RestoreEquippedWeapons(target)
     local selectedClass
-    for _, slot in pairs(target.ZM_WeaponSlots or {}) do
-        local instance = slot.instanceId and target.ZM_Inventory.equipped and select(3, Ops.FindInstance(target.ZM_Inventory, slot.instanceId)) or nil
-        if instance then
-            self:EquipWeapon(target, instance.instanceId, true)
-            if slot.selected then
-                local definition = Items:GetDefinition(instance.itemId)
-                selectedClass = definition and definition.weaponClass
+    local previousUpdate = target.ZM_InventorySlotUpdate
+    target.ZM_InventorySlotUpdate = true
+    for pass = 1, 2 do
+        for index = 1, 3 do
+            local slot = (target.ZM_WeaponSlots or {})[index]
+            local instance = target.ZM_Inventory.equipped[index]
+            if slot and instance and slot.instanceId == instance.instanceId
+                and ((pass == 1 and not slot.selected) or (pass == 2 and slot.selected)) then
+                local equipped, reason = self:EquipWeapon(target, instance.instanceId, true)
+                if not equipped then
+                    ErrorNoHalt("[ZombieSim] Could not restore equipped weapon " .. instance.instanceId .. ": " .. tostring(reason) .. "\n")
+                elseif slot.selected then
+                    local definition = Items:GetDefinition(instance.itemId)
+                    selectedClass = definition and definition.weaponClass
+                end
             end
         end
     end
     if selectedClass and target:HasWeapon(selectedClass) then
         target:SelectWeapon(selectedClass)
     end
+    target.ZM_InventorySlotUpdate = previousUpdate
 end
 
 // Applies a mutation to a copy, persists it in one transaction, and only then replaces the live inventory.
@@ -592,7 +611,7 @@ function Service:MutatePlayerItems(target, mutator)
     return true, result
 end
 
-// Strips any equipped item weapon whose instance is no longer in the backpack.
+// Strips item weapons whose instances are no longer in the loadout.
 function Service:ReconcileEquippedWeapons(target)
     if not target.IsPlayer or not target:IsPlayer() or not target.ZM_Inventory then
         return
@@ -757,13 +776,14 @@ function Service:EquipItem(target, reference)
 end
 
 function Service:EquipWeapon(target, reference, preferredSlot)
-    target.ZM_Inventory.equipped = target.ZM_Inventory.equipped or {}
+    if not target.ZM_Inventory then return false, "Inventory is not loaded." end
     local backpackInstance = self:FindBackpackInstance(target, reference)
     if backpackInstance then reference = backpackInstance.instanceId end
     local container, sourceSlot, instance = Ops.FindInstance(target.ZM_Inventory, reference)
-    if not instance then
+    if not instance or (container ~= "backpack" and container ~= "equipped") then
         return false, "That item is not in your backpack."
     end
+    if container == "equipped" and (sourceSlot < 1 or sourceSlot > 3) then return false, "That item is not in a weapon slot." end
     local definition = Items:GetDefinition(instance.itemId)
     if not definition or definition.entityClass ~= "weapon" then
         return false, "That item is not a weapon."
@@ -775,57 +795,92 @@ function Service:EquipWeapon(target, reference, preferredSlot)
     if not weapons.GetStored(definition.weaponClass) then
         return false, "Weapon '" .. definition.weaponClass .. "' is not installed."
     end
-    target.ZM_WeaponSlots = target.ZM_WeaponSlots or {}
-    local selectedSlot = container == "equipped" and sourceSlot or tonumber(preferredSlot)
-    if container ~= "equipped" and (not selectedSlot or selectedSlot < 1 or selectedSlot > 3) then
-        selectedSlot = 1
+    local restoring = preferredSlot == true
+    if restoring and container ~= "equipped" then return false, "That item is not equipped." end
+    local selectedSlot = restoring and sourceSlot or tonumber(preferredSlot)
+    if preferredSlot ~= nil and not restoring and not isWholeNumber(selectedSlot, 1, 3) then return false, "Invalid weapon slot." end
+    if container == "equipped" and not selectedSlot then selectedSlot = sourceSlot end
+    if container == "backpack" and not selectedSlot then
         for slot = 1, 3 do
-            if not target.ZM_WeaponSlots[slot] or not target.ZM_WeaponSlots[slot].instanceId then selectedSlot = slot break end
+            if not target.ZM_Inventory.equipped[slot] then selectedSlot = slot break end
         end
     end
+    if not selectedSlot or (container == "backpack" and target.ZM_Inventory.equipped[selectedSlot]) then
+        return false, "That weapon slot is occupied."
+    end
+
     local existingWeapon = target:GetWeapon(definition.weaponClass)
-    if IsValid(existingWeapon) and existingWeapon.GetItemInstanceId and existingWeapon:GetItemInstanceId() == instance.instanceId then
-        target:SelectWeapon(definition.weaponClass)
-        target.ZM_WeaponSlots[selectedSlot] = { instanceId = instance.instanceId, selected = true }
-        for slot = 1, 3 do
-            if slot ~= selectedSlot and target.ZM_WeaponSlots[slot] then target.ZM_WeaponSlots[slot].selected = false end
+    local alreadyApplied = IsValid(existingWeapon) and existingWeapon.GetItemInstanceId
+        and existingWeapon:GetItemInstanceId() == instance.instanceId
+    local activeWeapon = target.GetActiveWeapon and target:GetActiveWeapon() or nil
+    local activeClass = IsValid(activeWeapon) and activeWeapon:GetClass() or nil
+    local syncWeapon
+    if IsValid(existingWeapon) and existingWeapon.GetItemInstanceId
+        and existingWeapon:GetItemInstanceId() ~= instance.instanceId then
+        syncWeapon = existingWeapon
+    elseif not IsValid(existingWeapon) then
+        syncWeapon = activeWeapon
+    end
+    if ZM_AmmoService and IsValid(syncWeapon) and syncWeapon.GetItemInstanceId and syncWeapon.GetMaxClip
+        and syncWeapon:GetItemInstanceId() ~= "" then
+        local synced, syncError = ZM_AmmoService:SyncWeapon(target, syncWeapon)
+        if not synced then return false, "could not save weapon ammunition: " .. tostring(syncError) end
+        container, sourceSlot, instance = Ops.FindInstance(target.ZM_Inventory, reference)
+        if not instance or (container ~= "backpack" and container ~= "equipped")
+            or (container == "backpack" and target.ZM_Inventory.equipped[selectedSlot]) then
+            return false, "That weapon moved while saving ammunition."
         end
-        saveWeaponSlots(target)
-        self:Send(target)
-        return true, existingWeapon
     end
-    if target:HasWeapon(definition.weaponClass) then
-        target:StripWeapon(definition.weaponClass)
-    end
-    local weapon = target:Give(definition.weaponClass, true)
+    local weapon, created = existingWeapon, false
     if not IsValid(weapon) then
-        return false, "Could not give the weapon."
-    end
-    Items:ApplyInstanceToWeapon(weapon, instance)
-    if container == "backpack" then
-        local previousSlots = table.Copy(target.ZM_WeaponSlots)
-        target.ZM_WeaponSlots[selectedSlot] = { instanceId = instance.instanceId, selected = true }
-        local moved, moveError = self:Mutate(target, function(draft)
-            local moving = draft.backpack[sourceSlot]
-            if not moving or draft.equipped[selectedSlot] then return false, "That weapon slot is occupied." end
-            draft.backpack[sourceSlot] = nil
-            draft.equipped[selectedSlot] = moving
-            return true
-        end)
-        if not moved then
-            target.ZM_WeaponSlots = previousSlots
-            target:StripWeapon(definition.weaponClass)
-            return false, moveError
+        local previousUpdate = target.ZM_InventorySlotUpdate
+        target.ZM_InventorySlotUpdate = true
+        weapon = target:Give(definition.weaponClass, true)
+        target.ZM_InventorySlotUpdate = previousUpdate
+        if not IsValid(weapon) then
+            return false, "Could not give the weapon."
         end
-        instance = target.ZM_Inventory.equipped[selectedSlot]
-    elseif container ~= "equipped" then
-        return false, "That item is not in your backpack."
+        created = true
     end
-    target.ZM_WeaponSlots[selectedSlot] = { instanceId = instance.instanceId, selected = true }
+
+    if restoring then
+        if not alreadyApplied then Items:ApplyInstanceToWeapon(weapon, instance) end
+        return true, weapon
+    end
+
+    local inventory = table.Copy(target.ZM_Inventory)
+    inventory.stash = target.ZM_Inventory.stash
+    local slots = table.Copy(target.ZM_WeaponSlots or {})
+    if container == "backpack" then
+        local moving = inventory.backpack[sourceSlot]
+        inventory.backpack[sourceSlot] = nil
+        inventory.equipped[selectedSlot] = moving
+    elseif selectedSlot ~= sourceSlot then
+        local moving = inventory.equipped[sourceSlot]
+        inventory.equipped[sourceSlot] = inventory.equipped[selectedSlot]
+        inventory.equipped[selectedSlot] = moving
+    end
     for slot = 1, 3 do
-        if slot ~= selectedSlot and target.ZM_WeaponSlots[slot] then target.ZM_WeaponSlots[slot].selected = false end
+        local item, entry = inventory.equipped[slot], slots[slot]
+        if item and (not entry or entry.instanceId ~= item.instanceId) then
+            slots[slot] = { instanceId = item.instanceId }
+        elseif not item and entry and entry.instanceId == instance.instanceId then
+            slots[slot] = nil
+        end
+        if slots[slot] then slots[slot].selected = slot == selectedSlot end
     end
-    saveWeaponSlots(target)
+    local saved, saveError = commitWeaponState(target, inventory, slots)
+    if not saved then
+        if created then
+            local previousUpdate = target.ZM_InventorySlotUpdate
+            target.ZM_InventorySlotUpdate = true
+            target:StripWeapon(definition.weaponClass)
+            if activeClass and target:HasWeapon(activeClass) then target:SelectWeapon(activeClass) end
+            target.ZM_InventorySlotUpdate = previousUpdate
+        end
+        return false, saveError
+    end
+    if not alreadyApplied then Items:ApplyInstanceToWeapon(weapon, target.ZM_Inventory.equipped[selectedSlot]) end
     target:SelectWeapon(definition.weaponClass)
     self:Send(target)
     return true, weapon
@@ -836,45 +891,18 @@ function Service:EquipWeaponInSlot(target, reference, slot)
     if not slot or slot < 1 or slot > 3 or slot ~= math.floor(slot) then
         return false, "Invalid weapon slot."
     end
-    local container, currentSlot, instance = Ops.FindInstance(target.ZM_Inventory, reference)
-    if not instance then return false, "That item is not in your backpack." end
-    local definition = Items:GetDefinition(instance.itemId)
-    if not definition or definition.entityClass ~= "weapon" then return false, "That item is not a weapon." end
-    local canUse, reason = Items:CanUse(target, instance.itemId, instance)
-    if not canUse then return false, reason end
-    target.ZM_WeaponSlots = target.ZM_WeaponSlots or {}
-    if container == "equipped" and currentSlot ~= slot then
-        local destination = target.ZM_Inventory.equipped[slot]
-        target.ZM_Inventory.equipped[currentSlot] = destination
-        target.ZM_Inventory.equipped[slot] = instance
-        local saved, saveError = ZM_ReplacePlayerItems(ZM_Util.CharacterKeyFor(target), profileFor(target), playerItemRows(target.ZM_Inventory))
-        if not saved then return false, "could not save inventory: " .. tostring(saveError) end
-        target.ZM_WeaponSlots[currentSlot], target.ZM_WeaponSlots[slot] = target.ZM_WeaponSlots[slot], target.ZM_WeaponSlots[currentSlot]
-        for index = 1, 3 do
-            if target.ZM_WeaponSlots[index] then target.ZM_WeaponSlots[index].selected = index == slot end
-        end
-        saveWeaponSlots(target)
-        self:Send(target)
-        return true, "Moved to weapon slot " .. slot .. "."
-    end
-    for index = 1, 3 do
-        if target.ZM_WeaponSlots[index] and target.ZM_WeaponSlots[index].instanceId == instance.instanceId then
-            target.ZM_WeaponSlots[index] = nil
-        end
-    end
-    target.ZM_WeaponSlots[slot] = { instanceId = instance.instanceId, selected = true }
-    for index = 1, 3 do
-        if index ~= slot and target.ZM_WeaponSlots[index] then target.ZM_WeaponSlots[index].selected = false end
-    end
-    local equipped, equipReason = self:EquipWeapon(target, instance.instanceId, slot)
+    local container, currentSlot
+    if target.ZM_Inventory then container, currentSlot = Ops.FindInstance(target.ZM_Inventory, reference) end
+    local equipped, equipReason = self:EquipWeapon(target, reference, slot)
     if not equipped then return false, equipReason end
-    saveWeaponSlots(target)
-    self:Send(target)
-    return true, "Equipped in weapon slot " .. slot .. "."
+    local action = container == "equipped" and currentSlot ~= slot and "Moved to" or "Equipped in"
+    return true, action .. " weapon slot " .. slot .. "."
 end
 
 hook.Add("PlayerSwitchWeapon", "ZM.Inventory.PersistSelectedWeapon", function(target, oldWeapon, weapon)
-    if ZM_AmmoService and IsValid(oldWeapon) and oldWeapon.GetItemInstanceId and oldWeapon.GetMaxClip and oldWeapon:GetItemInstanceId() ~= "" then
+    if IsValid(target) and target.ZM_InventorySlotUpdate then return end
+    if not (IsValid(target) and target.ZM_InventorySkipAmmoSync)
+        and ZM_AmmoService and IsValid(oldWeapon) and oldWeapon.GetItemInstanceId and oldWeapon.GetMaxClip and oldWeapon:GetItemInstanceId() ~= "" then
         local synced, syncError = ZM_AmmoService:SyncWeapon(target, oldWeapon)
         if not synced then
             ErrorNoHalt("[ZombieSim] Could not persist switched weapon ammunition: " .. tostring(syncError) .. "\n")
@@ -882,10 +910,11 @@ hook.Add("PlayerSwitchWeapon", "ZM.Inventory.PersistSelectedWeapon", function(ta
     end
     if not IsValid(target) or not target.ZM_WeaponSlots or not IsValid(weapon) or not weapon.GetItemInstanceId then return end
     local instanceId = weapon:GetItemInstanceId()
-    if not instanceId then return end
+    if not instanceId or instanceId == "" then return end
+    local slots = table.Copy(target.ZM_WeaponSlots)
     local changed = false
     for slot = 1, 3 do
-        local loadout = target.ZM_WeaponSlots[slot]
+        local loadout = slots[slot]
         if loadout then
             local selected = loadout.instanceId == instanceId
             if loadout.selected ~= selected then
@@ -894,52 +923,68 @@ hook.Add("PlayerSwitchWeapon", "ZM.Inventory.PersistSelectedWeapon", function(ta
             end
         end
     end
-    if changed then saveWeaponSlots(target) end
-end)
-
-// Strips the equipped weapon created from an instance.
-function Service:UnequipWeapon(target, instanceId)
-    for _, weapon in ipairs(target:GetWeapons()) do
-        if weapon.GetItemInstanceId and weapon:GetItemInstanceId() == instanceId then
-            if ZM_AmmoService and weapon.GetMaxClip then
-                local synced, syncError = ZM_AmmoService:SyncWeapon(target, weapon)
-                if not synced then
-                    return false, "could not save weapon ammunition: " .. tostring(syncError)
-                end
-            end
-            local previousSlots = table.Copy(target.ZM_WeaponSlots or {})
-            for slot = 1, 3 do
-                if target.ZM_WeaponSlots and target.ZM_WeaponSlots[slot] and target.ZM_WeaponSlots[slot].instanceId == instanceId then
-                    target.ZM_WeaponSlots[slot] = nil
-                end
-            end
-            target:StripWeapon(weapon:GetClass())
-            local _, equippedSlot, instance = Ops.FindInstance(target.ZM_Inventory, instanceId)
-            if equippedSlot and instance then
-                local moved, moveError = self:Mutate(target, function(draft)
-                    local moving = draft.equipped[equippedSlot]
-                    if not moving then return false, "That weapon is not equipped." end
-                    local destination
-                    for slot = 1, Items.ContainerCapacity.backpack do
-                        if not draft.backpack[slot] then destination = slot break end
-                    end
-                    if not destination then return false, "Your backpack is full." end
-                    draft.equipped[equippedSlot] = nil
-                    draft.backpack[destination] = moving
-                    return true
-                end)
-                if not moved then
-                    target.ZM_WeaponSlots = previousSlots
-                    self:RestoreEquippedWeapons(target)
-                    return false, moveError
-                end
-            end
-            saveWeaponSlots(target)
-            self:Send(target)
-            return true
+    if changed then
+        local saved, saveError = saveWeaponSlots(target, slots)
+        if saved then
+            target.ZM_WeaponSlots = slots
+        else
+            ErrorNoHalt("[ZombieSim] Could not save selected weapon slot: " .. tostring(saveError) .. "\n")
         end
     end
-    return false, "That item is not equipped."
+end)
+
+local function moveEquippedWeaponToBackpack(service, target, instanceId, destination)
+    if not target.ZM_Inventory then return false, "inventory is not loaded" end
+    local container, equippedSlot, instance = Ops.FindInstance(target.ZM_Inventory, instanceId)
+    if container ~= "equipped" or not instance or equippedSlot < 1 or equippedSlot > 3 then
+        return false, "That item is not equipped."
+    end
+    if destination ~= nil and not isWholeNumber(destination, 1, Items.ContainerCapacity.backpack) then
+        return false, "Invalid backpack slot."
+    end
+    destination = destination or firstEmptySlot(target.ZM_Inventory.backpack, "backpack")
+    if not destination then return false, "Your backpack is full." end
+    if target.ZM_Inventory.backpack[destination] then return false, "That backpack slot is occupied." end
+
+    local held
+    for _, weapon in ipairs(target:GetWeapons()) do
+        if weapon.GetItemInstanceId and weapon:GetItemInstanceId() == instanceId then
+            held = weapon
+            break
+        end
+    end
+    if held and ZM_AmmoService and held.GetMaxClip then
+        local synced, syncError = ZM_AmmoService:SyncWeapon(target, held)
+        if not synced then return false, "could not save weapon ammunition: " .. tostring(syncError) end
+    end
+    local inventory = table.Copy(target.ZM_Inventory)
+    inventory.stash = target.ZM_Inventory.stash
+    local moving = inventory.equipped[equippedSlot]
+    if not moving or moving.instanceId ~= instanceId or inventory.backpack[destination] then
+        return false, "That weapon or backpack slot changed."
+    end
+    inventory.equipped[equippedSlot] = nil
+    inventory.backpack[destination] = moving
+    local slots = table.Copy(target.ZM_WeaponSlots or {})
+    slots[equippedSlot] = nil
+    for slot = 1, 3 do
+        if slots[slot] and slots[slot].instanceId == instanceId then slots[slot] = nil end
+    end
+    local saved, saveError = commitWeaponState(target, inventory, slots)
+    if not saved then return false, saveError end
+    if held then
+        // The clip was synced before the item moved; a switch can still select another equipped weapon.
+        local previousSkip = target.ZM_InventorySkipAmmoSync
+        target.ZM_InventorySkipAmmoSync = true
+        target:StripWeapon(held:GetClass())
+        target.ZM_InventorySkipAmmoSync = previousSkip
+    end
+    service:Send(target)
+    return true
+end
+
+function Service:UnequipWeapon(target, instanceId)
+    return moveEquippedWeaponToBackpack(self, target, instanceId)
 end
 
 local actionCooldown = 0.15
@@ -1068,45 +1113,8 @@ function Service:MoveItem(target, instanceId, toContainer, toSlot, count)
                 return Ops.Move(draft, instanceId, toContainer, toSlot, count, Service.NewInstanceId)
             end)
         end
-        if toSlot ~= nil and not isWholeNumber(toSlot, 1, Items.ContainerCapacity.backpack) then
-            return false, "Invalid backpack slot."
-        end
         if count ~= nil and count ~= 1 then return false, "Equipped items cannot be split." end
-        // Detach the loadout first; otherwise normalization during the mutation sees the held SWEP and pulls the item back.
-        local previousSlots = table.Copy(target.ZM_WeaponSlots or {})
-        local heldClass
-        for slot = 1, 3 do
-            if target.ZM_WeaponSlots and target.ZM_WeaponSlots[slot] and target.ZM_WeaponSlots[slot].instanceId == instanceId then
-                target.ZM_WeaponSlots[slot] = nil
-            end
-        end
-        for _, weapon in ipairs(target:GetWeapons()) do
-            if weapon.GetItemInstanceId and weapon:GetItemInstanceId() == instanceId then
-                heldClass = weapon:GetClass()
-                target:StripWeapon(heldClass)
-            end
-        end
-        local moved, moveError = self:Mutate(target, function(draft)
-            local sourceContainer, draftSourceSlot, instance = Ops.FindInstance(draft, instanceId)
-            if sourceContainer ~= "equipped" or not instance then return false, "That item is not equipped." end
-            local destination = toSlot
-            if destination == nil then
-                for slot = 1, Items.ContainerCapacity.backpack do
-                    if not draft.backpack[slot] then destination = slot break end
-                end
-            end
-            if not destination or draft.backpack[destination] then return false, "That backpack slot is occupied." end
-            draft.equipped[draftSourceSlot] = nil
-            draft.backpack[destination] = instance
-            return true
-        end)
-        if moved then
-            saveWeaponSlots(target)
-        else
-            target.ZM_WeaponSlots = previousSlots
-            if heldClass then self:RestoreEquippedWeapons(target) end
-        end
-        return moved, moveError
+        return moveEquippedWeaponToBackpack(self, target, instanceId, toSlot)
     end
     return self:Mutate(target, function(draft)
         return Ops.Move(draft, instanceId, toContainer, toSlot, count, Service.NewInstanceId)

@@ -160,7 +160,10 @@ class CreationCameraTests(unittest.TestCase):
     def test_client_status_reports_readiness_and_the_received_pose(self):
         self.send_status()
         self.menu.Page = "menu"
-        self.menu.Frame = self.runner.lua.eval("{valid = true, IsVisible = function() return true end}")
+        self.menu.Frame = self.runner.lua.eval("""{
+            valid = true, IsVisible = function() return true end,
+            GetChildren = function() return {} end
+        }""")
         self.scene.GetMaterialStatus = self.runner.lua.eval("function() return {} end")
         self.scene.GetHorizonMaterialStatus = self.runner.lua.eval("function() return {} end")
         self.state.clientCommands["zombiesim_dev_launcher_presentation_status"]()
@@ -179,6 +182,56 @@ class CreationCameraTests(unittest.TestCase):
         self.state.clientCommands["zombiesim_dev_launcher_presentation_status"]()
         report = self.state.clientWrites["zombiesim/launcher-presentation-status.json"]
         self.assertFalse(report.launcher.creationCamera)
+
+    def test_panel_status_counts_real_children_without_modifying_them(self):
+        setup = self.runner.lua.eval("""function(menu)
+            local frame = {valid = true}
+            local function panel(name, visible, marked, alpha)
+                return {
+                    valid = true,
+                    GetName = function() return name end,
+                    GetParent = function() return frame end,
+                    IsVisible = function() return visible end,
+                    IsMarkedForDeletion = function() return marked end,
+                    GetAlpha = function() return alpha end
+                }
+            end
+            local stale = panel("DScrollPanel", true, false, 255)
+            local pending = panel("DScrollPanel", false, true, 128)
+            local current = panel("DScrollPanel", true, false, 255)
+            frame.GetChildren = function() return {stale, pending, current} end
+            menu.Frame, menu.Content = frame, current
+        end""")
+        setup(self.menu)
+        report = self.menu.GetPanelStatus(self.menu)
+        self.assertTrue(report.contentValid)
+        self.assertTrue(report.contentParented)
+        self.assertEqual(len(report.children), 3)
+        self.assertFalse(report.children[1].currentContent)
+        self.assertTrue(report.children[1].visible)
+        self.assertFalse(report.children[1].markedForDeletion)
+        self.assertTrue(report.children[2].markedForDeletion)
+        self.assertEqual(report.children[2].alpha, 128)
+        self.assertTrue(report.children[3].currentContent)
+        self.menu.Frame = None
+        report = self.menu.GetPanelStatus(self.menu)
+        self.assertEqual(len(report.children), 0)
+        self.assertFalse(report.contentParented)
+
+    def test_discarded_pages_hide_before_deferred_removal(self):
+        make = self.runner.lua.eval("""function()
+            local calls = {}
+            local panel = {valid = true}
+            function panel:Stop() calls[#calls + 1] = "stop" end
+            function panel:SetMouseInputEnabled(value) calls[#calls + 1] = "mouse:" .. tostring(value) end
+            function panel:SetVisible(value) calls[#calls + 1] = "visible:" .. tostring(value) end
+            function panel:Remove() calls[#calls + 1] = "remove" end
+            return panel, calls
+        end""")
+        panel, calls = make()
+        self.menu.DiscardPanel(self.menu, panel)
+        self.assertEqual(list(calls.values()), ["stop", "mouse:false", "visible:false", "remove"])
+        self.menu.DiscardPanel(self.menu, None)
 
 
 if __name__ == "__main__":

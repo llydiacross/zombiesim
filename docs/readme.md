@@ -9,8 +9,9 @@ documented here. For a player overview, see the [root README](../readme.md).
 [Alpha 3.5 plan](../todo-alpha-3.5.md) for the new city-generation goals,
 carried work, decisions and approval gates. [Alpha 3.3](todo-alpha-3.3.md)
 and [Alpha 3.4](todo-alpha-3.4.md) are archived without implying full
-acceptance or release. The prior construction review remains paused; confirm
-the next workstream before implementation. Dated status notes below are
+acceptance or release. The carried claim/construction review has resumed for
+source and offline-test work. Any live review that temporarily changes survivor
+inventory or claims requires separate approval. Dated status notes below are
 historical where they differ from the active tracker.
 Alpha 3.2 is [archived](todo-alpha.3.2.md), not released or fully
 accepted; its outstanding outputs and carried closure are deferred. The
@@ -894,6 +895,16 @@ was removed after validation; no source or installed asset was pruned.
 
 ## Launcher characters
 
+For launcher UI ghosting, the existing preview-admin bridge command
+`zombiesim_dev_launcher_presentation_status` requests a read-only client report
+at `data/zombiesim/launcher-presentation-status.json`. Its `launcher.panels`
+lists the frame's direct children, their visibility, alpha, pending-deletion
+state and which child is the current page; check a fresh report after another
+rendered frame before treating pending deletion as a fault. A bridge
+acknowledgement alone is not the client report. `zombiesim_dev_capture <label>`
+captures visible launcher pages after VGUI, including Home, without navigating
+or deploying a survivor. Neither command resets panels or repairs render state.
+
 On `zn_preview_start` or `zn_city_start`, the optional Volt/Walker briefings precede the character menu. The launcher is not yet deployed gameplay: load an existing slot or create one of three profile-specific survivors, complete any required appearance, and deploy the character. Only after the server accepts deployment does play continue into the character's saved city cell or safe zone; for a gameplay test, then enter the intended den or cell. Choose a name, citizen model/appearance, profession, and spend exactly ten starting attribute points when creating a survivor. A migrated slot-1 survivor requires an appearance before deployment. Deleting a slot requires typing its name. Options in the launcher use the same settings controls as the in-game radial menu; Exit disconnects. Keyboard navigation supports Up/Down, Enter and Escape.
 
 The main menu draws a textured Earth at the authored `menu_globe` marker. Its public-domain Natural Earth I base is blended with a grayscale NASA Black Marble 2016 night map using a soft day/night terminator; night imagery fades out on the daylight hemisphere, and the orange city marker remains a separate presentation element. Coherent, seam-wrapped procedural cloud wisps replace the old scattered oval puffs. Random straight distress scratches are excluded. `.\bin\build_launcher_earth.ps1 -StageToGame` verifies both pinned source hashes, builds the cloud/distress/rim/space-fog derivatives, compiles the six VTF layers plus two 4096x2048 close-zoom layers, stages the source notice and writes `launcher_earth.json` ownership/size diagnostics. The close-zoom day map is resampled from the full 10800x5400 Natural Earth TIFF, and the close-zoom night lights from NASA's 13500x6750 3 km Black Marble 2016 image. Both are downloaded once into `generated/launcher_earth/archive` and verified against pinned hashes. At high globe quality, the close-zoom day and night-light layers crossfade in between 1.5x and 2.1x zoom and load only when first needed. Low quality never loads them. Dragging Earth works like a gimbal: horizontal drag spins the planet about its pole, and vertical drag tilts it about the screen-horizontal axis, so north stays upright at every longitude. The drag also carries damped spin momentum on release; zooming stops residual spin, and zoom reaches up to 3x while respecting the authored camera clearance. Middle-click smoothly recentres on the selected waypoint, while page changes cancel the motion. The launcher soundtrack plays `menu.mp3` once, then continues with looping `menu 2.mp3`; **Lower Menu Music** affects only those launcher tracks. Each slot's origin uses the profile's fictional geographic anchor in `content/data_static/launcher_scene.json`; it is presentation, **not** a real-world geolocation of generated cells. Low detail uses a 960-triangle static sphere and omits cloud/distress draws; high uses 3968 triangles and all five layers. Existing saved `zombiesim_globe_quality` choices are preserved, while new/reset and medium/high presets use high detail. The bounded Phase G prototype can show one revision-matched selected-cell skyline model without mutating the gameplay skybox owner. The halo is a translucent orange-red rim. An original procedural `space_fog` puff layer drifts behind the globe as dark rust nebula, with a few faint near puffs framing it. Purely cosmetic missiles launch from fictional silo regions, then arc along great circles to major cities away from the selected waypoint. Each impact shows a flash, a shockwave ring, a rising mushroom cloud and a fading ember glow. There are at most 9 strikes, with 3 missiles in flight, and all of them fade out with the descent. In the preview launcher, the 15 skybox G-Men are parented to `launcher_gman_carousel`, a non-solid `func_rotating` that turns once a minute.
@@ -1711,7 +1722,7 @@ In an admin preview session, the **Cheats** window provides several toggles, whi
 - zombies ignore me
 - infinite ammo
 - survival lock (no hunger, thirst or radiation drain)
-
+- free building (construction blueprints build without consuming materials; they stay unpaid and removable)
 It also has one-shot actions: restore vitals, level up, kill nearby zombies, and clear/rain/snow weather. Use the world map for travel.
 
 ## Local Development Session
@@ -1896,9 +1907,17 @@ An authored `materials/items/<thumbnail>.png` is an optional override and takes 
 
 Each player has a 20-slot backpack and a 60-slot den stash, stored per profile in the `player_items` SQLite table. The backpack is lost on death; the stash can only be changed inside the player's current den. The regular inventory always shows only the backpack. Using the stash in a den opens a separate **DEN + INVENTORY** window with the backpack and **SAFE DEN STASH** in separate columns; drag items between them or use an item's right-click **Move to** action. Admin commands (from the server console or bridge they act on the first connected player):
 
+Weapons occupy three separate equipped slots. Equipping a backpack weapon into
+an occupied slot is refused; moving an equipped weapon to another weapon slot
+swaps those equipped slots. Weapon moves and their slot assignments are
+saved together. On load, an occupied equipment slot takes precedence over a
+conflicting slot reference; a legacy backpack reference moves only into its
+own empty weapon slot. Backpack snapshots show items from the backpack rather
+than hiding them based on weapon-slot references.
+
 Aim at a bank terminal or den stash to see the **Press E to interact** prompt.
 
-Right-click a backpack item and choose **Drop** to place the chosen quantity in a crate on the ground just in front of you. A blocked spot rejects the drop without removing the item. Crates are separate, public pickups, persist by profile and logical city-cell or safe-zone location across map changes and server restarts, expire after 24 real-time hours, and leave any amount that does not fit in a backpack in the crate.
+Right-click a backpack item and choose **Drop** to place the chosen quantity in a crate on the ground just in front of you. A blocked spot or a crate that would overlap a player rejects the drop without removing the item. The crate's horizontal collision bounds are slightly inset; its visible model and height are unchanged. Crates are separate, public pickups, persist by profile and logical city-cell or safe-zone location across map changes and server restarts, expire after 24 real-time hours, and leave any amount that does not fit in a backpack in the crate. If a player occupies a saved crate's position while it is being restored, the stored item is retained and restoration is retried on the next 30-second maintenance pass.
 
 ```
 zn_inventory                                              // print backpack and stash
@@ -1910,6 +1929,9 @@ zn_ammo_status                                            // live, persisted, an
 ```
 
 Through the bridge these add `reports.inventory` or `reports.inventoryTests`. The bridge-only `zombiesim_dev_kill_player` kills the first player for death-path tests, because the engine blocks `lua_run` sent through `game.ConsoleCommand`.
+
+The focused offline inventory-slot cases use the native inventory suite with
+isolated SQLite: `python -m unittest tests.glua.test_inventory_slots`.
 
 Firearm reserve ammunition is stored as stackable backpack items (`ammo9mm`, `ammo556`, `ammo762`, `ammoShells`, and `ammo50Bmg`). A weapon instance stores its loaded `clip`; firing changes only the live server-owned SWEP clip, while reload atomically removes the weapon's mapped reserve item and persists the resulting clip. Weapon switches, player saves, map transitions, disconnects, and orderly shutdown synchronize live clips instead of writing SQLite for every shot. New firearms start empty, mismatched ammunition cannot reload them, and an interrupted reload consumes nothing.
 
@@ -2108,6 +2130,27 @@ owned by one survivor and lapse 30 days after the last visit. Visits by the
 owner, the owner's other survivors or listed friend accounts within 1.5 tiles
 refresh active claims only; a lapsed tile can be claimed afresh.
 
+Use a claim token (double-click it, or right-click **Claim land**) to enter
+claim mode. The inventory closes. Claimable tiles in the current cell are
+outlined on the ground, and the tile under the cursor pulses in one of these
+colours:
+
+- yellow: free and within reach;
+- orange: free but too far away;
+- green: yours;
+- cyan: a friend's;
+- red: someone else's;
+- grey: your lapsed claim.
+
+LMB claims the highlighted tile. RMB or Esc cancels, as do death and entering a
+safe zone. The server (`ZM_ClaimService:HandleClaimRequest`) validates every
+request and consumes the token only when the claim succeeds. The client module
+`gamemode/cl_claims.lua` (`ZM_Claims`) receives a claim snapshot. It draws
+bordered boxes on the HUD minimap and the world map's local view for every
+claim in the current cell. On the grid/satellite views it draws boxes for your
+claims in every cell and for others' claims in the current cell. The console
+command `zombiesim_claim_mode` toggles claim mode.
+
 ```
 zn_claim_tile [x y]                // claim the tile you stand on, or an adjacent offset
 zn_claim_status                    // claimable tiles and claims in your current cell
@@ -2116,7 +2159,7 @@ zn_claim_friend_remove <STEAM_x:y:z>
 zn_test_claims                     // isolated claim persistence tests
 ```
 
-Offline: `python -m unittest tests.glua.test_claim_service tests.glua.test_world_claim_tiles`.
+Offline: `python -m unittest tests.glua.test_claim_service tests.glua.test_claims_client tests.glua.test_world_claim_tiles`.
 
 ## Construction (prototype)
 
@@ -2125,13 +2168,137 @@ press Reload within 640 units of an accessible active claim tile to toggle
 build mode. While it is on, zombies ignore the builder and damage between the
 builder and zombies or other players is blocked. LMB places a blueprint
 (`zn_construction_piece`) snapped to the 64-unit grid inside your claim tiles,
-RMB removes your own unpaid blueprint or cycles foundation/wall, and holding E
-builds it. The first contribution takes the whole cost from the backpack
-(foundation 4 Wood + 2 Scrap Metal, wall 3 Wood + 1 Scrap Metal, halved by a
-mastercraft hammer); speed rises from 1x at hammer level 8 to 2x at level 30.
-Pieces are not yet persisted across map loads.
+RMB undoes only an aimed unfinished blueprint you own; it never cycles pieces
+or removes finished construction. Press Delete to enter delete mode, click
+owned pieces to mark/unmark them red, then press Delete again to remove the
+selection. Nothing is removed by selecting it. Reload, weapon changes, death
+and losing build access cancel selection. Delete with no selection exits.
+Removing paid pieces refunds their exact recorded materials in one inventory
+transaction for the whole selection, including mastercraft discounts; a failed
+refund leaves the selection and every piece intact. Free-built pieces refund
+nothing. Deletion reaches 1024 units and picks the authored shape, including
+non-solid floating blueprints, without selecting through world/prop obstacles.
+Tapping E starts work while holding E continues it outside delete mode.
+Q (the `+menu` binding) opens the piece gallery; selecting a piece closes it.
+E contributions play wood-impact
+sounds and hammer-swing feedback. There is no fixed per-player blueprint-count
+cap. Placement uses the crosshair aim; in build mode the top-down cursor and
+orbit-view centre aim at the surface beneath them. Empty-space floor/roof aiming
+projects the cursor onto the finished support's storey instead of the ground
+below; its direction chooses which edge to extend, even when standing off-centre.
+Asymmetric pieces normally
+face the nearest cardinal viewing direction. The server checks reach, surface
+and claim access. Pieces persist per profile and logical cell in the server
+`construction_pieces` table, including unfinished blueprints, paid materials,
+health and wear, and are restored when the cell loads. If a lapsed claim is
+taken by a different survivor, that tile's pieces are deleted without refund.
 
-Offline: `python -m unittest tests.glua.test_construction`.
+Aim at a finished stair or ramp to attach a floor or roof at its upper landing,
+or at a finished wall to attach one above the wall. Aim near a finished floor
+or roof edge to extend it, and aim at a finished wall to stack another wall.
+When standing on world ground and aiming into open air, stairs and ramps can be
+placed from the ground in the facing direction; a floor tile is not required.
+Standing on a finished foundation, floor or flat roof and aiming into open air
+also places stairs or ramps beside that support.
+Matching triangular floors can share a square along their diagonal; an attached
+triangle rotates automatically when it needs a straight edge against its
+support. Sloped roof edges must match; turn to change the selected shape's
+orientation if they do not. At a stair or ramp landing, a floor starts at the
+landing height and its walking surface is 8 units higher. These attachment
+paths and their walking collision still require live review. The user confirmed
+stair placement. The latest cursor projection and delete controls are loaded
+after an approved preview reload, but their behavior still needs human review;
+offline/static checks are not live acceptance.
+
+The current wooden catalogue and its new-piece prices and build times are
+provisional. Times below are for a level-8 Hammer; speed rises from 1x at
+level 8 to 2x at level 30. The first contribution outside the bounded review
+charges the whole cost atomically; a mastercraft Hammer halves each material
+cost, rounded up to at least one.
+
+| Piece | Wood | Scrap Metal | Seconds |
+| --- | ---: | ---: | ---: |
+| Foundation | 4 | 2 | 6 |
+| Half or triangular foundation | 2 | 1 | 3 |
+| Floor | 3 | 1 | 4 |
+| Half or triangular floor | 2 | 1 | 3 |
+| Wall, doorway or window frame | 3 | 1 | 4 |
+| Half wall | 2 | 1 | 3 |
+| Flat, sloped or corner roof | 3 | 1 | 4 |
+| Stairs | 6 | 2 | 8 |
+| Ramp | 5 | 2 | 6 |
+
+The approved prototype wall is 8 units thick; the requested final 16-unit wall
+and other construction materials remain future work. Doorway/window frames do
+not yet have functional doors or windows. The catalogue, collision, sound,
+animation and normal paid construction require live review; non-box
+completion occupancy currently uses conservative component bounds.
+
+Complete pieces have health scaled by wood cost (`ceil(200 × wood / 3)`: wall
+200, half wall 134, foundation 267, stairs 400). Walker hits wear them through
+four visible stages (darkening plus stable splinter/crack marks, with splinter
+effects and strain sounds), and a piece at zero health breaks into temporary
+debris. With the Hammer in build mode, E on a damaged complete piece repairs
+it fully for free. Walkers give up on a wall after 20 seconds and try a nearby
+doorway (see [walker_simulation.md](walker_simulation.md)). Health and wear
+persist with the piece (flushed every 5 s). There is no structural support:
+pieces resting on a broken piece stay in place. Damage and breaking are
+offline-tested only.
+
+For preview-admin diagnostics, `zombiesim_dev_construction_status` writes
+`data/zombiesim/construction_status.json` from the client. A bridge
+acknowledgement only requests the report; verify its map, profile and timestamp
+after it is written. Its geometry counters include the last drawn frame and
+current frame. `zombiesim_dev_capture <label>` captures an open gallery after
+VGUI and includes construction diagnostics in its metadata.
+
+Offline: `python -m unittest tests.glua.test_construction tests.glua.test_construction_entity tests.glua.test_construction_render tests.glua.test_construction_gallery tests.glua.test_construction_camera tests.glua.test_claim_service tests.glua.test_world_claim_tiles`.
+
+### Bounded preview claim/construction review
+
+The development-only bridge commands below temporarily add one claim token
+and a level-8 Hammer to the active survivor, then allow one claim and
+build-mode review. Only blueprints tagged with that active review session can
+be completed for free; no construction materials are granted or consumed.
+This does not test normal paid construction. The temporary pieces are removed
+by cleanup. This briefly writes player inventory and claim rows, so obtain
+approval before starting; do not use these commands as an ordinary player
+workflow. Preview is a test environment: an exact inventory or player-data
+baseline is not required unless the test needs one.
+
+The preview-admin session requires one connected human, an alive full-health
+loaded survivor, a zero-radiation preview city cell, an exported unclaimed
+tile within the normal claim reach, two empty backpack slots, and no existing
+claim token or Hammer. The survivor must meet the temporary Hammer's normal
+level and stat requirements, and any previously selected inventory weapon
+must be present. An available weapon slot is also needed to equip the Hammer.
+Cleanup restores the previous selection when the temporary Hammer displaced
+it and that weapon is still equipped; unrelated slot changes are retained.
+A one-shot timer attempts cleanup after 30 minutes; a failed cleanup is
+reported and leaves the session active. Cleanup is also attempted on disconnect.
+All pieces created for the session, including completed structures, are
+removed at cleanup. Run rollback explicitly when finished; an abrupt game
+process exit cannot run timeout or disconnect cleanup.
+
+```text
+zombiesim_dev_claim_review_status [cellId]
+zombiesim_dev_claim_review_start <tileX -2..2> <tileY -2..2>
+zombiesim_dev_claim_review_rollback
+```
+
+The status command is read-only and reports the active world-data path and
+claimable offsets for the current cell, or for an exported cell ID in the
+preview index. It does not report whether a review is active or its remaining
+time, and it does not require a deployed survivor.
+
+Use the development bridge documented above. Cleanup removes only the
+session-owned item instances, matching review claim and tagged blueprints;
+it retains unrelated current inventory, claims and weapon selections. Verify
+the reported result and session-owned cleanup. Stop and investigate a
+replaced claim, invalid weapon state or persistence error; never bypass these
+checks with broad cleanup. Exact SQL reads distinguish NULL from the literal
+string `"NULL"`; invalid stored item-attribute data is rejected instead of
+silently rewritten.
 # Loot Rolls
 
 `ZM_Loot` (server) rolls items from the resolved loot groups, entity-loot rules, enemies, and bosses. Weights interpolate linearly from `minWeight` (danger 0) to `maxWeight` (danger 1); `activationChance` and the enemy loot-drop chances are probabilities, not weights.

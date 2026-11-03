@@ -444,6 +444,26 @@ local function updateShoulderAim(ply, screenX, screenY)
     aimPitch = Lerp(blend, aimPitch, math.Clamp(math.NormalizeAngle(target.p), -89, 89))
 end
 
+// Build mode needs a surface under the cursor (or orbit-view centre), not the normal level weapon aim.
+local function updateBuildAim(ply, screenX, screenY)
+    if not lastViewOrigin or not ZM_Construction or not ZM_Construction.LocalBuildMode
+        or not ZM_Construction:LocalBuildMode() then return end
+    local direction = gui.ScreenToVector(screenX, screenY)
+    local trace = ZM_Construction:TraceRay(lastViewOrigin, direction, aimDepthRange, ply)
+    if not ZM_Construction:LocalDeleteMode() then
+        trace = ZM_Construction:StandingTrace(ply, ZM_Construction.SelectedPiece(ply:GetActiveWeapon()),
+            trace, lastViewOrigin, direction, aimDepthRange)
+    end
+    if not trace.Hit or trace.StartSolid or trace.HitSky then return end
+    local offset = trace.HitPos - ply:WorldSpaceCenter()
+    local length = offset:LengthSqr()
+    if not isFiniteNumber(length) or length < 64 then return end
+    local target = offset:Angle()
+    if not isFiniteNumber(target.p) or not isFiniteNumber(target.y) then return end
+    aimYaw = math.NormalizeAngle(target.y)
+    aimPitch = math.Clamp(math.NormalizeAngle(target.p), -89, 89)
+end
+
 // The scroll wheel zooms the camera, so its default weapon-cycling binds are blocked; number keys still select weapons.
 local blockedScrollBinds = { invprev = true, invnext = true }
 
@@ -516,6 +536,9 @@ hook.Add("CreateMove", "ZM.RotateThirdPersonModel", function(cmd)
             end
         end
         aimPitch = CurTime() < aimTransitionUntil and Lerp(1 - math.exp(-18 * FrameTime()), aimPitch, 0) or 0
+        if CurTime() >= entryCameraUntil then
+            updateBuildAim(ply, cursorX, cursorY)
+        end
         local aimAngles = Angle(aimPitch, aimYaw, 0)
         cmd:SetViewAngles(aimAngles)
         ply:SetRenderAngles(Angle(0, aimYaw, 0))
@@ -538,6 +561,9 @@ hook.Add("CreateMove", "ZM.RotateThirdPersonModel", function(cmd)
         local blend = CurTime() < aimTransitionUntil and (1 - math.exp(-18 * FrameTime())) or 1
         aimYaw = math.NormalizeAngle(aimYaw + math.AngleDifference(modelYaw, aimYaw) * blend)
         aimPitch = Lerp(blend, aimPitch, 0)
+    end
+    if not onShoulder and CurTime() >= entryCameraUntil then
+        updateBuildAim(ply, ScrW() * 0.5, ScrH() * 0.5)
     end
 
     cmd:SetViewAngles(Angle(aimPitch, aimYaw, 0))

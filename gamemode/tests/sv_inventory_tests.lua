@@ -67,6 +67,8 @@ end
 local function cleanup()
     ZM_DeletePlayerItems(testSteamId, testProfile)
     ZM_DeletePlayerItems(testSteamId, otherProfile)
+    sql.Query("DELETE FROM equipped_weapon_slots WHERE steamid = " .. sql.SQLStr(testSteamId)
+        .. " AND profile IN (" .. sql.SQLStr(testProfile) .. ", " .. sql.SQLStr(otherProfile) .. ")")
     sql.Query("DELETE FROM world_dropped_items WHERE profile = " .. sql.SQLStr(testProfile) .. " AND cellId = " .. testDropCellId)
     sql.Query("DELETE FROM world_drop_requests WHERE profile = " .. sql.SQLStr(testProfile) .. " AND cellId = " .. testDropCellId)
     sql.Query("DELETE FROM player_data WHERE steamid = " .. sql.SQLStr(testSteamId))
@@ -98,6 +100,28 @@ local function withCommitOverride(commitWriter, callback)
     ZM_CommitWrites = commitWriter
     local ok, result = pcall(callback)
     ZM_CommitWrites = originalCommit
+    if not ok then error(result) end
+end
+
+local function withCratePlayerFixtures(callback)
+    local originalCreate = ents.Create
+    local originalPlayers = player.GetAll
+    local state = { players = {}, entities = {} }
+    ents.Create = function(class)
+        local entity = originalCreate(class)
+        if class == Drops.EntityClass and IsValid(entity) then
+            state.lastEntity = entity
+            table.insert(state.entities, entity)
+        end
+        return entity
+    end
+    player.GetAll = function() return state.players end
+    local ok, result = pcall(callback, state)
+    player.GetAll = originalPlayers
+    ents.Create = originalCreate
+    for _, entity in ipairs(state.entities) do
+        if IsValid(entity) then entity:Remove() end
+    end
     if not ok then error(result) end
 end
 
@@ -283,10 +307,85 @@ test("dropped_crate_entity_and_model_are_available", function(check)
     })
     check(IsValid(entity), "the dropped-item entity should spawn: " .. tostring(entityError))
     if IsValid(entity) then
-        local minimum = entity:GetModelBounds()
+        local minimum, maximum = entity:GetModelBounds()
+        local collisionMinimum, collisionMaximum = entity:GetCollisionBounds()
         check(math.abs(entity:GetPos().z + minimum.z - groundZ) < 0.1, "the crate model bottom should sit at its saved ground position")
+        check(math.abs(collisionMinimum.x - minimum.x - 1) < 0.01 and math.abs(collisionMaximum.x - maximum.x + 1) < 0.01
+            and math.abs(collisionMinimum.y - minimum.y - 1) < 0.01 and math.abs(collisionMaximum.y - maximum.y + 1) < 0.01,
+            "the crate collision bounds should be inset by one unit on each horizontal side")
+        check(math.abs(collisionMinimum.z - minimum.z) < 0.01 and math.abs(collisionMaximum.z - maximum.z) < 0.01,
+            "the crate collision height and label anchor should remain unchanged")
         entity:Remove()
     end
+end)
+
+test("dropped_crate_rejects_player_overlap_and_retries_when_clear", function(check)
+    withCratePlayerFixtures(function(state)
+        local function playerBesideCrate(offset)
+            return {
+                IsValid = function() return true end,
+                WorldSpaceAABB = function()
+                    local minimum, maximum = state.lastEntity:WorldSpaceAABB()
+                    return Vector(maximum.x + offset, minimum.y, minimum.z),
+                        Vector(maximum.x + offset + 16, maximum.y, maximum.z)
+                end
+            }
+        end
+        local row = { x = 0, y = 0, z = 10000, yaw = 45, instance = { itemId = "itemBandage", count = 1 } }
+        state.players = { playerBesideCrate(2), playerBesideCrate(-0.5) }
+        local blocked, blockError = Drops:CreateWorldEntity(row)
+        check(not IsValid(blocked) and string.find(tostring(blockError), "overlap a player", 1, true),
+            "a crate must reject an overlap with any player")
+        if IsValid(state.lastEntity) then
+            check(state.lastEntity:GetSolid() == SOLID_NONE, "a rejected crate must stop colliding before removal")
+        end
+
+        state.players = { playerBesideCrate(0.5) }
+        local tooClose = Drops:CreateWorldEntity(row)
+        check(not IsValid(tooClose), "a crate must retain one unit of clearance from a player")
+
+        state.players = { playerBesideCrate(1.1) }
+        local clear, clearError = Drops:CreateWorldEntity(row)
+        check(IsValid(clear), "the same saved position should spawn after the player moves clear: " .. tostring(clearError))
+    end)
+end)
+
+test("player_overlap_rejects_drop_before_inventory_changes", function(check)
+    withCratePlayerFixtures(function(state)
+        state.players = { {
+            IsValid = function() return true end,
+            WorldSpaceAABB = function() return Vector(-100, -100, 9900), Vector(100, 100, 10100) end
+        } }
+        local target = stubPlayer()
+        target.Alive = function() return true end
+        withDropOverrides({
+            GetTargetLocation = function() return testProfile, testDropCellId, testDropLocationId, { id = testDropCellId } end,
+            FindPlacement = function() return { x = 0, y = 0, z = 10000, yaw = 45 } end
+        }, function()
+            check(Service:GiveItem(target, "itemBandage", 3), "test bandages should persist")
+            local instanceId = target.ZM_Inventory.backpack[1].instanceId
+            local beforeInventory = table.Copy(target.ZM_Inventory)
+            local beforeRows = ZM_GetPlayerItems(testSteamId, testProfile)
+            local originalMutate = Service.Mutate
+            local mutations = 0
+            Service.Mutate = function(self, ...)
+                mutations = mutations + 1
+                return originalMutate(self, ...)
+            end
+            local ok, result = pcall(function()
+                local dropped, dropError = Drops:DropItem(target, instanceId, 1, "drop-player-overlap")
+                check(not dropped and string.find(tostring(dropError), "overlap a player", 1, true),
+                    "an overlapping drop should return an explicit error")
+                check(mutations == 0, "an overlapping drop must be rejected before the inventory transaction")
+                check(deepEqual(target.ZM_Inventory, beforeInventory), "an overlapping drop must preserve the live inventory")
+                check(deepEqual(ZM_GetPlayerItems(testSteamId, testProfile), beforeRows), "an overlapping drop must preserve stored inventory")
+                check(#ZM_GetWorldDroppedItems(testProfile, testDropLocationId) == 0, "an overlapping drop must not create a stored crate")
+                check(not ZM_GetWorldDropRequest(testProfile, "drop-player-overlap"), "an overlapping drop must not record a completed request")
+            end)
+            Service.Mutate = originalMutate
+            if not ok then error(result) end
+        end)
+    end)
 end)
 
 test("drop_creation_failure_and_bad_quantities_preserve_inventory", function(check)
@@ -814,6 +913,634 @@ test("unequip_drag_to_backpack_keeps_item", function(check)
     check(next(target.ZM_Inventory.equipped) == nil and next(target.ZM_WeaponSlots) == nil, "weapon must leave the loadout")
     local rows = ZM_GetPlayerItems(testSteamId, testProfile)
     check(#rows == 1 and rows[1].container == "backpack", "stored row should be in the backpack")
+end)
+
+local function weaponSlotUser()
+    local target = stubPlayer()
+    target.GetLevel = function() return 30 end
+    target.GetStat = function() return 100 end
+    target.weapons = {}
+    target.GetWeapons = function(self)
+        local result = {}
+        for _, weapon in pairs(self.weapons) do result[#result + 1] = weapon end
+        return result
+    end
+    target.GetWeapon = function(self, class) return self.weapons[class] end
+    target.HasWeapon = function(self, class) return IsValid(self.weapons[class]) end
+    target.Give = function(self, class)
+        local weapon = { valid = true, class = class }
+        weapon.IsValid = function(value) return value.valid end
+        weapon.GetClass = function(value) return value.class end
+        weapon.GetOwner = function() return self end
+        weapon.GetItemInstanceId = function(value) return value.instanceId or "" end
+        weapon.SetItemInstanceId = function(value, id) value.instanceId = id end
+        weapon.SetDamageScale = function() end
+        weapon.SetRangeScale = function() end
+        weapon.SetSpeedScale = function() end
+        weapon.SetCrushScale = function() end
+        weapon.SetReloadScale = function() end
+        weapon.SetClipScale = function() end
+        self.weapons[class] = weapon
+        return weapon
+    end
+    target.StripWeapon = function(self, class)
+        if self.weapons[class] then self.weapons[class].valid = false end
+        self.weapons[class] = nil
+        self.lastStrippedClass = class
+    end
+    target.SelectWeapon = function(self, class) self.selectedClass = class end
+    return target
+end
+
+local function slotInventory(target, includeThird)
+    local first = instance("weaponFamas")
+    local second = instance("weaponHandgun9mm")
+    local third = includeThird and instance("weaponElite") or nil
+    local hammer = instance("weaponMeleeHammer")
+    target.ZM_Inventory.equipped = { [1] = first, [2] = second, [3] = third }
+    target.ZM_Inventory.backpack[18] = hammer
+    target.ZM_WeaponSlots = {
+        [1] = { instanceId = first.instanceId, selected = false },
+        [2] = { instanceId = second.instanceId, selected = true }
+    }
+    if third then target.ZM_WeaponSlots[3] = { instanceId = third.instanceId, selected = false } end
+    return first, second, third, hammer
+end
+
+local function saveSlotFixture(target, check)
+    check(ZM_ReplacePlayerItems(testSteamId, testProfile, Service.ToRows(target.ZM_Inventory)),
+        "fixture inventory should be saved")
+    check(ZM_ReplaceEquippedWeaponSlots(testSteamId, testProfile, target.ZM_WeaponSlots),
+        "fixture weapon slots should be saved")
+end
+
+local function captureInventorySnapshot(target, options)
+    local originalStart, originalWrite, originalSend = net.Start, net.WriteString, net.Send
+    local originalEncode = util.TableToJSON
+    local snapshot
+    target.IsPlayer = function() return true end
+    target.HasRadiationProtection = function() return false end
+    target.SetNWBool = function() end
+    target.SetNWString = function() end
+    net.Start = function(name) assert(name == "ZM.InventorySnapshot") end
+    net.WriteString = function(value) assert(value == "{}") end
+    net.Send = function(receiver) assert(receiver == target) end
+    util.TableToJSON = function(value) snapshot = table.Copy(value); return "{}" end
+    local ok, result = pcall(function() return Service:Send(target, options) end)
+    net.Start, net.WriteString, net.Send = originalStart, originalWrite, originalSend
+    util.TableToJSON = originalEncode
+    if not ok then error(result) end
+    return snapshot, result
+end
+
+local function hasSnapshotItem(items, instanceId)
+    for _, item in ipairs(items or {}) do
+        if item.instanceId == instanceId then return true end
+    end
+    return false
+end
+
+test("weapon_slot_conflict_recovers_occupied_weapon_and_backpack_snapshot", function(check)
+    local target = weaponSlotUser()
+    local first, second, third, hammer = slotInventory(target, true)
+    target.ZM_WeaponSlots[3].instanceId = hammer.instanceId
+    saveSlotFixture(target, check)
+    local other = instance("weaponMeleeCrowbar")
+    check(ZM_ReplacePlayerItems(testSteamId, otherProfile, {
+        { instanceId = other.instanceId, container = "backpack", slot = 1, itemId = other.itemId,
+            count = 1, level = other.level, mastercraft = false, clip = 0, createdAt = 0 }
+    }), "other profile fixture should be saved")
+    check(ZM_ReplaceEquippedWeaponSlots(testSteamId, otherProfile, {
+        [1] = { instanceId = other.instanceId, selected = true }
+    }), "other profile slot fixture should be saved")
+    local otherRows = ZM_GetExactPlayerItems(testSteamId, otherProfile)
+    local otherSlots = ZM_GetExactEquippedWeaponSlots(testSteamId, otherProfile)
+    local normalized, normalizeError = Service:NormalizeWeaponSlots(target)
+    check(normalized, "conflicting slots should reconcile: " .. tostring(normalizeError))
+    check(target.ZM_WeaponSlots[3] and target.ZM_WeaponSlots[3].instanceId == third.instanceId,
+        "the occupied weapon must own slot 3")
+    check(target.ZM_WeaponSlots[2].selected and not target.ZM_WeaponSlots[3].selected,
+        "the existing weapon selection must be preserved")
+    check(target.ZM_Inventory.backpack[18] and target.ZM_Inventory.backpack[18].instanceId == hammer.instanceId
+        and target.ZM_Inventory.equipped[3].instanceId == third.instanceId,
+        "neither the Hammer nor the occupied weapon may be moved or lost")
+    local storedSlots = ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    check(storedSlots[1].instanceId == first.instanceId and storedSlots[2].instanceId == second.instanceId
+        and storedSlots[3].instanceId == third.instanceId, "corrected slots must persist")
+    check(deepEqual(ZM_GetExactPlayerItems(testSteamId, otherProfile), otherRows)
+        and deepEqual(ZM_GetExactEquippedWeaponSlots(testSteamId, otherProfile), otherSlots),
+        "another profile's inventory and slots must remain unchanged")
+    local snapshot, sent = captureInventorySnapshot(target)
+    check(sent and snapshot, "the reconciled snapshot should be sent")
+    check(snapshot and hasSnapshotItem(snapshot.backpack, hammer.instanceId), "the backpack must show the Hammer")
+    check(snapshot and hasSnapshotItem(snapshot.equippedItems, third.instanceId)
+        and snapshot.weaponSlots[3].instanceId == third.instanceId, "the occupied weapon must appear in slot 3")
+end)
+
+test("backpack_snapshot_never_hides_a_stale_held_reference", function(check)
+    local target = weaponSlotUser()
+    local _, second, third, hammer = slotInventory(target, true)
+    target.ZM_Inventory.equipped[2] = nil
+    target.ZM_Inventory.backpack[2] = second
+    target.ZM_WeaponSlots[2] = nil
+    target.ZM_WeaponSlots[3].instanceId = hammer.instanceId
+    local class = Items:GetDefinition(hammer.itemId).weaponClass
+    target:Give(class):SetItemInstanceId(hammer.instanceId)
+    saveSlotFixture(target, check)
+    local snapshot, sent = captureInventorySnapshot(target, { skipWeaponSlotNormalization = true })
+    check(sent and snapshot and hasSnapshotItem(snapshot.backpack, hammer.instanceId),
+        "a stale slot reference must not hide an item from the backpack snapshot")
+    check(Service:NormalizeWeaponSlots(target), "reconciliation should succeed")
+    withCommitOverride(function() error("unchanged reconciliation must not write") end, function()
+        check(Service:NormalizeWeaponSlots(target), "repeated reconciliation should be idempotent")
+    end)
+    check(target.ZM_Inventory.backpack[18] and target.ZM_Inventory.backpack[18].instanceId == hammer.instanceId
+        and target.ZM_Inventory.equipped[2] == nil
+        and target.ZM_Inventory.equipped[3].instanceId == third.instanceId,
+        "a held SWEP must not silently move a conflicted backpack item into a different slot")
+end)
+
+test("occupied_weapon_slot_rejection_preserves_inventory_and_selection", function(check)
+    local target = weaponSlotUser()
+    local _, _, third, hammer = slotInventory(target, true)
+    saveSlotFixture(target, check)
+    local inventoryBefore, slotsBefore = table.Copy(target.ZM_Inventory), table.Copy(target.ZM_WeaponSlots)
+    local itemRows, slotRows = ZM_GetExactPlayerItems(testSteamId, testProfile), ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    local equipped, reason = Service:EquipWeaponInSlot(target, hammer.instanceId, 3)
+    check(not equipped and string.find(tostring(reason), "occupied", 1, true),
+        "equipping into an occupied slot must fail explicitly")
+    check(deepEqual(target.ZM_Inventory, inventoryBefore) and deepEqual(target.ZM_WeaponSlots, slotsBefore),
+        "a rejected equip must not change the live inventory or loadout")
+    check(deepEqual(ZM_GetExactPlayerItems(testSteamId, testProfile), itemRows)
+        and deepEqual(ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile), slotRows),
+        "a rejected equip must not change either stored table")
+    check(target.ZM_Inventory.equipped[3].instanceId == third.instanceId and next(target.weapons) == nil,
+        "the occupied weapon must be retained without spawning or stripping a SWEP")
+    local direct, directReason = Service:EquipItem(target, hammer.instanceId)
+    check(not direct and string.find(tostring(directReason), "occupied", 1, true),
+        "ordinary equip must also reject a full loadout")
+    check(deepEqual(target.ZM_Inventory, inventoryBefore) and deepEqual(target.ZM_WeaponSlots, slotsBefore),
+        "ordinary equip failure must not change live state")
+end)
+
+test("weapon_slot_equip_commits_items_and_loadout_together", function(check)
+    local target = weaponSlotUser()
+    local _, _, _, hammer = slotInventory(target, false)
+    saveSlotFixture(target, check)
+    local originalCommit, atomicCommit = ZM_CommitWrites, false
+    local equipped, equipError
+    withCommitOverride(function(profile, steps)
+        local items, slots = false, false
+        for _, step in ipairs(steps) do
+            items = items or step.kind == "playerItems"
+            slots = slots or step.kind == "equippedWeaponSlotsExact"
+        end
+        atomicCommit = atomicCommit or (items and slots)
+        return originalCommit(profile, steps)
+    end, function()
+        equipped, equipError = Service:EquipWeaponInSlot(target, hammer.instanceId, 3)
+    end)
+    check(equipped, "equipping into the empty slot should succeed: " .. tostring(equipError))
+    check(atomicCommit, "the inventory and weapon slots must share one transaction")
+    check(target.ZM_Inventory.equipped[3] and target.ZM_Inventory.equipped[3].instanceId == hammer.instanceId
+        and target.ZM_Inventory.backpack[18] == nil, "the Hammer must move into the weapon slot")
+    check(target.ZM_WeaponSlots[3].instanceId == hammer.instanceId and target.ZM_WeaponSlots[3].selected
+        and not target.ZM_WeaponSlots[2].selected, "the new selection must be consistent")
+    local items, slots = ZM_GetExactPlayerItems(testSteamId, testProfile), ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    local found
+    for _, row in ipairs(items) do
+        if row.instanceId == hammer.instanceId then found = row end
+    end
+    check(found and found.container == "equipped" and tonumber(found.slot) == 3,
+        "the equipped item row must persist")
+    check(slots[3].instanceId == hammer.instanceId and tonumber(slots[3].selected) == 1
+        and tonumber(slots[2].selected) == 0, "the matching weapon-slot rows must persist")
+end)
+
+test("legacy_backpack_weapon_recovers_into_its_empty_slot", function(check)
+    local target = weaponSlotUser()
+    local _, _, _, hammer = slotInventory(target, false)
+    target.ZM_WeaponSlots[2].selected = false
+    target.ZM_WeaponSlots[3] = { instanceId = hammer.instanceId, selected = true }
+    saveSlotFixture(target, check)
+    local normalized, reason = Service:NormalizeWeaponSlots(target)
+    check(normalized, "the legacy loadout should reconcile: " .. tostring(reason))
+    check(target.ZM_Inventory.backpack[18] == nil and target.ZM_Inventory.equipped[3]
+        and target.ZM_Inventory.equipped[3].instanceId == hammer.instanceId,
+        "the referenced backpack weapon must move into its empty equipped slot")
+    check(target.ZM_WeaponSlots[3].selected, "the legacy selected slot must remain selected")
+    local rows = ZM_GetExactPlayerItems(testSteamId, testProfile)
+    local found
+    for _, row in ipairs(rows) do if row.instanceId == hammer.instanceId then found = row end end
+    check(found and found.container == "equipped" and tonumber(found.slot) == 3,
+        "the recovered item location must persist")
+end)
+
+test("legacy_backpack_recovery_write_failure_keeps_the_item", function(check)
+    local target = weaponSlotUser()
+    local _, _, _, hammer = slotInventory(target, false)
+    target.ZM_WeaponSlots[3] = { instanceId = hammer.instanceId, selected = true }
+    saveSlotFixture(target, check)
+    local other = instance("weaponMeleeCrowbar")
+    check(ZM_ReplacePlayerItems(testSteamId, otherProfile, {
+        { instanceId = other.instanceId, container = "equipped", slot = 1, itemId = other.itemId,
+            count = 1, level = other.level, mastercraft = false, clip = 0, createdAt = 0 }
+    }), "other profile inventory should be saved")
+    check(ZM_ReplaceEquippedWeaponSlots(testSteamId, otherProfile, {
+        [1] = { instanceId = other.instanceId, selected = true }
+    }), "other profile slots should be saved")
+    local otherItems, otherSlots = ZM_GetExactPlayerItems(testSteamId, otherProfile), ZM_GetExactEquippedWeaponSlots(testSteamId, otherProfile)
+    local inventoryBefore, slotsBefore = table.Copy(target.ZM_Inventory), table.Copy(target.ZM_WeaponSlots)
+    local itemRows, slotRows = ZM_GetExactPlayerItems(testSteamId, testProfile), ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    local originalCommit = ZM_CommitWrites
+    withCommitOverride(function(profile, steps)
+        local failing = table.Copy(steps)
+        failing[#failing + 1] = { kind = "injectedLegacyFailure", steamid = testSteamId }
+        return originalCommit(profile, failing)
+    end, function()
+        local normalized, reason = Service:NormalizeWeaponSlots(target)
+        check(not normalized and string.find(tostring(reason), "injectedLegacyFailure", 1, true),
+            "a failed legacy recovery must report its persistence error")
+    end)
+    check(deepEqual(target.ZM_Inventory, inventoryBefore) and deepEqual(target.ZM_WeaponSlots, slotsBefore),
+        "a failed legacy recovery must not move or select any live item")
+    check(deepEqual(ZM_GetExactPlayerItems(testSteamId, testProfile), itemRows)
+        and deepEqual(ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile), slotRows),
+        "a failed legacy recovery must roll back both stored tables")
+    check(deepEqual(ZM_GetExactPlayerItems(testSteamId, otherProfile), otherItems)
+        and deepEqual(ZM_GetExactEquippedWeaponSlots(testSteamId, otherProfile), otherSlots),
+        "a failed recovery must leave the other profile's items and slots unchanged")
+end)
+
+test("held_backpack_weapon_still_requires_an_atomic_equip", function(check)
+    local target = weaponSlotUser()
+    local _, _, _, hammer = slotInventory(target, false)
+    local class = Items:GetDefinition(hammer.itemId).weaponClass
+    local weapon = target:Give(class)
+    weapon:SetItemInstanceId(hammer.instanceId)
+    saveSlotFixture(target, check)
+    local equipped, reason = Service:EquipWeaponInSlot(target, hammer.instanceId, 3)
+    check(equipped, "equipping the already-held instance should succeed: " .. tostring(reason))
+    check(target.ZM_Inventory.backpack[18] == nil and target.ZM_Inventory.equipped[3]
+        and target.ZM_Inventory.equipped[3].instanceId == hammer.instanceId,
+        "a held SWEP must not bypass the backpack-to-equipped move")
+    check(target:GetWeapon(class) == weapon and target.ZM_WeaponSlots[3].instanceId == hammer.instanceId,
+        "the matching held weapon should be reused with the correct slot")
+    local rows = ZM_GetExactPlayerItems(testSteamId, testProfile)
+    local found
+    for _, row in ipairs(rows) do if row.instanceId == hammer.instanceId then found = row end end
+    check(found and found.container == "equipped" and tonumber(found.slot) == 3,
+        "the held instance's equipped location must persist")
+end)
+
+test("weapon_spawn_failure_leaves_inventory_and_slots_unchanged", function(check)
+    local target = weaponSlotUser()
+    local _, _, _, hammer = slotInventory(target, false)
+    target.Give = function() return nil end
+    saveSlotFixture(target, check)
+    local inventoryBefore, slotsBefore = table.Copy(target.ZM_Inventory), table.Copy(target.ZM_WeaponSlots)
+    local itemRows, slotRows = ZM_GetExactPlayerItems(testSteamId, testProfile), ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    local equipped, reason = Service:EquipWeaponInSlot(target, hammer.instanceId, 3)
+    check(not equipped and string.find(tostring(reason), "Could not give", 1, true),
+        "a failed SWEP creation must be reported")
+    check(deepEqual(target.ZM_Inventory, inventoryBefore) and deepEqual(target.ZM_WeaponSlots, slotsBefore),
+        "a failed SWEP creation must not change live inventory or selection")
+    check(deepEqual(ZM_GetExactPlayerItems(testSteamId, testProfile), itemRows)
+        and deepEqual(ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile), slotRows),
+        "a failed SWEP creation must not change either stored table")
+end)
+
+test("equipping_a_hammer_preserves_active_firearm_ammunition", function(check)
+    local target = weaponSlotUser()
+    local firearm, _, _, hammer = slotInventory(target, false)
+    firearm.clip = 8
+    target.ZM_WeaponSlots[1].selected = true
+    target.ZM_WeaponSlots[2].selected = false
+    local held = target:Give(Items:GetDefinition(firearm.itemId).weaponClass)
+    held:SetItemInstanceId(firearm.instanceId)
+    held.GetMaxClip = function() return 30 end
+    held.Clip1 = function() return 3 end
+    target.GetActiveWeapon = function() return held end
+    saveSlotFixture(target, check)
+    local equipped, reason = Service:EquipWeaponInSlot(target, hammer.instanceId, 3)
+    check(equipped, "equipping the Hammer should succeed after syncing ammunition: " .. tostring(reason))
+    check(target.ZM_Inventory.equipped[1].clip == 3 and target.ZM_Inventory.equipped[3].instanceId == hammer.instanceId,
+        "the live firearm clip and Hammer slot must both be retained")
+    local rows = ZM_GetExactPlayerItems(testSteamId, testProfile)
+    local stored
+    for _, row in ipairs(rows) do if row.instanceId == firearm.instanceId then stored = row end end
+    check(stored and tonumber(stored.clip) == 3, "the current firearm clip must persist")
+end)
+
+test("reselecting_a_firearm_keeps_its_live_clip", function(check)
+    local target = weaponSlotUser()
+    local firearm = slotInventory(target, false)
+    firearm.clip = 8
+    local held = target:Give(Items:GetDefinition(firearm.itemId).weaponClass)
+    held:SetItemInstanceId(firearm.instanceId)
+    held.clip = 3
+    held.GetMaxClip = function() return 30 end
+    held.Clip1 = function(self) return self.clip end
+    held.OnItemInstanceApplied = function(self, item) self.clip = item.clip end
+    target.GetActiveWeapon = function() return held end
+    saveSlotFixture(target, check)
+    local equipped, reason = Service:EquipWeaponInSlot(target, firearm.instanceId, 1)
+    check(equipped, "reselecting an equipped firearm should succeed: " .. tostring(reason))
+    check(held:Clip1() == 3, "reselecting an already-applied instance must not restore an older persisted clip")
+end)
+
+test("failed_firearm_sync_prevents_weapon_equip", function(check)
+    local target = weaponSlotUser()
+    local firearm, _, _, hammer = slotInventory(target, false)
+    firearm.clip = 8
+    local held = target:Give(Items:GetDefinition(firearm.itemId).weaponClass)
+    held:SetItemInstanceId(firearm.instanceId)
+    held.GetMaxClip = function() return 30 end
+    held.Clip1 = function() return 3 end
+    target.GetActiveWeapon = function() return held end
+    saveSlotFixture(target, check)
+    local inventoryBefore, slotsBefore = table.Copy(target.ZM_Inventory), table.Copy(target.ZM_WeaponSlots)
+    local itemRows, slotRows = ZM_GetExactPlayerItems(testSteamId, testProfile), ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    local originalWrite = ZM_ReplacePlayerItems
+    ZM_ReplacePlayerItems = function() return false, "injected ammunition failure" end
+    local ok, equipped, reason = pcall(function() return Service:EquipWeaponInSlot(target, hammer.instanceId, 3) end)
+    ZM_ReplacePlayerItems = originalWrite
+    if not ok then error(equipped) end
+    check(not equipped and string.find(tostring(reason), "injected ammunition failure", 1, true),
+        "an ammunition persistence failure must stop the equip and report its reason")
+    check(deepEqual(target.ZM_Inventory, inventoryBefore) and deepEqual(target.ZM_WeaponSlots, slotsBefore)
+        and target:GetWeapon(Items:GetDefinition(hammer.itemId).weaponClass) == nil,
+        "a failed ammunition sync must not change the inventory, selection, or spawn the Hammer")
+    check(deepEqual(ZM_GetExactPlayerItems(testSteamId, testProfile), itemRows)
+        and deepEqual(ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile), slotRows),
+        "a failed ammunition sync must preserve both stored tables")
+end)
+
+test("failed_equip_preserves_an_existing_same_class_weapon", function(check)
+    local target = weaponSlotUser()
+    local _, _, _, hammer = slotInventory(target, false)
+    local existing = instance("weaponMeleeHammer")
+    target.ZM_Inventory.equipped[1] = existing
+    target.ZM_WeaponSlots[1] = { instanceId = existing.instanceId, selected = true }
+    target.ZM_WeaponSlots[2].selected = false
+    local class = Items:GetDefinition(hammer.itemId).weaponClass
+    local weapon = target:Give(class)
+    weapon:SetItemInstanceId(existing.instanceId)
+    saveSlotFixture(target, check)
+    local inventoryBefore, slotsBefore = table.Copy(target.ZM_Inventory), table.Copy(target.ZM_WeaponSlots)
+    local originalCommit = ZM_CommitWrites
+    withCommitOverride(function(profile, steps)
+        local failing = table.Copy(steps)
+        failing[#failing + 1] = { kind = "injectedSameClassFailure", steamid = testSteamId }
+        return originalCommit(profile, failing)
+    end, function()
+        local equipped, reason = Service:EquipWeaponInSlot(target, hammer.instanceId, 3)
+        check(not equipped and string.find(tostring(reason), "injectedSameClassFailure", 1, true),
+            "a failed same-class equip must report its persistence error")
+    end)
+    check(target:GetWeapon(class) == weapon and IsValid(weapon) and weapon:GetItemInstanceId() == existing.instanceId,
+        "a failed equip must not strip or repurpose the existing weapon")
+    check(deepEqual(target.ZM_Inventory, inventoryBefore) and deepEqual(target.ZM_WeaponSlots, slotsBefore),
+        "a failed same-class equip must preserve inventory and selection")
+end)
+
+test("weapon_restore_preserves_selected_instance_and_slots", function(check)
+    local target = weaponSlotUser()
+    local selected, other = instance("weaponMeleeHammer"), instance("weaponMeleeHammer")
+    target.ZM_Inventory.equipped = { [1] = selected, [3] = other }
+    target.ZM_WeaponSlots = {
+        [1] = { instanceId = selected.instanceId, selected = true },
+        [3] = { instanceId = other.instanceId, selected = false }
+    }
+    saveSlotFixture(target, check)
+    local slotsBefore = table.Copy(target.ZM_WeaponSlots)
+    local storedBefore = ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    Service:RestoreEquippedWeapons(target)
+    local class = Items:GetDefinition(selected.itemId).weaponClass
+    local weapon = target:GetWeapon(class)
+    check(IsValid(weapon) and weapon:GetItemInstanceId() == selected.instanceId and target.selectedClass == class,
+        "the selected instance must be restored last when two slots share a weapon class")
+    check(deepEqual(target.ZM_WeaponSlots, slotsBefore)
+        and deepEqual(ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile), storedBefore),
+        "restoration must not rewrite the saved slot selection")
+end)
+
+test("inventory_load_repairs_conflicts_and_restores_selection", function(check)
+    local original = weaponSlotUser()
+    local _, second, third, hammer = slotInventory(original, true)
+    original.ZM_WeaponSlots[3].instanceId = hammer.instanceId
+    saveSlotFixture(original, check)
+    local target = weaponSlotUser()
+    local originalSend = Service.Send
+    Service.Send = function() return true end
+    local ok, loaded, reason = pcall(function() return Service:Load(target) end)
+    Service.Send = originalSend
+    if not ok then error(loaded) end
+    check(loaded, "loading a conflicting inventory should repair it: " .. tostring(reason))
+    check(target.ZM_Inventory.backpack[18] and target.ZM_Inventory.backpack[18].instanceId == hammer.instanceId
+        and target.ZM_Inventory.equipped[3].instanceId == third.instanceId
+        and target.ZM_WeaponSlots[3].instanceId == third.instanceId,
+        "loading must preserve the backpack item and restore the occupied slot")
+    local selectedClass = Items:GetDefinition(second.itemId).weaponClass
+    check(target.ZM_WeaponSlots[2].selected and target.selectedClass == selectedClass,
+        "loading must restore the prior selection")
+    local slots = ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    check(slots[3].instanceId == third.instanceId and tonumber(slots[2].selected) == 1,
+        "the corrected slots must survive the load")
+end)
+
+test("weapon_selection_write_failure_keeps_previous_slots", function(check)
+    local target = weaponSlotUser()
+    local _, second = slotInventory(target, false)
+    local weapon = target:Give(Items:GetDefinition(second.itemId).weaponClass)
+    weapon:SetItemInstanceId(second.instanceId)
+    target.ZM_WeaponSlots[1].selected = true
+    target.ZM_WeaponSlots[2].selected = false
+    saveSlotFixture(target, check)
+    local slotsBefore = table.Copy(target.ZM_WeaponSlots)
+    local storedBefore = ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    local originalCommit, originalLog = ZM_CommitWrites, ErrorNoHalt
+    local logged
+    ErrorNoHalt = function(message) logged = message end
+    local ok, err = pcall(function()
+        withCommitOverride(function(profile, steps)
+            local failing = table.Copy(steps)
+            failing[#failing + 1] = { kind = "injectedSelectionFailure", steamid = testSteamId }
+            return originalCommit(profile, failing)
+        end, function()
+            hook.GetTable().PlayerSwitchWeapon["ZM.Inventory.PersistSelectedWeapon"](target, nil, weapon)
+        end)
+    end)
+    ErrorNoHalt = originalLog
+    if not ok then error(err) end
+    check(logged and string.find(logged, "injectedSelectionFailure", 1, true),
+        "a failed selection write must be logged")
+    check(deepEqual(target.ZM_WeaponSlots, slotsBefore)
+        and deepEqual(ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile), storedBefore),
+        "a failed selection write must leave live and stored slots unchanged")
+end)
+
+test("weapon_slot_swap_commits_or_rolls_back_both_tables", function(check)
+    local target = weaponSlotUser()
+    local first, _, third = slotInventory(target, true)
+    saveSlotFixture(target, check)
+    local inventoryBefore, slotsBefore = table.Copy(target.ZM_Inventory), table.Copy(target.ZM_WeaponSlots)
+    local itemRows, slotRows = ZM_GetExactPlayerItems(testSteamId, testProfile), ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    local originalCommit = ZM_CommitWrites
+    withCommitOverride(function(profile, steps)
+        local failing = table.Copy(steps)
+        failing[#failing + 1] = { kind = "injectedSwapFailure", steamid = testSteamId }
+        return originalCommit(profile, failing)
+    end, function()
+        local moved, reason = Service:EquipWeaponInSlot(target, first.instanceId, 3)
+        check(not moved and string.find(tostring(reason), "injectedSwapFailure", 1, true),
+            "a failed slot swap must report its persistence error")
+    end)
+    check(deepEqual(target.ZM_Inventory, inventoryBefore) and deepEqual(target.ZM_WeaponSlots, slotsBefore),
+        "a failed slot swap must leave live inventory and selection unchanged")
+    check(deepEqual(ZM_GetExactPlayerItems(testSteamId, testProfile), itemRows)
+        and deepEqual(ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile), slotRows),
+        "a failed slot swap must roll back both stored tables")
+    local moved, reason = Service:EquipWeaponInSlot(target, first.instanceId, 3)
+    check(moved, "a valid slot swap should succeed: " .. tostring(reason))
+    check(target.ZM_Inventory.equipped[1].instanceId == third.instanceId
+        and target.ZM_Inventory.equipped[3].instanceId == first.instanceId
+        and target.ZM_WeaponSlots[1].instanceId == third.instanceId
+        and target.ZM_WeaponSlots[3].instanceId == first.instanceId
+        and target.ZM_WeaponSlots[3].selected, "the swapped item locations and slots must agree")
+    local slots = ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    check(slots[1].instanceId == third.instanceId and slots[3].instanceId == first.instanceId,
+        "the swapped slot assignments must persist")
+end)
+
+test("weapon_drag_to_backpack_commits_or_rolls_back_both_tables", function(check)
+    local target = weaponSlotUser()
+    local _, _, third = slotInventory(target, true)
+    local class = Items:GetDefinition(third.itemId).weaponClass
+    local weapon = target:Give(class)
+    weapon:SetItemInstanceId(third.instanceId)
+    saveSlotFixture(target, check)
+    local inventoryBefore, slotsBefore = table.Copy(target.ZM_Inventory), table.Copy(target.ZM_WeaponSlots)
+    local itemRows, slotRows = ZM_GetExactPlayerItems(testSteamId, testProfile), ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    local originalCommit = ZM_CommitWrites
+    withCommitOverride(function(profile, steps)
+        local failing = table.Copy(steps)
+        failing[#failing + 1] = { kind = "injectedUnequipFailure", steamid = testSteamId }
+        return originalCommit(profile, failing)
+    end, function()
+        local moved, reason = Service:MoveItem(target, third.instanceId, "backpack", 4)
+        check(not moved and string.find(tostring(reason), "injectedUnequipFailure", 1, true),
+            "a failed backpack move must report its persistence error")
+    end)
+    check(deepEqual(target.ZM_Inventory, inventoryBefore) and deepEqual(target.ZM_WeaponSlots, slotsBefore)
+        and target:GetWeapon(class) == weapon and IsValid(weapon),
+        "a failed backpack move must preserve the live inventory, slots, and weapon")
+    check(deepEqual(ZM_GetExactPlayerItems(testSteamId, testProfile), itemRows)
+        and deepEqual(ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile), slotRows),
+        "a failed backpack move must roll back both stored tables")
+    local moved, reason = Service:MoveItem(target, third.instanceId, "backpack", 4)
+    check(moved, "moving the equipped weapon to the backpack should succeed: " .. tostring(reason))
+    check(target.ZM_Inventory.backpack[4].instanceId == third.instanceId
+        and target.ZM_Inventory.equipped[3] == nil and target.ZM_WeaponSlots[3] == nil
+        and not IsValid(weapon), "the item, slot, and live weapon must all be updated")
+    local slots = ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    check(slots[3].instanceId == nil, "the removed weapon slot must persist as empty")
+end)
+
+test("unequip_persists_the_next_active_weapon", function(check)
+    local target = weaponSlotUser()
+    local first, _, third = slotInventory(target, true)
+    target.ZM_WeaponSlots[2].selected = false
+    target.ZM_WeaponSlots[3].selected = true
+    local nextWeapon = target:Give(Items:GetDefinition(first.itemId).weaponClass)
+    nextWeapon:SetItemInstanceId(first.instanceId)
+    local removedWeapon = target:Give(Items:GetDefinition(third.itemId).weaponClass)
+    removedWeapon:SetItemInstanceId(third.instanceId)
+    local originalStrip = target.StripWeapon
+    target.StripWeapon = function(self, class)
+        hook.GetTable().PlayerSwitchWeapon["ZM.Inventory.PersistSelectedWeapon"](self, removedWeapon, nextWeapon)
+        originalStrip(self, class)
+    end
+    saveSlotFixture(target, check)
+    local moved, reason = Service:UnequipWeapon(target, third.instanceId)
+    check(moved, "unequipping the selected weapon should succeed: " .. tostring(reason))
+    check(target.ZM_WeaponSlots[1].selected and target.ZM_WeaponSlots[3] == nil,
+        "the next active equipped weapon must become selected")
+    local slots = ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    check(tonumber(slots[1].selected) == 1 and slots[3].instanceId == nil,
+        "the replacement selection and empty slot must persist")
+end)
+
+test("weapon_slot_equip_write_failure_rolls_back_items_and_loadout", function(check)
+    local target = weaponSlotUser()
+    local _, _, _, hammer = slotInventory(target, false)
+    saveSlotFixture(target, check)
+    local inventoryBefore, slotsBefore = table.Copy(target.ZM_Inventory), table.Copy(target.ZM_WeaponSlots)
+    local itemRows, slotRows = ZM_GetExactPlayerItems(testSteamId, testProfile), ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    local originalCommit = ZM_CommitWrites
+    withCommitOverride(function(profile, steps)
+        local failing = table.Copy(steps)
+        failing[#failing + 1] = { kind = "injectedInventoryFailure", steamid = testSteamId }
+        return originalCommit(profile, failing)
+    end, function()
+        local equipped, reason = Service:EquipWeaponInSlot(target, hammer.instanceId, 3)
+        check(not equipped and string.find(tostring(reason), "injectedInventoryFailure", 1, true),
+            "an injected write failure must be reported")
+    end)
+    check(deepEqual(target.ZM_Inventory, inventoryBefore) and deepEqual(target.ZM_WeaponSlots, slotsBefore),
+        "a failed write must restore the live inventory and selected slots")
+    check(deepEqual(ZM_GetExactPlayerItems(testSteamId, testProfile), itemRows)
+        and deepEqual(ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile), slotRows),
+        "a failed write must roll back both stored tables")
+    check(next(target.weapons) == nil, "a failed equip must remove its temporary weapon")
+end)
+
+test("weapon_slot_reconciliation_write_failure_preserves_both_tables", function(check)
+    local target = weaponSlotUser()
+    local _, _, _, hammer = slotInventory(target, true)
+    target.ZM_WeaponSlots[3].instanceId = hammer.instanceId
+    saveSlotFixture(target, check)
+    local inventoryBefore, slotsBefore = table.Copy(target.ZM_Inventory), table.Copy(target.ZM_WeaponSlots)
+    local itemRows, slotRows = ZM_GetExactPlayerItems(testSteamId, testProfile), ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile)
+    local originalCommit = ZM_CommitWrites
+    withCommitOverride(function(profile, steps)
+        local failing = table.Copy(steps)
+        failing[#failing + 1] = { kind = "injectedSlotRepairFailure", steamid = testSteamId }
+        return originalCommit(profile, failing)
+    end, function()
+        local normalized, reason = Service:NormalizeWeaponSlots(target)
+        check(not normalized and string.find(tostring(reason), "injectedSlotRepairFailure", 1, true),
+            "a failed reconciliation must report its persistence error")
+    end)
+    check(deepEqual(target.ZM_Inventory, inventoryBefore) and deepEqual(target.ZM_WeaponSlots, slotsBefore),
+        "failed reconciliation must leave live items and slots unchanged")
+    check(deepEqual(ZM_GetExactPlayerItems(testSteamId, testProfile), itemRows)
+        and deepEqual(ZM_GetExactEquippedWeaponSlots(testSteamId, testProfile), slotRows),
+        "failed reconciliation must roll back both stored tables")
+end)
+
+test("inventory_snapshot_reports_reconciliation_failure", function(check)
+    local target = weaponSlotUser()
+    local _, _, _, hammer = slotInventory(target, true)
+    target.ZM_WeaponSlots[3].instanceId = hammer.instanceId
+    saveSlotFixture(target, check)
+    local originalCommit, originalLog = ZM_CommitWrites, ErrorNoHalt
+    local logged
+    ErrorNoHalt = function(message) logged = message end
+    local ok, err = pcall(function()
+        withCommitOverride(function(profile, steps)
+            local failing = table.Copy(steps)
+            failing[#failing + 1] = { kind = "injectedSnapshotFailure", steamid = testSteamId }
+            return originalCommit(profile, failing)
+        end, function()
+            local snapshot, sent = captureInventorySnapshot(target)
+            check(sent == false and snapshot == nil, "a failed repair must not send a success-shaped snapshot")
+        end)
+    end)
+    ErrorNoHalt = originalLog
+    if not ok then error(err) end
+    check(logged and string.find(logged, "injectedSnapshotFailure", 1, true),
+        "a failed snapshot repair must report its persistence error")
 end)
 
 test("job_is_preserved_when_callers_omit_it", function(check)

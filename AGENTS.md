@@ -34,12 +34,118 @@ generator variants; preserve the current authored sources and do not infer
 that older generated or staged outputs include them. Archiving the prior
 plans does not declare either milestone released or fully accepted.
 
-The tracker consolidation does not resume the paused construction review or
-set a new priority between it and the world-generation work. Confirm the
-next workstream before implementation. Generation, compilation, staging,
-navmesh, Cell Health, Satellite, production and publication retain their
-separate approval gates. The dated status and next-step notes below are
-historical where they conflict with the active tracker.
+The user approved the Alpha 3.5 generator changes and resumed the carried
+construction review. Compilation, staging, navmesh, Cell Health, Satellite,
+production and publication retain their separate approval gates. The dated
+status and next-step notes below are historical where they conflict with the
+active tracker.
+
+**Preview testing preference (user, 2026-11-03):** preview is a test environment;
+preserving an exact inventory or player-data baseline is not a priority unless
+a particular test requires it. Preserve items the user explicitly chooses to
+keep, avoid unnecessary irreversible changes, and clean up test-owned resources.
+This does not authorize changes to production data.
+
+**Construction review (user, 2026-11-03):** the user reports the
+foundation/wall prototype and E building worked well. The three-minute test
+expired while they were building and removed the temporary house. That earlier
+session ended; read-only checks found no temporary Hammer,
+token or review-tile claim, and the Crowbar remains. Normal paid construction,
+an exact over-12 count and multiplayer were not verified. Pieces are still
+transient across map loads. The user requests a Q-key grid gallery, more
+pieces including roofs and complex shapes, and construction sounds with
+hammer-swing feedback. They chose full/half/triangular foundations and floors,
+full/half walls and doorway/window frames, flat/sloped/corner roofs, and stairs
+and ramps. Gallery selection closes it; functional doors/windows remain separate.
+
+**Construction catalogue source (2026-11-03):** the 16-piece wooden gallery,
+shape-aware rendering and collision, server selection, and construction
+sound/swing are source-wired. The previously approved foundation and 8-unit
+prototype wall are unchanged; new prices/times are provisional. The free
+review timeout is now 30 minutes and cleanup removes its session-owned house.
+Focused offline fixtures pass 77/77 and GLua syntax passes 410/0. After the
+user-approved reload of `zz_preview_08960535c24e`/preview, a fresh client
+report confirms all 16 piece materials loaded without errors; appearance is
+not yet reviewed. A temporary free-build review started at approximately
+09:39 on 2026-11-03 on cell 134, tile (-1,1); the token was consumed. The
+user reported a missing Hammer: its backpack row conflicted with an Elite
+physically occupying the referenced weapon slot. The Elite was moved to the
+backpack and the temporary Hammer equipped without restarting the review;
+the Crowbar remains. A later read-only report confirms those items and cell,
+but not whether the review session is still active. Its 30-minute timer
+attempts cleanup; a successful cleanup removes its claim, temporary items and
+all tagged structures. The remaining time is unknown. Ask before cleanup or
+reload; the user chose to keep the current structures and continue reviewing.
+
+The inventory source now reconciles physical weapon slots, shows every
+backpack item and atomically saves weapon moves and slot assignments; occupied
+backpack-to-weapon equips reject without disturbing the current loadout.
+Focused inventory fixtures pass 22/22, combined inventory/claim/world/
+construction/crate fixtures 100/100, and GLua syntax 410/0. The fix has not
+been fresh-loaded or tested in the native inventory suite or client UI.
+Gallery controls, shape/collision paths, sound/swing, paid construction,
+persistence and multiplayer remain unverified. Non-box completion occupancy
+conservatively uses component bounds. See the [active tracker](todo-alpha-3.5.md)
+for the recovery and review details.
+
+**Multi-level construction source (2026-11-03):** after the user reported that
+upper floors and roofs could not be placed, automatic snapping now uses the
+shared client/server placement resolver for completed stair/ramp landings, wall
+tops and compatible floor/roof edges. Triangular floors can join diagonally and
+turn to meet straight supports; walls can stack. Floors start at landing height,
+with an 8-unit step onto their upper surface. When a floor or roof is selected
+and the aim goes into open air, `PlacementTrace` extends the finished piece
+underfoot. Stairs and ramps also place from world ground or finished level
+supports when aiming into open air, without a prior floor tile. The user
+confirmed stair placement and the Free building cheat. They then reported
+floating blueprints that could not be selected and unreliable upper-floor
+cursor snapping. Source now ray-picks authored shapes, projects empty-space
+floor/roof cursor aiming onto the current storey and extends the cursor's side.
+The revised controls are Delete -> click pieces to mark/unmark red -> Delete
+to confirm batch removal; Reload cancels. RMB only undoes owned unfinished
+blueprints and never cycles. Exact paid costs are refunded in one transaction
+for the selection, with no removal on failure; free-built pieces refund nothing.
+Related construction/entity/render/gallery/camera/claim/world fixtures pass
+110/110 and GLua syntax 410/0. After the approved reload, a fresh 20:58 client
+report on `zz_preview_0a9894c9058b-cp`/preview exposes the new delete fields,
+build/delete mode off, selection zero and valid construction materials.
+This confirms loaded client code, not the controls or snapping.
+Ask before another reload: structures are transient.
+Cursor snapping, deletion/refunds, collision, appearance, ordinary paid
+construction and multiplayer remain unverified live.
+The user could not review them because they lacked access in the current cell
+(133). Read-only status lists claimable tiles. They requested one claim token;
+the first grant failed with a full backpack, then succeeded after they freed a
+slot (one token verified). The user will claim a tile here before testing;
+no claim was created by the agent.
+**Claim mode (2026-11-03, source/offline only):** using a token enters
+`ZM_Claims` claim mode (`cl_claims.lua`): the hovered core tile is highlighted
+and LMB claims it via the server's `HandleClaimRequest`. Claim boxes are drawn
+on the minimap, the local world map and the grid/satellite views. The
+`GetPieceKind` nil trace error and a grid-view nil `gridY` crash are fixed.
+**User accepted (2026-11-03):** building (incl. delete mode, blueprint undo,
+floor snapping) works perfectly and the claim box shows clearly; both areas
+passed. Single-player only; paid construction, structure damage and
+multiplayer remain unverified. Do not reopen these reviews.
+
+**Structure damage source (2026-11-03):** at the user's request, walkers now
+wear down complete pieces: health scales with wood cost (wall 200, about 5
+minutes for one walker), four visible stages, breaking into temporary debris,
+and free Hammer/build-mode repair with E. A walker cannot hit a player through
+a piece; after 20 s on a siege it tries a nearby untried doorway, else resumes
+hitting. Construction 41/41, render 8/8, walker behaviour 8/8 and GLua 410/0
+pass; `test_walker_preload` fails independently. Live wear, breaking, repair
+and doorway seeking remain unverified. There is no structural support. The
+preview Cheats window also
+has a persisted, operator-gated **Free building** toggle (`freeBuild`) that
+skips construction payment; blueprints stay unpaid (construction 42/42).
+**Construction persistence (2026-11-03, source only):** pieces, blueprints,
+paid cost, health and wear are saved per profile/logical cell in
+`construction_pieces` (`sv_construction.lua` persistence section, SQL in
+`utils/sql.lua`). They are restored on `OnPlayerReady` and kept through a
+claim lapse; they are deleted without refund when a different owner claims
+the tile. Persistence fixtures 7/7 and GLua 411/0 pass; the live reload test
+is pending.
 
 **Previous tracker restructure (user, 2026-11-02; historical):** the world viewer, new-tile
 wiring and generation changes (formerly Alpha 3.4) now close Alpha 3.3 as
@@ -61,15 +167,32 @@ is unchanged until approved preview staging.
 insert, lapsed (30-day) claims are replaceable and never revived, and visits
 refresh active claims for the owner's account and friends. Offline claim
 fixtures 8/8 and GLua 401/0 pass; native `zn_test_claims` is written but
-not run live. Construction (source/offline only, not live-tested): the
-Hammer's Reload toggles build mode (`sh_/sv_/cl_construction.lua`), and
-`zn_construction_piece` blueprints (foundation/wall) are placed inside
-accessible claim tiles, paid atomically on first E contribution and fade in
-when complete. Construction fixtures 14/14, GLua 407/0. Pieces are not
-persisted; see the 3.4 tracker's Phase E for decisions and live unknowns.
-**Paused (user, 2026-11-02):** the agreed next step is staging the preview
-runtime JSON with `claimTiles` (backup first), a reload with the new Lua and a
-bounded live construction review. Wait for the user to resume.
+not run live. Construction (`sh_/sv_/cl_construction.lua`) has no per-player
+blueprint-count cap; tapping E starts visible progress and holding continues.
+Normal construction charges materials atomically. The bounded review may build
+only blueprints tagged to its exact active session for free; this does not test
+paid construction. The HUD instructions are in a compact upper-left panel.
+Construction aiming now shares the gameplay crosshair's origin; build-mode
+top-down and orbit aiming trace the cursor or view centre to a surface. The
+server still performs its own bounded placement trace. Focused
+claim/world/construction/camera fixtures pass 49/49 and GLua 408/0. Pieces
+are not persisted. The review cleanup now removes only session-owned items,
+the identity-checked review claim and tagged pieces, retaining unrelated
+inventory and selection changes. The user chose to keep the Crowbar. The old
+cleanup retry timed out without acknowledgement; a subsequent read-only check
+found no temporary Hammer, token or review claim, but its in-memory session
+state was not independently inspected. The latest Lua was loaded by a
+same-cell preview reload and the native claims suite passed 4/4. The later
+live construction review and its limits are recorded above and in the Alpha
+3.5 tracker.
+**Previously paused (user, 2026-11-02; resumed by user, 2026-11-03):** the
+preview `claimTiles` export was backed up, staged and reloaded as recorded in
+the Alpha 3.5 tracker. The subsequent bounded review is recorded above.
+The user approved free-completion review for session-tagged blueprints only;
+do not grant construction materials or treat this as paid-construction
+acceptance. Confirm the current preview player/map and absence of persistent
+temporary review records before reloading. The existing review start requires
+two free backpack slots; a weapon slot is also needed to equip its Hammer.
 
 **Hammer asset staging (user, 2026-11-02):** Hammer reads only engine
 search paths (`garrysmod/`, `garrysmod/addons/*`), not this gamemode's

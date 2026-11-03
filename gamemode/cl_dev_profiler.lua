@@ -103,8 +103,9 @@ local function captureFrame(afterVGUI)
         (ZM_Scoreboard and IsValid(ZM_Scoreboard.Frame)) or (ZM_Wardrobe and IsValid(ZM_Wardrobe.Frame)) or
         (ZM_Options and IsValid(ZM_Options.Frame)) or (ZM_SkyBrowser and IsValid(ZM_SkyBrowser.Frame)) or
         (ZM_WorldMap and IsValid(ZM_WorldMap.Frame)) or
+        (ZM_Construction and ZM_Construction.Gallery and ZM_Construction.Gallery:IsOpen()) or
         (ZM_PrefabEditorClient and ZM_PrefabEditorClient:IsActive()) or
-        (ZM_LauncherMenu and ZM_LauncherMenu.Page == "tools" and IsValid(ZM_LauncherMenu.Frame))
+        (ZM_LauncherMenu and IsValid(ZM_LauncherMenu.Frame) and ZM_LauncherMenu.Frame:IsVisible())
     local needsVGUI = not request.angles and visibleUI == true
     if needsVGUI ~= afterVGUI then return end
     if ZM_LoadingScreen and ZM_LoadingScreen:IsHidingHud() then
@@ -138,6 +139,7 @@ local function captureFrame(afterVGUI)
         clothing = ZM_ClothingPreview and ZM_ClothingPreview:GetDiagnosticSnapshot(),
         equippedClothing = ZM_Clothing and ZM_Clothing.GetDiagnosticSnapshot and ZM_Clothing:GetDiagnosticSnapshot(),
         wardrobe = ZM_Wardrobe and ZM_Wardrobe:GetDiagnosticSnapshot(),
+        construction = ZM_Construction and ZM_Construction:ClientStatus(),
         ui = { request = Profiler.LastUIRequest,
             inventory = ZM_Inventory and IsValid(ZM_Inventory.Frame),
             options = ZM_Options and IsValid(ZM_Options.Frame),

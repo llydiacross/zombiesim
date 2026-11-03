@@ -899,6 +899,7 @@ concommand.Add("zombiesim_dev_launcher_presentation_status", function()
             active = Menu.Active == true,
             page = Menu.Page or "uninitialized",
             frameVisible = IsValid(Menu.Frame) and Menu.Frame:IsVisible() or false,
+            panels = Menu:GetPanelStatus(),
             earthControlsActive = Menu:IsEarthControlsActive() == true,
             creationCamera = camera and {
                 origin = { x = camera.origin.x, y = camera.origin.y, z = camera.origin.z },

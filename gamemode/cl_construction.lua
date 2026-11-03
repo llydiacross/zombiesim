@@ -54,10 +54,30 @@ end )
 
 function Construction:LocalBuildMode()
 	local client = LocalPlayer()
-	if not IsValid( client ) then return false end
+	if not IsValid( client ) or not client:Alive() then return false end
 	local weapon = client:GetActiveWeapon()
 	return IsValid( weapon ) and weapon:GetClass() == self.ToolClass and weapon.GetBuildMode ~= nil and weapon:GetBuildMode() == true
 end
+
+function Construction:LocalDeleteMode()
+	return self:LocalBuildMode() and LocalPlayer():GetNWBool( "ZM_ConstructionDeleteMode", false )
+end
+
+function Construction:PieceSelectedForDeletion( entity )
+	return self:LocalDeleteMode() and entity:GetNWEntity( "ZM_ConstructionOwner" ) == LocalPlayer()
+		and entity:GetNWBool( "ZM_ConstructionDeleteSelected", false )
+end
+
+hook.Add( "Think", "ZM.Construction.DeleteKey", function()
+	local down = input.IsKeyDown( KEY_DELETE )
+	local pressed = down and not state.deleteKeyDown
+	state.deleteKeyDown = down
+	if not pressed or not Construction:LocalBuildMode() then return end
+	if gui.IsGameUIVisible() or vgui.CursorVisible() or IsValid( vgui.GetKeyboardFocus() )
+		or Construction.Gallery and Construction.Gallery:IsOpen() then return end
+	net.Start( "ZM.Construction.Delete" )
+	net.SendToServer()
+end )
 
 hook.Add( "PostDrawTranslucentRenderables", "ZM.Construction.Boundary", function( depth, skybox )
 	if depth or skybox then return end
@@ -76,18 +96,37 @@ end )
 
 hook.Add( "HUDPaint", "ZM.Construction.Label", function()
 	if not Construction:LocalBuildMode() then return end
-	local centreX = ScrW() / 2
-	draw.SimpleTextOutlined( "BUILD MODE  -  Reload to exit", "DermaLarge", centreX, ScrH() * 0.12,
-		Color( 90, 200, 255 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 2, Color( 0, 0, 0, 200 ) )
+	local x, y = 16, 16
+	local width, height = math.min( 360, ScrW() - 32 ), 96
+	draw.RoundedBox( 5, x, y, width, height, Color( 10, 14, 18, 220 ) )
+	surface.SetDrawColor( 90, 200, 255, 190 )
+	surface.DrawOutlinedRect( x, y, width, height, 1 )
+	local left = x + 12
+	local deleting = Construction:LocalDeleteMode()
+	draw.SimpleText( deleting and "DELETE MODE" or "BUILD MODE", "DermaDefaultBold", left, y + 9,
+		deleting and Color( 255, 75, 75 ) or Color( 90, 200, 255 ), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP )
+	draw.SimpleText( "Reload to exit", "DermaDefault", x + width - 12, y + 9, color_white, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP )
+	if deleting then
+		draw.SimpleText( LocalPlayer():GetNWInt( "ZM_ConstructionDeleteCount", 0 ) .. " piece(s) marked red",
+			"DermaDefaultBold", left, y + 30, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP )
+		draw.SimpleText( "LMB mark/unmark  |  Delete confirm", "DermaDefault", left, y + 51,
+			Color( 210, 210, 210 ), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP )
+		draw.SimpleText( "Paid materials refunded  |  Reload cancels", "DermaDefault", left, y + 69,
+			Color( 210, 210, 210 ), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP )
+		return
+	end
 	local weapon = LocalPlayer():GetActiveWeapon()
 	local kind = Construction.SelectedPiece( weapon )
 	local mastercraft = weapon.GetItemMastercraft and weapon:GetItemMastercraft() or false
 	local seconds = Construction:BuildSeconds( kind, weapon.GetItemLevel and weapon:GetItemLevel() or 0 ) or 0
-	draw.SimpleTextOutlined( string.format( "%s  -  %s  -  %.1fs", Construction.Pieces[kind].name,
-		Construction:CostText( kind, mastercraft ), seconds ), "DermaDefaultBold", centreX, ScrH() * 0.12 + 28,
-		color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, Color( 0, 0, 0, 200 ) )
-	draw.SimpleTextOutlined( "LMB place  -  RMB next piece / remove blueprint  -  hold E to build", "DermaDefault",
-		centreX, ScrH() * 0.12 + 46, Color( 200, 200, 200 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, Color( 0, 0, 0, 200 ) )
+	draw.SimpleText( string.format( "%s  |  %s  |  %.1fs", Construction.Pieces[kind].name,
+		Construction:CostText( kind, mastercraft ), seconds ), "DermaDefaultBold", left, y + 30,
+		color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP )
+	local galleryKey = Construction.Gallery and Construction.Gallery:BindingLabel() or "Q"
+	draw.SimpleText( galleryKey .. " gallery  |  LMB place  |  Delete select", "DermaDefault",
+		left, y + 51, Color( 210, 210, 210 ), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP )
+	draw.SimpleText( "E build  |  RMB undo blueprint", "DermaDefault",
+		left, y + 69, Color( 210, 210, 210 ), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP )
 end )
 
 // "N Wood, N Scrap Metal" for a piece, in a stable order.
@@ -106,17 +145,14 @@ end
 
 // Where the selected piece would go, mirroring the server's PrimaryBuild checks; nil when nothing is aimed at.
 function Construction:GhostPlacement()
+	if self:LocalDeleteMode() then return nil end
 	local client = LocalPlayer()
 	local weapon = client:GetActiveWeapon()
-	local trace = self:AimTrace( client )
-	if not trace.Hit then return nil end
 	local kind = self.SelectedPiece( weapon )
-	local x, y, z, yaw = self.SnapPlacement( kind, trace.HitPos.x, trace.HitPos.y, trace.HitPos.z, client:EyeAngles().y )
-	local valid = trace.HitNormal.z >= 0.7
-	local entity = trace.Entity
-	if valid and not trace.HitWorld then
-		valid = IsValid( entity ) and entity:GetClass() == "zn_construction_piece" and entity:GetComplete()
-	end
+	local trace = self:PlacementTrace( client, kind )
+	if not trace.Hit then return nil end
+	local x, y, z, yaw, valid = self.ResolvePlacement( kind, trace, client:EyeAngles().y )
+	if not x then return nil end
 	if valid then
 		for _, corner in ipairs( self.FootprintCorners( kind, x, y, yaw ) ) do
 			if not self.WithinTiles( corner, state.tiles, state.tileSize, 0 ) then
@@ -137,24 +173,53 @@ hook.Add( "PostDrawTranslucentRenderables", "ZM.Construction.Ghost", function( d
 	if not Construction:LocalBuildMode() then return end
 	local kind, origin, yaw, valid = Construction:GhostPlacement()
 	if not kind then return end
-	local minX, minY, minZ, maxX, maxY, maxZ = Construction.PieceBounds( kind, yaw )
 	render.SetColorMaterial()
-	render.DrawWireframeBox( origin, angle_zero, Vector( minX, minY, minZ ), Vector( maxX, maxY, maxZ ),
-		valid and ghostValid or ghostInvalid, true )
+	Construction.Geometry.DrawWire( kind, yaw, origin, valid and ghostValid or ghostInvalid )
 	state.ghostDrawn = true
 	state.ghostValid = valid
 end )
 
 // Diagnostics for a dev status report.
 function Construction:ClientStatus()
+	local beamTexture = beamMaterial:GetTexture( "$basetexture" )
+	local client = LocalPlayer()
 	return {
 		buildMode = self:LocalBuildMode(),
+		deleteMode = self:LocalDeleteMode(),
+		deleteSelection = IsValid( client ) and client:GetNWInt( "ZM_ConstructionDeleteCount", 0 ) or 0,
 		tiles = #state.tiles,
 		paths = #state.paths,
 		beamsLastFrame = state.draws,
 		ghostDrawn = state.ghostDrawn == true,
 		ghostValid = state.ghostValid == true,
+		geometry = Construction.Geometry.Status(),
+		galleryOpen = Construction.Gallery and Construction.Gallery:IsOpen() or false,
 		materialError = beamMaterial:IsError(),
+		materialShader = beamMaterial:GetShader(),
+		materialTextureWidth = beamTexture and beamTexture:Width() or 0,
 		pieceMaterials = ZM_ConstructionPieceMaterialStatus and ZM_ConstructionPieceMaterialStatus() or nil
 	}
 end
+
+concommand.Add( "zombiesim_dev_construction_status", function()
+	local client = LocalPlayer()
+	if not IsValid( client ) or not client:IsAdmin() or not ZM_World or ZM_World.ActiveProfile ~= "preview" then
+		ErrorNoHalt( "[ZombieSim] Construction diagnostics require a preview admin.\n" )
+		return
+	end
+	local status = Construction:ClientStatus()
+	status.map = game.GetMap()
+	status.profile = ZM_World.ActiveProfile
+	status.capturedAt = os.time()
+	local encoded = util.TableToJSON( status, true )
+	if not encoded then
+		ErrorNoHalt( "[ZombieSim] Could not encode construction diagnostics.\n" )
+		return
+	end
+	file.CreateDir( "zombiesim" )
+	if not file.Write( "zombiesim/construction_status.json", encoded ) then
+		ErrorNoHalt( "[ZombieSim] Could not write construction diagnostics.\n" )
+		return
+	end
+	print( "[ZombieSim] Construction diagnostics saved to data/zombiesim/construction_status.json." )
+end )

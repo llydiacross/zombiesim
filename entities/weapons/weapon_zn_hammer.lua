@@ -44,7 +44,7 @@ function SWEP:PrimaryAttack()
 end
 
 function SWEP:SecondaryAttack()
-    // In build mode: removes an unpaid blueprint you placed, otherwise selects the next piece.
+    // In build mode, right-click only undoes an owned blueprint; finished pieces use Delete mode.
     if self.GetBuildMode and self:GetBuildMode() then
         self:SetNextSecondaryFire(CurTime() + 0.3)
         if SERVER then ZM_Construction:SecondaryBuild(self:GetOwner(), self) end

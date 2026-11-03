@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8873"
-	"mapversion" "4"
+	"mapversion" "5"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -89,7 +89,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "4"
+	"mapversion" "5"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -213,6 +213,124 @@ world
 			"visgroupautoshown" "1"
 		}
 	}
+	solid
+	{
+		"id" "247"
+		side
+		{
+			"id" "204"
+			"plane" "(-232 224 160) (232 224 160) (232 -232 160)"
+			vertices_plus
+			{
+				"v" "-232 224 160"
+				"v" "232 224 160"
+				"v" "232 -232 160"
+				"v" "-232 -232 160"
+			}
+			"material" "DE_NUKE/NUKE_METALGRATE_01"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 -1 0 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "205"
+			"plane" "(-232 -232 152) (232 -232 152) (232 224 152)"
+			vertices_plus
+			{
+				"v" "-232 -232 152"
+				"v" "232 -232 152"
+				"v" "232 224 152"
+				"v" "-232 224 152"
+			}
+			"material" "DE_NUKE/NUKE_METALGRATE_01"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 -1 0 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "206"
+			"plane" "(-232 224 160) (-232 -232 160) (-232 -232 152)"
+			vertices_plus
+			{
+				"v" "-232 224 160"
+				"v" "-232 -232 160"
+				"v" "-232 -232 152"
+				"v" "-232 224 152"
+			}
+			"material" "DE_NUKE/NUKE_METALGRATE_01"
+			"uaxis" "[0 1 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "207"
+			"plane" "(232 224 152) (232 -232 152) (232 -232 160)"
+			vertices_plus
+			{
+				"v" "232 224 152"
+				"v" "232 -232 152"
+				"v" "232 -232 160"
+				"v" "232 224 160"
+			}
+			"material" "DE_NUKE/NUKE_METALGRATE_01"
+			"uaxis" "[0 1 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "208"
+			"plane" "(232 224 160) (-232 224 160) (-232 224 152)"
+			vertices_plus
+			{
+				"v" "232 224 160"
+				"v" "-232 224 160"
+				"v" "-232 224 152"
+				"v" "232 224 152"
+			}
+			"material" "DE_NUKE/NUKE_METALGRATE_01"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		side
+		{
+			"id" "209"
+			"plane" "(232 -232 152) (-232 -232 152) (-232 -232 160)"
+			vertices_plus
+			{
+				"v" "232 -232 152"
+				"v" "-232 -232 152"
+				"v" "-232 -232 160"
+				"v" "232 -232 160"
+			}
+			"material" "DE_NUKE/NUKE_METALGRATE_01"
+			"uaxis" "[1 0 0 0] 0.25"
+			"vaxis" "[0 0 -1 0] 0.25"
+			"rotation" "0"
+			"lightmapscale" "16"
+			"smoothing_groups" "0"
+		}
+		editor
+		{
+			"color" "0 233 214"
+			"visgroupshown" "1"
+			"visgroupautoshown" "1"
+		}
+	}
 }
 entity
 {
@@ -258,48 +376,6 @@ entity
 }
 entity
 {
-	"id" "84"
-	"classname" "prop_dynamic"
-	"angles" "0 0 0"
-	"DisableBoneFollowers" "0"
-	"disableflashlight" "0"
-	"disablereceiveshadows" "0"
-	"disableshadows" "0"
-	"ExplodeDamage" "0"
-	"ExplodeRadius" "0"
-	"fademaxdist" "0"
-	"fademindist" "-1"
-	"fadescale" "1"
-	"gmod_allowphysgun" "1"
-	"HoldAnimation" "0"
-	"MaxAnimTime" "10"
-	"maxdxlevel" "0"
-	"MinAnimTime" "5"
-	"mindxlevel" "0"
-	"model" "models/props_industrial/warehouse_shelf002.mdl"
-	"modelscale" "1.0"
-	"PerformanceMode" "0"
-	"pressuredelay" "0"
-	"RandomAnimation" "0"
-	"renderamt" "255"
-	"rendercolor" "255 255 255"
-	"renderfx" "0"
-	"rendermode" "0"
-	"SetBodyGroup" "0"
-	"skin" "0"
-	"solid" "6"
-	"StartDisabled" "0"
-	"origin" "128 64 32.2812"
-	editor
-	{
-		"color" "220 30 220"
-		"visgroupshown" "1"
-		"visgroupautoshown" "1"
-		"logicalpos" "[0 2000]"
-	}
-}
-entity
-{
 	"id" "89"
 	"classname" "prop_dynamic"
 	"angles" "0 0 0"
@@ -332,48 +408,6 @@ entity
 	"solid" "6"
 	"StartDisabled" "0"
 	"origin" "128 -96 32.2812"
-	editor
-	{
-		"color" "220 30 220"
-		"visgroupshown" "1"
-		"visgroupautoshown" "1"
-		"logicalpos" "[0 2000]"
-	}
-}
-entity
-{
-	"id" "95"
-	"classname" "prop_dynamic"
-	"angles" "0 0 0"
-	"DisableBoneFollowers" "0"
-	"disableflashlight" "0"
-	"disablereceiveshadows" "0"
-	"disableshadows" "0"
-	"ExplodeDamage" "0"
-	"ExplodeRadius" "0"
-	"fademaxdist" "0"
-	"fademindist" "-1"
-	"fadescale" "1"
-	"gmod_allowphysgun" "1"
-	"HoldAnimation" "0"
-	"MaxAnimTime" "10"
-	"maxdxlevel" "0"
-	"MinAnimTime" "5"
-	"mindxlevel" "0"
-	"model" "models/props_industrial/warehouse_shelf002.mdl"
-	"modelscale" "1.0"
-	"PerformanceMode" "0"
-	"pressuredelay" "0"
-	"RandomAnimation" "0"
-	"renderamt" "255"
-	"rendercolor" "255 255 255"
-	"renderfx" "0"
-	"rendermode" "0"
-	"SetBodyGroup" "0"
-	"skin" "0"
-	"solid" "6"
-	"StartDisabled" "0"
-	"origin" "-152 64 32.2812"
 	editor
 	{
 		"color" "220 30 220"
@@ -1031,124 +1065,6 @@ entity
 			"material" "CS_ITALY/CR_MISCWOOD2B"
 			"uaxis" "[1 0 0 0] 0.25"
 			"vaxis" "[0 0 -1 0] 0.25"
-			"rotation" "0"
-			"lightmapscale" "16"
-			"smoothing_groups" "0"
-		}
-		editor
-		{
-			"color" "0 180 0"
-			"visgroupshown" "1"
-			"visgroupautoshown" "1"
-		}
-	}
-	solid
-	{
-		"id" "19"
-		side
-		{
-			"id" "191"
-			"plane" "(128 128 256) (128 -128 256) (-128 -128 256)"
-			vertices_plus
-			{
-				"v" "128 128 256"
-				"v" "128 -128 256"
-				"v" "-128 -128 256"
-				"v" "-128 128 256"
-			}
-			"material" "PHOENIX_STORMS/WOODINSIDE"
-			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 -1 0 0] 0.25"
-			"rotation" "0"
-			"lightmapscale" "16"
-			"smoothing_groups" "0"
-		}
-		side
-		{
-			"id" "190"
-			"plane" "(256 -256 160) (256 256 160) (-256 256 160)"
-			vertices_plus
-			{
-				"v" "256 -256 160"
-				"v" "256 256 160"
-				"v" "-256 256 160"
-				"v" "-256 -256 160"
-			}
-			"material" "PHOENIX_STORMS/WOODINSIDE"
-			"uaxis" "[1 0 0 0] 0.25"
-			"vaxis" "[0 -1 0 0] 0.25"
-			"rotation" "0"
-			"lightmapscale" "16"
-			"smoothing_groups" "0"
-		}
-		side
-		{
-			"id" "189"
-			"plane" "(-128 -128 256) (-256 -256 160) (-256 256 160)"
-			vertices_plus
-			{
-				"v" "-128 -128 256"
-				"v" "-256 -256 160"
-				"v" "-256 256 160"
-				"v" "-128 128 256"
-			}
-			"material" "PHOENIX_STORMS/WOODINSIDE"
-			"uaxis" "[0 1 0 256] 0.25"
-			"vaxis" "[0 0 -1 288] 0.1"
-			"rotation" "0"
-			"lightmapscale" "16"
-			"smoothing_groups" "0"
-		}
-		side
-		{
-			"id" "188"
-			"plane" "(256 -256 160) (128 -128 256) (128 128 256)"
-			vertices_plus
-			{
-				"v" "256 -256 160"
-				"v" "128 -128 256"
-				"v" "128 128 256"
-				"v" "256 256 160"
-			}
-			"material" "PHOENIX_STORMS/WOODINSIDE"
-			"uaxis" "[0 1 0 256] 0.25"
-			"vaxis" "[0 0 -1 -288] -0.1"
-			"rotation" "0"
-			"lightmapscale" "16"
-			"smoothing_groups" "0"
-		}
-		side
-		{
-			"id" "187"
-			"plane" "(-128 128 256) (-256 256 160) (256 256 160)"
-			vertices_plus
-			{
-				"v" "-128 128 256"
-				"v" "-256 256 160"
-				"v" "256 256 160"
-				"v" "128 128 256"
-			}
-			"material" "PHOENIX_STORMS/WOODINSIDE"
-			"uaxis" "[1 0 0 256] 0.25"
-			"vaxis" "[0 0 -1 -288] -0.1"
-			"rotation" "0"
-			"lightmapscale" "16"
-			"smoothing_groups" "0"
-		}
-		side
-		{
-			"id" "186"
-			"plane" "(-256 -256 160) (-128 -128 256) (128 -128 256)"
-			vertices_plus
-			{
-				"v" "-256 -256 160"
-				"v" "-128 -128 256"
-				"v" "128 -128 256"
-				"v" "256 -256 160"
-			}
-			"material" "PHOENIX_STORMS/WOODINSIDE"
-			"uaxis" "[1 0 0 256] 0.25"
-			"vaxis" "[0 0 -1 288] 0.1"
 			"rotation" "0"
 			"lightmapscale" "16"
 			"smoothing_groups" "0"

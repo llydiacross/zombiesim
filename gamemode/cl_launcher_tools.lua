@@ -354,7 +354,12 @@ function Tools:EnsureWorkspace()
 end
 
 function Tools:CloseWorkspace()
-    if IsValid(self.Body) then self.Body:Remove() end
+    if IsValid(self.Body) then
+        // Hide before the deferred Remove() so a stalled deletion cannot keep drawing the workspace.
+        self.Body:SetMouseInputEnabled(false)
+        self.Body:SetVisible(false)
+        self.Body:Remove()
+    end
     self.Body, self.Inspector, self.Cards, self.Page = nil, nil, {}, "home"
     if IsValid(self.Host) and self.MenuWidth then self.Host:SetWide(self.MenuWidth) end
 end

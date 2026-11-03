@@ -4,6 +4,7 @@ local Palettes = ZM_SkyPalettes
 if Palettes.Meshes then
     for _, entry in ipairs(Palettes.Meshes) do entry.mesh:Destroy() end
 end
+
 Palettes.Meshes = {}
 Palettes.ActiveKey = nil
 Palettes.Preview = nil

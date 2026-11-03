@@ -75,7 +75,8 @@ local function tileCentre(tileX, tileY)
     return tileX * tileSize, tileY * tileSize, tileSize
 end
 
-local function isNear(position, tileX, tileY)
+function Service:IsWithinClaimReach(position, tileX, tileY)
+    if not position or type(position.x) ~= "number" or type(position.y) ~= "number" then return false end
     local centreX, centreY, tileSize = tileCentre(tileX, tileY)
     local reach = tileSize * Service.VisitReach
     return math.abs(position.x - centreX) <= reach and math.abs(position.y - centreY) <= reach
@@ -100,7 +101,7 @@ function Service:ClaimTile(target, tileX, tileY)
     if not ZM_World:IsClaimableTile(cell.id, tileX, tileY) then
         return false, "That tile cannot be claimed."
     end
-    if not isNear(target:GetPos(), tileX, tileY) then
+    if not self:IsWithinClaimReach(target:GetPos(), tileX, tileY) then
         return false, "Move closer to the tile to claim it."
     end
     local now = math.floor(self.Now())
@@ -138,7 +139,7 @@ function Service:RecordVisit(target, force)
     local friendCache = {}
     local steps = {}
     for _, row in ipairs(rows) do
-        if self.IsActive(row, now) and row.lastVisitAt < now and isNear(position, row.tileX, row.tileY)
+        if self.IsActive(row, now) and row.lastVisitAt < now and self:IsWithinClaimReach(position, row.tileX, row.tileY)
             and self:HasAccess(identity, row, friendCache) then
             steps[#steps + 1] = {
                 kind = "claimVisit", steamid = identity.character, owner = row.owner,
@@ -192,6 +193,132 @@ function Service:CellSnapshot(target)
     return { cellId = cell.id, claimable = ZM_World:GetClaimTiles(cell.id), claims = claims }
 end
 
+// What the client draws: the current cell's claimable tiles and claims (when in a claimable city cell) plus this
+// survivor's own claims across every cell for the world map. Presentation only; the server re-validates claims.
+function Service:ClientSnapshot(target)
+    if not self.StorageReady then return nil, "Land-claim storage is unavailable." end
+    local identity, identityError = self:Identity(target)
+    if not identity then return nil, identityError end
+    local payload = { cellId = 0, claimable = {}, claims = {}, owned = {} }
+    local snapshot = self:CellSnapshot(target)
+    if snapshot then
+        payload.cellId = snapshot.cellId
+        payload.claimable = snapshot.claimable
+        payload.claims = snapshot.claims
+    end
+    local rows, readError = ZM_GetOwnerClaims(identity.profile, identity.character)
+    if not rows then return nil, readError end
+    local now = math.floor(self.Now())
+    for _, row in ipairs(rows) do
+        payload.owned[#payload.owned + 1] = {
+            cellId = row.cellId, tileX = row.tileX, tileY = row.tileY, active = self.IsActive(row, now)
+        }
+    end
+    return payload
+end
+
+function Service.SnapshotSignature(payload)
+    local parts = { tostring(payload.cellId) }
+    for _, tile in ipairs(payload.claimable) do parts[#parts + 1] = "t" .. tile.x .. "," .. tile.y end
+    for _, claim in ipairs(payload.claims) do
+        parts[#parts + 1] = string.format("c%d,%d,%s%s%s", claim.tileX, claim.tileY,
+            claim.active and "a" or "", claim.mine and "m" or "", claim.access and "x" or "")
+    end
+    for _, claim in ipairs(payload.owned) do
+        parts[#parts + 1] = string.format("o%d:%d,%d,%s", claim.cellId, claim.tileX, claim.tileY, claim.active and "a" or "")
+    end
+    return table.concat(parts, ";")
+end
+
+Service.RequestInterval = 0.4
+
+// Claim-mode click from the client. Coordinates are untrusted; ClaimTile performs every eligibility check.
+function Service:HandleClaimRequest(target, tileX, tileY, now)
+    now = now or (CurTime and CurTime() or os.clock())
+    if target.ZM_ClaimRequestAt and now - target.ZM_ClaimRequestAt < self.RequestInterval then
+        return false, "Please wait a moment."
+    end
+    target.ZM_ClaimRequestAt = now
+    if not ZM_Util.IsWholeNumber(tileX, -2, 2) or not ZM_Util.IsWholeNumber(tileY, -2, 2) then
+        return false, "Invalid tile."
+    end
+    local ok, result = self:ClaimTile(target, tileX, tileY)
+    if not ok then return false, result end
+    return true, string.format("Claimed tile %d,%d.", result.tileX, result.tileY)
+end
+
+if SERVER and util and util.AddNetworkString and net then
+    util.AddNetworkString("ZM.Claims.Snapshot")
+    util.AddNetworkString("ZM.Claims.Request")
+    util.AddNetworkString("ZM.Claims.Result")
+
+    local maxOwned = 1023
+
+    // Sends the snapshot when it changed since the last send, or always when forced.
+    function Service:SendSnapshot(target, force)
+        local payload = self:ClientSnapshot(target)
+        if not payload then return false end
+        local signature = self.SnapshotSignature(payload)
+        if not force and target.ZM_ClaimSnapshotSignature == signature then return true end
+        target.ZM_ClaimSnapshotSignature = signature
+        net.Start("ZM.Claims.Snapshot")
+        net.WriteUInt(math.max(0, payload.cellId), 32)
+        net.WriteUInt(math.Clamp(math.floor(tonumber(ZM_World:GetCellBounds().tileSize) or 640), 1, 65535), 16)
+        net.WriteUInt(math.min(#payload.claimable, 25), 5)
+        for index = 1, math.min(#payload.claimable, 25) do
+            net.WriteInt(payload.claimable[index].x, 4)
+            net.WriteInt(payload.claimable[index].y, 4)
+        end
+        net.WriteUInt(math.min(#payload.claims, 25), 5)
+        for index = 1, math.min(#payload.claims, 25) do
+            local claim = payload.claims[index]
+            net.WriteInt(claim.tileX, 4)
+            net.WriteInt(claim.tileY, 4)
+            net.WriteBool(claim.active)
+            net.WriteBool(claim.mine)
+            net.WriteBool(claim.access)
+        end
+        net.WriteUInt(math.min(#payload.owned, maxOwned), 10)
+        for index = 1, math.min(#payload.owned, maxOwned) do
+            local claim = payload.owned[index]
+            net.WriteUInt(claim.cellId, 32)
+            net.WriteInt(claim.tileX, 4)
+            net.WriteInt(claim.tileY, 4)
+            net.WriteBool(claim.active)
+        end
+        net.Send(target)
+        return true
+    end
+
+    // Kind 0 asks for a fresh snapshot (entering claim mode); kind 1 claims the given tile.
+    net.Receive("ZM.Claims.Request", function(_, sender)
+        if not IsValid(sender) then return end
+        local kind = net.ReadUInt(2)
+        if kind == 0 then
+            local now = CurTime()
+            if sender.ZM_ClaimSyncAt and now - sender.ZM_ClaimSyncAt < Service.RequestInterval then return end
+            sender.ZM_ClaimSyncAt = now
+            Service:SendSnapshot(sender, true)
+            return
+        end
+        if kind ~= 1 then return end
+        local tileX, tileY = net.ReadInt(4), net.ReadInt(4)
+        local ok, message = Service:HandleClaimRequest(sender, tileX, tileY)
+        if ok then
+            Service:SendSnapshot(sender, true)
+            local tool = ZM_Construction and ZM_Construction.ActiveTool and ZM_Construction:ActiveTool(sender)
+            if IsValid(tool) and tool:GetBuildMode() then
+                local tiles = ZM_Construction:AccessibleTiles(sender)
+                if tiles then ZM_Construction:PublishTiles(sender, tiles) end
+            end
+        end
+        net.Start("ZM.Claims.Result")
+        net.WriteBool(ok == true)
+        net.WriteString(string.sub(tostring(message or ""), 1, 200))
+        net.Send(sender)
+    end)
+end
+
 // Server-only reward path (quests and similar): grants claim tokens to the backpack.
 function Service:GrantToken(target, count, reason)
     count = count or 1
@@ -209,6 +336,7 @@ if SERVER and timer and not Service.TimerCreated then
         for _, candidate in ipairs(player.GetHumans()) do
             if candidate.ZM_PersistentStateLoaded == true then
                 Service:RecordVisit(candidate)
+                if Service.SendSnapshot then Service:SendSnapshot(candidate) end
             end
         end
     end)
@@ -234,7 +362,10 @@ if SERVER and ZM_Util and ZM_Util.RegisterCommands and concommand then
                 return false, "bad arguments"
             end
             ok, result = Service:ClaimTile(target, tileX, tileY)
-            if ok then result = string.format("Claimed tile %d,%d in cell %d.", result.tileX, result.tileY, result.cellId) end
+            if ok then
+                result = string.format("Claimed tile %d,%d in cell %d.", result.tileX, result.tileY, result.cellId)
+                if Service.SendSnapshot then Service:SendSnapshot(target, true) end
+            end
         elseif command == "zn_claim_status" then
             local snapshot, snapshotError = Service:CellSnapshot(target)
             ok, result = snapshot ~= nil, snapshotError

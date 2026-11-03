@@ -9,6 +9,8 @@ Drops.UseRange = 160
 Drops.EntityClass = "zn_dropped_item"
 Drops.CrateModel = "models/props_junk/wood_crate001a.mdl"
 
+local playerClearance = 1
+
 local function mapBasename(path)
     return string.lower(string.match(path or "", "([^/]+)$") or path or "")
 end
@@ -21,6 +23,24 @@ end
 local function itemName(instance)
     local definition = Items:GetDefinition(instance.itemId)
     return definition and definition.name or instance.itemId
+end
+
+local function overlapsPlayer(entity)
+    local crateMinimum, crateMaximum = entity:WorldSpaceAABB()
+    for _, target in ipairs(player.GetAll()) do
+        if IsValid(target) then
+            local playerMinimum, playerMaximum = target:WorldSpaceAABB()
+            if crateMinimum.x < playerMaximum.x + playerClearance
+                and crateMaximum.x > playerMinimum.x - playerClearance
+                and crateMinimum.y < playerMaximum.y + playerClearance
+                and crateMaximum.y > playerMinimum.y - playerClearance
+                and crateMinimum.z < playerMaximum.z + playerClearance
+                and crateMaximum.z > playerMinimum.z - playerClearance then
+                return true
+            end
+        end
+    end
+    return false
 end
 
 function Drops:GetTargetLocation(target)
@@ -126,6 +146,11 @@ function Drops:CreateWorldEntity(row)
     local minimum = entity:GetModelBounds()
     entity:SetPos(Vector(row.x, row.y, row.z - minimum.z))
     entity:Activate()
+    if overlapsPlayer(entity) then
+        entity:SetSolid(SOLID_NONE)
+        entity:Remove()
+        return nil, "The crate would overlap a player; move away and try again."
+    end
     entity:SetDropData(row)
     return entity
 end

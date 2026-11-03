@@ -80,6 +80,118 @@ class WalkerBehaviourTests(unittest.TestCase):
             assert(not self:IsWithinVision(target(Vector(-900, 0, 0))), "range still applies")
         """)
 
+    def test_structures_block_hits_and_sieges_give_up_for_a_doorway(self):
+        self.lua.execute("ENT = {}")
+        self.lua.execute(section(ENTITY, "local function isStructure", "function ENT:IsWithinVision"))
+        self.lua.execute("""
+            local meta = getmetatable(Vector(0, 0, 0))
+            function meta:Distance(o) return (self - o):Length() end
+            function meta:Distance2D(o) return math.sqrt((self - o):Length2DSqr()) end
+            MASK_NPCSOLID = 1
+            coroutine.wait = function(seconds) now = now + seconds end
+            coroutine.yield = function() now = now + 0.1 end
+            function piece(kind, position)
+                return {kind = kind, position = position, complete = true,
+                    GetClass = function() return "zn_construction_piece" end,
+                    GetComplete = function(self) return self.complete end,
+                    GetPieceKind = function(self) return self.kind end,
+                    GetPos = function(self) return self.position end,
+                    LocalToWorld = function(self, offset) return self.position + offset end}
+            end
+            wall = piece("wall", Vector(60, 0, 0))
+            blocking = wall
+            util = {
+                TraceLine = function(trace)
+                    assert(trace.ignoreworld and trace.filter(blocking or wall) ~= nil)
+                    if blocking then return {Hit = true, Entity = blocking, HitPos = Vector(56, 0, 36), HitNormal = Vector(-1, 0, 0)} end
+                    return {Hit = false}
+                end,
+                TraceHull = function() return {Hit = false} end
+            }
+            damage = {}
+            ZM_Construction = {DamagePiece = function(_, entity, amount)
+                damage[#damage + 1] = amount
+                return false
+            end}
+            local survivor = {GetPos = function() return Vector(200, 0, 0) end,
+                EyePos = function() return Vector(200, 0, 64) end,
+                WorldSpaceCenter = function() return Vector(200, 0, 36) end}
+            survivorTarget = survivor
+            doorways = {}
+            ents = {FindInSphere = function() return doorways end}
+            local self = setmetatable({
+                position = Vector(0, 0, 0), NextAttackAt = 0, DevelopmentAttackInterval = 0,
+                AttackWindup = 0.9, AttackRecovery = 0.6, AttackReachTolerance = 16,
+                StructureDamage = 1, StructureBlockRange = 72, SiegeGiveUpSeconds = 20,
+                DoorSeekSeconds = 20, DoorMemorySeconds = 60, DoorSearchRadius = 768,
+                loco = {FaceTowards = function() end}
+            }, {__index = ENT})
+            self.loco.Approach = function(_, goal) self.position = Vector(goal.x, goal.y, goal.z) end
+            function self:GetPos() return self.position end
+            function self:WorldSpaceCenter() return self.position + Vector(0, 0, 36) end
+            function self:FlatForward() return Vector(1, 0, 0) end
+            function self:DetourHull() return Vector(-16, -16, 0), Vector(16, 16, 72) end
+            function self:IsValidTarget(target) return target == survivor end
+            function self:CanSeeTarget() return true end
+            function self:GetActivity() return 1 end
+            function self:RestActivity() return 1 end
+            function self:MoveActivity() return 1 end
+            function self:StartActivity() end
+            function self:AddGesture() end
+            function self:PlayVoice() end
+            function self:MoveToward() error("direct approach expected") end
+            walkerSelf = self
+
+            canReachBlocked = self:CanReachTarget(survivor)
+            blockerFound = self:FindStructureBlocker(survivor) == wall
+            local started = now
+            while now - started < 20 do
+                self:BesiegeStructure(survivor, wall, Vector(56, 0, 36), Vector(-1, 0, 0))
+            end
+            strikesBeforeGiveUp = #damage
+            sieges = self.SiegeCount
+
+            door = piece("wall_doorway", Vector(60, 128, 0))
+            used = piece("wall_doorway", Vector(60, 32, 0))
+            doorways = {used, door, piece("wall", Vector(60, 64, 0))}
+            self.DoorwayMemory = {[used] = now + 60}
+            self:BesiegeStructure(survivor, wall, Vector(56, 0, 36), Vector(-1, 0, 0))
+            throughDoor = self.position.x == 60 and self.position.y == 128 + 56
+            seekCount, giveUps = self.DoorSeekCount, self.SiegeGiveUpCount
+            siegeCleared = self.SiegePiece == nil and self.SiegeStartedAt == nil
+            doorRemembered = self.DoorwayMemory[door] ~= nil
+
+            -- Every doorway is remembered now: after the next give-up the walker returns to hitting.
+            self.position = Vector(0, 0, 0)
+            local restart = now
+            while now - restart < 20 do
+                self:BesiegeStructure(survivor, wall, Vector(56, 0, 36), Vector(-1, 0, 0))
+            end
+            local before = #damage
+            self:BesiegeStructure(survivor, wall, Vector(56, 0, 36), Vector(-1, 0, 0))
+            noDoorRestarted = self.SiegeStartedAt == now and #damage == before and self.DoorSeekCount == 1
+            self:BesiegeStructure(survivor, wall, Vector(56, 0, 36), Vector(-1, 0, 0))
+            resumedHitting = #damage == before + 1
+
+            blocking = nil
+            self.BlockerCheckedAt = nil
+            canReachClear = self:CanReachTarget(survivor)
+        """)
+        g = self.lua.globals()
+        self.assertFalse(g.canReachBlocked)
+        self.assertTrue(g.blockerFound)
+        # One strike per 1.5 s for 20 s before giving up.
+        self.assertGreaterEqual(g.strikesBeforeGiveUp, 13)
+        self.assertLessEqual(g.strikesBeforeGiveUp, 14)
+        self.assertEqual(g.sieges, 1)
+        self.assertTrue(g.throughDoor)
+        self.assertEqual((g.seekCount, g.giveUps), (1, 1))
+        self.assertTrue(g.siegeCleared)
+        self.assertTrue(g.doorRemembered)
+        self.assertTrue(g.noDoorRestarted)
+        self.assertTrue(g.resumedHitting)
+        self.assertTrue(g.canReachClear)
+
     def test_blocked_walker_sidesteps_and_keeps_its_target(self):
         self.lua.execute("ENT = {}")
         self.lua.execute(section(ENTITY, "function ENT:IsMakingNoProgress", "function ENT:AttackTarget"))
@@ -154,6 +266,16 @@ class WalkerBehaviourTests(unittest.TestCase):
             assert(not self:FollowDetour() and self.HoldUntil == nil, "hold ends and pathing resumes")
 
             util.TraceHull = function() return {Hit = true} end
+            function self:IsValidTarget(target) return target == "player" end
+            local structureAhead
+            function self:FindStructureBlocker() return structureAhead end
+            structureAhead = "wall"
+            self:HandleStuck()
+            assert(self.CurrentTarget == "player" and self.HoldUntil > now,
+                "walled in by a player structure: keeps the target for the siege")
+            now = self.HoldUntil
+            assert(not self:FollowDetour(), "structure hold ends")
+            structureAhead = nil
             self:HandleStuck()
             assert(self.DetourGoal == nil and self.CurrentTarget == nil and self.investigationCleared,
                 "falls back to a full reset when both sides are blocked")

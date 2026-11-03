@@ -1140,6 +1140,7 @@ local function drawPlayerMinimap()
                 end
             end
             if project then ZM_TransitionMarkers:DrawMap(project, mapX, mapY, mapWidth, mapHeight) end
+            if project and ZM_Claims then ZM_Claims:DrawLocal(project, mapX, mapY, mapWidth, mapHeight) end
         end
         if minimapViewMode == "map" and ZM_WorldMap and ZM_WorldMap.ProjectLocalMapPosition then
             refreshCompassEntities()

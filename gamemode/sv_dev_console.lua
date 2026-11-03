@@ -717,6 +717,16 @@ DevConsole.DirectCommands.zombiesim_dev_capture = function(argumentString)
     return true
 end
 
+DevConsole.DirectCommands.zombiesim_dev_construction_status = function()
+    local target = ZM_Util.FirstHuman()
+    if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then
+        return false, "construction diagnostics require a connected preview admin"
+    end
+    target:ConCommand("zombiesim_dev_construction_status")
+    print("[ZombieSim] Requested client construction diagnostics.")
+    return true
+end
+
 DevConsole.DirectCommands.zombiesim_dev_skybox_activity = function()
     local target = ZM_Util.FirstHuman()
     if not IsValid(target) or not target:IsAdmin() or ZM_World.ActiveProfile ~= "preview" then

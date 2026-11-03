@@ -1452,6 +1452,12 @@ local function createMapCanvas(parent, onSelect)
                                 mapY + mapSize * 0.5 - point.y / getLocalMapSpan() * mapSize
                         end, 0, 0, width, height)
                     end
+                    if ZM_Claims then
+                        ZM_Claims:DrawLocal(function(point)
+                            return mapX + mapSize * 0.5 + point.x / getLocalMapSpan() * mapSize,
+                                mapY + mapSize * 0.5 - point.y / getLocalMapSpan() * mapSize
+                        end, 0, 0, width, height)
+                    end
                     local position = player:GetPos()
                     local playerX = mapX + mapSize * 0.5 + position.x / getLocalMapSpan() * mapSize
                     local playerY = mapY + mapSize * 0.5 - position.y / getLocalMapSpan() * mapSize
@@ -1595,6 +1601,9 @@ local function createMapCanvas(parent, onSelect)
             drawSafeZoneMarkers(worldData, mapX, mapY, cellWidth, cellHeight)
         else
             drawBossMarkers(mapX, mapY, cellWidth, cellHeight)
+        end
+        if ZM_Claims then
+            ZM_Claims:DrawWorldGrid(mapX, mapY, cellWidth, cellHeight, getCellGridCoordinates, 0, 0, width, height)
         end
 
         local player = LocalPlayer()

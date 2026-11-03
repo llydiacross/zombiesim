@@ -622,7 +622,8 @@ local previewCheatToggles = {
     { key = "noclip", action = "toggle_noclip", label = "NOCLIP" },
     { key = "notarget", action = "toggle_notarget", label = "ZOMBIES IGNORE ME" },
     { key = "infiniteAmmo", action = "toggle_infinite_ammo", label = "INFINITE AMMO" },
-    { key = "survivalLock", action = "toggle_survival_lock", label = "SURVIVAL LOCK" }
+    { key = "survivalLock", action = "toggle_survival_lock", label = "SURVIVAL LOCK" },
+    { key = "freeBuild", action = "toggle_free_build", label = "FREE BUILDING" }
 }
 
 local function addCheatSection(parent, title)

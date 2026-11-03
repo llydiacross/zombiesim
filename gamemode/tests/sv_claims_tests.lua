@@ -4,7 +4,7 @@ local Claims = ZM_ClaimService
 local Inventory = ZM_InventoryService
 local suite = ZM_TestHarness.NewSuite()
 local profile, prefix, clock
-local tables = { "player_claims", "claim_friends", "player_items" }
+local tables = { "player_claims", "claim_friends", "player_items", "equipped_weapon_slots" }
 local cell = { id = 9001, map = "zn_test_claim_cell" }
 local claimable = { ["0,0"] = true, ["1,0"] = true }
 
@@ -84,6 +84,49 @@ suite:Add("friends refresh active claims until removed", function(check)
     check(ok and count == 0, "removed friends lose access")
 end)
 
+suite:Add("review snapshots preserve native SQL nulls", function(check)
+    local owner = prefix .. "_exact"
+    local saved, saveError = ZM_CommitWrites(profile, {
+        { kind = "playerItemsExact", steamid = owner, rows = {
+            { instanceId = "item_null", container = "backpack", slot = 1, itemId = "itemBandage",
+                count = 1, level = 1, mastercraft = 0, clip = 0, createdAt = 10 },
+            { instanceId = "item_json", container = "backpack", slot = 2, itemId = "itemBandage",
+                count = 1, level = 1, mastercraft = 0, attributes = "{}", clip = 0, createdAt = 11 }
+        } },
+        { kind = "equippedWeaponSlotsExact", steamid = owner, rows = {
+            { slot = 1, selected = 0 },
+            { slot = 2, instanceId = "NULL", selected = 0 }
+        } }
+    })
+    assert(saved, saveError)
+
+    local rawItems = assert(ZM_GetPlayerItems(owner, profile))
+    local items = assert(ZM_GetExactPlayerItems(owner, profile))
+    local slots = assert(ZM_GetExactEquippedWeaponSlots(owner, profile))
+    check(rawItems[1].attributes == "NULL" and items[1].attributes == nil and items[2].attributes == "{}",
+        "exact item snapshots distinguish SQL NULL from JSON")
+    check(slots[1].instanceId == nil and slots[2].instanceId == "NULL",
+        "exact slot snapshots distinguish SQL NULL from the literal string")
+    saved, saveError = ZM_CommitWrites(profile, {
+        { kind = "playerItemsExact", steamid = owner, rows = items },
+        { kind = "equippedWeaponSlotsExact", steamid = owner, rows = slots }
+    })
+    assert(saved, saveError)
+    local slotNulls = assert(sql.Query("SELECT instanceId IS NULL AS is_null FROM equipped_weapon_slots WHERE steamid = "
+        .. sql.SQLStr(owner) .. " AND profile = " .. sql.SQLStr(profile) .. " ORDER BY slot"))
+    check(slotNulls[1].is_null == "1" and slotNulls[2].is_null == "0",
+        "exact slot writes preserve both original SQL values")
+
+    assert(sql.Query("UPDATE player_items SET attributes = 'NULL' WHERE steamid = " .. sql.SQLStr(owner)
+        .. " AND profile = " .. sql.SQLStr(profile) .. " AND instanceId = 'item_null'") ~= false)
+    items = assert(ZM_GetExactPlayerItems(owner, profile))
+    saved, saveError = ZM_CommitWrites(profile, { { kind = "playerItemsExact", steamid = owner, rows = items } })
+    local stillText = sql.QueryValue("SELECT attributes IS NULL FROM player_items WHERE steamid = " .. sql.SQLStr(owner)
+        .. " AND profile = " .. sql.SQLStr(profile) .. " AND instanceId = 'item_null'")
+    check(not saved and string.find(tostring(saveError), "invalid exact player-item attributes", 1, true)
+        and stillText == "0", "invalid literal attributes are rejected without changing the original row")
+end)
+
 local function failureSummary(name, message)
     return { passed = 0, failed = 1, ranAt = os.time(), cases = {
         { name = name, passed = false, failures = { tostring(message) } }
@@ -121,7 +164,7 @@ function Claims:RunTests()
     clock = os.time()
     self.Now = function() return clock end
     World.GetMapPath = function(_, target)
-        return target == cell and ("maps/" .. game.GetMap() .. ".bsp") or original.getMapPath(World, target)
+        return target == cell and ("maps/" .. game.GetMap()) or original.getMapPath(World, target)
     end
     World.GetCellBounds = function() return { tileSize = 640, coreHalfExtent = 1600 } end
     World.IsClaimableTile = function(_, cellId, x, y) return cellId == cell.id and claimable[x .. "," .. y] == true end

@@ -44,6 +44,13 @@ ENT.CloseSenseRange = 150
 ENT.AttackWindup = 0.9
 ENT.AttackRecovery = 0.6
 ENT.AttackReachTolerance = 16
+// Player structures (user-approved 2026-11-03): strike a blocking piece, give up after 20 s and try a doorway.
+ENT.StructureDamage = 1
+ENT.StructureBlockRange = 72
+ENT.SiegeGiveUpSeconds = 20
+ENT.DoorSeekSeconds = 20
+ENT.DoorMemorySeconds = 60
+ENT.DoorSearchRadius = 768
 ENT.WanderRadius = 256
 ENT.WanderSpeedScale = 0.6
 ENT.WanderPauseMin = 3

@@ -157,6 +157,195 @@ function ENT:CanSeeTarget(target)
     return not trace.Hit
 end
 
+local function isStructure(entity)
+    return IsValid(entity) and entity:GetClass() == "zn_construction_piece" and entity:GetComplete()
+end
+
+// First complete player structure on the segment; the world is ignored because CanSeeTarget already covers it.
+function ENT:TraceStructure(startPos, endPos)
+    local trace = util.TraceLine({
+        start = startPos, endpos = endPos, ignoreworld = true,
+        filter = function(entity) return isStructure(entity) end
+    })
+    if trace.Hit and isStructure(trace.Entity) then
+        return trace.Entity, trace.HitPos, trace.HitNormal
+    end
+    return nil
+end
+
+// Sensing still sees through gaps, but a hit needs a clear line that no built piece interrupts.
+function ENT:CanReachTarget(target)
+    if not self:CanSeeTarget(target) then
+        return false
+    end
+    local origin = self:WorldSpaceCenter()
+    return not self:TraceStructure(origin, target:EyePos()) and not self:TraceStructure(origin, target:WorldSpaceCenter())
+end
+
+// A complete piece within reach between the walker and its target, or directly ahead at knee or chest height.
+function ENT:FindStructureBlocker(target)
+    local now = CurTime()
+    if self.BlockerCheckedAt and now < self.BlockerCheckedAt + 0.25 then
+        if self.BlockerPiece and not isStructure(self.BlockerPiece) then
+            self.BlockerPiece = nil
+        end
+        return self.BlockerPiece, self.BlockerHitPos, self.BlockerHitNormal
+    end
+    self.BlockerCheckedAt = now
+    self.BlockerPiece, self.BlockerHitPos, self.BlockerHitNormal = nil, nil, nil
+    if not self:IsValidTarget(target) then
+        return nil
+    end
+    local origin = self:WorldSpaceCenter()
+    local range = self.StructureBlockRange
+    local piece, hitPos, hitNormal = self:TraceStructure(origin, target:WorldSpaceCenter())
+    if not piece or hitPos:Distance2D(origin) > range then
+        local position = self:GetPos()
+        local forward = self:FlatForward()
+        piece = nil
+        for _, height in ipairs({ 28, 56 }) do
+            local start = position + Vector(0, 0, height)
+            piece, hitPos, hitNormal = self:TraceStructure(start, start + forward * range)
+            if piece then
+                break
+            end
+        end
+    end
+    self.BlockerPiece, self.BlockerHitPos, self.BlockerHitNormal = piece, hitPos, hitNormal
+    return piece, hitPos, hitNormal
+end
+
+// One telegraphed swing at a piece, using the player attack's wind-up and recovery. Health lives on the piece, so
+// a crowd breaks it faster than one walker.
+function ENT:StrikeStructure(piece, hitPos, hitNormal)
+    if CurTime() < self.NextAttackAt then
+        self.WalkerState = "siege"
+        coroutine.wait(0.1)
+        return
+    end
+    self.NextAttackAt = CurTime() + math.max(self.DevelopmentAttackInterval, self.AttackWindup + self.AttackRecovery)
+    self.WalkerState = "siegeWindup"
+    if self:GetActivity() ~= self:RestActivity() then
+        self:StartActivity(self:RestActivity())
+    end
+    self.loco:FaceTowards(hitPos)
+    self:AddGesture(self.AttackGesture)
+    self:PlayVoice(self.SoundAttack, self.SoundAttackCount, 75)
+    coroutine.wait(self.AttackWindup)
+    if self.WalkerDead then
+        return
+    end
+    self.StructureStrikeCount = (self.StructureStrikeCount or 0) + 1
+    if isStructure(piece) and hitPos:Distance2D(self:WorldSpaceCenter()) <= self.StructureBlockRange + self.AttackReachTolerance and
+        ZM_Construction and ZM_Construction.DamagePiece and
+        ZM_Construction:DamagePiece(piece, self.StructureDamage, self, hitPos, hitNormal) then
+        self.StructureBreakCount = (self.StructureBreakCount or 0) + 1
+        self.BlockerCheckedAt = nil
+    end
+    self.WalkerState = "siegeRecovery"
+    coroutine.wait(self.AttackRecovery)
+end
+
+function ENT:ResetSiege()
+    self.SiegePiece, self.SiegeStartedAt = nil, nil
+end
+
+// Nearest untried complete doorway around the target, weighted by the walk there and onward to the target.
+function ENT:FindDoorway(target)
+    local now = CurTime()
+    local memory = self.DoorwayMemory or {}
+    self.DoorwayMemory = memory
+    local position, goal = self:GetPos(), target:GetPos()
+    local best, bestCost
+    for _, entity in ipairs(ents.FindInSphere(goal, self.DoorSearchRadius)) do
+        if isStructure(entity) and entity:GetPieceKind() == "wall_doorway" and now >= (memory[entity] or 0) then
+            local origin = entity:GetPos()
+            local cost = origin:Distance(position) + origin:Distance(goal)
+            if not bestCost or cost < bestCost then
+                best, bestCost = entity, cost
+            end
+        end
+    end
+    return best
+end
+
+// Walk to the near side of the doorway, then straight through its 48-unit opening. Fails on timeout or a stall.
+function ENT:SeekDoorway(doorway, target)
+    local now = CurTime()
+    self.DoorwayMemory[doorway] = now + self.DoorMemorySeconds
+    self.DoorSeekCount = (self.DoorSeekCount or 0) + 1
+    local position = self:GetPos()
+    local front, back = doorway:LocalToWorld(Vector(0, 56, 0)), doorway:LocalToWorld(Vector(0, -56, 0))
+    if back:DistToSqr(position) < front:DistToSqr(position) then
+        front, back = back, front
+    end
+    local deadline = now + self.DoorSeekSeconds
+    local mins, maxs = self:DetourHull()
+    local checkAt, checkPosition = now, position
+    local goal = front
+    while CurTime() < deadline do
+        if self.WalkerDead or not self:IsValidTarget(target) or not isStructure(doorway) then
+            return false
+        end
+        self.WalkerState = "doorSeek"
+        position = self:GetPos()
+        if (position - goal):Length2DSqr() <= 24 * 24 then
+            if goal == back then
+                self.ProgressCheckAt = nil
+                return true
+            end
+            goal = back
+        end
+        local direct = goal == back or not util.TraceHull({
+            start = position, endpos = goal + Vector(0, 0, position.z - goal.z),
+            mins = mins, maxs = maxs, mask = MASK_NPCSOLID, filter = self
+        }).Hit
+        if direct then
+            if self:GetActivity() ~= self:MoveActivity() then
+                self:StartActivity(self:MoveActivity())
+            end
+            self.loco:FaceTowards(goal)
+            self.loco:Approach(goal, 1)
+        else
+            self:MoveToward(goal, 1, true)
+        end
+        if CurTime() >= checkAt + 2 then
+            if position:DistToSqr(checkPosition) < 16 * 16 then
+                return false
+            end
+            checkAt, checkPosition = CurTime(), position
+        end
+        coroutine.yield()
+    end
+    return false
+end
+
+// Hit the blocking piece; after the give-up time try a reachable doorway, otherwise return to hitting.
+function ENT:BesiegeStructure(target, piece, hitPos, hitNormal)
+    local now = CurTime()
+    if self.SiegePiece ~= piece or not self.SiegeStartedAt then
+        if not self.SiegeStartedAt then
+            self.SiegeCount = (self.SiegeCount or 0) + 1
+        end
+        self.SiegePiece = piece
+        self.SiegeStartedAt = self.SiegeStartedAt or now
+    end
+    self.SiegeSeenAt = now
+    if now - self.SiegeStartedAt >= self.SiegeGiveUpSeconds then
+        self.SiegeGiveUpCount = (self.SiegeGiveUpCount or 0) + 1
+        local doorway = self:FindDoorway(target)
+        if doorway and self:SeekDoorway(doorway, target) then
+            self:ResetSiege()
+            self.BlockerCheckedAt = nil
+            return
+        end
+        self.SiegeStartedAt = CurTime()
+        self.BlockerCheckedAt = nil
+        return
+    end
+    self:StrikeStructure(piece, hitPos, hitNormal)
+end
+
 // 120 degree forward cone plus a short all-round sense; an already-engaged target is tracked regardless of facing.
 function ENT:IsWithinVision(target)
     local offset = target:GetPos() - self:GetPos()
@@ -372,7 +561,7 @@ end
 // Telegraphed swing: the wind-up gesture plays first and the single hit lands only if the target is still in reach,
 // so stepping away during the wind-up dodges it. Runs inside the behaviour coroutine.
 function ENT:AttackTarget(target)
-    if CurTime() < self.NextAttackAt or not self:IsValidTarget(target) or not self:CanSeeTarget(target) or
+    if CurTime() < self.NextAttackAt or not self:IsValidTarget(target) or not self:CanReachTarget(target) or
         self:GetRangeTo(target) > self.DevelopmentAttackRange then
         return
     end
@@ -389,7 +578,7 @@ function ENT:AttackTarget(target)
     end
 
     if self:IsValidTarget(target) and self:GetRangeTo(target) <= self.DevelopmentAttackRange + self.AttackReachTolerance and
-        self:CanSeeTarget(target) then
+        self:CanReachTarget(target) then
         local damage = DamageInfo()
         damage:SetDamage(self.DevelopmentAttackDamage)
         damage:SetDamageType(DMG_SLASH)
@@ -444,10 +633,19 @@ function ENT:ChaseTarget(target)
             self.LastKnownTargetPosition = target:GetPos()
             self.LastKnownTargetExpiresAt = CurTime() + self.DevelopmentTargetMemorySeconds
         end
-        if self:GetRangeTo(target) <= self.DevelopmentAttackRange then
+        local piece, hitPos, hitNormal = self:FindStructureBlocker(target)
+        if piece then
+            self:BesiegeStructure(target, piece, hitPos, hitNormal)
+            if self.WalkerDead then
+                return
+            end
+        elseif self:GetRangeTo(target) <= self.DevelopmentAttackRange then
             self:AttackTarget(target)
             coroutine.wait(0.1)
         else
+            if self.SiegeStartedAt and CurTime() > (self.SiegeSeenAt or 0) + 2 then
+                self:ResetSiege()
+            end
             self.WalkerState = "pursue"
             if not self:UpdatePath(target:GetPos()) then
                 return
@@ -692,6 +890,11 @@ function ENT:HandleStuck()
         self.HoldCount = (self.HoldCount or 0) + 1
         return
     end
+    if self:IsValidTarget(self.CurrentTarget) and self:FindStructureBlocker(self.CurrentTarget) then
+        // Walled in by a player structure: keep the target so the chase loop strikes the piece.
+        self.HoldUntil = CurTime() + 0.25
+        return
+    end
     self.CurrentTarget = nil
     self.LastKnownTargetPosition = nil
     self.LastKnownTargetExpiresAt = 0
@@ -770,6 +973,11 @@ function ENT:GetWalkerPerformanceStats()
         detours = self.DetourCount or 0,
         yields = self.YieldCount or 0,
         holds = self.HoldCount or 0,
+        structureStrikes = self.StructureStrikeCount or 0,
+        structureBreaks = self.StructureBreakCount or 0,
+        sieges = self.SiegeCount or 0,
+        siegeGiveUps = self.SiegeGiveUpCount or 0,
+        doorSeeks = self.DoorSeekCount or 0,
         nextPathRetryAt = self.NextPathRetryAt
     }
 end

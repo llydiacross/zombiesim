@@ -169,7 +169,48 @@ authored, along with edits to existing border, edge and terrain sources. The
 user requested a refreshed generation and chose an 80/20 fortified/Army
 building preference in fortified zones when both families are compatible.
 Military cells retain their Army pool; compilation and staging remain separate
-gates. Source wiring and the new isolated refresh are in progress.
+gates. The five Army sources and three fortified buildings are now wired.
+Density and footprint eligibility are resolved before the preference, with
+the compatible family used when the other is unavailable. Focused inventory,
+Army selection, scenery-zone and density checks pass 105, 24, 1,628 and 3,386
+assertions respectively; rectangular-footprint and road-connection checks pass
+570 and 108. The isolated multi-tile fixture passes seven recipes and 89 marked
+road connections, and the border showcase and 1,257 outer-edge unit assertions
+pass.
+
+The refreshed isolated preview is `generated/preview_alpha35_review_02`.
+Its seed-1337 manifest is byte-identical to the approved first preview. The
+plan has 571 planned cells, five empty cells, 439 city recipes, 96 unchanged
+trusted motorway contracts and Police/Fire coverage in all ten districts.
+Its tile-layout changes are confined to military and fortified profiles. All
+eight new sources appear in their intended profiles; fortified cells contain
+208 fortified and 51 Army building placements, and military cells contain 24
+Army building placements. These are counts across logical cells, not a claim
+that every selection had both compatible families. The exact plan passes 9,706
+assertions and the frontage check covers 1,224 entrances without a blocked
+ordinary building. Two neighbouring-layout candidate warnings remain.
+
+All 439 required city VMFs and two reusable den VMFs were generated without
+compilation. The 27 trusted motorway recipes use 134 infill rectangles matching
+the measurement pass; all required infill sources already existed. Seven
+sub-four-unit remainders remain on the default floor at logical `(15,11)`, as
+in the approved first preview. The final infill/layout/VMF checks pass 1,538
+assertions, all 826 non-motorway/den VMF and layout files remained unchanged
+across the infill passes, and all 24 west-ocean cells retain their nine ocean
+slots including corners. All 709 authored tile VMF/VMX files matched their
+pre-build hashes. The viewer loaded 576 cells with no missing recipes/files,
+failed sides, failed props or texture failures; a separate refreshed viewer
+opened responsively in overview mode. The previously observed viewer was no
+longer running afterward; its exit cause was not established. Human review of
+this refreshed preview remains pending. No BSP, runtime export or map material
+was compiled or staged, and no in-game acceptance is implied.
+
+**Generator work completion (user, 2026-11-03):** the user confirms all
+Alpha 3.5 generator changes are complete and wants work to continue on the
+remaining milestone items. Generator source and isolated preview work are
+accepted for progression. This does not imply a BSP compile, staged world,
+in-game review, navmesh/Cell Health/Satellite work, production change or
+publication.
 
 The sections are grouped by workstream, not a newly approved implementation
 order. Alpha 3.4's construction review was paused at the user's request;
@@ -406,30 +447,410 @@ at least one. The 64-unit foundation/wall blueprint prototype uses atomic
 first-contribution payment and fades in on completion. Its foundation costs
 4 Wood and 2 Scrap, its wall 3 Wood and 1 Scrap, with provisional build times
 of 6 and 4 seconds respectively. The recorded claim and construction
-fixtures pass, but the native claims suite and the prototype have not been
-live-tested. Pieces do not yet persist, and the installed preview runtime
-JSON was unchanged at the last checkpoint.
+fixtures pass. The native claims suite now passes 3/3 after the approved
+claim-only preview reload recorded below; the construction prototype has not
+been live-tested. Pieces do not yet persist. The installed preview runtime
+JSON was unchanged at the original source-only checkpoint.
 
-- [ ] When the user resumes this paused slice, verify that the intended
-      `claimTiles` export matches the installed preview, back up the runtime
-      JSON, and obtain approval before staging and reloading. Run the native
-      claim suite and a bounded live review of claiming, build-mode protection,
-      one foundation and one wall. Preserve survivor data and verify cleanup.
+**Installed-preview claim export preflight (2026-11-03):** an isolated
+`claimTiles` export was generated from the retained Alpha 3.3 plan whose
+manifest and plan hashes exactly match the installed preview. All non-claim
+runtime fields match the installed JSON; the export adds claimable core tiles
+to 571 cells (6,759 tiles). The new Alpha 3.5 viewer preview is not compiled
+or staged and is deliberately not used to replace the installed runtime map.
+
+**Approved claim-data reload (user, 2026-11-03):** after explicit approval,
+`content/data_static/zombiesim_world_preview.json` was replaced with the exact
+claim-only export above. Its verified pre-stage backup is
+`generated/preview_alpha35_claim_preflight/zombiesim_world_preview.pre-claimTiles.json`
+(SHA-256 `baaff72445c026a7ee09a98be6367fd01b05b91758d3baed548d5fcedeac5378`);
+the staged file hash is
+`f7ba3f66bf6e49a5b8bd2d90acc67da37c9ea805663984098c67990b9f80596a`.
+GMod launched with `-disableluarefresh`; read-only status confirms
+`zn_preview_start`/preview. The first native claims run exposed a test-fixture
+path mismatch: it appended `.bsp`, unlike `ZM_World:GetMapTransitionPath`.
+The stub was corrected to mirror the production map-name contract; focused
+offline claim/world tests pass 12 cases, GLua syntax passes 407/0, and the
+fresh native `zn_test_claims` suite passes 3/3. Its test-profile cleanup
+passed, and no survivor was deployed or modified.
+
+**Claim-review safety continuation (user resumed, 2026-11-03):** the bounded
+preview review helper now rejects a target tile outside the same 1.5-tile
+claim reach enforced by `ZM_ClaimService`, before writing temporary inventory.
+The claim service exposes that reach check for both normal claims and review
+preflight. A fault-injected SQL trigger verifies rollback preserves the
+temporary items and review claim when a transaction step fails, then succeeds
+on retry. Focused claim/world/construction fixtures pass 34/34, GLua syntax
+passes 408/0, and `git diff --check` passes. The README documents the
+development-only commands and their constraints. After the user's approval,
+the updated Lua was loaded and native `zn_test_claims` passed 3/3.
+
+**Authorized live-review attempt (user, 2026-11-03):** the existing preview
+survivor was deployed from the launcher and its stored cell `(14,2)` was
+confirmed read-only; that cell has radiation intensity 1, so it was not used
+for review. The user approved a temporary move to zero-radiation cell
+`(14,-7)`/ID134 and return. At ID134, the helper's preflight refused before
+any write because tile `(1,-1)` was not claimable in the live `ZM_World`
+index. After the user's approval,
+a new read-only status command was loaded and queried cell134. Its 12 indexed
+offsets exactly match the current source export; neither contains `(1,-1)`.
+The original refusal was caused by selecting a non-exported tile, not a
+mounted-data mismatch. No temporary inventory items or claim were created or
+runtime data restaged. The survivor returned through the preview transition
+to `(14,2)`/ID350; post-reload status confirms preview, alive, health100 and
+the same cell. The user chose to leave hunger and thirst unrestored; no direct
+stat edit was made. GMod's earlier crash remains unexplained; no cause is
+inferred.
+
+A read-only `zombiesim_dev_claim_review_status [cellId]` command now reports
+the active preview data path, map, radiation and indexed claimable offsets
+for the current or requested exported cell. Live query of cell134 confirmed
+`data_static/zombiesim_world_preview.json`, zero radiation, map
+`zz_preview_08960535c24e`, and exact source/index claim-tile agreement.
+The player was at local position `(-640,640)` on that map, making `(-1,1)` an
+exported, reachable candidate. The review start stopped before any write
+because the backpack did not have two empty slots; it has not yet checked
+whether that candidate has an existing claim. No item or claim was created.
+The user chose not to restore hunger/thirst. Following the additional
+preview-cell transitions, a read-only persistence report showed the survivor
+back at cell350, alive and health100, with runtime hunger99.73 and thirst
+99.6025. These values rose from the earlier reported 86.893/80.34 during the
+transition; the cause is unverified, no cheat was changed, and no direct stat
+edit was made. Focused claim-service fixtures pass 16/16, GLua syntax passes
+408/0, and `git diff --check` passes. The user reports freeing two backpack
+slots before restarting GMod; recheck the live inventory and candidate claim
+row before the bounded review. Review protections and unpaid blueprints, then
+roll back. The diagnostic performs no player-data writes.
+
+**Dropped-crate collision follow-up (2026-11-03):** the user requested a
+slightly smaller collision box and no crate left inside a player. The visible
+crate and its height are unchanged; horizontal bounds are inset by one unit.
+Creation now checks every player's world collision bounds with one unit of
+clearance before an inventory transaction. A blocked saved crate remains in
+storage and the existing 30-second maintenance pass retries it. After the
+user-requested GMod restart, the native inventory suite passes 54/54 in the
+preview launcher, including the collision and no-inventory-write cases.
+Offline crate-restoration and claim/world/construction fixtures pass 36/36,
+GLua syntax passes 408/0, and `git diff --check` passes. Actual player drop
+interaction and visual review remain unverified.
+
+**Review preflight after restart (2026-11-03):** a read-only database check
+found three free stored backpack slots, no existing token or Hammer in the
+selected preview survivor's inventory, and no claim row at cell134 tile
+`(-1,1)`. After the user deployed, the approved preview transition brought
+the survivor to ID134 at health100. Before starting the review, source and
+stored-data checks showed this survivor is level1, but the temporary Hammer
+requires level8 and Strength5. It cannot be equipped under the normal item
+requirements; the only existing preview survivor is level1. The review was
+not started and no temporary item, claim or blueprint was created.
+
+The approved return to `(14,2)`/ID350 completed; a separate read-only report
+confirms preview, alive and health100. The survivor's 17 inventory rows, three
+weapon-slot rows, candidate-cell claim rows and owner friend rows match the
+arrival snapshot. Hunger and thirst were left as-is, as requested. The user
+subsequently set this survivor to level20; its saved base Strength is
+5 and a shotgun is now selected. This is the new user-owned baseline, not
+something to undo.
+
+The review helper now checks the temporary Hammer's normal requirements and
+confirms any previously selected weapon exists before writing. Its rollback
+permits only the selection change caused by the temporary Hammer, restores
+the previous selection and still rejects unrelated slot changes. Offline
+claim/world/construction/crate fixtures pass 39/39, GLua syntax passes 408/0,
+and scoped `git diff --check` passes.
+
+The user approved another transition to ID134. The new pretravel and arrival
+snapshots match for inventory, attributes, weapon slots, candidate-cell claims
+and owner friends. Saved level was 21 and base Strength5; XP increased by35
+during the transition for an unverified reason and was left unchanged.
+After the user indicated readiness, the review start failed before committing
+any temporary item: GMod `sql.Query` represents SQL NULL as the string
+`"NULL"`, which the exact inventory writer rejected as invalid JSON. A
+separate database comparison confirms inventory, weapon slots, candidate-cell
+claims and owner friends still match the arrival snapshot; no review claim or
+blueprint was created.
+
+Source now distinguishes actual SQL NULL from the literal string by querying
+`IS NULL` for exact item and weapon-slot snapshots, without changing ordinary
+inventory reads. Invalid literal attribute data still blocks a write. The
+offline SQL fixture now models GMod's stringified NULLs and covers both values,
+selected-weapon restoration and rollback failures. Focused
+claim/world/construction/crate fixtures pass 40/40, GLua syntax passes 408/0,
+and scoped `git diff --check` passes. A new isolated native claims case covers
+the exact SQL path but has not been live-loaded or run. The survivor remains
+in preview cell `(14,-7)`/ID134; ask before reloading. The 180-second review,
+actual selected-weapon restoration and live construction remain unverified.
+
+**Construction review follow-up (2026-11-03):** removed the per-player
+blueprint-count cap. E now gives an immediate one-second progress contribution,
+then credits capped elapsed time while held. During claim review, only a
+blueprint whose `ZM_ClaimReviewSessionId` exactly matches the active session
+and whose player is the active review owner builds free; unrelated or inactive
+session pieces still hit the paid-construction guard. Normal construction still
+pays atomically. The overlapping top-centred HUD was replaced with a compact
+upper-left panel and split placement/build instructions.
+Focused construction fixtures pass 16/16, GLua syntax passes 408/0, and
+`git diff --check` passes. This tests free review construction only, not payment.
+The source has not been reloaded. A fresh read-only status confirmed preview
+cell 134 on `zz_preview_08960535c24e`, but did not report review-session or
+temporary-piece state. After approval, the guarded rollback refused before
+writing because inventory changed outside the temporary review items. The
+user authorized restoring the single confirmed stack difference; the read-only
+report then matched its pre-review count. One rollback retry timed out without
+acknowledgment. A later guarded check refused because weapon slots differed
+outside the temporary Hammer. The user approved restoring the baseline weapon
+selection; `zn_equip_item` selected the original M4A1 successfully. The next guarded rollback still refused because an additional backpack item
+differed from the pre-review snapshot; the user chose to keep that Crowbar.
+
+**Preview review cleanup continuation (user, 2026-11-03):** the user clarified
+that preview is a test environment and exact inventory/player-data baselines
+are not a priority unless a test requires them. The review cleanup now reads
+current rows, removes only the session's temporary items and identity-checked
+claim in one transaction, preserves unrelated inventory, claims and weapon
+selection changes, and removes only tagged pieces. It still reports malformed
+weapon state, replaced claims and transaction failures explicitly. Construction
+now uses the crosshair's centre-of-mass aim; build mode in top-down and orbit
+views aims at the cursor or screen-centre surface instead of the ordinary
+horizontal weapon aim. The server still traces and validates the placement.
+Focused claim/world/construction/camera fixtures pass 49/49, including
+four wall edges on a completed foundation; GLua syntax passes 408/0.
+The old retry timed out without acknowledgement; read-only checks subsequently
+found no temporary Hammer, token or review-tile claim, but did not establish
+whether the old in-memory session cleared. The latest source is not
+covered by a live construction review. After the approved same-cell reload,
+the survivor was alive at health100 in preview cell134 and the Crowbar remained;
+the fresh native claims suite passes 4/4. The latest preview check found one
+empty backpack slot and three occupied weapon slots; the helper needs two
+empty backpack slots and equipping its Hammer also requires an available
+weapon slot.
+At that checkpoint, E progress, unlimited placement, the revised HUD, placement
+and removal remained unreviewed live. Normal paid construction is not verified
+by the free-review path.
+
+**Construction review and next requests (user, 2026-11-03):** the user
+reviewed the foundation/wall prototype in preview cell134 and reports that
+building felt satisfying, E construction worked and the reviewed experience
+worked well. The three-minute review expired while they were building, and
+they report the temporary house disappeared. A subsequent rollback request
+reported no active session; read-only checks found no temporary Hammer or
+token and no review claim at tile `(-1,1)`. The Crowbar remains. An exact
+over-12 placement count, individual camera modes, normal paid building and
+multiplayer were not independently verified. Pieces are not yet persisted
+across map loads.
+
+The user requests a Q-key piece gallery with a selectable grid, additional
+pieces including roofs and complex shapes, and construction sounds with
+hammer-swing feedback. They selected full, half and triangular foundations
+and floors; full/half walls, doorway and window frames; flat and sloped roofs
+including corners; and stairs and ramps. Selecting a gallery item closes it.
+Functional doors and windows remain separate. Preserve the approved prototype
+foundation and wall presentation while adding the catalogue. Future timed
+reviews should provide enough time for house-building and disclose cleanup.
+
+**Construction catalogue source pass (2026-11-03):** the 16-piece wooden
+catalogue, server-validated selection, Q/`+menu` gallery, shape-aware
+blueprints and progress fills, multi-convex collision for complex pieces,
+and contribution sounds/swing feedback are source-wired. The existing
+64x64x16 foundation and 64x8x128 wall presentation is retained. New-piece
+prices and times are provisional; normal payment still commits the material
+cost atomically and now distinguishes a write failure from insufficient
+materials. The bounded free-build review now expires after 30 minutes and
+removes its session-owned house on cleanup. Client diagnostics report material
+and frame-scoped draw status; gallery screenshots include VGUI.
+
+Focused offline construction/claim/world fixtures pass 77/77 and GLua syntax
+passes 410/0. After a user-approved same-map reload, a fresh client status on
+`zz_preview_08960535c24e`/preview reported 16 non-error piece materials and a
+valid beam texture; this does not prove their appearance. The approved
+30-minute review started at approximately 09:39 on 2026-11-03: preview cell
+134 tile (-1,1) was claimed with the temporary token, the review Hammer is
+available, and the Crowbar remains. Successful cleanup removes the claim,
+temporary Hammer and all session-owned pieces; timeout attempts the same.
+Await the human review and
+verify cleanup. Gallery focus/close, shape placement and appearance,
+sound/swing, doorway/window pass-through, stairs/ramp walking, client/server
+collision and performance remain unverified. Occupancy checks use component
+bounds and can conservatively reject a non-box shape. Paid building, piece
+persistence and multiplayer are also not live-verified. Ask before another
+reload or review.
+
+**Inventory/weapon-slot recovery during review (2026-11-03):** the user
+reported the Hammer disappearing. Live inventory and slot data showed the
+Hammer still in the backpack while slot 3 contained the Elite but referenced
+the Hammer. The snapshot code could consequently hide both items; no separate
+client screenshot proved that exact snapshot. The exact Elite was moved to
+the backpack through the inventory service and the temporary Hammer was
+equipped in slot 3, without cleaning up or restarting the review. The Crowbar
+remains. The review was last confirmed active after the original wall-clock
+estimate; its remaining time and the reason are unknown. A later read-only
+report confirms the Hammer equipped, Elite and Crowbar in the backpack, and
+the same preview cell, but does not itself establish whether the session is
+still active.
+
+Source now reconciles weapon-slot references with the physical equipped
+container, shows all actual backpack items, and atomically saves weapon moves,
+swaps and slot changes. An occupied slot rejects a backpack equip before
+spawning a weapon; legacy references recover only into their intended empty
+slot. Failure cases preserve prior items and selection, and firearm clip
+handling and same-class restoration have focused coverage. Offline inventory
+slot cases pass 22/22; the combined inventory/claim/world/construction/crate
+run passes 100/100, GLua syntax 410/0, and `git diff --check` passes. These are
+fixture/static results: the inventory fix has not been fresh-loaded, the
+native inventory suite and client UI have not been retested, and the user has
+chosen to keep the current structures and continue their review rather than
+clean up and restart it. Cleanup or timeout *attempts* to remove its claim,
+temporary items and all tagged structures; do not promise an expiry time.
+Ask before cleanup or reload.
+
+**Automatic multi-level snapping (2026-11-03):** the user reported being unable
+to place another floor after stairs or attach a roof, and chose automatic
+snapping rather than a height selector. Source now attaches floors and roofs
+to finished stair/ramp landings and wall tops, extends matching floor/roof
+edges, and stacks walls. Half floors align to their actual edge; triangular
+floors can join diagonally or rotate to present a straight edge. Sloped roof
+edges reject mismatched profiles. A landing floor's upper surface is 8 units
+above the stair or ramp top. Client ghost and server placement share the
+resolver, while the server retains its own trace and claim-footprint checks.
+A live report followed: the user saw no ghost when trying to place a floor from
+the top of the stairs. The aim into open air missed, or hit the ground far
+below. The shared `PlacementTrace` now extends the finished piece underfoot
+when a floor or roof is selected and the aim misses or lands more than 32 units
+below the player's feet. For stairs, it uses their top end. Construction and
+gallery fixtures pass 54/54, and GLua passes 410/0. A live check is pending.
+The user confirmed stairs worked after placing a floor, then asked to place
+stairs without a floor, like ramps. `PlacementTrace` now supports stairs and
+ramps when standing on world ground or a finished level construction piece
+while aiming into open air. Construction and gallery fixtures pass 58/58;
+GLua passes 410/0. After user approval, the preview map
+`zz_preview_08960535c24e` was reloaded; live ghost, placement and refund review
+remain pending. This reload removed the transient structures.
+The user chose full material refunds for removal. Paid cost is recorded when
+charged, preserving mastercraft discounts; free-built pieces refund nothing.
+The user subsequently confirmed stair placement, but reported disconnected
+upper-floor blueprints that were hard to target and empty adjacent floor
+positions that would not snap to the cursor.
+
+**Cursor targeting and revised removal controls (2026-11-03, source only):**
+the shared picker now intersects authored convex shapes rather than relying
+on the small placeholder model, respects world/prop occlusion and shape holes,
+and reaches 1024 units for deletion. Empty-space floor/roof aiming projects
+the camera cursor onto the finished support's storey; the cursor's side selects
+the extension edge without changing the existing floor height. This replaces
+the old fabricated facing point and nearest-edge choice for synthetic traces.
+The user explicitly replaced the earlier RMB removal/cycling controls:
+
+- Delete enters delete mode. LMB toggles owned pieces into/out of a red
+  selection, with no removal on click; Delete again confirms the selection.
+- RMB only undoes an owned unfinished blueprint, never a finished piece and
+  never catalogue cycling. Paid partial blueprints refund their recorded cost.
+- One atomic inventory mutation refunds the entire confirmed batch, splitting
+  grants by stack limits. Capacity/write failures retain all pieces, materials
+  and selection. There is no fixed selection cap.
+- Ghosts/gallery and E construction are suppressed during selection. Reload,
+  weapon changes, death and lost build access cancel without deleting. Delete
+  with an empty selection simply exits. Ownership/access are rechecked on
+  selection and confirmation.
+
+Related construction/entity/render/gallery/camera/claims/world fixtures pass
+110/110; GLua syntax passes 410/0. Coverage includes cardinal shape picking,
+holes/occlusion, floating blueprint reach, off-centre storey extension, the
+camera-to-placement path, client input/focus/red tint and rollback after refund
+capacity/write failures. The user approved reloading and clearing the current
+structures. A separate post-reload status confirms
+`zz_preview_0a9894c9058b-cp`/preview; a fresh 20:58 client report includes the
+new delete-mode/count fields (off/zero) and valid construction materials.
+That verifies loaded code, not interaction or appearance.
+Cursor snapping, deletion/refunds, walking collision, roof appearance,
+normal payment and multiplayer remain unverified live. Ask before reloading:
+structures are transient. Do not assume the bounded review session remains
+active or that its one-shot timer cannot remove them.
+The requested human review was blocked by no claim access in current cell 133;
+the user did not test any of the three new control/snapping paths. Read-only
+claimability status lists ten tiles, including (-1,1). At their request one
+claim token was granted after the first attempt failed with a full backpack
+and they freed a slot; the successful inventory report verifies one token.
+The user will claim their chosen tile here. No claim or travel was automated.
+
+**Claim mode and map boxes (user request, 2026-11-03; source/offline only):**
+
+- **Claim mode.** Using a claim token (double-click, or the context menu's
+  **Claim land**) closes the inventory and enters claim mode. The current
+  cell's claimable tiles are outlined on the ground, and the hovered tile shows
+  free/far/mine/friend/other/lapsed. LMB claims it; RMB, Esc, death and safe
+  zones cancel.
+- **Server.** The server rate-limits the request and validates it through
+  `ClaimTile`, with whole-number tiles −2..2 and the existing reach and token
+  rules. A changed claim snapshot is sent on visits and claims.
+- **Map boxes.** Bordered boxes mark claims on the HUD minimap and the world
+  map's local view. On the grid/satellite views they show your own claims
+  across cells and others' claims in the current cell.
+- **Error fix.** The reported `sh_construction.lua:604` `GetPieceKind` nil
+  error is fixed: traces skip pieces whose client accessors are not ready yet.
+- **Static checks.** Claim/client/construction/gallery/world fixtures pass
+  101/101, GLua syntax passes 411/0 and `git diff --check` passes.
+- **Grid crash fix.** The world map's grid/satellite boxes crashed at
+  `cl_claims.lua:452` because `cell and gridCoordinates( cell )` kept only
+  the first return value; both coordinates are now read (client fixture 6/6,
+  GLua 411/0).
+- **User accepted (2026-11-03):** after a reload, the user tested building
+  (including the latest delete-mode, blueprint-undo and floor-snapping
+  changes) and said it works perfectly, and that the claim box shows clearly.
+  They passed both areas. This is a single-player review; paid construction,
+  zombie structure damage and multiplayer are not covered by it.
+
+- [x] Match, back up, stage and reload the installed-preview `claimTiles`
+      export; run the isolated native claim suite. The Alpha 3.5 viewer plan
+      was not compiled or used as runtime data.
+- [ ] Complete remaining live checks of build-mode protection, an exact
+      over-12 placement count, individual camera modes and normal paid
+      construction. The user approved the bounded free-build experience above;
+      it does not verify paid construction or multiplayer.
 - [ ] Complete and review claimed-tile boundary/placement and mutual
       player/zombie and player/player protection, including access changes,
       distance, death, disconnect, multiple players and transitions.
       Environmental damage remains unaffected. Adjacent expansion needs
       another token; roads, borders, buildings and occupied multi-tile
       footprints are not claimable.
-- [ ] Extend the reviewed prototype to snapped 64-unit foundations, 32-unit
-      halves, 16-unit-thick walls, triangles, floors, roofs, door/window
-      frames and agreed wood/stone/metal/concrete materials. The current
-      prototype wall is 8 units thick; do not present it as the final
-      requested 16-unit piece. Review a small prototype before a catalogue.
+- [ ] Review the new wooden catalogue and extend it to the agreed
+      wood/stone/metal/concrete materials. The current prototype wall is 8 units
+      thick; do not present it as the final requested 16-unit piece.
+- [ ] Review zombie structure damage (user request, source/offline only).
+      User decisions: a walker gives up hitting after 20 s and seeks a
+      doorway; one walker breaks a wooden wall in 5 minutes; four visible
+      damage stages; every piece takes damage with health scaled by wood
+      cost; the Hammer repairs a damaged piece with E for free. Implemented in
+      `sv_construction.lua` (damage/break/repair), the piece client (stages,
+      marks, splinters) and `zn_walker_zombie` (blocker detection, siege,
+      `CanReachTarget`, doorway seeking with 60 s memory, fallback to
+      hitting). Construction41/41, render8/8, walker behaviour8/8 and
+      GLua410/0 pass; `test_walker_preload` fails before and after (unchanged
+      `sv_transitions.lua`). Limits: no structural support, wear not
+      persisted, direct doorway approach may snag, mark visibility unverified.
+      Live wear, breaking, repair and give-up remain unverified.
+- [x] Review the preview **Free building** cheat (user request). A sixth
+      persisted Cheats toggle (`freeBuild`, operator-gated in `sv_preview.lua`)
+      lets `Contribute` skip `PayForPiece`; blueprints stay unpaid and
+      removable. The user confirms the cheat works; fit of the sixth toggle in
+      the Cheats window is not separately confirmed.
 - [ ] Persist pieces, per-material health, repair, damage and destruction.
       Validate ownership, snapping, placement and atomic material costs on
       the server; interrupted/repeated input and failed writes must not
       duplicate pieces or items.
+      **Source (2026-11-03, live unverified):** the server-only
+      `construction_pieces` table stores each piece per profile/logical cell,
+      including blueprints, the exact paid cost, completion, health and owner
+      character key. Placement, payment (`extraSteps`), refunds/removal and
+      breaking commit in the owning transaction. Damage/repair health
+      flushes every 5 s and on cleanup/shutdown. Pieces restore when their
+      cell loads (`OnPlayerReady`) and despawn on `PreCleanupMap`. A failed
+      save rolls back the entity, items or row. Pieces survive a claim lapse;
+      when a different owner claims the tile, `claimCreate` deletes them
+      without refund. Persistence fixtures 7/7 (SQLite, real `sql.lua`)
+      cover the round trip, reload idempotence, profile/cell isolation,
+      failed payment/removal/placement writes, breaking and reclaim. With
+      construction, claim service and claims client the total is 91/91, and
+      GLua 411/0. The reload test awaits the user. Restore assumes one active
+      cell per server.
 - [ ] Add independently persisted storage boxes with no user-facing item-count
       cap, safe transaction/paging and secure access. Define reclaim and
       destruction behavior without losing existing box contents. Add doors,
@@ -491,6 +912,43 @@ JSON was unchanged at the last checkpoint.
       active dancer snapshot were explicitly deferred; resume only with
       agreement, then verify actual model axes, camera behavior, audio/exit
       cleanup and both launcher profiles.
+- [ ] Investigate launcher UI ghosting reported and captured on 2026-11-03.
+      Old Home, survivor-selection and Tools artwork overlaps the current
+      Tools page; the user reports the duplicates are not clickable and
+      survive map reloads, while fully closing GMod clears them. The affected
+      process has `-disableluarefresh`, so hot reload alone is not an
+      established cause. A fresh after-VGUI capture confirms the layering
+      while the Tools diagnostic reports no open atlas workspace or cards.
+      The added read-only `launcher.panels` report confirms old page roots stay
+      visible and marked for deletion across fresh reports more than 12 seconds
+      apart, including after the approved same-map reload and after closing
+      `vgui_drawtree`. This is not just a one-frame deferred-deletion check.
+      The reason the client retains them, and any connection to the earlier
+      crash, remain unknown; do not mask a possible resource leak by hiding
+      panels and declaring it fixed. The user approved a full restart and
+      bounded clean-client Tools comparison. Diagnostics and all-page VGUI
+      capture regressions pass 3/3; GLua 408/0 and diff checks pass. The wider
+      creation-camera fixture run passes 8/9, with its warning-order assertion
+      expecting `create_character` before the existing missing-`deploy_camera`
+      warning; this is outside the diagnostic change.
+      After the approved full restart, fresh screenshots and panel reports show
+      a clean Tools page with exactly one current page root and no pending old
+      page roots, including after a Home/Tools round trip. The user also reports
+      the Tools views look normal and cannot currently reproduce the issue.
+      This verifies recovery, not a permanent fix or the original trigger.
+      Read-only diagnostics remain available for the next occurrence; no
+      survivor deployment, claim-review mutation or world work ran in this
+      investigation.
+      Symptom fix: `ZM_LauncherMenu:DiscardPanel` now stops animations,
+      disables input and hides an outgoing page root (also the replaced frame
+      and the Tools workspace body) before the deferred `Remove()`, so a page
+      whose deletion stalls can no longer paint over the current page. Focused
+      regression passes, GLua 408/0. After an approved preview-launcher reload
+      the user confirmed Home/Tools/Item Atlas/Play/Settings round trips show
+      no ghosting, and the panel report lists exactly one page root. Why the
+      engine sometimes defers deletion indefinitely remains unknown; if the
+      `launcher.panels` report again shows hidden roots stuck in
+      `markedForDeletion`, investigate that retention separately.
 
 The accepted default-off CSM experiment keeps its remaining work deferred in
 the [CSM tracker](docs/csm-implementation.md); this consolidation does not

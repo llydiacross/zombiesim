@@ -209,13 +209,30 @@ local function findEmptySlot(container)
     end
 end
 
+// Using a claim token closes the inventory and enters claim mode; the server consumes it only on a valid claim.
+local claimTokenItemId = "itemClaimToken"
+
+local function startClaimMode()
+    if not ZM_Claims then return end
+    if not ZM_Claims:Enter() then
+        local result = ZM_Claims.Result
+        Inventory.Status = { text = result and result.text or "Claim mode is unavailable here.", ok = false, at = CurTime() }
+        return
+    end
+    for _, key in ipairs({ "Frame", "DenFrame" }) do
+        if IsValid(Inventory[key]) then Inventory[key]:Close() end
+    end
+end
+
 // Double click: use entity items, equip or unequip weapons.
 local function primaryAction(instance)
     local definition = ZM_Items:GetDefinition(instance.itemId)
     if not definition then
         return
     end
-    if definition.entityClass == "entity" then
+    if instance.itemId == claimTokenItemId then
+        startClaimMode()
+    elseif definition.entityClass == "entity" then
         Inventory:SendAction({ action = "use", instanceId = instance.instanceId })
     elseif definition.entityClass == "weapon" or definition.entityClass == "armour" or definition.entityClass == "clothing" then
         Inventory:SendAction({ action = Inventory:IsEquipped(instance.instanceId) and "unequip" or "equip", instanceId = instance.instanceId })
@@ -226,7 +243,9 @@ local function openContextMenu(instance, container, allowStashMoves)
     local definition = ZM_Items:GetDefinition(instance.itemId)
     local menu = DermaMenu()
     if definition and container == "backpack" then
-        if definition.entityClass == "entity" then
+        if instance.itemId == claimTokenItemId then
+            menu:AddOption("Claim land", startClaimMode)
+        elseif definition.entityClass == "entity" then
             menu:AddOption("Use", function() Inventory:SendAction({ action = "use", instanceId = instance.instanceId }) end)
         elseif definition.entityClass == "weapon" or definition.entityClass == "armour" or definition.entityClass == "clothing" then
             if Inventory:IsEquipped(instance.instanceId) then

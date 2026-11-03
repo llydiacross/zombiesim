@@ -342,6 +342,60 @@ local function writePlayerItemRows(steamid, profile, rows)
     return true
 end
 
+local function writeExactPlayerItemRows(steamid, profile, rows)
+    local owner = sql.SQLStr(steamid) .. ", " .. sql.SQLStr(profile)
+    local deleted, deleteError = runQuery("DELETE FROM player_items WHERE steamid = " .. sql.SQLStr(steamid) .. " AND profile = " .. sql.SQLStr(profile))
+    if not deleted then return false, deleteError end
+    for _, row in ipairs(rows or {}) do
+        local slot, count, level = tonumber(row.slot), tonumber(row.count), tonumber(row.level)
+        local mastercraft, clip, createdAt = tonumber(row.mastercraft), tonumber(row.clip), tonumber(row.createdAt)
+        if type(row.instanceId) ~= "string" or row.instanceId == ""
+            or (row.container ~= "backpack" and row.container ~= "equipped")
+            or not slot or slot < 1 or slot ~= math.floor(slot)
+            or type(row.itemId) ~= "string" or row.itemId == ""
+            or not count or count < 1 or count ~= math.floor(count)
+            or not level or level < 1 or level ~= math.floor(level)
+            or (mastercraft ~= 0 and mastercraft ~= 1)
+            or not clip or clip < 0 or clip ~= math.floor(clip)
+            or not createdAt or createdAt < 0 or createdAt ~= math.floor(createdAt) then
+            return false, "invalid exact player-item row"
+        end
+        local attributes = "NULL"
+        if row.attributes ~= nil then
+            if type(row.attributes) ~= "string" or type(util.JSONToTable(row.attributes)) ~= "table" then
+                return false, "invalid exact player-item attributes"
+            end
+            attributes = sql.SQLStr(row.attributes)
+        end
+        local inserted, insertError = runQuery("INSERT INTO player_items (steamid, profile, instanceId, container, slot, itemId, count, level, mastercraft, attributes, clip, createdAt) VALUES ("
+            .. owner .. ", " .. sql.SQLStr(row.instanceId) .. ", " .. sql.SQLStr(row.container) .. ", " .. slot .. ", "
+            .. sql.SQLStr(row.itemId) .. ", " .. count .. ", " .. level .. ", " .. mastercraft .. ", " .. attributes
+            .. ", " .. clip .. ", " .. createdAt .. ")")
+        if not inserted then return false, insertError end
+    end
+    return true
+end
+
+local function writeExactEquippedWeaponSlots(steamid, profile, rows)
+    local deleted, deleteError = runQuery("DELETE FROM equipped_weapon_slots WHERE steamid = " .. sql.SQLStr(steamid) .. " AND profile = " .. sql.SQLStr(profile))
+    if not deleted then return false, deleteError end
+    local seen = {}
+    for _, row in ipairs(rows or {}) do
+        local slot, selected = tonumber(row.slot), tonumber(row.selected)
+        if not slot or slot < 1 or slot > 3 or slot ~= math.floor(slot) or seen[slot]
+            or (selected ~= 0 and selected ~= 1)
+            or (row.instanceId ~= nil and (type(row.instanceId) ~= "string" or row.instanceId == "")) then
+            return false, "invalid exact equipped-weapon slot"
+        end
+        seen[slot] = true
+        local instanceId = row.instanceId and sql.SQLStr(row.instanceId) or "NULL"
+        local inserted, insertError = runQuery("INSERT INTO equipped_weapon_slots (steamid, profile, slot, instanceId, selected) VALUES ("
+            .. sql.SQLStr(steamid) .. ", " .. sql.SQLStr(profile) .. ", " .. slot .. ", " .. instanceId .. ", " .. selected .. ")")
+        if not inserted then return false, insertError end
+    end
+    return true
+end
+
 // Runs writer() inside one transaction; any failure rolls every write back.
 local function inTransaction(writer)
     local started, startError = runQuery("BEGIN")
@@ -365,12 +419,33 @@ function ZM_ReplaceDenStashItems(steamid, profile, safeZoneId, rows)
     if not profile or type(safeZoneId) ~= "string" or safeZoneId == "" then return false, "Invalid den-stash identity" end
     return inTransaction(function() return writeDenStashRows(steamid, profile, safeZoneId, rows) end)
 end
-function ZM_GetEquippedWeaponSlots(steamid, profile)
+// sql.Query returns both SQL NULL and literal "NULL" as the same string; exact snapshots need the SQL predicate.
+local function restoreExactNull(rows, column)
+    for _, row in ipairs(rows or {}) do
+        local isNull = tonumber(row._zm_is_null)
+        if isNull ~= 0 and isNull ~= 1 then return nil, "Could not read the exact SQL null state." end
+        if isNull == 1 then row[column] = nil end
+        row._zm_is_null = nil
+    end
+    return rows or {}
+end
+
+local function getEquippedWeaponSlots(steamid, profile, exact)
     profile = getPlayerDataProfile(profile)
     if not profile then return nil, "Invalid equipped-weapon profile" end
-    local result = sql.Query("SELECT * FROM equipped_weapon_slots WHERE steamid = " .. sql.SQLStr(steamid) .. " AND profile = " .. sql.SQLStr(profile) .. " ORDER BY slot")
+    local columns = exact and "*, instanceId IS NULL AS _zm_is_null" or "*"
+    local result = sql.Query("SELECT " .. columns .. " FROM equipped_weapon_slots WHERE steamid = " .. sql.SQLStr(steamid) .. " AND profile = " .. sql.SQLStr(profile) .. " ORDER BY slot")
     if result == false then return nil, sql.LastError() or "Could not read equipped weapons" end
+    if exact then return restoreExactNull(result, "instanceId") end
     return result or {}
+end
+
+function ZM_GetEquippedWeaponSlots(steamid, profile)
+    return getEquippedWeaponSlots(steamid, profile, false)
+end
+
+function ZM_GetExactEquippedWeaponSlots(steamid, profile)
+    return getEquippedWeaponSlots(steamid, profile, true)
 end
 
 function ZM_ReplaceEquippedWeaponSlots(steamid, profile, slots)
@@ -388,17 +463,27 @@ function ZM_ReplaceEquippedWeaponSlots(steamid, profile, slots)
     return true
 end
 
-// Reads every stored item row for one player and profile, ordered by container and slot.
-function ZM_GetPlayerItems(steamid, profile)
+local function getPlayerItems(steamid, profile, exact)
     profile = getPlayerDataProfile(profile)
     if not profile then
         return nil, "Invalid player-item profile"
     end
-    local result = sql.Query("SELECT * FROM player_items WHERE steamid = " .. sql.SQLStr(steamid) .. " AND profile = " .. sql.SQLStr(profile) .. " ORDER BY container, slot")
+    local columns = exact and "*, attributes IS NULL AS _zm_is_null" or "*"
+    local result = sql.Query("SELECT " .. columns .. " FROM player_items WHERE steamid = " .. sql.SQLStr(steamid) .. " AND profile = " .. sql.SQLStr(profile) .. " ORDER BY container, slot")
     if result == false then
         return nil, sql.LastError() or "Could not read player items"
     end
+    if exact then return restoreExactNull(result, "attributes") end
     return result or {}
+end
+
+// Reads every stored item row for one player and profile, ordered by container and slot.
+function ZM_GetPlayerItems(steamid, profile)
+    return getPlayerItems(steamid, profile, false)
+end
+
+function ZM_GetExactPlayerItems(steamid, profile)
+    return getPlayerItems(steamid, profile, true)
 end
 
 // Replaces all of one player's item rows in a single transaction; the previous rows survive any failure.
@@ -652,6 +737,47 @@ function ZM_DeleteClaimData(profile, owner)
     end)
 end
 
+// Player construction pieces per profile and logical cell, keyed by the service's placement slot. owner is the
+// building survivor's character key; tiles lists the claim tiles the footprint overlaps as ",x:y," for reclaim cleanup.
+function ZM_CreateConstructionTables()
+    return runQuery("CREATE TABLE IF NOT EXISTS construction_pieces (profile TEXT NOT NULL, cellId INTEGER NOT NULL, slotKey TEXT NOT NULL, owner TEXT NOT NULL, account TEXT NOT NULL, kind TEXT NOT NULL, x REAL NOT NULL, y REAL NOT NULL, z REAL NOT NULL, yaw INTEGER NOT NULL, progress REAL NOT NULL, paid INTEGER NOT NULL, paidCost TEXT NOT NULL, complete INTEGER NOT NULL, health REAL NOT NULL, tiles TEXT NOT NULL, createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL, PRIMARY KEY (profile, cellId, slotKey))")
+end
+
+function ZM_GetCellConstructionPieces(profile, cellId)
+    profile = getPlayerDataProfile(profile)
+    if not profile or not validInteger(cellId) then return nil, "Invalid construction profile or cell" end
+    local result = sql.Query("SELECT * FROM construction_pieces WHERE profile = " .. sql.SQLStr(profile)
+        .. " AND cellId = " .. integerValue(cellId) .. " ORDER BY createdAt, slotKey")
+    if result == false then return nil, sql.LastError() or "Could not read construction pieces" end
+    local rows = {}
+    for _, row in ipairs(result or {}) do
+        rows[#rows + 1] = {
+            cellId = tonumber(row.cellId), slotKey = row.slotKey, owner = row.owner, account = row.account,
+            kind = row.kind, x = tonumber(row.x), y = tonumber(row.y), z = tonumber(row.z), yaw = tonumber(row.yaw),
+            progress = tonumber(row.progress), paid = row.paid == "1", paidCost = row.paidCost,
+            complete = row.complete == "1", health = tonumber(row.health), tiles = row.tiles,
+            createdAt = tonumber(row.createdAt), updatedAt = tonumber(row.updatedAt)
+        }
+    end
+    return rows
+end
+
+// Development and test cleanup: every construction piece in one profile cell.
+function ZM_DeleteCellConstructionPieces(profile, cellId)
+    profile = getPlayerDataProfile(profile)
+    if not profile or not validInteger(cellId) then return false, "Invalid construction profile or cell" end
+    return runQuery("DELETE FROM construction_pieces WHERE profile = " .. sql.SQLStr(profile) .. " AND cellId = " .. integerValue(cellId))
+end
+
+local function finiteNumber(value)
+    return type(value) == "number" and value == value and value > -math.huge and value < math.huge
+end
+
+local function constructionSlot(step)
+    return type(step.cellId) == "number" and validInteger(step.cellId)
+        and type(step.slotKey) == "string" and step.slotKey ~= "" and #step.slotKey <= 128
+end
+
 // Offline den trading. trade_stock holds each den's shared daily stock per trader offer (sold counts only; the
 // stock itself is regenerated deterministically). trade_ledger records every buy and sell once per request id.
 function ZM_CreateTradeTables()
@@ -748,18 +874,50 @@ local commitWriters = {
         end
         local where = claimTileWhere(profile, step)
         local cutoff = math.floor(step.now) - ZM_ClaimLifetimeSeconds
-        local rows = sql.Query("SELECT lastVisitAt FROM player_claims" .. where)
+        local rows = sql.Query("SELECT owner, lastVisitAt FROM player_claims" .. where)
         if rows == false then return false, sql.LastError() or "could not read the land claim" end
         if rows and rows[1] then
             if (tonumber(rows[1].lastVisitAt) or 0) >= cutoff then return false, "that tile is already claimed" end
             local cleared, clearError = runQuery("DELETE FROM player_claims" .. where .. " AND lastVisitAt < " .. cutoff)
             if not cleared then return false, clearError end
             if tonumber(sql.QueryValue("SELECT changes()")) ~= 1 then return false, "the land claim changed; try again" end
+            // A lapsed claim keeps its structures for the returning owner; a new owner takes the tile without them.
+            if rows[1].owner ~= step.steamid then
+                local tileToken = "," .. integerValue(step.tileX) .. ":" .. integerValue(step.tileY) .. ","
+                local removed, removeError = runQuery("DELETE FROM construction_pieces WHERE profile = " .. sql.SQLStr(profile)
+                    .. " AND cellId = " .. integerValue(step.cellId) .. " AND instr(tiles, " .. sql.SQLStr(tileToken) .. ") > 0")
+                if not removed then return false, removeError end
+            end
         end
         return runQuery("INSERT INTO player_claims (profile, cellId, tileX, tileY, owner, account, createdAt, lastVisitAt) VALUES ("
             .. sql.SQLStr(profile) .. ", " .. integerValue(step.cellId) .. ", " .. integerValue(step.tileX) .. ", "
             .. integerValue(step.tileY) .. ", " .. sql.SQLStr(step.steamid) .. ", " .. sql.SQLStr(step.account) .. ", "
             .. math.floor(step.now) .. ", " .. math.floor(step.now) .. ")")
+    end,
+    // Saves one construction piece (step.steamid is its owning survivor). Replaces the row for the same slot.
+    constructionPieceSave = function(profile, step)
+        if not constructionSlot(step) or type(step.account) ~= "string" or step.account == ""
+            or type(step.pieceKind) ~= "string" or step.pieceKind == "" or #step.pieceKind > 64
+            or not finiteNumber(step.x) or not finiteNumber(step.y) or not finiteNumber(step.z)
+            or not validInteger(step.yaw, -360) or not finiteNumber(step.progress) or step.progress < 0 or step.progress > 1
+            or type(step.paid) ~= "boolean" or type(step.complete) ~= "boolean"
+            or type(step.paidCost) ~= "string" or not finiteNumber(step.health) or step.health < 0
+            or type(step.tiles) ~= "string" or not string.match(step.tiles, "^,[%-%d:,]*$")
+            or not validInteger(step.createdAt, 0) or not validInteger(step.now, 0) then
+            return false, "invalid construction piece"
+        end
+        return runQuery("INSERT OR REPLACE INTO construction_pieces (profile, cellId, slotKey, owner, account, kind, x, y, z, yaw, progress, paid, paidCost, complete, health, tiles, createdAt, updatedAt) VALUES ("
+            .. sql.SQLStr(profile) .. ", " .. integerValue(step.cellId) .. ", " .. sql.SQLStr(step.slotKey) .. ", "
+            .. sql.SQLStr(step.steamid) .. ", " .. sql.SQLStr(step.account) .. ", " .. sql.SQLStr(step.pieceKind) .. ", "
+            .. string.format("%.4f, %.4f, %.4f", step.x, step.y, step.z) .. ", " .. integerValue(step.yaw) .. ", "
+            .. string.format("%.6f", step.progress) .. ", " .. (step.paid and 1 or 0) .. ", " .. sql.SQLStr(step.paidCost) .. ", "
+            .. (step.complete and 1 or 0) .. ", " .. string.format("%.4f", step.health) .. ", " .. sql.SQLStr(step.tiles) .. ", "
+            .. integerValue(step.createdAt) .. ", " .. integerValue(step.now) .. ")")
+    end,
+    constructionPieceDelete = function(profile, step)
+        if not constructionSlot(step) then return false, "invalid construction piece deletion" end
+        return runQuery("DELETE FROM construction_pieces WHERE profile = " .. sql.SQLStr(profile)
+            .. " AND cellId = " .. integerValue(step.cellId) .. " AND slotKey = " .. sql.SQLStr(step.slotKey))
     end,
     // Refreshes an active claim owned by step.owner; the service has already checked the visitor's access. A lapsed
     // claim is never revived, and an unchanged row (already visited this second) is not an error.
@@ -770,6 +928,19 @@ local commitWriters = {
         return runQuery("UPDATE player_claims SET lastVisitAt = " .. math.floor(step.now) .. claimTileWhere(profile, step)
             .. " AND owner = " .. sql.SQLStr(step.owner) .. " AND lastVisitAt >= " .. (math.floor(step.now) - ZM_ClaimLifetimeSeconds)
             .. " AND lastVisitAt < " .. math.floor(step.now))
+    end,
+    claimDelete = function(profile, step)
+        if not validClaimTile(step) or type(step.owner) ~= "string" or step.owner == ""
+            or type(step.account) ~= "string" or not string.match(step.account, steamAccountPattern)
+            or not validInteger(step.createdAt, 1) then
+            return false, "invalid claim deletion"
+        end
+        local deleted, deleteError = runQuery("DELETE FROM player_claims" .. claimTileWhere(profile, step)
+            .. " AND owner = " .. sql.SQLStr(step.owner) .. " AND account = " .. sql.SQLStr(step.account)
+            .. " AND createdAt = " .. integerValue(step.createdAt))
+        if not deleted then return false, deleteError end
+        if tonumber(sql.QueryValue("SELECT changes()")) ~= 1 then return false, "the test claim changed; refusing deletion" end
+        return true
     end,
     claimFriendAdd = function(profile, step)
         if type(step.friendAccount) ~= "string" or not string.match(step.friendAccount, steamAccountPattern) then
@@ -899,6 +1070,12 @@ local commitWriters = {
     end,
     playerItems = function(profile, step)
         return writePlayerItemRows(step.steamid, profile, step.rows)
+    end,
+    playerItemsExact = function(profile, step)
+        return writeExactPlayerItemRows(step.steamid, profile, step.rows)
+    end,
+    equippedWeaponSlotsExact = function(profile, step)
+        return writeExactEquippedWeaponSlots(step.steamid, profile, step.rows)
     end,
     denStash = function(profile, step)
         if type(step.safeZoneId) ~= "string" or step.safeZoneId == "" then return false, "Invalid den-stash identity" end
